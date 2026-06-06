@@ -29,7 +29,7 @@ INSERT INTO devices (branch_id, type, name, connection_key, all_services, printe
 INSERT INTO settings (k, v) VALUES
 ('brand_name',          'Compania Mea'),
 ('brand_logo',          ''),
-('accent_color',        '#2563eb'),
+('accent_color',        '#10b981'),
 ('language',            'ro'),
 ('display_voice',       'ro-RO'),
 ('display_say_number',  '1'),
