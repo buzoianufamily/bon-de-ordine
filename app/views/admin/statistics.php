@@ -12,7 +12,10 @@ $totFin = max(1,$served+$noshow+$canc);
 ?>
 <div class="topbar">
   <h1>Statistici</h1>
-  <a class="btn" href="<?= $qs(['export'=>'csv']) ?>">⬇ Export CSV</a>
+  <div style="display:flex;gap:.5rem">
+    <a class="btn btn-primary" href="<?= $qs(['export'=>'xlsx']) ?>">⬇ Export Excel (grafice)</a>
+    <a class="btn" href="<?= $qs(['export'=>'csv']) ?>">⬇ Export CSV</a>
+  </div>
 </div>
 
 <form method="get" action="<?= e(url('admin/statistics')) ?>" class="card pad" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.2rem">

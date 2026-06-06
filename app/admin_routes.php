@@ -109,14 +109,19 @@ function admin_dashboard(): void {
         'waiting' => (int) val('SELECT COUNT(*) FROM tickets WHERE status="waiting"'),
         'serving' => (int) val('SELECT COUNT(*) FROM tickets WHERE status IN ("called","serving")'),
         'served'  => (int) val('SELECT COUNT(*) FROM tickets WHERE status="served" AND DATE(issued_at)=?', [$today]),
+        'no_show' => (int) val('SELECT COUNT(*) FROM tickets WHERE status="no_show" AND DATE(issued_at)=?', [$today]),
         'avg_wait'=> (int) (val('SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, called_at)) FROM tickets WHERE called_at IS NOT NULL AND DATE(issued_at)=?', [$today]) ?? 0),
     ];
     $per_service = all('SELECT s.name, s.color, COUNT(t.id) cnt
         FROM services s LEFT JOIN tickets t ON t.service_id=s.id AND DATE(t.issued_at)=?
-        GROUP BY s.id ORDER BY s.sort_order', [$today]);
+        GROUP BY s.id ORDER BY cnt DESC, s.sort_order', [$today]);
+    // aflux pe ora (azi) — pentru graficul de tendinta
+    $per_hour = array_fill(0, 24, 0);
+    foreach (all('SELECT HOUR(issued_at) h, COUNT(*) c FROM tickets WHERE DATE(issued_at)=? GROUP BY h', [$today]) as $r)
+        $per_hour[(int)$r['h']] = (int)$r['c'];
     $devices = all('SELECT name, type, connection_key, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices ORDER BY type');
-    view('admin/dashboard', compact('stats','per_service','devices'));
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices'));
 }
 
 /* ----------------------- SERVICES ----------------------- */
@@ -460,7 +465,132 @@ function admin_statistics(): void {
                         GROUP BY c.id ORDER BY cnt DESC", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
 
+    // export Excel (.xlsx) cu grafice native
+    if (($_GET['export'] ?? '') === 'xlsx') {
+        $brand = (string) setting('brand_name', 'Bon de ordine');
+        $branchLabel = $branch
+            ? ('Filiala: ' . ((string)(val('SELECT name FROM branches WHERE id=?', [$branch]) ?? $branch)))
+            : 'Toate filialele';
+        $accent = (string) setting('accent_color', '#2563eb');
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent);
+        $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
+    }
+
     view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter'));
+}
+
+/**
+ * Construieste workbook-ul de statistici (.xlsx) cu grafice native Excel:
+ * placinta (status), linie (bilete/zi), bare (serviciu/ghiseu), coloane (aflux orar).
+ */
+function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
+                          array $kpi, array $per_day, array $per_service, array $per_hour,
+                          array $per_counter, string $accent): Xlsx {
+    $mins = fn($s) => round(((float)$s) / 60, 1);
+    $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
+
+    $xl = new Xlsx(['title' => 'Raport statistici · ' . $brand, 'author' => $brand, 'accent' => $accent]);
+
+    /* ---- Foaia 1: Rezumat (KPI + placinta status) ---- */
+    $s = $xl->add_sheet('Rezumat');
+    $s->set_col_widths([1 => 30, 2 => 14]);
+    $s->row([['v' => $brand, 's' => Xlsx::S_TITLE]]);
+    $s->row([['v' => 'Raport statistici', 's' => Xlsx::S_MUTED]]);
+    $s->row([['v' => 'Perioada: ' . $from . ' – ' . $to . '   ·   ' . $branchLabel . '   ·   generat ' . date('d.m.Y H:i'), 's' => Xlsx::S_MUTED]]);
+    $s->blank();
+    $s->row(['Indicator', 'Valoare'], Xlsx::S_HEAD);
+    $s->row(['Total bilete', (int)($kpi['total'] ?? 0)]);
+    $s->row(['Servite', $served]);
+    $s->row(['Neprezentate', $noshow]);
+    $s->row(['Anulate', $canc]);
+    $s->row(['Timp mediu asteptare (min)', ['v' => $mins($kpi['avg_wait'] ?? 0), 's' => Xlsx::S_NUM1]]);
+    $s->row(['Timp mediu servire (min)', ['v' => $mins($kpi['avg_service'] ?? 0), 's' => Xlsx::S_NUM1]]);
+    $s->blank();
+    $s->row(['Status', 'Bilete'], Xlsx::S_HEAD);
+    $r1 = $s->row(['Servite', $served]);
+    $s->row(['Neprezentate', $noshow]);
+    $r3 = $s->row(['Anulate', $canc]);
+    $s->chart([
+        'type' => 'pie', 'title' => 'Defalcare status', 'legend' => true, 'legend_pos' => 'r',
+        'anchor' => ['col' => 3, 'row' => 4, 'col2' => 11, 'row2' => 20],
+        'cat' => ['ref' => '$A$' . $r1 . ':$A$' . $r3, 'vals' => ['Servite', 'Neprezentate', 'Anulate']],
+        'series' => [['ref' => '$B$' . $r1 . ':$B$' . $r3, 'vals' => [$served, $noshow, $canc],
+                      'colors' => ['#16a34a', '#94a3b8', '#ef4444']]],
+    ]);
+
+    /* ---- Foaia 2: Pe zi (linie) ---- */
+    $s = $xl->add_sheet('Pe zi');
+    $s->set_col_widths([1 => 14, 2 => 12, 3 => 26]);
+    $s->row([['v' => 'Bilete pe zi', 's' => Xlsx::S_TITLE]]);
+    $hdr = $s->row(['Data', 'Bilete', 'Timp mediu asteptare (min)'], Xlsx::S_HEAD);
+    $cats = []; $vals = []; $first = $hdr + 1;
+    foreach ($per_day as $r) {
+        $s->row([date('d.m.Y', strtotime($r['d'])), (int)$r['c'], ['v' => $mins($r['w'] ?? 0), 's' => Xlsx::S_NUM1]]);
+        $cats[] = date('d.m', strtotime($r['d'])); $vals[] = (int)$r['c'];
+    }
+    $last = $s->row_count();
+    if ($vals) $s->chart([
+        'type' => 'line', 'title' => 'Bilete pe zi',
+        'anchor' => ['col' => 4, 'row' => 1, 'col2' => 14, 'row2' => 21],
+        'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+        'series' => [['name' => 'Bilete', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'color' => $accent]],
+    ]);
+
+    /* ---- Foaia 3: Pe serviciu (bare colorate) ---- */
+    $s = $xl->add_sheet('Pe serviciu');
+    $s->set_col_widths([1 => 24, 2 => 10, 3 => 10, 4 => 22, 5 => 20]);
+    $s->row([['v' => 'Bilete pe serviciu', 's' => Xlsx::S_TITLE]]);
+    $hdr = $s->row(['Serviciu', 'Total', 'Servite', 'Timp asteptare (min)', 'Timp servire (min)'], Xlsx::S_HEAD);
+    $cats = []; $vals = []; $cols = []; $first = $hdr + 1;
+    foreach ($per_service as $r) {
+        $s->row([$r['name'], (int)$r['c'], (int)($r['served'] ?? 0),
+                 ['v' => $mins($r['w'] ?? 0), 's' => Xlsx::S_NUM1], ['v' => $mins($r['sv'] ?? 0), 's' => Xlsx::S_NUM1]]);
+        $cats[] = $r['name']; $vals[] = (int)$r['c']; $cols[] = $r['color'] ?: $accent;
+    }
+    $last = $s->row_count();
+    if ($vals) $s->chart([
+        'type' => 'bar', 'title' => 'Total bilete pe serviciu',
+        'anchor' => ['col' => 6, 'row' => 1, 'col2' => 15, 'row2' => 21],
+        'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+        'series' => [['name' => 'Total', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'colors' => $cols]],
+    ]);
+
+    /* ---- Foaia 4: Pe ora (coloane) ---- */
+    $s = $xl->add_sheet('Pe ora');
+    $s->set_col_widths([1 => 10, 2 => 12]);
+    $s->row([['v' => 'Aflux pe ora din zi', 's' => Xlsx::S_TITLE]]);
+    $hdr = $s->row(['Ora', 'Bilete'], Xlsx::S_HEAD);
+    $hours = array_fill(0, 24, 0); foreach ($per_hour as $r) $hours[(int)$r['h']] = (int)$r['c'];
+    $cats = []; $vals = []; $first = $hdr + 1;
+    for ($h = 0; $h < 24; $h++) { $s->row([sprintf('%02d:00', $h), $hours[$h]]); $cats[] = sprintf('%02d', $h); $vals[] = $hours[$h]; }
+    $last = $s->row_count();
+    $s->chart([
+        'type' => 'col', 'title' => 'Aflux pe ora',
+        'anchor' => ['col' => 3, 'row' => 1, 'col2' => 14, 'row2' => 22],
+        'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+        'series' => [['name' => 'Bilete', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'color' => $accent]],
+    ]);
+
+    /* ---- Foaia 5: Pe ghiseu (coloane) ---- */
+    $s = $xl->add_sheet('Pe ghiseu');
+    $s->set_col_widths([1 => 26, 2 => 12]);
+    $s->row([['v' => 'Bilete pe ghiseu', 's' => Xlsx::S_TITLE]]);
+    $hdr = $s->row(['Ghiseu', 'Bilete'], Xlsx::S_HEAD);
+    $cats = []; $vals = []; $first = $hdr + 1;
+    foreach ($per_counter as $r) {
+        if ((int)$r['cnt'] === 0) continue;
+        $label = trim(($r['code'] ?? '') . ' ' . ($r['name'] ?? ''));
+        $s->row([$label, (int)$r['cnt']]); $cats[] = $label; $vals[] = (int)$r['cnt'];
+    }
+    $last = $s->row_count();
+    if ($vals) $s->chart([
+        'type' => 'col', 'title' => 'Bilete pe ghiseu',
+        'anchor' => ['col' => 3, 'row' => 1, 'col2' => 13, 'row2' => 20],
+        'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+        'series' => [['name' => 'Bilete', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'color' => $accent]],
+    ]);
+
+    return $xl;
 }
 
 /* ----------------------- FORMS (formulare) ----------------------- */
