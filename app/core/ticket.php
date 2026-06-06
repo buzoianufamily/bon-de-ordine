@@ -1,0 +1,222 @@
+<?php
+/**
+ * Logica de gestionare a cozii: emitere bilet, apel urmator, recall,
+ * finalizare, no-show, transfer, starea curenta (pt afisaj si terminal).
+ */
+
+/**
+ * Verifica daca serviciul e in program acum.
+ * active_hours = JSON {"enabled":true,"days":{"1":["09:00","17:00"],...}} (0=Dum..6=Sam).
+ * Gol / dezactivat => mereu deschis.
+ */
+function service_is_open(array $svc, ?int $ts = null): bool {
+    $raw = trim((string)($svc['active_hours'] ?? ''));
+    if ($raw === '') return true;
+    $cfg = json_decode($raw, true);
+    if (!is_array($cfg) || empty($cfg['enabled'])) return true;
+    $ts = $ts ?? time();
+    $dow = (int)date('w', $ts);
+    $day = $cfg['days'][$dow] ?? ($cfg['days'][(string)$dow] ?? null);
+    if (!is_array($day) || count($day) < 2 || !$day[0] || !$day[1]) return false;
+    $now = date('H:i', $ts);
+    return $now >= $day[0] && $now < $day[1];
+}
+
+/** Formateaza eticheta biletului (ex: C001 / C1). */
+function format_label(array $service, int $number): string {
+    $n = $service['include_zeros']
+        ? str_pad((string)$number, max(1, (int)$service['pad_length']), '0', STR_PAD_LEFT)
+        : (string)$number;
+    return $service['prefix'] . $n;
+}
+
+/** Urmatorul numar pentru un serviciu (atomic, reset zilnic). */
+function next_number(array $service): int {
+    $today = date('Y-m-d');
+    db()->beginTransaction();
+    try {
+        q('INSERT INTO ticket_sequences (service_id, seq_date, last_number)
+           VALUES (?, ?, 1)
+           ON DUPLICATE KEY UPDATE last_number = last_number + 1',
+          [$service['id'], $today]);
+        $n = (int) val('SELECT last_number FROM ticket_sequences WHERE service_id = ? AND seq_date = ?',
+                       [$service['id'], $today]);
+        // wrap-around la num_to
+        $from = (int)$service['num_from']; $to = (int)$service['num_to'];
+        $range = max(1, $to - $from + 1);
+        $number = $from + (($n - 1) % $range);
+        db()->commit();
+        return $number;
+    } catch (Throwable $ex) {
+        db()->rollBack();
+        throw $ex;
+    }
+}
+
+/** Emite un bilet nou. Returneaza randul complet din DB. */
+function issue_ticket(int $service_id, bool $priority = false, string $channel = 'paper', ?string $phone = null, ?string $form_data = null): array {
+    $svc = one('SELECT * FROM services WHERE id = ? AND status = "active"', [$service_id]);
+    if (!$svc) throw new RuntimeException('Serviciu indisponibil');
+    if (!service_is_open($svc)) throw new RuntimeException('Serviciul este inchis in acest moment');
+
+    if ((int)$svc['max_queued'] > 0) {
+        $waiting = (int) val('SELECT COUNT(*) FROM tickets WHERE service_id = ? AND status = "waiting"', [$service_id]);
+        if ($waiting >= (int)$svc['max_queued']) throw new RuntimeException('Coada este plina pentru acest serviciu');
+    }
+    if (!$svc['allow_priority']) $priority = false;
+
+    $number = next_number($svc);
+    $label  = format_label($svc, $number);
+    $token  = gen_token(16);
+
+    q('INSERT INTO tickets (branch_id, service_id, number, label, priority, status, channel, customer_phone, public_token, form_data)
+       VALUES (?, ?, ?, ?, ?, "waiting", ?, ?, ?, ?)',
+      [$svc['branch_id'], $service_id, $number, $label, $priority ? 1 : 0, $channel, $phone, $token, $form_data]);
+
+    $id = insert_id();
+    return one('SELECT * FROM tickets WHERE id = ?', [$id]);
+}
+
+/** ID-urile serviciilor pe care le deserveste un ghiseu. */
+function counter_service_ids(array $counter): array {
+    if ((int)$counter['all_services'] === 1) {
+        return array_map('intval', array_column(
+            all('SELECT id FROM services WHERE branch_id = ? AND status = "active"', [$counter['branch_id']]), 'id'));
+    }
+    return array_map('intval', array_column(
+        all('SELECT service_id AS id FROM counter_services WHERE counter_id = ?', [$counter['id']]), 'id'));
+}
+
+/** Pozitia in coada + cati sunt inainte (pt bilet digital). */
+function ticket_position(array $t): int {
+    return (int) val(
+        'SELECT COUNT(*) FROM tickets
+         WHERE service_id = ? AND status = "waiting"
+           AND (priority > ? OR (priority = ? AND issued_at < ?) OR (priority = ? AND issued_at = ? AND id < ?))',
+        [$t['service_id'], $t['priority'], $t['priority'], $t['issued_at'], $t['priority'], $t['issued_at'], $t['id']]
+    );
+}
+
+/**
+ * Apeleaza urmatorul bilet pentru un ghiseu.
+ * Alege: prioritate DESC, apoi cel mai vechi. Tranzactie cu lock.
+ */
+function call_next(int $counter_id, int $user_id): ?array {
+    $counter = one('SELECT * FROM counters WHERE id = ?', [$counter_id]);
+    if (!$counter) throw new RuntimeException('Ghiseu inexistent');
+    $svcIds = counter_service_ids($counter);
+    if (!$svcIds) return null;
+
+    $in = implode(',', array_fill(0, count($svcIds), '?'));
+    db()->beginTransaction();
+    try {
+        // inchide biletul curent al ghiseului (daca era in servire si nu e terminate_on_call)
+        $row = one("SELECT t.* FROM tickets t
+                    WHERE t.status = 'waiting' AND t.service_id IN ($in)
+                    ORDER BY t.priority DESC, t.issued_at ASC, t.id ASC
+                    LIMIT 1 FOR UPDATE", $svcIds);
+        if (!$row) { db()->commit(); return null; }
+
+        // marcheaza precedentul bilet servit de acest ghiseu ca 'served' daca inca era 'serving'
+        q("UPDATE tickets SET status = 'served', finished_at = NOW()
+           WHERE counter_id = ? AND status IN ('called','serving')", [$counter_id]);
+
+        $svc = one('SELECT * FROM services WHERE id = ?', [$row['service_id']]);
+        $newStatus = ((int)$svc['terminate_on_call'] === 1) ? 'served' : 'called';
+        q("UPDATE tickets SET status = ?, counter_id = ?, agent_id = ?, called_at = NOW()" .
+          ($newStatus === 'served' ? ", served_at = NOW(), finished_at = NOW()" : "") . " WHERE id = ?",
+          [$newStatus, $counter_id, $user_id, $row['id']]);
+
+        db()->commit();
+        return one('SELECT * FROM tickets WHERE id = ?', [$row['id']]);
+    } catch (Throwable $ex) {
+        db()->rollBack();
+        throw $ex;
+    }
+}
+
+function recall_ticket(int $ticket_id): void {
+    q("UPDATE tickets SET called_at = NOW(), recall_count = recall_count + 1,
+        status = CASE WHEN status IN ('served','no_show','cancelled') THEN 'called' ELSE status END
+       WHERE id = ?", [$ticket_id]);
+}
+function start_serving(int $ticket_id): void {
+    q("UPDATE tickets SET status = 'serving', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND status = 'called'", [$ticket_id]);
+}
+function finish_ticket(int $ticket_id): void {
+    q("UPDATE tickets SET status = 'served', served_at = COALESCE(served_at, NOW()), finished_at = NOW()
+       WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+}
+function no_show_ticket(int $ticket_id): void {
+    q("UPDATE tickets SET status = 'no_show', finished_at = NOW() WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+}
+function cancel_ticket(int $ticket_id): void {
+    q("UPDATE tickets SET status = 'cancelled', finished_at = NOW() WHERE id = ? AND status IN ('waiting','called','serving')", [$ticket_id]);
+}
+/** Transfera biletul catre alt serviciu (revine in asteptare). */
+function transfer_ticket(int $ticket_id, int $service_id): void {
+    q("UPDATE tickets SET service_id = ?, status = 'waiting', counter_id = NULL, called_at = NULL, served_at = NULL
+       WHERE id = ?", [$service_id, $ticket_id]);
+}
+
+/**
+ * Starea curenta a cozii pentru o filiala.
+ * Folosita de afisaj (player) si terminal (polling/SSE).
+ */
+function queue_state(int $branch_id): array {
+    // ultimele bilete chemate (pt lista pe TV)
+    $called = all(
+        "SELECT t.id, t.label, t.status, t.priority, t.called_at, t.recall_count,
+                s.name AS service_name, s.prefix, s.color,
+                c.code AS counter_code, c.name AS counter_name
+         FROM tickets t
+         JOIN services s ON s.id = t.service_id
+         LEFT JOIN counters c ON c.id = t.counter_id
+         WHERE t.branch_id = ? AND t.status IN ('called','serving')
+         ORDER BY t.called_at DESC
+         LIMIT 8", [$branch_id]);
+
+    // bilete in asteptare pe serviciu
+    $waiting = all(
+        "SELECT s.id, s.prefix, s.name, s.color, COUNT(t.id) AS cnt
+         FROM services s
+         LEFT JOIN tickets t ON t.service_id = s.id AND t.status = 'waiting'
+         WHERE s.branch_id = ? AND s.status = 'active'
+         GROUP BY s.id ORDER BY s.sort_order", [$branch_id]);
+
+    // ghisee si biletul curent
+    $counters = all(
+        "SELECT c.id, c.code, c.name, c.status,
+                (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
+                 ORDER BY t.called_at DESC LIMIT 1) AS current_label
+         FROM counters c WHERE c.branch_id = ? ORDER BY c.code", [$branch_id]);
+
+    $last = $called[0] ?? null;
+    return [
+        'ts'       => time(),
+        'last'     => $last,
+        'called'   => $called,
+        'waiting'  => $waiting,
+        'counters' => $counters,
+    ];
+}
+
+/** Lista pentru terminalul operatorului (coada + ultimele chemate). */
+function counter_view(array $counter): array {
+    $svcIds = counter_service_ids($counter);
+    $waiting = [];
+    if ($svcIds) {
+        $in = implode(',', array_fill(0, count($svcIds), '?'));
+        $waiting = all(
+            "SELECT t.id, t.label, t.priority, t.issued_at, s.name AS service_name, s.color
+             FROM tickets t JOIN services s ON s.id = t.service_id
+             WHERE t.status = 'waiting' AND t.service_id IN ($in)
+             ORDER BY t.priority DESC, t.issued_at ASC LIMIT 50", $svcIds);
+    }
+    $current = one(
+        "SELECT t.*, s.name AS service_name, s.color FROM tickets t
+         JOIN services s ON s.id = t.service_id
+         WHERE t.counter_id = ? AND t.status IN ('called','serving')
+         ORDER BY t.called_at DESC LIMIT 1", [$counter['id']]);
+    return ['current' => $current, 'waiting' => $waiting, 'waiting_count' => count($waiting)];
+}
