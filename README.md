@@ -83,7 +83,7 @@ Codul e deja pregătit: conexiunea DB e centralizată (un singur loc de schimbat
 
 ## Următorii pași sugerați (opțional)
 - Generator QR local (acum se folosește un serviciu extern pentru QR-ul de pe ecran; pe bonul termic QR-ul e nativ ESC/POS).
-- Rapoarte/statistici extinse (export CSV, grafice pe interval).
+- ✅ Rapoarte/statistici extinse: **export Excel (.xlsx) cu grafice native** (linie, bare, coloane, plăcintă) + export CSV, grafice pe interval.
 - Programări (appointments) și formulare la emiterea bonului (există în Moviik).
 - SMS la apropierea rândului (bilet prin SMS).
 - Aplicația Android launcher (cod sursă) — specificația completă e în `android/README.md`.
@@ -92,7 +92,7 @@ Codul e deja pregătit: conexiunea DB e centralizată (un singur loc de schimbat
 
 ## Module incluse (stare curenta — aproape 1:1 cu Moviik)
 
-Backoffice (temă dark): **Dashboard**, **Statistici** (KPI + grafice + export CSV), **Filiale** (cu taburi Servicii/Ghișee/Dispozitive), **Servicii** (prefix/culoare/interval/prioritar/KPI + **program de funcționare** + **formular** + **programări**), **Ghișee**, **Dispozitive** (cu **editor afișaj TV pe canvas** și **editor dispenser cu taburi** Logic/Aspect/Texte/Popup), **Multimedia** (galerie cu upload + alegere în logo/widget), **Formulare** (builder câmpuri dinamice), **Utilizatori**, **Bilete**, **Programări** (admin), **Setări**, **Roluri** (permisiuni pentru manager).
+Backoffice (temă dark): **Dashboard** (KPI + donut distribuție pe serviciu + aflux orar live), **Statistici** (KPI + grafice + **export Excel `.xlsx` cu grafice native** și export CSV), **Filiale** (cu taburi Servicii/Ghișee/Dispozitive), **Servicii** (prefix/culoare/interval/prioritar/KPI + **program de funcționare** + **formular** + **programări**), **Ghișee**, **Dispozitive** (cu **editor afișaj TV pe canvas** și **editor dispenser cu taburi** Logic/Aspect/Texte/Popup), **Multimedia** (galerie cu upload + alegere în logo/widget), **Formulare** (builder câmpuri dinamice), **Utilizatori**, **Bilete**, **Programări** (admin), **Setări**, **Roluri** (permisiuni pentru manager).
 
 Public / dispozitive: **dispenser** configurabil (cu popup tip/politică și formular), **afișaj TV** (layout din canvas + anunț vocal RO), **bilet digital** (QR, status live), **terminal operator** (cu date formular), **programare online** (`/book`) + **pagină programare** cu check-in (`/a/{token}`).
 

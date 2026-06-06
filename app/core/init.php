@@ -41,6 +41,7 @@ require __DIR__ . '/auth.php';
 require __DIR__ . '/ticket.php';
 require __DIR__ . '/appointments.php';
 require __DIR__ . '/printer.php';
+require __DIR__ . '/xlsx.php';
 
 // migrare automata a schemei (idempotent)
 run_migrations();
