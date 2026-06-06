@@ -4,25 +4,28 @@ $totalSvc = array_sum(array_map(fn($p)=>(int)$p['cnt'], $per_service));
 $maxSvc   = max(1, max(array_map(fn($p)=>(int)$p['cnt'], $per_service ?: [['cnt'=>0]])));
 $maxHour  = max(1, max($per_hour));
 $peakHour = array_search($maxHour, $per_hour, true);
+$onlineDev = count(array_filter($devices, fn($d)=>$d['online']));
 // segmente donut (SVG)
 $C = 2 * M_PI * 54; $accum = 0; $segs = [];
 foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   $len = $c/$totalSvc*$C; $segs[]=['len'=>$len,'off'=>$accum,'color'=>$p['color'],'name'=>$p['name'],'cnt'=>$c]; $accum+=$len; }
 ?>
-<div class="topbar"><h1>Dashboard</h1><span class="muted"><?= date('l, d.m.Y') ?></span></div>
-
-<div class="kpis">
-  <div class="card pad kpi"><div class="n"><?= $stats['today'] ?></div><div class="l">Bilete azi</div></div>
-  <div class="card pad kpi"><div class="n" style="color:var(--warn)"><?= $stats['waiting'] ?></div><div class="l">La rand acum</div></div>
-  <div class="card pad kpi"><div class="n" style="color:var(--accent)"><?= $stats['serving'] ?></div><div class="l">In servire</div></div>
-  <div class="card pad kpi"><div class="n" style="color:var(--ok)"><?= $stats['served'] ?></div><div class="l">Servite azi</div></div>
-  <div class="card pad kpi"><div class="n" style="color:#94a3b8"><?= $stats['no_show'] ?></div><div class="l">Neprezentate azi</div></div>
-  <div class="card pad kpi"><div class="n"><?= mmss($stats['avg_wait']) ?></div><div class="l">Timp mediu asteptare</div></div>
+<div class="topbar">
+  <h1>Dashboard</h1>
+  <span class="muted" style="font-size:.85rem">Interval actualizare: la reincarcare · <?= date('l, d.m.Y') ?></span>
 </div>
 
-<div class="row" style="align-items:stretch">
-  <div class="card pad" style="flex:1">
-    <h3 style="margin-top:0">Distributie pe serviciu (azi)</h3>
+<div class="statcards">
+  <div class="statcard"><span class="ic"><?= aicon('tickets') ?></span><div class="t">Bilete azi</div><div class="s">Total emise</div><div class="v"><?= $stats['today'] ?></div></div>
+  <div class="statcard"><span class="ic"><?= aicon('users') ?></span><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>
+  <div class="statcard"><span class="ic"><?= aicon('terminal') ?></span><div class="t">In servire</div><div class="s">Chemate / la ghiseu</div><div class="v" style="color:var(--accent)"><?= $stats['serving'] ?></div></div>
+  <div class="statcard"><span class="ic"><?= aicon('statistics') ?></span><div class="t">Servite azi</div><div class="s">Finalizate</div><div class="v" style="color:var(--ok)"><?= $stats['served'] ?></div></div>
+  <div class="statcard"><span class="ic"><?= aicon('appointments') ?></span><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · azi</div><div class="v"><?= mmss($stats['avg_wait']) ?></div></div>
+</div>
+
+<div class="panel-grid">
+  <div class="panel">
+    <h4>Influx pe serviciu (azi)</h4>
     <?php if($totalSvc===0): ?>
       <p class="muted">Niciun bilet emis azi.</p>
     <?php else: ?>
@@ -53,12 +56,9 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <?php endif; ?>
   </div>
 
-  <div class="card pad" style="flex:1.4">
-    <div style="display:flex;justify-content:space-between;align-items:baseline">
-      <h3 style="margin-top:0">Aflux pe ora (azi)</h3>
-      <?php if(array_sum($per_hour)>0): ?><span class="muted" style="font-size:.82rem">Varf: <?= sprintf('%02d:00',$peakHour) ?> (<?= $maxHour ?>)</span><?php endif; ?>
-    </div>
-    <div style="display:flex;align-items:flex-end;gap:3px;height:160px">
+  <div class="panel">
+    <h4>Timp / aflux pe ora (azi) <?php if(array_sum($per_hour)>0): ?><span class="muted" style="font-weight:600;text-transform:none;letter-spacing:0">varf <?= sprintf('%02d:00',$peakHour) ?> · <?= $maxHour ?></span><?php endif; ?></h4>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:170px">
       <?php for($h=0;$h<24;$h++): $val=$per_hour[$h]; $pct=(int)($val/$maxHour*100); ?>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end" title="<?= sprintf('%02d:00',$h) ?> — <?= $val ?> bilete">
           <span style="font-size:.6rem;color:#7d8696;margin-bottom:2px"><?= $val?:'' ?></span>
@@ -70,12 +70,12 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   </div>
 </div>
 
-<div class="row" style="align-items:flex-start">
-  <div class="card pad" style="flex:1.2">
-    <h3 style="margin-top:0">Bilete pe serviciu (azi)</h3>
+<div class="panel-grid">
+  <div class="panel">
+    <h4>Bilete pe serviciu (azi)</h4>
     <?php if(!$per_service): ?><p class="muted">Niciun serviciu.</p><?php endif; ?>
     <?php foreach($per_service as $p): ?>
-      <div style="display:flex;align-items:center;gap:.7rem;margin:.5rem 0">
+      <div style="display:flex;align-items:center;gap:.7rem;margin:.55rem 0">
         <span class="tag" style="background:<?= e($p['color']) ?>"><?= e(mb_substr($p['name'],0,1)) ?></span>
         <span style="flex:1"><?= e($p['name']) ?></span>
         <div style="flex:2;background:#1c2029;border-radius:6px;height:10px;overflow:hidden">
@@ -84,15 +84,15 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
       </div>
     <?php endforeach; ?>
   </div>
-  <div class="card pad" style="flex:1">
-    <h3 style="margin-top:0">Dispozitive</h3>
+  <div class="panel">
+    <h4>Dispozitive <span class="live"><?= $onlineDev ?>/<?= count($devices) ?> online</span></h4>
     <table><tbody>
     <?php foreach($devices as $d): ?>
-      <tr><td>
-        <span class="pill" style="background:<?= $d['online']?'#dcfce7':'#f1f5f9' ?>;color:<?= $d['online']?'#166534':'#64748b' ?>">
+      <tr><td style="width:1%">
+        <span class="pill" style="background:<?= $d['online']?'color-mix(in srgb,var(--ok) 22%,transparent)':'#1c2029' ?>;color:<?= $d['online']?'var(--ok)':'#7d8696' ?>">
           <?= $d['online']?'● online':'○ offline' ?></span>
         </td><td><strong><?= e($d['name']) ?></strong><br><span class="muted" style="font-size:.8rem"><?= e($d['type']) ?></span></td>
-        <td><code><?= e($d['connection_key']) ?></code></td></tr>
+        <td style="text-align:right"><code><?= e($d['connection_key']) ?></code></td></tr>
     <?php endforeach; ?>
     <?php if(!$devices): ?><tr><td class="muted">Niciun dispozitiv.</td></tr><?php endif; ?>
     </tbody></table>

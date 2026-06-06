@@ -471,7 +471,7 @@ function admin_statistics(): void {
         $branchLabel = $branch
             ? ('Filiala: ' . ((string)(val('SELECT name FROM branches WHERE id=?', [$branch]) ?? $branch)))
             : 'Toate filialele';
-        $accent = (string) setting('accent_color', '#2563eb');
+        $accent = (string) setting('accent_color', '#10b981');
         $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }

@@ -1,4 +1,5 @@
+    </div><!-- .content -->
   </main>
-</div>
+</div><!-- .shell -->
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 </body></html>
