@@ -1,9 +1,8 @@
 <?php
 /**
  * Configurare aplicatie - Sistem de Bon de Ordine
- * Editeaza aceste valori dupa ce creezi baza de date in cPanel.
- *
- * IMPORTANT: dupa instalare, schimba APP_SETUP_TOKEN si sterge fisierul install.php
+ * Editeaza DB-ul mai jos si urca fisierele pe server. Schema + adminul implicit
+ * se creeaza automat la primul acces — nu e nevoie de install.php.
  */
 
 return [
@@ -24,11 +23,4 @@ return [
         'timezone'  => 'Europe/Bucharest',
         'locale'    => 'ro',
     ],
-
-    // Token folosit O SINGURA DATA de install.php pentru a crea primul admin.
-    // Schimba-l cu ceva aleatoriu inainte sa rulezi install.php.
-    'setup_token' => 'test123',
-
-    // Cheie secreta pentru sesiuni/CSRF (schimb-o cu un string aleatoriu lung)
-    'app_key' => 'test123',
 ];

@@ -18,5 +18,16 @@ document.addEventListener('click',function(e){
   grid.classList.toggle('aslist',t.getAttribute('data-view')==='list');
   document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('on',b===t);});
 });
+/* sidebar toggle — persista starea in localStorage */
+(function(){
+  var shell=document.querySelector('.shell');
+  if(!shell)return;
+  if(localStorage.getItem('nav_collapsed')==='1') shell.classList.add('nav-collapsed');
+  var btn=document.getElementById('side-toggle');
+  if(btn) btn.addEventListener('click',function(){
+    shell.classList.toggle('nav-collapsed');
+    localStorage.setItem('nav_collapsed', shell.classList.contains('nav-collapsed')?'1':'0');
+  });
+})();
 </script>
 </body></html>

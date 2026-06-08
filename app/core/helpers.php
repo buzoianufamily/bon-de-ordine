@@ -105,10 +105,51 @@ function view(string $view, array $data = []): void {
  * Migrare automata a bazei de date (idempotenta, ghidata de schema_version).
  * Permite actualizarea instalarilor existente doar prin urcarea fisierelor noi.
  */
+function auto_install(): void {
+    // Verifica daca tabelul settings exista; daca nu, ruleaza schema + seed + creeaza admin implicit.
+    $hasSettings = false;
+    try {
+        $hasSettings = (int) val(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='settings'"
+        ) > 0;
+    } catch (Throwable $e) { return; }
+
+    if ($hasSettings) return; // instalat deja, run_migrations() va face restul
+
+    $root = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2);
+    $schema = $root . '/database/schema.sql';
+    $seed   = $root . '/database/seed.sql';
+
+    // Executa schema.sql si seed.sql instructiune cu instructiune
+    foreach ([$schema, $seed] as $file) {
+        if (!is_file($file)) continue;
+        $sql = file_get_contents($file);
+        // Imparte in instructiuni individuale (ignore linii goale si comentarii)
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+            if ($stmt === '' || str_starts_with($stmt, '--')) continue;
+            try { db()->exec($stmt); } catch (Throwable $e) {}
+        }
+    }
+
+    // Admin implicit: Admin / admin@example.ro / 123456
+    $exists = (int) val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro'");
+    if (!$exists) {
+        $hash = password_hash('123456', PASSWORD_BCRYPT);
+        try {
+            q("INSERT INTO users (name, email, password, role, active, created_at) VALUES (?,?,?,'admin',1,NOW())",
+              ['Admin', 'admin@example.ro', $hash]);
+        } catch (Throwable $e) {}
+    }
+
+    // Marcheaza schema_version la zi
+    try { q("INSERT INTO settings(k,v) VALUES('schema_version','4') ON DUPLICATE KEY UPDATE v='4'"); } catch (Throwable $e) {}
+}
+
 function run_migrations(): void {
+    auto_install(); // prima rulare: creeaza schema + seed + admin
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
-    } catch (Throwable $e) { return; } // tabelele de baza nu exista inca (pre-instalare)
+    } catch (Throwable $e) { return; }
     $target = 4;
     if ($cur >= $target) return;
 
