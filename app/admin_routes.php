@@ -512,8 +512,8 @@ function admin_statistics(): void {
     $where = 'DATE(t.issued_at) BETWEEN ? AND ?'; $args = [$from, $to];
     if ($branch) { $where .= ' AND t.branch_id = ?'; $args[] = $branch; }
 
-    // export CSV (toate biletele din interval)
-    if (($_GET['export'] ?? '') === 'csv') {
+    // export CSV (toate biletele din interval) — fara dataset specific
+    if (($_GET['export'] ?? '') === 'csv' && empty($_GET['dataset'])) {
         $rows = all("SELECT t.label, s.name service, t.status, t.priority, t.channel,
                         t.issued_at, t.called_at, t.finished_at, c.code counter
                      FROM tickets t JOIN services s ON s.id=t.service_id
@@ -548,7 +548,36 @@ function admin_statistics(): void {
     $per_counter = all("SELECT c.code, c.name, COUNT(t.id) cnt
                         FROM counters c LEFT JOIN tickets t ON t.counter_id=c.id AND ($where)
                         GROUP BY c.id ORDER BY cnt DESC", $args);
+    // bilete pe utilizator (operator) + timp mediu (ca la Moviik)
+    $per_user = all("SELECT u.name, COUNT(t.id) c, SUM(t.status='served') served,
+                     AVG(TIMESTAMPDIFF(SECOND,t.issued_at,t.called_at)) w,
+                     AVG(CASE WHEN t.status='served' THEN TIMESTAMPDIFF(SECOND,t.called_at,t.finished_at) END) sv
+                     FROM tickets t JOIN users u ON u.id=t.agent_id
+                     WHERE $where GROUP BY u.id ORDER BY c DESC", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
+
+    // export CSV per set de date (fiecare grafic are buton propriu de download)
+    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user'], true)) {
+        $ds = $_GET['dataset'];
+        $sets = [
+          'day'     => ['bilete_pe_zi', ['Data','Bilete','Timp mediu asteptare (s)'],
+                        array_map(fn($r)=>[$r['d'],(int)$r['c'],round((float)$r['w'])], $per_day)],
+          'service' => ['bilete_pe_serviciu', ['Serviciu','Total','Servite','Timp mediu asteptare (s)','Timp mediu servire (s)'],
+                        array_map(fn($r)=>[$r['name'],(int)$r['c'],(int)$r['served'],round((float)$r['w']),round((float)$r['sv'])], $per_service)],
+          'counter' => ['bilete_pe_ghiseu', ['Cod','Ghiseu','Bilete'],
+                        array_map(fn($r)=>[$r['code'],$r['name'],(int)$r['cnt']], $per_counter)],
+          'hour'    => ['aflux_orar', ['Ora','Bilete'],
+                        array_map(fn($r)=>[((int)$r['h']).':00',(int)$r['c']], $per_hour)],
+          'user'    => ['bilete_pe_utilizator', ['Utilizator','Total','Servite','Timp mediu asteptare (s)','Timp mediu servire (s)'],
+                        array_map(fn($r)=>[$r['name'],(int)$r['c'],(int)$r['served'],round((float)$r['w']),round((float)$r['sv'])], $per_user)],
+        ];
+        [$fname,$head,$data] = $sets[$ds];
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="'.$fname.'_'.$from.'_'.$to.'.csv"');
+        $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF");
+        fputcsv($out,$head); foreach($data as $row) fputcsv($out,$row);
+        fclose($out); exit;
+    }
 
     // export Excel (.xlsx) cu grafice native
     if (($_GET['export'] ?? '') === 'xlsx') {
@@ -561,7 +590,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user'));
 }
 
 /**
