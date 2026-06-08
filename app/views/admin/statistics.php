@@ -57,7 +57,7 @@ $totFin = max(1,$served+$noshow+$canc);
   ?>
   <svg viewBox="0 0 <?= $W ?> <?= $H+24 ?>" style="width:100%;height:auto" preserveAspectRatio="none">
     <defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
-    <?php for($g=0;$g<=4;$g++){ $gy=$pad+$g/4*($H-2*$pad); ?><line x1="<?= $pad ?>" y1="<?= $gy ?>" x2="<?= $W-$pad ?>" y2="<?= $gy ?>" stroke="#1f242e" stroke-width="1"/><?php } ?>
+    <?php for($g=0;$g<=4;$g++){ $gy=$pad+$g/4*($H-2*$pad); ?><line x1="<?= $pad ?>" y1="<?= $gy ?>" x2="<?= $W-$pad ?>" y2="<?= $gy ?>" stroke="var(--grid)" stroke-width="1"/><?php } ?>
     <polygon points="<?= $area ?>" fill="url(#g1)"/>
     <polyline points="<?= $line ?>" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
     <?php foreach($pts as $p): ?><circle cx="<?= round($p[0],1) ?>" cy="<?= round($p[1],1) ?>" r="3.5" fill="var(--accent)"/><?php endforeach; ?>
@@ -76,7 +76,7 @@ $totFin = max(1,$served+$noshow+$canc);
       <div style="display:flex;align-items:center;gap:.7rem;margin:.5rem 0">
         <span class="tag" style="background:<?= e($r['color']) ?>"><?= e(mb_substr($r['name'],0,1)) ?></span>
         <span style="flex:1;min-width:90px"><?= e($r['name']) ?></span>
-        <div style="flex:2;background:#1c2029;border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['c']/$maxSvc*100) ?>%;background:<?= e($r['color']) ?>"></div></div>
+        <div style="flex:2;background:var(--track);border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['c']/$maxSvc*100) ?>%;background:<?= e($r['color']) ?>"></div></div>
         <strong style="width:38px;text-align:right"><?= (int)$r['c'] ?></strong>
       </div>
     <?php endforeach; ?>
@@ -87,7 +87,7 @@ $totFin = max(1,$served+$noshow+$canc);
     <?php foreach($per_counter as $r): if((int)$r['cnt']===0) continue; ?>
       <div style="display:flex;align-items:center;gap:.7rem;margin:.5rem 0">
         <span style="flex:1"><strong><?= e($r['code']) ?></strong> <span class="muted"><?= e($r['name']) ?></span></span>
-        <div style="flex:2;background:#1c2029;border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['cnt']/$maxCtr*100) ?>%;background:var(--accent)"></div></div>
+        <div style="flex:2;background:var(--track);border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['cnt']/$maxCtr*100) ?>%;background:var(--accent)"></div></div>
         <strong style="width:38px;text-align:right"><?= (int)$r['cnt'] ?></strong>
       </div>
     <?php endforeach; ?>

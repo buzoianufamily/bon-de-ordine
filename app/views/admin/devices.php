@@ -9,7 +9,7 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
   <div class="mcard" data-name="<?= e(mb_strtolower($d['name'].' '.($labels[$d['type']]??$d['type']).' '.$d['branch_name'].' '.$d['connection_key'])) ?>">
     <div class="mhead">
       <span class="badge" style="background:#2a2f3a;font-size:.78rem"><?= e($badge[$d['type']]??'?') ?></span>
-      <div style="flex:1"><div class="nm"><?= e($d['name']) ?><?php if($d['type']==='player'): ?> <span class="pill" style="background:#fef3c7;color:#92400e;font-size:.65rem">ÎNVECHIT</span><?php endif; ?></div>
+      <div style="flex:1"><div class="nm"><?= e($d['name']) ?></div>
         <div class="sub muted"><?= e($labels[$d['type']]??$d['type']) ?> · <?= e($d['branch_name']) ?></div></div>
     </div>
     <div class="mbody">
@@ -19,7 +19,7 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
       <div style="margin-top:.7rem;display:flex;gap:.4rem;flex-wrap:wrap">
         <a class="btn btn-ghost" target="_blank" href="<?= e($u) ?>" style="padding:.45rem .7rem">Deschide</a>
         <?php if(in_array($d['type'],['player','widget_player'],true)): ?>
-          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/player')) ?>" style="padding:.45rem .8rem">Design afisaj</a>
+          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/player')) ?>" style="padding:.45rem .8rem">Configureaza</a>
         <?php elseif(in_array($d['type'],['dispenser','digital_ticket'],true)): ?>
           <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/dispenser')) ?>" style="padding:.45rem .8rem">Configureaza</a>
         <?php endif; ?>

@@ -165,7 +165,7 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 @media(max-width:860px){.shell{grid-template-columns:1fr}.side{position:static;height:auto}.portal-grid{grid-template-columns:1fr}.tv{grid-template-columns:1fr}}
 
 /* ====== Backoffice — tema dark (aspect Moviik) ====== */
-body.admin{--bg:#0a0b0d;--surface:#15171c;--ink:#e8eaef;--muted:#838b98;--line:#1e2128}
+body.admin{--bg:#0a0b0d;--surface:#15171c;--ink:#e8eaef;--muted:#838b98;--line:#1e2128;--track:#1c2029;--grid:#1f242e}
 body.admin h1,body.admin h2,body.admin h3{color:#f3f5f8}
 body.admin input,body.admin select,body.admin textarea{background:#101216;color:#e8eaef;border-color:#272c36}
 body.admin input::placeholder,body.admin textarea::placeholder{color:#5b6270}
@@ -191,6 +191,26 @@ body.admin .card-foot .st{display:inline-flex;align-items:center;gap:.4rem;color
 body.admin .card-foot .st .d{width:7px;height:7px;border-radius:999px;background:var(--muted)}
 body.admin .card-foot .st.on .d{background:var(--ok)}
 body.admin .card-foot a{font-weight:700}
+
+/* buton comutare tema (in bara de sus) */
+body.admin .themebtn{background:none;border:none;cursor:pointer;font-size:1.05rem;color:var(--muted);padding:.25rem .45rem;border-radius:8px;line-height:1}
+body.admin .themebtn:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
+
+/* ====== Tema deschisa (light) — bara laterala ramane inchisa ====== */
+body.admin.light{--bg:#f5f6f8;--surface:#ffffff;--ink:#1a1d23;--muted:#6b7280;--line:#e6e8ec;--track:#eef1f5;--grid:#e6e8ec}
+body.admin.light .card{box-shadow:var(--shadow)}
+body.admin.light .btn{background:#fff;color:#1a1d23;border-color:#e6e8ec}
+body.admin.light .btn:hover{border-color:#cdd2da}
+body.admin.light .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+body.admin.light .btn-ghost{background:transparent;color:#374151}
+body.admin.light .btn-ghost:hover{background:#eef1f5}
+body.admin.light .btn-danger{background:var(--danger);color:#fff}
+body.admin.light input,body.admin.light select,body.admin.light textarea{background:#fff;color:#1a1d23;border-color:#e6e8ec}
+body.admin.light input::placeholder,body.admin.light textarea::placeholder{color:#9aa1ad}
+body.admin.light label{color:#374151}
+body.admin.light th{color:#6b7280}
+body.admin.light code{background:#f1f5f9;color:#0f766e}
+body.admin.light .adminbar .uchip .av{background:#e2e6ec;color:#374151}
 /* grila de carduri (liste) ca la Moviik */
 .listhead{display:flex;align-items:center;gap:.8rem;margin-bottom:1.1rem;flex-wrap:wrap}
 .listhead .search{position:relative;flex:1;max-width:430px;min-width:200px}
@@ -212,6 +232,8 @@ body.admin .card-foot a{font-weight:700}
 .mcard .card-foot{margin-top:auto}
 .mcard .lnk{font-weight:700;color:var(--accent)}
 .mcard .lnk.del{color:var(--danger);background:none;border:none;cursor:pointer;font:inherit;font-weight:700;padding:0}
+.mcard .lnk.dup{color:#a78bfa;background:none;border:none;cursor:pointer;font:inherit;font-weight:700;padding:0}
+.mcard .lnk.dup:hover{color:#c4b5fd}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:2.6rem;border:1px dashed var(--line);border-radius:12px}
 .tabs{display:flex;gap:.2rem;border-bottom:1px solid var(--line);margin-bottom:1.3rem;flex-wrap:wrap}
 .tabs a{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.05rem;font-weight:700;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;font-size:.92rem}
