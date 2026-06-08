@@ -88,9 +88,13 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .portal{max-width:760px;width:100%}
 .portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.2rem}
 .portal-grid a{display:block}
-.tile{padding:1.4rem;border-radius:var(--radius);border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);transition:.15s}
-.tile:hover{transform:translateY(-2px)}
+.plogo{font-family:var(--display);font-weight:800;font-size:2rem;color:var(--accent);letter-spacing:-.02em}
+.tile{display:flex;flex-direction:column;min-height:185px;padding:1.5rem;border-radius:var(--radius);border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);transition:.15s}
+.tile:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
 .tile h3{margin:.2rem 0}
+.tile .tileic{width:46px;height:46px;border-radius:12px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;margin-bottom:.8rem}
+.tile .tileic svg{width:24px;height:24px}
+.tile .access{color:var(--accent);font-weight:700;margin-top:.6rem}
 
 /* ====== Dispenser (kiosk) ====== */
 .kiosk{min-height:100vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#fff, #eef1f6)}
