@@ -5,6 +5,9 @@
   const stage = document.getElementById('stage');
   let lastState = {called:[],waiting:[],counters:[],last:null};
   let lastCalledSig = null, curScreen = 0, rotTimer = null;
+  // widget-uri ce depind de starea cozii (se redeseneaza la fiecare update); restul o singura data
+  const LIVE = {now_serving:1, last_called:1, called_list:1, waiting_list:1, tickets_grid:1};
+  let wTimers = []; // timere per-ecran (playlist/vreme), curatate la schimbarea ecranului
 
   /* ---------- voce / sunet ---------- */
   let voices=[]; function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
@@ -31,6 +34,7 @@
 
   /* ======================= MOD LAYOUT ======================= */
   function buildScreen(i){
+    wTimers.forEach(t=>clearInterval(t)); wTimers=[]; // opreste timerele ecranului precedent
     curScreen=i; const s=cfg.layout.screens[i]; stage.style.background=s.bg||'#0b0d12'; stage.innerHTML='';
     (s.widgets||[]).forEach(w=>{ const el=document.createElement('div');
       el.className='lw lw-'+w.type;
@@ -38,11 +42,13 @@
       if(w.props&&w.props.bg)el.style.background=w.props.bg;
       el.__w=w; stage.appendChild(el); paintWidget(el,w,lastState); });
   }
-  function renderLayout(state){ lastState=state; stage.querySelectorAll('.lw').forEach(el=>paintWidget(el,el.__w,state)); }
+  // la update de stare redesenam DOAR widget-urile live (restul raman asezate o data)
+  function renderLayout(state){ lastState=state; stage.querySelectorAll('.lw').forEach(el=>{ if(LIVE[el.__w.type]) paintWidget(el,el.__w,state); }); }
 
   function paintWidget(el,w,state){
     const H=el.clientHeight||100, p=w.props||{}, accent=cfg.accent||'#2563eb';
     switch(w.type){
+      case 'last_called':
       case 'now_serving': {
         const last=state.last; el.style.background=p.bg||`linear-gradient(135deg,${accent},${accent}66)`;
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';
@@ -84,7 +90,65 @@
         el.style.padding='0';
         el.innerHTML=p.url?`<img src="${esc(p.url)}" style="width:100%;height:100%;object-fit:${p.fit||'cover'}">`:'';
         break; }
+      case 'tickets_grid': {
+        el.style.background=p.bg||'transparent';el.style.padding='6px';el.style.display='flex';el.style.flexDirection='column';el.style.gap=Math.max(3,H*.012)+'px';
+        const svcs=(state.waiting||[]).slice(0,+(p.rows||6));
+        const byPrefix={}; (state.called||[]).forEach(c=>{ if(!byPrefix[c.prefix]) byPrefix[c.prefix]=c; });
+        const rh=Math.max(26,(H-(p.title?26:8))/Math.max(1,svcs.length||1)-(H*.012));
+        el.innerHTML=(p.title?`<div style="color:#9aa3b2;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.05)}px;margin-bottom:4px">${esc(p.title)}</div>`:'')+
+          (svcs.length?svcs.map(s=>{ const c=byPrefix[s.prefix]; const lab=c?c.label:'—'; const ctr=c?(c.counter_code||c.counter_name||''):'';
+            return `<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);border-left:5px solid ${esc(s.color)};border-radius:8px;padding:0 12px;height:${rh}px">
+              <span style="opacity:.45;font-family:'Bricolage Grotesque';font-weight:800;font-size:${rh*.5}px;min-width:${rh*.8}px;text-align:center">${s.cnt}</span>
+              ${p.show_counter!==false?`<span style="opacity:.7;font-weight:700;font-size:${rh*.3}px;min-width:${rh}px">${esc(ctr)}</span>`:''}
+              <span style="flex:1;font-weight:700;font-size:${rh*.4}px;line-height:1.05">${esc(s.name)}</span>
+              <b style="color:${esc(s.color)};font-family:'Bricolage Grotesque';font-size:${rh*.6}px">${esc(lab)}</b></div>`; }).join('')
+            :'<div style="opacity:.4;padding:1rem">Niciun serviciu activ.</div>');
+        break; }
+      case 'people_counting': {
+        el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=p.bg||'#11141b';
+        el.innerHTML=`<div style="opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:${Math.max(11,H*.1)}px">${esc(p.label||'Persoane inauntru')}</div>
+          <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.4}px;line-height:1.05">${(+p.inside||0)} <span style="opacity:.45">/ ${(+p.capacity||0)}</span></div>`;
+        break; }
+      case 'qr_code': {
+        el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.background=p.bg||'#ffffff';el.style.padding='8px';
+        const data=encodeURIComponent(p.url||location.origin);
+        const sz=Math.max(60,Math.min(el.clientWidth,el.clientHeight)-(p.caption?34:14));
+        el.innerHTML=`<img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=${sz}x${sz}&margin=0&data=${data}" style="width:${sz}px;height:${sz}px">`+
+          (p.caption?`<div style="color:#111;font-weight:700;margin-top:6px;text-align:center;font-size:${Math.max(11,H*.07)}px">${esc(p.caption)}</div>`:'');
+        break; }
+      case 'iframe': {
+        el.style.padding='0';
+        el.innerHTML=p.url?`<iframe src="${esc(p.url)}" style="width:100%;height:100%;border:0" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>`
+          :'<div style="color:#5b6270;display:flex;align-items:center;justify-content:center;height:100%">Adauga un URL</div>';
+        break; }
+      case 'ticker': {
+        el.style.background=p.bg||'#000';el.style.display='flex';el.style.alignItems='center';el.style.overflow='hidden';
+        const sp=Math.max(5,+(p.speed||18));
+        el.innerHTML=`<div style="white-space:nowrap;font-weight:700;font-size:${Math.max(14,H*.5)}px;animation:lwm ${sp}s linear infinite">${esc(p.text||'')}</div>`;
+        ensureMarquee(); break; }
+      case 'weather': { paintWeather(el,p,H); break; }
+      case 'playlist': { paintPlaylist(el,p); break; }
     }
+  }
+  function paintWeather(el,p,H){
+    el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=p.bg||'#11141b';
+    el.innerHTML=`<div style="opacity:.7;font-size:${Math.max(11,H*.12)}px">${esc(p.city||'')}</div><div class="wx" style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.34}px;line-height:1.1">…</div>`;
+    const wx=el.querySelector('.wx');
+    const load=()=>{ const url=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(p.lat||'44.43')}&longitude=${encodeURIComponent(p.lon||'26.10')}&current=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+      fetch(url).then(r=>r.json()).then(d=>{ const t=Math.round(d&&d.current&&d.current.temperature_2m);
+        const mx=Math.round(d&&d.daily&&d.daily.temperature_2m_max&&d.daily.temperature_2m_max[0]);
+        const mn=Math.round(d&&d.daily&&d.daily.temperature_2m_min&&d.daily.temperature_2m_min[0]);
+        wx.innerHTML=`${isNaN(t)?'--':t}°C`+(isNaN(mx)?'':` <span style="font-size:.45em;opacity:.7">${mx}° / ${mn}°</span>`); })
+        .catch(()=>{ wx.textContent='--°C'; }); };
+    load(); wTimers.push(setInterval(load, 30*60*1000));
+  }
+  function paintPlaylist(el,p){
+    el.style.padding='0'; el.style.background='#000';
+    const items=String(p.items||'').split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+    if(!items.length){ el.innerHTML='<div style="color:#5b6270;display:flex;align-items:center;justify-content:center;height:100%">Playlist gol</div>'; return; }
+    let i=0; const fit=p.fit||'cover';
+    const show=()=>{ el.innerHTML=`<img src="${esc(items[i])}" style="width:100%;height:100%;object-fit:${fit}">`; i=(i+1)%items.length; };
+    show(); if(items.length>1) wTimers.push(setInterval(show, Math.max(2,+(p.interval||6))*1000));
   }
   let marqueeAdded=false; function ensureMarquee(){ if(marqueeAdded)return; marqueeAdded=true;
     const s=document.createElement('style'); s.textContent='@keyframes lwm{from{transform:translateX(100%)}to{transform:translateX(-100%)}}'; document.head.appendChild(s); }
@@ -117,6 +181,6 @@
   document.body.addEventListener('click',()=>{ if(window.speechSynthesis)speak(' '); },{once:true});
 
   /* init */
-  if(hasLayout){ buildScreen(0); window.addEventListener('resize',()=>renderLayout(lastState)); startRotation(); }
+  if(hasLayout){ buildScreen(0); window.addEventListener('resize',()=>{ buildScreen(curScreen); renderLayout(lastState); }); startRotation(); }
   if(cfg.useSSE && !!window.EventSource) startSSE(); else startPolling();
 })();
