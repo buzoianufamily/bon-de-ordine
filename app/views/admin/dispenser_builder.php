@@ -118,6 +118,8 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
       <div class="field"><label>Text pe buton (sub nume)</label><input id="f__texts__btn_hint" value="<?= e($gd($T,'btn_hint','Apasati pentru bilet')) ?>"></div>
       <div class="field"><label>Mesaj cand nu sunt servicii</label><input id="f__texts__no_services" value="<?= e($gd($T,'no_services','Momentan nu sunt servicii disponibile')) ?>"></div>
       <div class="field"><label>Eticheta buton prioritar</label><input id="f__texts__priority_label" value="<?= e($gd($T,'priority_label','★ Bilet prioritar')) ?>"></div>
+      <div class="field"><label>Text serviciu inchis (sub nume)</label><input id="f__texts__closed_hint" value="<?= e($gd($T,'closed_hint','Inchis acum')) ?>"></div>
+      <div class="field"><label>Eticheta „inchis" (insigna)</label><input id="f__texts__closed_label" value="<?= e($gd($T,'closed_label','🔒 Inchis')) ?>"></div>
       <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
       <div class="field"><label>Titlu fereastra bilet</label><input id="f__texts__popup_title" value="<?= e($gd($T,'popup_title','Biletul dumneavoastra')) ?>"></div>
       <div class="field"><label>Text „X inainte" (foloseste {n})</label><input id="f__texts__ahead_text" value="<?= e($gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra')) ?>"></div>

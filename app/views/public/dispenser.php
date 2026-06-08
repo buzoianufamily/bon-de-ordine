@@ -42,9 +42,9 @@ if ($fids) {
               style="background:linear-gradient(135deg,<?= e($s['color']) ?>,<?= e($s['color']) ?>cc)">
         <span class="pfx"><?= e($s['prefix']) ?></span>
         <span class="nm"><?= e($s['name']) ?></span>
-        <span class="ds"><?= $open ? e($s['description'] ?: $gd($T,'btn_hint','Apasati pentru bilet')) : 'Inchis acum' ?></span>
+        <span class="ds"><?= $open ? e($s['description'] ?: $gd($T,'btn_hint','Apasati pentru bilet')) : e($gd($T,'closed_hint','Inchis acum')) ?></span>
         <?php if(!$open): ?>
-          <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem">🔒 Inchis</span>
+          <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($gd($T,'closed_label','🔒 Inchis')) ?></span>
         <?php elseif($s['allow_priority'] && !$gb($PU,'ask_type',false)): ?>
           <span class="prio-btn pill" style="background:rgba(255,255,255,.25);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($gd($T,'priority_label','★ Bilet prioritar')) ?></span>
         <?php endif; ?>
