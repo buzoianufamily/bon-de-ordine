@@ -105,44 +105,50 @@ function view(string $view, array $data = []): void {
  * Migrare automata a bazei de date (idempotenta, ghidata de schema_version).
  * Permite actualizarea instalarilor existente doar prin urcarea fisierelor noi.
  */
+/** Ruleaza un fisier .sql instructiune cu instructiune (erori individuale ignorate). */
+function run_sql_file(string $file): void {
+    if (!is_file($file)) return;
+    $sql = file_get_contents($file);
+    // 1) elimina liniile de comentariu (-- ...) ca sa nu "inghita" instructiunea de sub ele
+    $lines = preg_split('/\r?\n/', $sql);
+    $kept = [];
+    foreach ($lines as $ln) { if (preg_match('/^\s*--/', $ln)) continue; $kept[] = $ln; }
+    $sql = implode("\n", $kept);
+    // 2) imparte pe ';' (schema/seed nu au ';' in interiorul instructiunilor) si executa
+    foreach (array_map('trim', explode(';', $sql)) as $stmt) {
+        if ($stmt === '') continue;
+        try { db()->exec($stmt); } catch (Throwable $e) {}
+    }
+}
+
+/**
+ * Instalare automata la prima rulare: daca tabelele nu exista, importa schema +
+ * date demo si creeaza adminul implicit (Admin / admin@example.ro / 123456).
+ * Astfel NU mai e nevoie de install.php.
+ */
 function auto_install(): void {
-    // Verifica daca tabelul settings exista; daca nu, ruleaza schema + seed + creeaza admin implicit.
-    $hasSettings = false;
     try {
         $hasSettings = (int) val(
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='settings'"
         ) > 0;
-    } catch (Throwable $e) { return; }
-
-    if ($hasSettings) return; // instalat deja, run_migrations() va face restul
+    } catch (Throwable $e) { return; } // fara conexiune DB nu putem face nimic
+    if ($hasSettings) return; // deja instalat -> run_migrations() se ocupa de actualizari
 
     $root = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2);
-    $schema = $root . '/database/schema.sql';
-    $seed   = $root . '/database/seed.sql';
+    run_sql_file($root . '/database/schema.sql');
+    run_sql_file($root . '/database/seed.sql');
 
-    // Executa schema.sql si seed.sql instructiune cu instructiune
-    foreach ([$schema, $seed] as $file) {
-        if (!is_file($file)) continue;
-        $sql = file_get_contents($file);
-        // Imparte in instructiuni individuale (ignore linii goale si comentarii)
-        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
-            if ($stmt === '' || str_starts_with($stmt, '--')) continue;
-            try { db()->exec($stmt); } catch (Throwable $e) {}
+    // Admin implicit (coloana corecta = password_hash). Schimbabil din pagina Utilizatori.
+    try {
+        $exists = (int) val("SELECT COUNT(*) FROM users WHERE email = ?", ['admin@example.ro']);
+        if (!$exists) {
+            q("INSERT INTO users (name, email, password_hash, role, active) VALUES (?,?,?,'admin',1)",
+              ['Admin', 'admin@example.ro', password_hash('123456', PASSWORD_DEFAULT)]);
         }
-    }
+    } catch (Throwable $e) {}
 
-    // Admin implicit: Admin / admin@example.ro / 123456
-    $exists = (int) val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro'");
-    if (!$exists) {
-        $hash = password_hash('123456', PASSWORD_BCRYPT);
-        try {
-            q("INSERT INTO users (name, email, password, role, active, created_at) VALUES (?,?,?,'admin',1,NOW())",
-              ['Admin', 'admin@example.ro', $hash]);
-        } catch (Throwable $e) {}
-    }
-
-    // Marcheaza schema_version la zi
-    try { q("INSERT INTO settings(k,v) VALUES('schema_version','4') ON DUPLICATE KEY UPDATE v='4'"); } catch (Throwable $e) {}
+    // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '4') ON DUPLICATE KEY UPDATE v = '4'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {

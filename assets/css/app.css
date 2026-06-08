@@ -44,17 +44,15 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 /* ====== Admin shell ====== */
 .shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
 .side{background:#0c0d11;color:#9aa1ad;padding:.4rem .55rem 1rem;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;border-right:1px solid #16181d}
-.side .side-top{display:flex;align-items:center;gap:.6rem;padding:.95rem .65rem .6rem;color:#7d8696;font-size:1.2rem;background:none;border:none;cursor:pointer;width:100%;text-align:left;transition:.12s}
+.side .side-top{display:flex;align-items:center;padding:.55rem .7rem;margin-bottom:.45rem;color:#8a93a3;font-size:1.15rem;background:none;border:none;border-bottom:1px solid #16181d;cursor:pointer;width:100%;text-align:left;transition:.12s}
+.side .side-top .ic{width:20px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
 .side .side-top:hover{color:#fff}
-.shell.nav-collapsed{grid-template-columns:56px 1fr}
-.shell.nav-collapsed .side{overflow:hidden;padding:.3rem .5rem 1rem;align-items:center}
+.shell.nav-collapsed{grid-template-columns:60px 1fr}
+.shell.nav-collapsed .side{overflow:hidden;padding:.4rem .35rem 1rem;align-items:stretch}
 .shell.nav-collapsed .side .grp{display:none}
-.shell.nav-collapsed .side a{justify-content:center;padding:0;gap:0;width:40px;height:40px;margin:3px 0}
+.shell.nav-collapsed .side a,.shell.nav-collapsed .side .side-foot a{justify-content:center;padding:0;gap:0;height:42px;margin:3px 0}
 .shell.nav-collapsed .side a>span:not(.ic){display:none}
-.shell.nav-collapsed .side a .ic{width:auto}
-.shell.nav-collapsed .side .side-top{justify-content:center;padding:.7rem 0;width:40px}
-.shell.nav-collapsed .side .side-foot{width:100%;display:flex;flex-direction:column;align-items:center}
-.shell.nav-collapsed .side .side-foot a>span:not(.ic){display:none}
+.shell.nav-collapsed .side .side-top{justify-content:center;padding:.55rem 0}
 .side .grp{font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;color:#565d6a;margin:1.05rem .7rem .35rem;font-weight:700}
 .side a{display:flex;align-items:center;gap:.7rem;color:#c2c8d2;padding:.58rem .7rem;border-radius:10px;font-weight:600;font-size:.91rem;margin:1px 0;transition:.12s}
 .side a .ic{width:20px;display:inline-flex;align-items:center;justify-content:center;opacity:.9;flex:0 0 auto;font-size:1rem;line-height:1}
