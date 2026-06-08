@@ -1,0 +1,33 @@
+# ============ Sistem Bon de Ordine — rutare + securitate ============
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Nu rescrie fisiere sau directoare reale (assets etc.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Tot restul -> front controller
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Blocheaza accesul direct la foldere sensibile
+RedirectMatch 403 ^/?(app|config|database)(/|$)
+
+# Blocheaza fisiere sensibile
+<FilesMatch "\.(sql|md|log|ini)$">
+  Require all denied
+</FilesMatch>
+
+# Securitate de baza
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# UTF-8
+AddDefaultCharset UTF-8
