@@ -40,7 +40,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
         <?php endforeach; ?>
         </g>
         <text x="60" y="56" text-anchor="middle" fill="var(--ink)" font-size="20" font-weight="800"><?= $totalSvc ?></text>
-        <text x="60" y="72" text-anchor="middle" fill="#7d8696" font-size="9">bilete</text>
+        <text x="60" y="72" text-anchor="middle" fill="var(--muted)" font-size="9">bilete</text>
       </svg>
       <div style="flex:1;min-width:160px">
         <?php foreach($per_service as $p): if((int)$p['cnt']===0) continue; ?>
@@ -61,9 +61,9 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <div style="display:flex;align-items:flex-end;gap:3px;height:170px">
       <?php for($h=0;$h<24;$h++): $val=$per_hour[$h]; $pct=(int)($val/$maxHour*100); ?>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end" title="<?= sprintf('%02d:00',$h) ?> — <?= $val ?> bilete">
-          <span style="font-size:.6rem;color:#7d8696;margin-bottom:2px"><?= $val?:'' ?></span>
+          <span style="font-size:.6rem;color:var(--muted);margin-bottom:2px"><?= $val?:'' ?></span>
           <div style="width:100%;background:var(--accent);border-radius:4px 4px 0 0;height:<?= max($val?6:0,$pct) ?>%;opacity:<?= $val?1:.12 ?>"></div>
-          <span style="font-size:.58rem;color:#5b6270;margin-top:3px"><?= $h ?></span>
+          <span style="font-size:.58rem;color:var(--muted);margin-top:3px"><?= $h ?></span>
         </div>
       <?php endfor; ?>
     </div>
@@ -89,7 +89,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <table><tbody>
     <?php foreach($devices as $d): ?>
       <tr><td style="width:1%">
-        <span class="pill" style="background:<?= $d['online']?'color-mix(in srgb,var(--ok) 22%,transparent)':'var(--track)' ?>;color:<?= $d['online']?'var(--ok)':'#7d8696' ?>">
+        <span class="pill" style="background:<?= $d['online']?'color-mix(in srgb,var(--ok) 22%,transparent)':'var(--track)' ?>;color:<?= $d['online']?'var(--ok)':'var(--muted)' ?>">
           <?= $d['online']?'● online':'○ offline' ?></span>
         </td><td><strong><?= e($d['name']) ?></strong><br><span class="muted" style="font-size:.8rem"><?= e($d['type']) ?></span></td>
         <td style="text-align:right"><code><?= e($d['connection_key']) ?></code></td></tr>

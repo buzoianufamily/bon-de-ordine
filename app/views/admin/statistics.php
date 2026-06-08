@@ -39,7 +39,7 @@ $totFin = max(1,$served+$noshow+$canc);
 <div class="kpis">
   <div class="card pad kpi"><div class="n"><?= (int)($kpi['total']??0) ?></div><div class="l">Total bilete</div></div>
   <div class="card pad kpi"><div class="n" style="color:var(--ok)"><?= $served ?></div><div class="l">Servite</div></div>
-  <div class="card pad kpi"><div class="n" style="color:#94a3b8"><?= $noshow ?></div><div class="l">Neprezentate</div></div>
+  <div class="card pad kpi"><div class="n" style="color:var(--muted)"><?= $noshow ?></div><div class="l">Neprezentate</div></div>
   <div class="card pad kpi"><div class="n" style="color:var(--danger)"><?= $canc ?></div><div class="l">Anulate</div></div>
   <div class="card pad kpi"><div class="n"><?= mmss($kpi['avg_wait']??0) ?></div><div class="l">Timp mediu asteptare</div></div>
   <div class="card pad kpi"><div class="n"><?= mmss($kpi['avg_service']??0) ?></div><div class="l">Timp mediu servire</div></div>
@@ -62,8 +62,8 @@ $totFin = max(1,$served+$noshow+$canc);
     <polyline points="<?= $line ?>" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
     <?php foreach($pts as $p): ?><circle cx="<?= round($p[0],1) ?>" cy="<?= round($p[1],1) ?>" r="3.5" fill="var(--accent)"/><?php endforeach; ?>
     <?php foreach($pts as $i=>$p){ if($n>12 && $i%ceil($n/12)!==0 && $i!==$n-1) continue; ?>
-      <text x="<?= round($p[0],1) ?>" y="<?= $H+14 ?>" fill="#7d8696" font-size="11" text-anchor="middle"><?= date('d.m',strtotime($p[2]['d'])) ?></text>
-      <text x="<?= round($p[0],1) ?>" y="<?= max(12,$p[1]-8) ?>" fill="#aab1bd" font-size="11" text-anchor="middle"><?= (int)$p[2]['c'] ?></text>
+      <text x="<?= round($p[0],1) ?>" y="<?= $H+14 ?>" fill="var(--muted)" font-size="11" text-anchor="middle"><?= date('d.m',strtotime($p[2]['d'])) ?></text>
+      <text x="<?= round($p[0],1) ?>" y="<?= max(12,$p[1]-8) ?>" fill="var(--ink)" font-size="11" text-anchor="middle"><?= (int)$p[2]['c'] ?></text>
     <?php } ?>
   </svg>
   <?php endif; ?>
@@ -100,9 +100,9 @@ $totFin = max(1,$served+$noshow+$canc);
   <div style="display:flex;align-items:flex-end;gap:3px;height:150px">
     <?php for($h=0;$h<24;$h++): $val=$hours[$h]; $pct=(int)($val/$maxHour*100); ?>
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end" title="<?= $h ?>:00 — <?= $val ?> bilete">
-        <span style="font-size:.62rem;color:#7d8696;margin-bottom:2px"><?= $val?:'' ?></span>
+        <span style="font-size:.62rem;color:var(--muted);margin-bottom:2px"><?= $val?:'' ?></span>
         <div style="width:100%;background:var(--accent);border-radius:4px 4px 0 0;height:<?= max($val?6:0,$pct) ?>%;opacity:<?= $val?1:.15 ?>"></div>
-        <span style="font-size:.6rem;color:#5b6270;margin-top:3px"><?= $h ?></span>
+        <span style="font-size:.6rem;color:var(--muted);margin-top:3px"><?= $h ?></span>
       </div>
     <?php endfor; ?>
   </div>
