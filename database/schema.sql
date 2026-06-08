@@ -176,7 +176,8 @@ CREATE TABLE IF NOT EXISTS counter_sessions (
 -- ---------- Feedback client (optional, dupa servire) ----------
 CREATE TABLE IF NOT EXISTS feedback (
   id         INT AUTO_INCREMENT PRIMARY KEY,
-  ticket_id  BIGINT NOT NULL,
+  ticket_id  BIGINT NULL,                           -- optional (feedback general prin QR)
+  branch_id  INT NULL,
   rating     TINYINT NOT NULL,                      -- 1..5
   comment    VARCHAR(500) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -557,6 +557,12 @@ function admin_statistics(): void {
                      WHERE $where GROUP BY u.id ORDER BY c DESC", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
 
+    // feedback client (satisfactie) in interval
+    $fbWhere = 'DATE(f.created_at) BETWEEN ? AND ?'; $fbArgs = [$from, $to];
+    if ($branch) { $fbWhere .= ' AND f.branch_id=?'; $fbArgs[] = $branch; }
+    $feedback = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback f WHERE $fbWhere", $fbArgs) ?: ['n'=>0,'avg'=>null];
+    $fb_dist  = all("SELECT rating, COUNT(*) c FROM feedback f WHERE $fbWhere GROUP BY rating", $fbArgs);
+
     // export CSV per set de date (fiecare grafic are buton propriu de download)
     if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user'], true)) {
         $ds = $_GET['dataset'];
@@ -591,7 +597,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist'));
 }
 
 /**

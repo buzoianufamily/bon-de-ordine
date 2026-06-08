@@ -71,9 +71,17 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
 </div>
 
 <div class="panel-grid">
-  <div class="panel">
-    <h4>Bilete pe serviciu (azi)</h4>
+  <div class="panel dvbox">
+    <h4>Bilete pe serviciu (azi) <span class="dvtoggle"><button type="button" class="on" data-dv="chart">📊</button><button type="button" data-dv="table">▦</button></span></h4>
     <?php if(!$per_service): ?><p class="muted">Niciun serviciu.</p><?php endif; ?>
+    <div class="dv-table dv-hidden">
+      <table><thead><tr><th>Serviciu</th><th>Bilete</th><th>%</th></tr></thead><tbody>
+      <?php foreach($per_service as $p): ?><tr>
+        <td><span class="tag" style="background:<?= e($p['color']) ?>;width:18px;height:18px;font-size:.65rem"><?= e(mb_substr($p['name'],0,1)) ?></span> <?= e($p['name']) ?></td>
+        <td><?= (int)$p['cnt'] ?></td><td><?= $totalSvc?round($p['cnt']/$totalSvc*100):0 ?>%</td></tr><?php endforeach; ?>
+      </tbody></table>
+    </div>
+    <div class="dv-chart">
     <?php foreach($per_service as $p): ?>
       <div style="display:flex;align-items:center;gap:.7rem;margin:.55rem 0">
         <span class="tag" style="background:<?= e($p['color']) ?>"><?= e(mb_substr($p['name'],0,1)) ?></span>
@@ -83,6 +91,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
         <strong style="width:34px;text-align:right"><?= (int)$p['cnt'] ?></strong>
       </div>
     <?php endforeach; ?>
+    </div>
   </div>
   <div class="panel">
     <h4>Dispozitive <span class="live"><?= $onlineDev ?>/<?= count($devices) ?> online</span></h4>
