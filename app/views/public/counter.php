@@ -36,6 +36,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   </div>
 </div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
-<script>window.COUNTER={counterId:<?= (int)$counter['id'] ?>,accent:<?= json_encode(setting('accent_color','#2563eb')) ?>};</script>
+<?php $notify = (int) (val('SELECT notify_browser FROM users WHERE id=?', [$u['id']]) ?? 0); ?>
+<script>window.COUNTER={counterId:<?= (int)$counter['id'] ?>,accent:<?= json_encode(setting('accent_color','#2563eb')) ?>,notify:<?= $notify?'true':'false' ?>};</script>
 <script src="<?= e(asset('js/counter.js')) ?>"></script>
 </body></html>

@@ -12,6 +12,7 @@
       <div class="field" style="display:flex;align-items:flex-end"><label style="margin:0"><input type="checkbox" name="active" <?= ($row['active']??1)?'checked':'' ?> style="width:auto"> Activ</label></div>
     </div>
     <div class="field"><label>Parola <?= $row?'(lasa gol = nu schimba)':'' ?></label><input type="password" name="password" <?= $row?'':'required' ?>></div>
+    <div class="field"><label style="margin:0"><input type="checkbox" name="notify_browser" <?= ($row['notify_browser']??0)?'checked':'' ?> style="width:auto"> Notificari in browser la terminalul operatorului (anunta biletele noi / transferate)</label></div>
     <button class="btn btn-primary btn-lg">Salveaza</button>
   </div>
 </form>
