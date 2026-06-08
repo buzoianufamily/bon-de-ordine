@@ -28,7 +28,7 @@ Acest ghid te duce pas cu pas de la zero la o instanță funcțională. Durează
 
 **Varianta B — în public_html:** la fel, dar extragi în `public_html`. Aplicația va fi la `domeniu.ro/` (sau într-un subfolder dacă o pui acolo — merge și așa, rutarea se adaptează automat).
 
-> Structura corectă după extragere: `index.php`, `install.php`, folderele `app/`, `config/`, `database/`, `assets/` să fie toate la același nivel.
+> Structura corectă după extragere: `index.php`, folderele `app/`, `config/`, `database/`, `assets/` să fie toate la același nivel.
 
 ---
 
@@ -43,21 +43,25 @@ Acest ghid te duce pas cu pas de la zero la o instanță funcțională. Durează
        'pass' => 'PAROLA_TA',
    ],
    ```
-3. Schimbă `setup_token` și `app_key` cu valori aleatorii (orice șiruri lungi). **Save**.
+3. **Save**. (Nu mai există `setup_token`/`app_key` — nu trebuie configurate.)
 
 ---
 
-## Pasul 4 — Rulează instalatorul
-1. Deschide în browser: `https://coada.firma-ta.ro/install.php`
-2. Vezi „✔ Conectat la …" → introdu `setup_token` → **Continua**.
-3. Apasă **Importa schema + date demo**.
-4. Completează **numele, emailul și parola** pentru contul de administrator → **Creeaza administrator**.
-5. **IMPORTANT:** șterge `install.php` de pe server (File Manager → Delete) și schimbă `setup_token`.
+## Pasul 4 — Deschide aplicația (instalare automată)
+La prima accesare, aplicația **își creează singură** baza de date (schema + date demo)
+și un cont de administrator implicit — nu mai e nevoie de `install.php`.
+
+1. Deschide în browser: `https://coada.firma-ta.ro/`
+2. Apare portalul cu **Backoffice** și **Terminal operator**.
+3. Intră la **Backoffice** (sau `…/login`) cu contul implicit:
+   - **Email:** `admin@example.ro`
+   - **Parolă:** `123456`
+4. **IMPORTANT:** mergi imediat la **Utilizatori** și schimbă emailul/parola adminului.
 
 ---
 
 ## Pasul 5 — Verifică
-- **Admin:** `https://coada.firma-ta.ro/login` → intră cu emailul/parola create.
+- **Admin:** `https://coada.firma-ta.ro/login` → intră cu `admin@example.ro` / `123456`.
 - **Dispenser de test:** Admin → **Dispozitive** → la „Dispenser intrare" apasă **Deschide** (cheie `DEMO01`).
   Apasă pe un serviciu → se emite un bon și (pe mod „browser") se deschide dialogul de printare.
 - **Afișaj TV de test:** Admin → Dispozitive → „TV sala asteptare" → **Deschide** (cheie `DEMO02`).

@@ -37,7 +37,6 @@ app/core/            ← init, db (PDO), helpers, auth, ticket (logica cozii), p
 app/admin_routes.php ← CRUD administrare
 app/views/           ← paginile (public/ + admin/)
 assets/              ← css + js (dispenser, counter, display)
-install.php          ← instalator web (rulează o dată, apoi îl ștergi)
 android/             ← specificația aplicației de tabletă (kiosk + printare)
 ```
 

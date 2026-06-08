@@ -1,6 +1,7 @@
 -- =====================================================================
 --  Date demo pentru testare rapida (ruleaza DUPA schema.sql)
---  Adminul NU este aici - il creezi cu install.php (parola hash-uita corect)
+--  Adminul implicit (admin@example.ro / 123456) e creat automat de
+--  auto_install() din app/core/helpers.php - nu e nevoie de install.php.
 -- =====================================================================
 SET NAMES utf8mb4;
 
