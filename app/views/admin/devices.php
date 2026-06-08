@@ -13,7 +13,6 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
         <div class="sub muted"><?= e($labels[$d['type']]??$d['type']) ?> · <?= e($d['branch_name']) ?></div></div>
     </div>
     <div class="mbody">
-      <?php if($d['type']==='player'): ?><div class="muted" style="font-size:.78rem;color:#b45309;margin-bottom:.5rem">⚠ Afisajul clasic e invechit. Functioneaza in continuare, dar nu mai primeste functii noi — foloseste „Afisaj TV (widget)".</div><?php endif; ?>
       <div class="muted" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Cheie conectare</div>
       <code style="font-size:1.15rem;font-weight:800;letter-spacing:.05em"><?= e($d['connection_key']) ?></code>
       <input readonly value="<?= e($u) ?>" onclick="this.select()" style="font-size:.76rem;padding:.4rem;margin-top:.5rem">
