@@ -24,6 +24,7 @@ function admin_dispatch(array $seg, string $method): void {
                 if ((int)val('SELECT COUNT(*) FROM branches') > 1) { q('DELETE FROM branches WHERE id=?', [(int)$a]); flash('Filiala stearsa.'); }
                 else flash('Nu poti sterge ultima filiala.', 'error');
                 redirect('admin/branches'); }
+            if ($method === 'POST' && $b === 'duplicate') { admin_branch_duplicate((int)$a); return; }
             if ($a === 'new') { admin_branch_form(null); return; }
             if (ctype_digit((string)$a) && $b === 'edit') { admin_branch_form((int)$a); return; }
             if (ctype_digit((string)$a)) { admin_branch_detail((int)$a); return; }
@@ -222,15 +223,16 @@ function admin_user_save(): void {
     $id = (int)($_POST['id'] ?? 0);
     $name=trim($_POST['name']??''); $email=trim($_POST['email']??''); $role=$_POST['role']??'agent';
     $active=isset($_POST['active'])?1:0; $pass=(string)($_POST['password']??'');
+    $notify=isset($_POST['notify_browser'])?1:0;
     if ($name==='' || $email==='') { flash('Nume si email obligatorii.', 'error'); redirect('admin/users'); }
     if ($id) {
-        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,password_hash=? WHERE id=?',
-            [$name,$email,$role,$active,password_hash($pass,PASSWORD_DEFAULT),$id]);
-        else q('UPDATE users SET name=?,email=?,role=?,active=? WHERE id=?', [$name,$email,$role,$active,$id]);
+        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,password_hash=? WHERE id=?',
+            [$name,$email,$role,$active,$notify,password_hash($pass,PASSWORD_DEFAULT),$id]);
+        else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=? WHERE id=?', [$name,$email,$role,$active,$notify,$id]);
     } else {
         if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
-        try { q('INSERT INTO users (name,email,role,active,password_hash) VALUES (?,?,?,?,?)',
-            [$name,$email,$role,$active,password_hash($pass,PASSWORD_DEFAULT)]); }
+        try { q('INSERT INTO users (name,email,role,active,notify_browser,password_hash) VALUES (?,?,?,?,?,?)',
+            [$name,$email,$role,$active,$notify,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
     flash('Utilizator salvat.'); redirect('admin/users');
@@ -360,6 +362,63 @@ function admin_branch_save(): void {
         q("INSERT INTO branches ($cols) VALUES ($ph)", array_values($f));
     }
     flash('Filiala salvata.'); redirect('admin/branches');
+}
+/** Duplica o filiala impreuna cu serviciile, ghiseele si dispozitivele ei (chei noi). */
+function admin_branch_duplicate(int $id): void {
+    csrf_check();
+    $src = one('SELECT * FROM branches WHERE id=?', [$id]);
+    if (!$src) { flash('Filiala inexistenta.', 'error'); redirect('admin/branches'); }
+    try {
+        db()->beginTransaction();
+
+        // 1) filiala noua (numarul de copii este urcat in nume)
+        $base = preg_replace('/\s*\(copie( \d+)?\)$/u', '', $src['name']);
+        $n = 1; do { $newName = $base.' (copie'.($n>1?' '.$n:'').')'; $n++; }
+        while ($n <= 50 && (int)val('SELECT COUNT(*) FROM branches WHERE name=?', [$newName]) > 0);
+        q('INSERT INTO branches (name,city,country,address,timezone,active) VALUES (?,?,?,?,?,?)',
+          [$newName, $src['city'], $src['country'], $src['address'], $src['timezone'], $src['active']]);
+        $newBranch = insert_id();
+
+        // 2) servicii (pastreaza maparea vechi->nou pt ghisee/dispozitive)
+        $svcMap = [];
+        foreach (all('SELECT * FROM services WHERE branch_id=? ORDER BY id', [$id]) as $s) {
+            q('INSERT INTO services (branch_id,prefix,name,abbreviation,description,color,status,num_from,num_to,include_zeros,pad_length,allow_priority,terminate_on_call,kpi_wait_sec,kpi_service_sec,max_queued,sort_order,active_hours,form_id,appt_enabled,appt_slot_min,appt_capacity)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+              [$newBranch,$s['prefix'],$s['name'],$s['abbreviation'],$s['description'],$s['color'],$s['status'],$s['num_from'],$s['num_to'],$s['include_zeros'],$s['pad_length'],$s['allow_priority'],$s['terminate_on_call'],$s['kpi_wait_sec'],$s['kpi_service_sec'],$s['max_queued'],$s['sort_order'],$s['active_hours'],$s['form_id'],$s['appt_enabled'],$s['appt_slot_min'],$s['appt_capacity']]);
+            $svcMap[(int)$s['id']] = insert_id();
+        }
+
+        // 3) ghisee + serviciile lor
+        foreach (all('SELECT * FROM counters WHERE branch_id=? ORDER BY id', [$id]) as $c) {
+            q('INSERT INTO counters (branch_id,code,name,status,all_services,priority) VALUES (?,?,?,?,?,?)',
+              [$newBranch,$c['code'],$c['name'],$c['status'],$c['all_services'],$c['priority']]);
+            $newCounter = insert_id();
+            foreach (all('SELECT service_id FROM counter_services WHERE counter_id=?', [(int)$c['id']]) as $cs) {
+                if (isset($svcMap[(int)$cs['service_id']]))
+                    q('INSERT IGNORE INTO counter_services (counter_id,service_id) VALUES (?,?)', [$newCounter, $svcMap[(int)$cs['service_id']]]);
+            }
+        }
+
+        // 4) dispozitive (cu cheie de conectare NOUA) + serviciile lor
+        foreach (all('SELECT * FROM devices WHERE branch_id=? ORDER BY id', [$id]) as $d) {
+            do { $key = gen_key(6); } while (one('SELECT id FROM devices WHERE connection_key=?', [$key]));
+            q('INSERT INTO devices (branch_id,type,name,connection_key,all_services,config,printer_mode,printer_ip,printer_port) VALUES (?,?,?,?,?,?,?,?,?)',
+              [$newBranch,$d['type'],$d['name'],$key,$d['all_services'],$d['config'],$d['printer_mode'],$d['printer_ip'],$d['printer_port']]);
+            $newDev = insert_id();
+            foreach (all('SELECT service_id FROM device_services WHERE device_id=?', [(int)$d['id']]) as $ds) {
+                if (isset($svcMap[(int)$ds['service_id']]))
+                    q('INSERT IGNORE INTO device_services (device_id,service_id) VALUES (?,?)', [$newDev, $svcMap[(int)$ds['service_id']]]);
+            }
+        }
+
+        db()->commit();
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) db()->rollBack();
+        flash('Duplicarea a esuat: '.$e->getMessage(), 'error');
+        redirect('admin/branches');
+    }
+    flash('Filiala duplicata (servicii, ghisee si dispozitive incluse).');
+    redirect('admin/branches');
 }
 function admin_branch_detail(int $id): void {
     $branch = one('SELECT * FROM branches WHERE id=?', [$id]);

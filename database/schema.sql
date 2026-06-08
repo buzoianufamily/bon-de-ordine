@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   role          ENUM('admin','manager','agent') NOT NULL DEFAULT 'agent',
   pin           VARCHAR(12)  NULL,
+  notify_browser TINYINT(1) NOT NULL DEFAULT 0,    -- notificari browser la terminalul operatorului
   active        TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

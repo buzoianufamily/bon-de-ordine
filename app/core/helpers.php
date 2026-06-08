@@ -148,7 +148,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '4') ON DUPLICATE KEY UPDATE v = '4'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '5') ON DUPLICATE KEY UPDATE v = '5'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -156,7 +156,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 4;
+    $target = 5;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -195,11 +195,15 @@ function run_migrations(): void {
     // v4: revino la accent albastru (verdele a fost doar temporar)
     try { if (val("SELECT v FROM settings WHERE k='accent_color'") === '#10b981') set_setting('accent_color', '#2563eb'); } catch (Throwable $e) {}
 
+    // v5: notificari in browser pentru operatorul de la terminal (opt-in per utilizator)
+    if (!$hasCol('users','notify_browser')) $ddl("ALTER TABLE users ADD COLUMN notify_browser TINYINT(1) NOT NULL DEFAULT 0");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
             && $hasCol('services','form_id') && $hasCol('tickets','form_data')
-            && $hasCol('services','appt_enabled') && $hasCol('services','appt_slot_min') && $hasCol('services','appt_capacity')) {
+            && $hasCol('services','appt_enabled') && $hasCol('services','appt_slot_min') && $hasCol('services','appt_capacity')
+            && $hasCol('users','notify_browser')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

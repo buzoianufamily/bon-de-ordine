@@ -9,6 +9,28 @@
   const esc = s => String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   let currentId = null;
 
+  /* ---- Notificari in browser (opt-in din setarile utilizatorului) ---- */
+  let knownWaiting = null; // set cu biletele deja vazute la rand (null = prima incarcare)
+  if (cfg.notify && 'Notification' in window && Notification.permission === 'default') {
+    // cerem permisiunea la prima interactiune cu pagina
+    const ask = () => { Notification.requestPermission(); document.removeEventListener('click', ask); };
+    document.addEventListener('click', ask);
+  }
+  function notifyNew(list){
+    if (!cfg.notify) return;
+    const ids = list.map(t => t.id);
+    if (knownWaiting === null) { knownWaiting = new Set(ids); return; } // nu anunta la prima incarcare
+    list.forEach(t => {
+      if (!knownWaiting.has(t.id)) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try { new Notification('Bilet nou la rand: ' + t.label, { body: t.service_name + (t.priority ? ' · PRIORITAR' : ''), tag: 'qms-'+t.id }); } catch(e){}
+        }
+        QMS.toast('Bilet nou: ' + t.label + ' — ' + t.service_name, 'ok');
+      }
+    });
+    knownWaiting = new Set(ids);
+  }
+
   document.getElementById('btnCall').addEventListener('click', callNext);
   bind('btnRecall', ()=> act('api/recall'));
   bind('btnServing', ()=> act('api/serving'));
@@ -52,6 +74,7 @@
       elForm.innerHTML=html;
     }
     elWaitCount.textContent = res.waiting_count;
+    notifyNew(res.waiting || []);
     elList.innerHTML = res.waiting.map(t=>`<div class="qrow">
       <span class="tag" style="background:${t.color}">${t.label[0]}</span>
       <span class="lbl">${t.label}</span>
