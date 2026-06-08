@@ -44,7 +44,15 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 /* ====== Admin shell ====== */
 .shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
 .side{background:#0c0d11;color:#9aa1ad;padding:.4rem .55rem 1rem;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;border-right:1px solid #16181d}
-.side .side-top{display:flex;align-items:center;gap:.6rem;padding:.95rem .65rem .6rem;color:#7d8696;font-size:1.2rem}
+.side .side-top{display:flex;align-items:center;gap:.6rem;padding:.95rem .65rem .6rem;color:#7d8696;font-size:1.2rem;background:none;border:none;cursor:pointer;width:100%;text-align:left;transition:.12s}
+.side .side-top:hover{color:#fff}
+.shell.nav-collapsed{grid-template-columns:52px 1fr}
+.shell.nav-collapsed .side{overflow:hidden;padding-left:.25rem;padding-right:.25rem}
+.shell.nav-collapsed .side .grp{display:none}
+.shell.nav-collapsed .side a{justify-content:center;padding:.6rem 0;gap:0}
+.shell.nav-collapsed .side a>span:not(.ic){display:none}
+.shell.nav-collapsed .side .side-top{justify-content:center;padding:.95rem 0 .6rem}
+.shell.nav-collapsed .side .side-foot a>span:not(.ic){display:none}
 .side .grp{font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;color:#565d6a;margin:1.05rem .7rem .35rem;font-weight:700}
 .side a{display:flex;align-items:center;gap:.7rem;color:#c2c8d2;padding:.58rem .7rem;border-radius:10px;font-weight:600;font-size:.91rem;margin:1px 0;transition:.12s}
 .side a .ic{width:20px;display:inline-flex;align-items:center;justify-content:center;opacity:.9;flex:0 0 auto;font-size:1rem;line-height:1}
