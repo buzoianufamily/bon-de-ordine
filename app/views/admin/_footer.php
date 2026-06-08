@@ -18,6 +18,16 @@ document.addEventListener('click',function(e){
   grid.classList.toggle('aslist',t.getAttribute('data-view')==='list');
   document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('on',b===t);});
 });
+/* comutator grafic/tabel pe panourile de statistici */
+document.addEventListener('click',function(e){
+  var b=e.target.closest('.dvtoggle [data-dv]'); if(!b)return;
+  var box=b.closest('.dvbox'); if(!box)return;
+  var mode=b.getAttribute('data-dv');
+  box.querySelectorAll('.dvtoggle [data-dv]').forEach(function(x){x.classList.toggle('on',x===b);});
+  var ch=box.querySelector('.dv-chart'), tb=box.querySelector('.dv-table');
+  if(ch) ch.classList.toggle('dv-hidden', mode!=='chart');
+  if(tb) tb.classList.toggle('dv-hidden', mode!=='table');
+});
 /* comutator tema deschisa/inchisa — persista in localStorage */
 (function(){
   var btn=document.getElementById('theme-toggle');

@@ -228,6 +228,14 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .viewtoggle{display:inline-flex;gap:.25rem;margin-left:auto}
 .viewtoggle a{padding:.35rem .6rem;border:1px solid var(--line);border-radius:9px;color:var(--muted);display:inline-flex;cursor:pointer;font-size:1rem;line-height:1}
 .viewtoggle a.on{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+/* comutator grafic/tabel (statistici) */
+.dvhead{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:.7rem;flex-wrap:wrap}
+.dvhead h3{margin:0}
+.dvctrl{display:flex;align-items:center;gap:.5rem}
+.dvtoggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.dvtoggle button{background:transparent;border:none;color:var(--muted);padding:.32rem .65rem;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;line-height:1.4}
+.dvtoggle button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.dv-hidden{display:none!important}
 .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:1rem}
 .cardgrid.wide{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 .cardgrid.aslist{grid-template-columns:1fr}
