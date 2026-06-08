@@ -4,6 +4,8 @@ function mmss($s){ $s=(int)round((float)$s); return $s<=0?'—':sprintf('%d:%02d
 $qs = fn($extra)=>e(url('admin/statistics').'?'.http_build_query(array_merge(['from'=>$from,'to'=>$to,'branch'=>$branch],$extra)));
 // buton mic de download CSV pentru un set de date
 $dlcsv = fn($ds)=>'<a class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem" href="'.$qs(['export'=>'csv','dataset'=>$ds]).'">⬇ CSV</a>';
+// comutator grafic/tabel pentru un panou (ca la Moviik)
+$dvtoggle = '<span class="dvtoggle"><button type="button" class="on" data-dv="chart">📊 Grafic</button><button type="button" data-dv="table">▦ Tabel</button></span>';
 // pregatire date grafice
 $maxDay = 1; foreach($per_day as $r) $maxDay=max($maxDay,(int)$r['c']);
 $hours = array_fill(0,24,0); foreach($per_hour as $r) $hours[(int)$r['h']]=(int)$r['c'];
@@ -45,8 +47,15 @@ $totFin = max(1,$served+$noshow+$canc);
   <div class="card pad kpi"><div class="n"><?= mmss($kpi['avg_service']??0) ?></div><div class="l">Timp mediu servire</div></div>
 </div>
 
-<div class="card pad" style="margin-bottom:1.2rem">
-  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Bilete pe zi</h3><?= $dlcsv('day') ?></div>
+<div class="card pad dvbox" style="margin-bottom:1.2rem">
+  <div class="dvhead"><h3>Bilete pe zi</h3><div class="dvctrl"><?= $dvtoggle ?><?= $dlcsv('day') ?></div></div>
+  <div class="dv-table dv-hidden">
+    <table><thead><tr><th>Data</th><th>Bilete</th><th>Timp mediu asteptare</th></tr></thead><tbody>
+    <?php foreach($per_day as $r): ?><tr><td><?= e(date('d.m.Y',strtotime($r['d']))) ?></td><td><?= (int)$r['c'] ?></td><td><?= mmss($r['w']??0) ?></td></tr><?php endforeach; ?>
+    <?php if(!$per_day): ?><tr><td colspan="3" class="muted">Fara date.</td></tr><?php endif; ?>
+    </tbody></table>
+  </div>
+  <div class="dv-chart">
   <?php if(array_sum(array_map(fn($r)=>(int)$r['c'],$per_day))===0): ?>
     <p class="muted">Niciun bilet in intervalul selectat.</p>
   <?php else:
@@ -67,6 +76,7 @@ $totFin = max(1,$served+$noshow+$canc);
     <?php } ?>
   </svg>
   <?php endif; ?>
+  </div><!-- .dv-chart -->
 </div>
 
 <div class="row" style="align-items:flex-start">
@@ -95,9 +105,15 @@ $totFin = max(1,$served+$noshow+$canc);
   </div>
 </div>
 
-<div class="card pad" style="margin:1.2rem 0">
-  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Aflux pe ora din zi</h3><?= $dlcsv('hour') ?></div>
-  <div style="display:flex;align-items:flex-end;gap:3px;height:150px">
+<div class="card pad dvbox" style="margin:1.2rem 0">
+  <div class="dvhead"><h3>Aflux pe ora din zi</h3><div class="dvctrl"><?= $dvtoggle ?><?= $dlcsv('hour') ?></div></div>
+  <div class="dv-table dv-hidden">
+    <table><thead><tr><th>Ora</th><th>Bilete</th></tr></thead><tbody>
+    <?php for($h=0;$h<24;$h++): if($hours[$h]<=0) continue; ?><tr><td><?= sprintf('%02d:00',$h) ?></td><td><?= (int)$hours[$h] ?></td></tr><?php endfor; ?>
+    <?php if(array_sum($hours)===0): ?><tr><td colspan="2" class="muted">Fara date.</td></tr><?php endif; ?>
+    </tbody></table>
+  </div>
+  <div class="dv-chart" style="display:flex;align-items:flex-end;gap:3px;height:150px">
     <?php for($h=0;$h<24;$h++): $val=$hours[$h]; $pct=(int)($val/$maxHour*100); ?>
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end" title="<?= $h ?>:00 — <?= $val ?> bilete">
         <span style="font-size:.62rem;color:var(--muted);margin-bottom:2px"><?= $val?:'' ?></span>
