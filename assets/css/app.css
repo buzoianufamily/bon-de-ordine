@@ -51,7 +51,7 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .shell.nav-collapsed .side{overflow:hidden;padding:.4rem .35rem 1rem;align-items:stretch}
 .shell.nav-collapsed .side .grp{display:none}
 .shell.nav-collapsed .side a,.shell.nav-collapsed .side .side-foot a{justify-content:center;padding:0;gap:0;height:42px;margin:3px 0}
-.shell.nav-collapsed .side a>span:not(.ic){display:none}
+.shell.nav-collapsed .side .lbl{display:none}
 .shell.nav-collapsed .side .side-top{justify-content:center;padding:.55rem 0}
 .side .grp{font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;color:#565d6a;margin:1.05rem .7rem .35rem;font-weight:700}
 .side a{display:flex;align-items:center;gap:.7rem;color:#c2c8d2;padding:.58rem .7rem;border-radius:10px;font-weight:600;font-size:.91rem;margin:1px 0;transition:.12s}

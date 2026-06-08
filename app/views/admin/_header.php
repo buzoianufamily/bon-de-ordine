@@ -28,7 +28,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
 <meta name="csrf" content="<?= e(csrf_token()) ?>"><meta name="base" content="<?= e(base_url()) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap"></noscript>
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=6">
+<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=7">
 <style>:root{--accent:<?= e($accent) ?>}</style>
 </head><body class="admin">
 <div class="shell">
@@ -38,20 +38,20 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
       <?php if ($grp !== ''): ?><div class="grp"><?= e($grp) ?></div><?php endif; ?>
       <?php foreach ($items as $n): $is = ($active ?? '') === $n[0];
         if ($n[0] !== '' && !can($n[0])) continue; ?>
-        <a href="<?= e(url('admin/'.$n[0])) ?>" class="<?= $is?'active':'' ?>"><span class="ic"><?= $n[2] ?></span><?= e($n[1]) ?></a>
+        <a href="<?= e(url('admin/'.$n[0])) ?>" class="<?= $is?'active':'' ?>"><span class="ic"><?= $n[2] ?></span><span class="lbl"><?= e($n[1]) ?></span></a>
       <?php endforeach; ?>
     <?php endforeach; ?>
     <?php if (($u['role'] ?? '') === 'admin'): ?>
       <div class="grp">Acces</div>
-      <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span>Setari</a>
-      <a href="<?= e(url('admin/roles')) ?>" class="<?= ($active??'')==='roles'?'active':'' ?>"><span class="ic">🔑</span>Roluri</a>
+      <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
+      <a href="<?= e(url('admin/roles')) ?>" class="<?= ($active??'')==='roles'?'active':'' ?>"><span class="ic">🔑</span><span class="lbl">Roluri</span></a>
     <?php elseif (can('settings')): ?>
       <div class="grp">Acces</div>
-      <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span>Setari</a>
+      <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
     <?php endif; ?>
     <div class="side-foot">
-      <a href="<?= e(url('counter')) ?>"><span class="ic">▶</span>Terminal operator</a>
-      <a href="<?= e(url('logout')) ?>"><span class="ic">⇥</span>Iesire</a>
+      <a href="<?= e(url('counter')) ?>"><span class="ic">▶</span><span class="lbl">Terminal operator</span></a>
+      <a href="<?= e(url('logout')) ?>"><span class="ic">⇥</span><span class="lbl">Iesire</span></a>
     </div>
   </nav>
   <main class="main">
