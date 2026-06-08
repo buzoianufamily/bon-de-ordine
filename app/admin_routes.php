@@ -281,18 +281,26 @@ function admin_tickets(): void {
     view('admin/tickets', compact('rows','date','branches'));
 }
 
-/** Reset bonuri: anuleaza coada curenta si reincepe numerotarea de la inceput. */
+/** Reset bonuri: STERGE complet biletele (coada + istoric/statistici) si reincepe numerotarea de la 0. */
 function admin_tickets_reset(): void {
     csrf_check();
     $branch = (int)($_POST['branch'] ?? 0);
-    if ($branch) {
-        q("UPDATE tickets SET status='cancelled', finished_at=NOW() WHERE status IN ('waiting','called','serving') AND branch_id=?", [$branch]);
-        q("DELETE FROM ticket_sequences WHERE seq_date=CURDATE() AND service_id IN (SELECT id FROM services WHERE branch_id=?)", [$branch]);
-    } else {
-        q("UPDATE tickets SET status='cancelled', finished_at=NOW() WHERE status IN ('waiting','called','serving')");
-        q("DELETE FROM ticket_sequences WHERE seq_date=CURDATE()");
+    try {
+        db()->beginTransaction();
+        if ($branch) {
+            q("DELETE FROM tickets WHERE branch_id=?", [$branch]);
+            q("DELETE FROM ticket_sequences WHERE service_id IN (SELECT id FROM services WHERE branch_id=?)", [$branch]);
+        } else {
+            q("DELETE FROM tickets");
+            q("DELETE FROM ticket_sequences");
+        }
+        db()->commit();
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) db()->rollBack();
+        flash('Resetarea a esuat: '.$e->getMessage(), 'error');
+        redirect('admin/tickets');
     }
-    flash('Bonurile au fost resetate. Numerotarea reincepe de la inceput.');
+    flash('Bonuri sterse complet: coada, statisticile si numerotarea au fost resetate de la 0.');
     redirect('admin/tickets');
 }
 

@@ -4,7 +4,7 @@ $st=['waiting'=>['La rand','#fef3c7','#92400e'],'called'=>['Apelat','#dbeafe','#
 <div class="topbar"><h1>Bilete</h1>
   <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
     <form method="get" style="display:flex;gap:.5rem;align-items:center"><label style="margin:0">Data</label><input type="date" name="date" value="<?= e($date) ?>" onchange="this.form.submit()"></form>
-    <form method="post" action="<?= e(url('admin/tickets/reset')) ?>" onsubmit="return confirm('Resetezi bonurile? Coada curenta se anuleaza si numerotarea reincepe de la inceput (0). Istoricul ramane in statistici.')" style="display:flex;gap:.4rem;align-items:center">
+    <form method="post" action="<?= e(url('admin/tickets/reset')) ?>" onsubmit="return confirm('Resetezi bonurile? Se STERG TOATE biletele (coada + istoric + statistici) si numerotarea reincepe de la 0. Actiunea NU poate fi anulata.')" style="display:flex;gap:.4rem;align-items:center">
       <?= csrf_field() ?>
       <?php if(count($branches)>1): ?><select name="branch" style="width:auto"><option value="0">Toate filialele</option><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select><?php endif; ?>
       <button class="btn btn-danger">↺ Reset bonuri</button>
