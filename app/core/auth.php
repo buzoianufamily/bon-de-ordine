@@ -59,7 +59,7 @@ function perm_areas(): array {
     return [
         'statistics'=>'Statistici', 'branches'=>'Filiale', 'services'=>'Servicii', 'counters'=>'Ghisee',
         'devices'=>'Dispozitive', 'media'=>'Multimedia', 'forms'=>'Formulare', 'tickets'=>'Bilete',
-        'appointments'=>'Programari', 'users'=>'Utilizatori', 'settings'=>'Setari',
+        'appointments'=>'Programari', 'feedback'=>'Feedback', 'users'=>'Utilizatori', 'settings'=>'Setari',
     ];
 }
 /** Configuratia salvata a permisiunilor (per rol). */

@@ -29,7 +29,13 @@
       <div class="field"><label>Titlu dispenser</label><input name="dispenser_title" value="<?= $s('dispenser_title','ALEGE SERVICIUL') ?>"></div>
       <div class="field"><label>Text antet bon (sub numele filialei)</label><input name="ticket_header" value="<?= $s('ticket_header') ?>" placeholder="ex: Va uram bun venit!"></div>
       <div class="field"><label>Text subsol bon</label><input name="ticket_footer" value="<?= $s('ticket_footer') ?>"></div>
-      <p class="muted" style="font-size:.82rem">Antetul si subsolul apar pe bonul tiparit (ESC/POS). QR-ul catre biletul digital se adauga automat daca biletul digital e activ.</p>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Continut bon tiparit</h3>
+      <div class="field"><label>Marime numar bon (2 = mic … 6 = foarte mare)</label><input type="number" name="ticket_num_size" min="2" max="6" value="<?= $s('ticket_num_size','4') ?>"></div>
+      <label style="margin:.4rem 0;display:block"><input type="checkbox" name="ticket_show_position" <?= setting('ticket_show_position','1')==='1'?'checked':'' ?> style="width:auto"> Arata pozitia in coada (cati sunt inainte)</label>
+      <label style="margin:.4rem 0;display:block"><input type="checkbox" name="ticket_show_datetime" <?= setting('ticket_show_datetime','1')==='1'?'checked':'' ?> style="width:auto"> Arata data si ora emiterii</label>
+      <label style="margin:.4rem 0;display:block"><input type="checkbox" name="ticket_show_qr" <?= setting('ticket_show_qr','1')==='1'?'checked':'' ?> style="width:auto"> Arata codul QR (bilet digital)</label>
+      <p class="muted" style="font-size:.82rem">Antetul si subsolul apar pe bonul tiparit (ESC/POS). Codul QR apare doar daca biletul digital e activ si optiunea de mai sus e bifata.</p>
     </div>
   </div>
 
