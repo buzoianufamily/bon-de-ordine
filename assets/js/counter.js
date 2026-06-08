@@ -32,16 +32,31 @@
   }
 
   document.getElementById('btnCall').addEventListener('click', callNext);
-  bind('btnRecall', ()=> act('api/recall'));
+  bind('btnRecall', async ()=>{ await act('api/recall'); if(currentId) announce({label:elCur.textContent}); });
   bind('btnServing', ()=> act('api/serving'));
   bind('btnFinish', ()=> act('api/finish', true));
   bind('btnNoShow', ()=> act('api/no-show', true));
   function bind(id, fn){ const b=document.getElementById(id); if(b) b.addEventListener('click', fn); }
 
+  /* ---- anunt vocal optional la terminal ---- */
+  let voices=[]; function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
+  if(window.speechSynthesis){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+  function speak(text){ if(!cfg.voiceOn||!window.speechSynthesis)return; const u=new SpeechSynthesisUtterance(text);
+    u.lang=cfg.voice||'ro-RO'; const v=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith((cfg.voice||'ro').slice(0,2).toLowerCase())); if(v)u.voice=v; u.rate=.95;
+    try{speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){} }
+  function ding(){ if(!cfg.voiceOn)return; try{ const ac=new(window.AudioContext||window.webkitAudioContext)(); const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.setValueAtTime(.0001,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.22,ac.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.5);o.start();o.stop(ac.currentTime+.5);}catch(e){} }
+  function announce(t){ if(!cfg.voiceOn||!t)return; ding(); let phrase='';
+    if(cfg.sayNumber)phrase+='Bonul '+String(t.label||'').split('').join(' ')+'. ';
+    if(cfg.sayCounter&&cfg.counterName)phrase+='Va rugam prezentati-va la '+cfg.counterName+'.';
+    const rep=Math.max(1,+(cfg.repeat||1)); let i=0; const fire=()=>{speak(phrase); if(++i<rep)setTimeout(fire,2600);}; setTimeout(fire,300); }
+
   async function callNext(){
     const res = await QMS.api('api/call-next', { counter_id: cfg.counterId });
     if(!res.ok){ QMS.toast(res.error||'Eroare','error'); return; }
     if(!res.ticket){ QMS.toast('Coada este goala','' ); }
+    else announce(res.ticket);
     refresh();
   }
   async function act(path, clearAfter){

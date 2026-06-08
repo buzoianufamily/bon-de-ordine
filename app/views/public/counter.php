@@ -37,6 +37,16 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
 </div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <?php $notify = (int) (val('SELECT notify_browser FROM users WHERE id=?', [$u['id']]) ?? 0); ?>
-<script>window.COUNTER={counterId:<?= (int)$counter['id'] ?>,accent:<?= json_encode(setting('accent_color','#2563eb')) ?>,notify:<?= $notify?'true':'false' ?>};</script>
-<script src="<?= e(asset('js/counter.js')) ?>"></script>
+<script>window.COUNTER={
+  counterId:<?= (int)$counter['id'] ?>,
+  counterName:<?= json_encode($counter['name'] ?: ('ghiseul '.$counter['code'])) ?>,
+  accent:<?= json_encode(setting('accent_color','#2563eb')) ?>,
+  notify:<?= $notify?'true':'false' ?>,
+  voiceOn:<?= setting('counter_voice','0')==='1'?'true':'false' ?>,
+  voice:<?= json_encode(setting('display_voice','ro-RO')) ?>,
+  sayNumber:<?= setting('display_say_number','1')==='1'?'true':'false' ?>,
+  sayCounter:<?= setting('display_say_counter','1')==='1'?'true':'false' ?>,
+  repeat:<?= (int)setting('display_repeat','2') ?>
+};</script>
+<script src="<?= e(asset('js/counter.js')) ?>?v=2"></script>
 </body></html>

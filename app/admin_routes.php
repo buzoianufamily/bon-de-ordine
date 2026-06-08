@@ -316,6 +316,7 @@ function admin_settings_save(): void {
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     set_setting('display_say_number', isset($_POST['display_say_number']) ? '1' : '0');
     set_setting('display_say_counter', isset($_POST['display_say_counter']) ? '1' : '0');
+    set_setting('counter_voice', isset($_POST['counter_voice']) ? '1' : '0');
     set_setting('virtual_enabled', isset($_POST['virtual_enabled']) ? '1' : '0');
     flash('Setari salvate.'); redirect('admin/settings');
 }
@@ -562,6 +563,7 @@ function admin_statistics(): void {
     if ($branch) { $fbWhere .= ' AND f.branch_id=?'; $fbArgs[] = $branch; }
     $feedback = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback f WHERE $fbWhere", $fbArgs) ?: ['n'=>0,'avg'=>null];
     $fb_dist  = all("SELECT rating, COUNT(*) c FROM feedback f WHERE $fbWhere GROUP BY rating", $fbArgs);
+    $fb_recent = all("SELECT rating, comment, created_at FROM feedback f WHERE $fbWhere AND comment IS NOT NULL AND comment<>'' ORDER BY created_at DESC LIMIT 15", $fbArgs);
 
     // export CSV per set de date (fiecare grafic are buton propriu de download)
     if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user'], true)) {
@@ -597,7 +599,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent'));
 }
 
 /**

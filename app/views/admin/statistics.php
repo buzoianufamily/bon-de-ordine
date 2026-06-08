@@ -170,6 +170,18 @@ $totFin = max(1,$served+$noshow+$canc);
         <?php endfor; ?>
       </div>
     </div>
+    <?php if(!empty($fb_recent)): ?>
+      <div style="margin-top:1rem">
+        <div class="muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Comentarii recente</div>
+        <?php foreach($fb_recent as $c): ?>
+          <div style="border-top:1px solid var(--line);padding:.5rem 0;display:flex;gap:.7rem;align-items:flex-start">
+            <span style="color:#f5b301;white-space:nowrap"><?php for($i=1;$i<=5;$i++) echo $i<=(int)$c['rating']?'★':'☆'; ?></span>
+            <span style="flex:1"><?= e($c['comment']) ?></span>
+            <span class="muted" style="font-size:.78rem;white-space:nowrap"><?= e(date('d.m H:i',strtotime($c['created_at']))) ?></span>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   <?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>
