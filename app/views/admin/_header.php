@@ -24,9 +24,22 @@ function aicon(string $k): string {
         'terminal'    => '<circle cx="12" cy="12" r="9"/><path d="M10 8l5 4-5 4z"/>',
         'logout'      => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><line x1="21" y1="12" x2="9" y2="12"/>',
         'menu'        => '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
+        'search'      => '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>',
+        'grid'        => '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+        'list'        => '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.6" cy="6" r="1"/><circle cx="3.6" cy="12" r="1"/><circle cx="3.6" cy="18" r="1"/>',
     ];
     $inner = $p[$k] ?? '';
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'.$inner.'</svg>';
+}
+
+/* bara cu cautare + comutator grila/lista (ca la Moviik) */
+function list_toolbar(string $placeholder = 'Cauta...'): string {
+    return '<div class="listhead">'
+        . '<div class="search">'.aicon('search').'<input type="text" placeholder="'.e($placeholder).'" data-filter=".cardgrid"></div>'
+        . '<div class="viewtoggle">'
+        .   '<a class="on" data-view="grid" title="Grila">'.aicon('grid').'</a>'
+        .   '<a data-view="list" title="Lista">'.aicon('list').'</a>'
+        . '</div></div>';
 }
 
 /* grupuri de navigare (aspect Moviik) */
