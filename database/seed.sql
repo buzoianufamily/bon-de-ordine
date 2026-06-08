@@ -37,6 +37,10 @@ INSERT INTO settings (k, v) VALUES
 ('display_say_counter', '1'),
 ('display_repeat',      '2'),
 ('ticket_footer',       'Va multumim! Pastrati biletul pana la apel.'),
+('ticket_header',       ''),
 ('dispenser_title',     'ALEGE SERVICIUL'),
 ('org_name',            'Compania Mea SRL'),
-('virtual_enabled',     '1');
+('virtual_enabled',     '1'),
+('alert_called',        'Este randul dumneavoastra! Va rugam prezentati-va la ghiseu.'),
+('alert_transfer',      'Biletul dvs. a fost transferat catre alt serviciu.'),
+('alert_delay',         '0');

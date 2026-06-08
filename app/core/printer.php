@@ -54,6 +54,7 @@ class Escpos
 function build_ticket_escpos(array $ticket, array $service, array $branch): string
 {
     $brand   = setting('brand_name', $branch['name']);
+    $header  = setting('ticket_header', '');
     $footer  = setting('ticket_footer', 'Va multumim!');
     $token   = $ticket['public_token'] ?? '';
     $qrUrl   = url('t/' . $token);
@@ -63,6 +64,7 @@ function build_ticket_escpos(array $ticket, array $service, array $branch): stri
     $p->init()->align(1);
     $p->bold(true)->size(1,1)->line($brand)->bold(false);
     $p->size(1,1)->line($branch['name'] ?? '');
+    if ($header !== '') $p->line($header);
     $p->feed(1)->line('--------------------------------');
     $p->line($service['name']);
     if (!empty($ticket['priority'])) $p->bold(true)->line('* PRIORITAR *')->bold(false);

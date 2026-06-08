@@ -311,7 +311,8 @@ function admin_settings_form(): void { view('admin/settings'); }
 function admin_settings_save(): void {
     csrf_check();
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
-             'ticket_footer','dispenser_title','org_name'];
+             'ticket_footer','ticket_header','dispenser_title','org_name',
+             'alert_called','alert_transfer','alert_delay'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     set_setting('display_say_number', isset($_POST['display_say_number']) ? '1' : '0');
     set_setting('display_say_counter', isset($_POST['display_say_counter']) ? '1' : '0');
