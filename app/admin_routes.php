@@ -70,6 +70,10 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $a === 'reset') { admin_tickets_reset(); return; }
             admin_tickets(); return;
 
+        case 'feedback':
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM feedback WHERE id=?', [(int)$a]); flash('Feedback sters.'); redirect('admin/feedback'); }
+            admin_feedback_list(); return;
+
         case 'appointments':
             if ($method === 'POST' && $a === null) { admin_appointment_create(); return; }
             if ($method === 'POST' && $b === 'checkin') { admin_appointment_action((int)$a, 'checkin'); return; }
@@ -304,6 +308,20 @@ function admin_tickets_reset(): void {
     }
     flash('Bonuri sterse complet: coada, statisticile si numerotarea au fost resetate de la 0.');
     redirect('admin/tickets');
+}
+
+/* ----------------------- FEEDBACK ----------------------- */
+function admin_feedback_list(): void {
+    $page = max(1, (int)($_GET['p'] ?? 1)); $per = 50; $off = ($page-1)*$per;
+    $rating = (int)($_GET['rating'] ?? 0);
+    $where = '1=1'; $args = [];
+    if ($rating >= 1 && $rating <= 5) { $where .= ' AND f.rating=?'; $args[] = $rating; }
+    $total = (int) val("SELECT COUNT(*) FROM feedback f WHERE $where", $args);
+    $rows  = all("SELECT f.*, b.name branch_name, t.label ticket_label
+                  FROM feedback f LEFT JOIN branches b ON b.id=f.branch_id LEFT JOIN tickets t ON t.id=f.ticket_id
+                  WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
+    $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
+    view('admin/feedback', compact('rows','page','per','total','rating','stat'));
 }
 
 /* ----------------------- SETTINGS ----------------------- */
