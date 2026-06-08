@@ -1,33 +1,39 @@
 <?php $title='Dispozitive'; $active='devices'; require __DIR__.'/_header.php';
-$labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj TV','digital_ticket'=>'Bilet digital QR','launcher'=>'Launcher'];
-function dev_url($d){ return $d['type']==='digital_ticket' ? url('launcher?key='.$d['connection_key']) : url('launcher?key='.$d['connection_key']); } ?>
+$labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj TV (widget)','digital_ticket'=>'Bilet digital QR','launcher'=>'Launcher'];
+$badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>'QR','launcher'=>'L'];
+function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
 <div class="topbar"><h1>Dispozitive</h1><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Dispozitiv nou</a></div>
-<div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-  <?php foreach($rows as $d): $u=dev_url($d); ?>
-    <div class="card pad">
-      <div style="display:flex;justify-content:space-between;align-items:start">
-        <div><strong><?= e($d['name']) ?></strong><br><span class="muted" style="font-size:.82rem"><?= e($labels[$d['type']]??$d['type']) ?> · 🏢 <?= e($d['branch_name']) ?></span></div>
-        <span class="pill" style="background:<?= $d['online']?'#dcfce7':'#f1f5f9' ?>;color:<?= $d['online']?'#166534':'#64748b' ?>"><?= $d['online']?'● online':'○ offline' ?></span>
-      </div>
-      <div style="margin:.7rem 0">
-        <div class="muted" style="font-size:.72rem;text-transform:uppercase">Cheie conectare</div>
-        <code style="font-size:1.2rem;font-weight:800;letter-spacing:.05em"><?= e($d['connection_key']) ?></code>
-      </div>
-      <div class="muted" style="font-size:.72rem;text-transform:uppercase">Link deschidere</div>
-      <input readonly value="<?= e($u) ?>" onclick="this.select()" style="font-size:.78rem;padding:.4rem">
+<?= list_toolbar('Cauta dispozitiv...') ?>
+<div class="cardgrid">
+<?php foreach($rows as $d): $u=dev_url($d); ?>
+  <div class="mcard" data-name="<?= e(mb_strtolower($d['name'].' '.($labels[$d['type']]??$d['type']).' '.$d['branch_name'].' '.$d['connection_key'])) ?>">
+    <div class="mhead">
+      <span class="badge" style="background:#2a2f3a;font-size:.78rem"><?= e($badge[$d['type']]??'?') ?></span>
+      <div style="flex:1"><div class="nm"><?= e($d['name']) ?></div>
+        <div class="sub muted"><?= e($labels[$d['type']]??$d['type']) ?> · <?= e($d['branch_name']) ?></div></div>
+    </div>
+    <div class="mbody">
+      <div class="muted" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Cheie conectare</div>
+      <code style="font-size:1.15rem;font-weight:800;letter-spacing:.05em"><?= e($d['connection_key']) ?></code>
+      <input readonly value="<?= e($u) ?>" onclick="this.select()" style="font-size:.76rem;padding:.4rem;margin-top:.5rem">
       <div style="margin-top:.7rem;display:flex;gap:.4rem;flex-wrap:wrap">
-        <a class="btn btn-ghost" target="_blank" href="<?= e($u) ?>">Deschide</a>
+        <a class="btn btn-ghost" target="_blank" href="<?= e($u) ?>" style="padding:.45rem .7rem">Deschide</a>
         <?php if(in_array($d['type'],['player','widget_player'],true)): ?>
-          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/player')) ?>">🎨 Design afisaj</a>
+          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/player')) ?>" style="padding:.45rem .8rem">Design afisaj</a>
+        <?php elseif(in_array($d['type'],['dispenser','digital_ticket'],true)): ?>
+          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/dispenser')) ?>" style="padding:.45rem .8rem">Configureaza</a>
         <?php endif; ?>
-        <?php if(in_array($d['type'],['dispenser','digital_ticket'],true)): ?>
-          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/dispenser')) ?>">🎨 Configureaza</a>
-        <?php endif; ?>
-        <a class="btn btn-ghost" href="<?= e(url('admin/devices/'.$d['id'])) ?>">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/devices/'.$d['id'].'/delete')) ?>" style="display:inline" onsubmit="return confirm('Stergi dispozitivul?')"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger)">Sterge</button></form>
       </div>
     </div>
-  <?php endforeach; ?>
-  <?php if(!$rows): ?><p class="muted">Niciun dispozitiv. Creeaza primul (dispenser/afisaj).</p><?php endif; ?>
+    <div class="card-foot">
+      <span class="st <?= $d['online']?'on':'' ?>"><span class="d"></span><?= $d['online']?'Online':'Offline' ?></span>
+      <span>
+        <a class="lnk" href="<?= e(url('admin/devices/'.$d['id'])) ?>">Editeaza</a>
+        <form method="post" action="<?= e(url('admin/devices/'.$d['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" onsubmit="return confirm('Stergi dispozitivul?')"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+      </span>
+    </div>
+  </div>
+<?php endforeach; ?>
+<?php if(!$rows): ?><div class="empty">Niciun dispozitiv. Creeaza primul (dispenser/afisaj).</div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>
