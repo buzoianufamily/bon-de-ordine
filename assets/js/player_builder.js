@@ -48,6 +48,9 @@
     ticker: { label:'Banda mesaj (ticker)', icon:'📰', w:100,h:9, props:{text:'Bun venit! Va rugam asteptati apelarea bonului. ',speed:18},
       fields:[['text','Mesaj','textarea'],['speed','Viteza (sec/ciclu)','number']],
       preview:p=>`<div class="wv wv-text" style="justify-content:flex-start;white-space:nowrap;overflow:hidden">${esc((p.text||'Mesaj').slice(0,46))}</div>` },
+    form: { label:'Formular feedback', icon:'📝', w:24,h:36, props:{title:'Spune-ne parerea ta',url:''},
+      fields:[['title','Titlu','text'],['url','URL formular (gol = pagina feedback)','text']],
+      preview:p=>`<div class="wv" style="align-items:center;justify-content:center;text-align:center"><div style="font-size:.82em;margin-bottom:4px">${esc(p.title||'Feedback')}</div><div style="width:48px;height:48px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#000;font-size:1.5em">📝</div><div style="font-size:.85em;margin-top:5px;color:#f5b301">★★★★★</div></div>` },
   };
   const esc = s => String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   const sample = a => a;

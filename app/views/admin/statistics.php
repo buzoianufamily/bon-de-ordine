@@ -146,4 +146,30 @@ $totFin = max(1,$served+$noshow+$canc);
   <?php if(!$per_user): ?><tr><td colspan="5" class="muted">Niciun bilet servit de un operator in interval.</td></tr><?php endif; ?>
   </tbody></table>
 </div>
+
+<?php $fbN=(int)($feedback['n']??0); $fbAvg=$feedback['avg']!==null?round((float)$feedback['avg'],2):null;
+  $dist=array_fill(1,5,0); foreach(($fb_dist??[]) as $d) $dist[(int)$d['rating']]=(int)$d['c']; ?>
+<div class="card pad" style="margin-top:1.2rem">
+  <h3 style="margin:0 0 .6rem">Satisfactie client (feedback)</h3>
+  <?php if($fbN===0): ?>
+    <p class="muted">Niciun feedback in interval. Adauga widget-ul „Formular feedback" pe afisaj sau partajeaza linkul <code><?= e(url('feedback')) ?></code>.</p>
+  <?php else: ?>
+    <div style="display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="font-family:var(--display);font-size:2.6rem;font-weight:800;line-height:1"><?= e(number_format($fbAvg,2)) ?></div>
+        <div style="color:#f5b301;font-size:1.2rem"><?php for($i=1;$i<=5;$i++) echo $i<=round($fbAvg)?'★':'☆'; ?></div>
+        <div class="muted" style="font-size:.82rem"><?= $fbN ?> raspunsuri</div>
+      </div>
+      <div style="flex:1;min-width:220px">
+        <?php for($r=5;$r>=1;$r--): $pct=$fbN?round($dist[$r]/$fbN*100):0; ?>
+          <div style="display:flex;align-items:center;gap:.6rem;margin:.25rem 0">
+            <span style="width:42px;color:#f5b301">★ <?= $r ?></span>
+            <div style="flex:1;background:var(--track);border-radius:6px;height:9px;overflow:hidden"><div style="height:100%;width:<?= $pct ?>%;background:#f5b301"></div></div>
+            <strong style="width:34px;text-align:right"><?= $dist[$r] ?></strong>
+          </div>
+        <?php endfor; ?>
+      </div>
+    </div>
+  <?php endif; ?>
+</div>
 <?php require __DIR__.'/_footer.php'; ?>

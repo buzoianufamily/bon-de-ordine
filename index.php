@@ -145,6 +145,24 @@ try {
         return;
     }
 
+    // feedback client (anonim, prin QR pe afisaj):  /feedback
+    if ($seg[0] === 'feedback') {
+        $branch = (int)($_GET['branch'] ?? 1);
+        if ($method === 'POST') {
+            $rating  = (int) input('rating', 0);
+            $comment = trim((string) input('comment', ''));
+            if ($rating >= 1 && $rating <= 5) {
+                q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (NULL, ?, ?, ?)',
+                  [$branch ?: null, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
+                view('public/feedback', ['done' => true, 'branch' => $branch]);
+                return;
+            }
+            flash('Alege o nota de la 1 la 5.', 'error');
+        }
+        view('public/feedback', ['done' => false, 'branch' => $branch]);
+        return;
+    }
+
     // bilet digital (telefon):  /t/{token}
     if ($seg[0] === 't' && !empty($seg[1])) {
         $t = one('SELECT t.*, s.name AS service_name, s.color FROM tickets t
