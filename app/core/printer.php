@@ -59,6 +59,11 @@ function build_ticket_escpos(array $ticket, array $service, array $branch): stri
     $token   = $ticket['public_token'] ?? '';
     $qrUrl   = url('t/' . $token);
     $waiting = ticket_position($ticket);
+    // optiuni configurabile pentru continutul bonului
+    $numSize  = max(2, min(6, (int) setting('ticket_num_size', '4')));
+    $showPos  = setting('ticket_show_position', '1') === '1';
+    $showDt   = setting('ticket_show_datetime', '1') === '1';
+    $showQr   = setting('ticket_show_qr', '1') === '1';
 
     $p = new Escpos();
     $p->init()->align(1);
@@ -68,11 +73,11 @@ function build_ticket_escpos(array $ticket, array $service, array $branch): stri
     $p->feed(1)->line('--------------------------------');
     $p->line($service['name']);
     if (!empty($ticket['priority'])) $p->bold(true)->line('* PRIORITAR *')->bold(false);
-    $p->feed(1)->size(4,4)->bold(true)->line($ticket['label'])->bold(false)->size(1,1);
+    $p->feed(1)->size($numSize,$numSize)->bold(true)->line($ticket['label'])->bold(false)->size(1,1);
     $p->feed(1);
-    $p->line('Inainte: ' . $waiting . ' persoane');
-    $p->line(date('d.m.Y H:i', strtotime($ticket['issued_at'])));
-    if (setting('virtual_enabled', '1') === '1' && $token) {
+    if ($showPos) $p->line('Inainte: ' . $waiting . ' persoane');
+    if ($showDt)  $p->line(date('d.m.Y H:i', strtotime($ticket['issued_at'])));
+    if (setting('virtual_enabled', '1') === '1' && $showQr && $token) {
         $p->feed(1)->line('Urmariti pe telefon:')->qr($qrUrl, 5)->feed(1);
     }
     $p->line('--------------------------------');
