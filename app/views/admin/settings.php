@@ -42,6 +42,7 @@
       <label style="margin:.5rem 0;display:block"><input type="checkbox" name="display_say_number" <?= setting('display_say_number','1')==='1'?'checked':'' ?> style="width:auto"> Anunta numarul bonului</label>
       <label style="margin:.5rem 0;display:block"><input type="checkbox" name="display_say_counter" <?= setting('display_say_counter','1')==='1'?'checked':'' ?> style="width:auto"> Anunta ghiseul</label>
       <div class="field"><label>Repetari anunt</label><input type="number" name="display_repeat" value="<?= $s('display_repeat','2') ?>" min="1" max="5"></div>
+      <label style="margin:.5rem 0;display:block"><input type="checkbox" name="counter_voice" <?= setting('counter_voice','0')==='1'?'checked':'' ?> style="width:auto"> Anunt vocal si la terminalul operatorului (la „Cheama urmatorul")</label>
       <p class="muted" style="font-size:.82rem">Aceste valori sunt folosite pe afisajele fara layout personalizat. Afisajele cu layout (editor canvas) au setarile lor de sunet.</p>
     </div>
   </div>
