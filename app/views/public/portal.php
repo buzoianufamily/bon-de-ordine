@@ -2,10 +2,10 @@
 $logo = setting('brand_logo','');
 $hasAppt = (int) val('SELECT COUNT(*) FROM services WHERE appt_enabled=1 AND status="active"') > 0;
 $tiles = [
-  ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('admin'), 'M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z'],
-  ['Terminal operator', 'Apeleaza si gestioneaza bilete de la ghiseu.', url('counter'), 'M4 5h16v10H4zM8 19h8M12 15v4'],
+  ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('admin'), '🗂'],
+  ['Terminal operator', 'Apeleaza si gestioneaza bilete de la ghiseu.', url('counter'), '🖥'],
 ];
-if ($hasAppt) $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu.', url('book'), 'M3 4h18v17H3zM3 9h18M8 2v4M16 2v4'];
+if ($hasAppt) $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu.', url('book'), '📅'];
 ?>
 <body class="portalpage"><div class="center"><div class="portal">
   <div style="text-align:center;margin-bottom:1.6rem">
@@ -16,7 +16,7 @@ if ($hasAppt) $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu
   <div class="portal-grid">
     <?php foreach($tiles as $t): ?>
       <a href="<?= e($t[2]) ?>"><div class="tile">
-        <span class="tileic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="<?= $t[3] ?>"/></svg></span>
+        <span class="tileic"><?= $t[3] ?></span>
         <h3><?= e($t[0]) ?></h3>
         <p class="muted" style="font-size:.88rem;flex:1"><?= e($t[1]) ?></p>
         <span class="access">Acceseaza →</span>

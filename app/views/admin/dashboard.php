@@ -16,11 +16,11 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
 </div>
 
 <div class="statcards">
-  <div class="statcard"><span class="ic"><?= aicon('tickets') ?></span><div class="t">Bilete azi</div><div class="s">Total emise</div><div class="v"><?= $stats['today'] ?></div></div>
-  <div class="statcard"><span class="ic"><?= aicon('users') ?></span><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>
-  <div class="statcard"><span class="ic"><?= aicon('terminal') ?></span><div class="t">In servire</div><div class="s">Chemate / la ghiseu</div><div class="v" style="color:var(--accent)"><?= $stats['serving'] ?></div></div>
-  <div class="statcard"><span class="ic"><?= aicon('statistics') ?></span><div class="t">Servite azi</div><div class="s">Finalizate</div><div class="v" style="color:var(--ok)"><?= $stats['served'] ?></div></div>
-  <div class="statcard"><span class="ic"><?= aicon('appointments') ?></span><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · azi</div><div class="v"><?= mmss($stats['avg_wait']) ?></div></div>
+  <div class="statcard"><div class="t">Bilete azi</div><div class="s">Total emise</div><div class="v"><?= $stats['today'] ?></div></div>
+  <div class="statcard"><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>
+  <div class="statcard"><div class="t">In servire</div><div class="s">Chemate / la ghiseu</div><div class="v" style="color:var(--accent)"><?= $stats['serving'] ?></div></div>
+  <div class="statcard"><div class="t">Servite azi</div><div class="s">Finalizate</div><div class="v" style="color:var(--ok)"><?= $stats['served'] ?></div></div>
+  <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · azi</div><div class="v"><?= mmss($stats['avg_wait']) ?></div></div>
 </div>
 
 <div class="panel-grid">
