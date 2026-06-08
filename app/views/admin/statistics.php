@@ -1,6 +1,9 @@
 <?php $title='Statistici'; $active='statistics'; require __DIR__.'/_header.php';
-function mmss($s){ $s=(int)round((float)$s); return $s<=0?'—':sprintf('%d:%02d', intdiv($s,60), $s%60); }
+// timp in format precis HH:MM:SS (ca la Moviik)
+function mmss($s){ $s=(int)round((float)$s); return $s<=0?'—':sprintf('%d:%02d:%02d', intdiv($s,3600), intdiv($s%3600,60), $s%60); }
 $qs = fn($extra)=>e(url('admin/statistics').'?'.http_build_query(array_merge(['from'=>$from,'to'=>$to,'branch'=>$branch],$extra)));
+// buton mic de download CSV pentru un set de date
+$dlcsv = fn($ds)=>'<a class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem" href="'.$qs(['export'=>'csv','dataset'=>$ds]).'">⬇ CSV</a>';
 // pregatire date grafice
 $maxDay = 1; foreach($per_day as $r) $maxDay=max($maxDay,(int)$r['c']);
 $hours = array_fill(0,24,0); foreach($per_hour as $r) $hours[(int)$r['h']]=(int)$r['c'];
@@ -43,7 +46,7 @@ $totFin = max(1,$served+$noshow+$canc);
 </div>
 
 <div class="card pad" style="margin-bottom:1.2rem">
-  <h3 style="margin-top:0">Bilete pe zi</h3>
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Bilete pe zi</h3><?= $dlcsv('day') ?></div>
   <?php if(array_sum(array_map(fn($r)=>(int)$r['c'],$per_day))===0): ?>
     <p class="muted">Niciun bilet in intervalul selectat.</p>
   <?php else:
@@ -54,7 +57,7 @@ $totFin = max(1,$served+$noshow+$canc);
   ?>
   <svg viewBox="0 0 <?= $W ?> <?= $H+24 ?>" style="width:100%;height:auto" preserveAspectRatio="none">
     <defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
-    <?php for($g=0;$g<=4;$g++){ $gy=$pad+$g/4*($H-2*$pad); ?><line x1="<?= $pad ?>" y1="<?= $gy ?>" x2="<?= $W-$pad ?>" y2="<?= $gy ?>" stroke="#1f242e" stroke-width="1"/><?php } ?>
+    <?php for($g=0;$g<=4;$g++){ $gy=$pad+$g/4*($H-2*$pad); ?><line x1="<?= $pad ?>" y1="<?= $gy ?>" x2="<?= $W-$pad ?>" y2="<?= $gy ?>" stroke="var(--grid)" stroke-width="1"/><?php } ?>
     <polygon points="<?= $area ?>" fill="url(#g1)"/>
     <polyline points="<?= $line ?>" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
     <?php foreach($pts as $p): ?><circle cx="<?= round($p[0],1) ?>" cy="<?= round($p[1],1) ?>" r="3.5" fill="var(--accent)"/><?php endforeach; ?>
@@ -68,23 +71,23 @@ $totFin = max(1,$served+$noshow+$canc);
 
 <div class="row" style="align-items:flex-start">
   <div class="card pad" style="flex:1">
-    <h3 style="margin-top:0">Bilete pe serviciu</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Bilete pe serviciu</h3><?= $dlcsv('service') ?></div>
     <?php foreach($per_service as $r): ?>
       <div style="display:flex;align-items:center;gap:.7rem;margin:.5rem 0">
         <span class="tag" style="background:<?= e($r['color']) ?>"><?= e(mb_substr($r['name'],0,1)) ?></span>
         <span style="flex:1;min-width:90px"><?= e($r['name']) ?></span>
-        <div style="flex:2;background:#1c2029;border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['c']/$maxSvc*100) ?>%;background:<?= e($r['color']) ?>"></div></div>
+        <div style="flex:2;background:var(--track);border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['c']/$maxSvc*100) ?>%;background:<?= e($r['color']) ?>"></div></div>
         <strong style="width:38px;text-align:right"><?= (int)$r['c'] ?></strong>
       </div>
     <?php endforeach; ?>
     <?php if(!$per_service): ?><p class="muted">Fara date.</p><?php endif; ?>
   </div>
   <div class="card pad" style="flex:1">
-    <h3 style="margin-top:0">Bilete pe ghiseu</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Bilete pe ghiseu</h3><?= $dlcsv('counter') ?></div>
     <?php foreach($per_counter as $r): if((int)$r['cnt']===0) continue; ?>
       <div style="display:flex;align-items:center;gap:.7rem;margin:.5rem 0">
         <span style="flex:1"><strong><?= e($r['code']) ?></strong> <span class="muted"><?= e($r['name']) ?></span></span>
-        <div style="flex:2;background:#1c2029;border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['cnt']/$maxCtr*100) ?>%;background:var(--accent)"></div></div>
+        <div style="flex:2;background:var(--track);border-radius:6px;height:10px;overflow:hidden"><div style="height:100%;width:<?= (int)((int)$r['cnt']/$maxCtr*100) ?>%;background:var(--accent)"></div></div>
         <strong style="width:38px;text-align:right"><?= (int)$r['cnt'] ?></strong>
       </div>
     <?php endforeach; ?>
@@ -93,7 +96,7 @@ $totFin = max(1,$served+$noshow+$canc);
 </div>
 
 <div class="card pad" style="margin:1.2rem 0">
-  <h3 style="margin-top:0">Aflux pe ora din zi</h3>
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Aflux pe ora din zi</h3><?= $dlcsv('hour') ?></div>
   <div style="display:flex;align-items:flex-end;gap:3px;height:150px">
     <?php for($h=0;$h<24;$h++): $val=$hours[$h]; $pct=(int)($val/$maxHour*100); ?>
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end" title="<?= $h ?>:00 — <?= $val ?> bilete">
@@ -106,7 +109,7 @@ $totFin = max(1,$served+$noshow+$canc);
 </div>
 
 <div class="card pad">
-  <h3 style="margin-top:0">Detaliu pe serviciu</h3>
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Detaliu pe serviciu</h3><?= $dlcsv('service') ?></div>
   <table><thead><tr><th>Serviciu</th><th>Total</th><th>Servite</th><th>Timp mediu asteptare</th><th>Timp mediu servire</th></tr></thead><tbody>
   <?php foreach($per_service as $r): ?>
     <tr><td><span class="tag" style="background:<?= e($r['color']) ?>;width:20px;height:20px;font-size:.7rem"><?= e(mb_substr($r['name'],0,1)) ?></span> <?= e($r['name']) ?></td>
@@ -115,5 +118,16 @@ $totFin = max(1,$served+$noshow+$canc);
   <?php if(!$per_service): ?><tr><td colspan="5" class="muted">Fara date.</td></tr><?php endif; ?>
   </tbody></table>
   <p class="muted" style="margin-top:.8rem;font-size:.82rem">Defalcare status in interval: <strong style="color:var(--ok)"><?= round($served/$totFin*100) ?>%</strong> servite · <?= round($noshow/$totFin*100) ?>% neprezentate · <?= round($canc/$totFin*100) ?>% anulate</p>
+</div>
+
+<div class="card pad" style="margin-top:1.2rem">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Bilete pe utilizator</h3><?= $dlcsv('user') ?></div>
+  <table><thead><tr><th>Utilizator</th><th>Total</th><th>Servite</th><th>Timp mediu asteptare</th><th>Timp mediu servire</th></tr></thead><tbody>
+  <?php foreach($per_user as $r): ?>
+    <tr><td><span class="badge" style="background:#2a2f3a;width:22px;height:22px;font-size:.7rem"><?= e(mb_strtoupper(mb_substr($r['name'],0,1))) ?></span> <?= e($r['name']) ?></td>
+      <td><?= (int)$r['c'] ?></td><td><?= (int)$r['served'] ?></td><td><?= mmss($r['w']??0) ?></td><td><?= mmss($r['sv']??0) ?></td></tr>
+  <?php endforeach; ?>
+  <?php if(!$per_user): ?><tr><td colspan="5" class="muted">Niciun bilet servit de un operator in interval.</td></tr><?php endif; ?>
+  </tbody></table>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

@@ -18,6 +18,18 @@ document.addEventListener('click',function(e){
   grid.classList.toggle('aslist',t.getAttribute('data-view')==='list');
   document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('on',b===t);});
 });
+/* comutator tema deschisa/inchisa — persista in localStorage */
+(function(){
+  var btn=document.getElementById('theme-toggle');
+  if(!btn)return;
+  var setIcon=function(){ btn.textContent=document.body.classList.contains('light')?'☀️':'🌙'; };
+  setIcon();
+  btn.addEventListener('click',function(){
+    var light=document.body.classList.toggle('light');
+    try{ localStorage.setItem('admin_theme', light?'light':'dark'); }catch(e){}
+    setIcon();
+  });
+})();
 /* sidebar toggle — persista starea in localStorage */
 (function(){
   var shell=document.querySelector('.shell');

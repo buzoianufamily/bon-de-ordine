@@ -22,9 +22,9 @@
       <div class="pad" style="padding:.7rem">
         <div style="font-size:.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($m['filename']) ?></div>
         <div style="display:flex;align-items:center;gap:.4rem;margin:.4rem 0">
-          <span class="pill" style="background:#1c2029;color:#9aa3b2;font-size:.7rem"><?= e(strtoupper(explode('/',$m['mime'])[1] ?? '?')) ?></span>
+          <span class="pill" style="background:var(--track);color:#9aa3b2;font-size:.7rem"><?= e(strtoupper(explode('/',$m['mime'])[1] ?? '?')) ?></span>
           <?php if($m['in_use']): ?><span class="pill" style="background:#143524;color:#4ade80;font-size:.7rem">● In uz</span>
-          <?php else: ?><span class="pill" style="background:#1c2029;color:#7d8696;font-size:.7rem">○ Neutilizat</span><?php endif; ?>
+          <?php else: ?><span class="pill" style="background:var(--track);color:#7d8696;font-size:.7rem">○ Neutilizat</span><?php endif; ?>
         </div>
         <div style="display:flex;gap:.35rem">
           <button class="btn btn-ghost" style="font-size:.8rem;padding:.4rem .6rem" onclick="copyUrl(this,'<?= e($m['url']) ?>')">⧉ Copiaza URL</button>

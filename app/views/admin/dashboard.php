@@ -31,7 +31,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <?php else: ?>
     <div style="display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap">
       <svg viewBox="0 0 120 120" width="150" height="150" style="flex:0 0 auto">
-        <circle cx="60" cy="60" r="54" fill="none" stroke="#1c2029" stroke-width="12"/>
+        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--track)" stroke-width="12"/>
         <g transform="rotate(-90 60 60)">
         <?php foreach($segs as $sgm): ?>
           <circle cx="60" cy="60" r="54" fill="none" stroke="<?= e($sgm['color']) ?>" stroke-width="12"
@@ -78,7 +78,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
       <div style="display:flex;align-items:center;gap:.7rem;margin:.55rem 0">
         <span class="tag" style="background:<?= e($p['color']) ?>"><?= e(mb_substr($p['name'],0,1)) ?></span>
         <span style="flex:1"><?= e($p['name']) ?></span>
-        <div style="flex:2;background:#1c2029;border-radius:6px;height:10px;overflow:hidden">
+        <div style="flex:2;background:var(--track);border-radius:6px;height:10px;overflow:hidden">
           <div style="height:100%;width:<?= (int)($p['cnt']/$maxSvc*100) ?>%;background:<?= e($p['color']) ?>"></div></div>
         <strong style="width:34px;text-align:right"><?= (int)$p['cnt'] ?></strong>
       </div>
@@ -89,7 +89,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <table><tbody>
     <?php foreach($devices as $d): ?>
       <tr><td style="width:1%">
-        <span class="pill" style="background:<?= $d['online']?'color-mix(in srgb,var(--ok) 22%,transparent)':'#1c2029' ?>;color:<?= $d['online']?'var(--ok)':'#7d8696' ?>">
+        <span class="pill" style="background:<?= $d['online']?'color-mix(in srgb,var(--ok) 22%,transparent)':'var(--track)' ?>;color:<?= $d['online']?'var(--ok)':'#7d8696' ?>">
           <?= $d['online']?'● online':'○ offline' ?></span>
         </td><td><strong><?= e($d['name']) ?></strong><br><span class="muted" style="font-size:.8rem"><?= e($d['type']) ?></span></td>
         <td style="text-align:right"><code><?= e($d['connection_key']) ?></code></td></tr>
