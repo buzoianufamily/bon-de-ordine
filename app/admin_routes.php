@@ -65,7 +65,9 @@ function admin_dispatch(array $seg, string $method): void {
             if (ctype_digit((string)$a)) { admin_device_form((int)$a); return; }
             admin_devices_list(); return;
 
-        case 'tickets':  admin_tickets(); return;
+        case 'tickets':
+            if ($method === 'POST' && $a === 'reset') { admin_tickets_reset(); return; }
+            admin_tickets(); return;
 
         case 'appointments':
             if ($method === 'POST' && $a === null) { admin_appointment_create(); return; }
@@ -275,7 +277,23 @@ function admin_tickets(): void {
                  FROM tickets t JOIN services s ON s.id=t.service_id
                  LEFT JOIN counters c ON c.id=t.counter_id
                  WHERE DATE(t.issued_at)=? ORDER BY t.issued_at DESC LIMIT 500", [$date]);
-    view('admin/tickets', compact('rows','date'));
+    $branches = all('SELECT id,name FROM branches ORDER BY name');
+    view('admin/tickets', compact('rows','date','branches'));
+}
+
+/** Reset bonuri: anuleaza coada curenta si reincepe numerotarea de la inceput. */
+function admin_tickets_reset(): void {
+    csrf_check();
+    $branch = (int)($_POST['branch'] ?? 0);
+    if ($branch) {
+        q("UPDATE tickets SET status='cancelled', finished_at=NOW() WHERE status IN ('waiting','called','serving') AND branch_id=?", [$branch]);
+        q("DELETE FROM ticket_sequences WHERE seq_date=CURDATE() AND service_id IN (SELECT id FROM services WHERE branch_id=?)", [$branch]);
+    } else {
+        q("UPDATE tickets SET status='cancelled', finished_at=NOW() WHERE status IN ('waiting','called','serving')");
+        q("DELETE FROM ticket_sequences WHERE seq_date=CURDATE()");
+    }
+    flash('Bonurile au fost resetate. Numerotarea reincepe de la inceput.');
+    redirect('admin/tickets');
 }
 
 /* ----------------------- SETTINGS ----------------------- */
@@ -471,7 +489,7 @@ function admin_statistics(): void {
         $branchLabel = $branch
             ? ('Filiala: ' . ((string)(val('SELECT name FROM branches WHERE id=?', [$branch]) ?? $branch)))
             : 'Toate filialele';
-        $accent = (string) setting('accent_color', '#10b981');
+        $accent = (string) setting('accent_color', '#2563eb');
         $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }

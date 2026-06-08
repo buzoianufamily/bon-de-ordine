@@ -1,5 +1,5 @@
 <?php $title=$branch['name']; $active='branches'; require __DIR__.'/_header.php';
-$tabs = ['services'=>['Servicii','services'],'counters'=>['Ghisee','counters'],'devices'=>['Dispozitive','devices']];
+$tabs = ['services'=>['Servicii','◆'],'counters'=>['Ghisee','▤'],'devices'=>['Dispozitive','▭']];
 $bid = (int)$branch['id'];
 $turl = fn($t)=>url('admin/branches/'.$bid.'?tab='.$t);
 $labels=['dispenser'=>'Dispenser','player'=>'Afisaj TV','widget_player'=>'Afisaj TV','digital_ticket'=>'Bilet digital','launcher'=>'Launcher'];
@@ -15,7 +15,7 @@ $badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>
 
 <div class="tabs">
   <?php foreach($tabs as $k=>$t): $on=$tab===$k; ?>
-    <a href="<?= e($turl($k)) ?>" class="<?= $on?'on':'' ?>"><span class="ic"><?= aicon($t[1]) ?></span><?= e($t[0]) ?></a>
+    <a href="<?= e($turl($k)) ?>" class="<?= $on?'on':'' ?>"><span class="ic"><?= $t[1] ?></span><?= e($t[0]) ?></a>
   <?php endforeach; ?>
 </div>
 
