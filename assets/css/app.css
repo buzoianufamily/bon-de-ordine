@@ -211,6 +211,15 @@ body.admin.light label{color:#374151}
 body.admin.light th{color:#6b7280}
 body.admin.light code{background:#f1f5f9;color:#0f766e}
 body.admin.light .adminbar .uchip .av{background:#e2e6ec;color:#374151}
+body.admin.light h1,body.admin.light h2,body.admin.light h3{color:#16191f}
+body.admin.light .crumb a:hover,body.admin.light .tabs a:hover{color:#16191f}
+/* bara laterala in tema deschisa (meniul devine alb daca utilizatorul cere light) */
+body.admin.light .side{background:#ffffff;color:#5b6470;border-right-color:#e6e8ec}
+body.admin.light .side .side-top{color:#6b7280;border-bottom-color:#e6e8ec}
+body.admin.light .side .grp{color:#9aa1ad}
+body.admin.light .side a{color:#3a4250}
+body.admin.light .side a:hover{background:#eef1f5;color:#111418}
+body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
 /* grila de carduri (liste) ca la Moviik */
 .listhead{display:flex;align-items:center;gap:.8rem;margin-bottom:1.1rem;flex-wrap:wrap}
 .listhead .search{position:relative;flex:1;max-width:430px;min-width:200px}
@@ -220,7 +229,10 @@ body.admin.light .adminbar .uchip .av{background:#e2e6ec;color:#374151}
 .viewtoggle a{padding:.35rem .6rem;border:1px solid var(--line);border-radius:9px;color:var(--muted);display:inline-flex;cursor:pointer;font-size:1rem;line-height:1}
 .viewtoggle a.on{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
 .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:1rem}
+.cardgrid.wide{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 .cardgrid.aslist{grid-template-columns:1fr}
+.mcard .card-foot .acts{display:inline-flex;align-items:center;gap:.7rem;white-space:nowrap;font-size:.82rem}
+.mcard .card-foot .acts form{display:inline-flex;margin:0}
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1rem 1.1rem;display:flex;flex-direction:column;min-height:150px;transition:.12s}
 .mcard:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
 .mcard .mhead{display:flex;align-items:flex-start;gap:.7rem}
