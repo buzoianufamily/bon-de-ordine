@@ -133,6 +133,15 @@ function admin_dashboard(): void {
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online
         FROM users WHERE active=1 AND (role='agent' OR last_seen IS NOT NULL)
         ORDER BY online DESC, name");
+
+    // actualizare live a panourilor (poll JSON)
+    if (($_GET['format'] ?? '') === 'json' || want_json()) {
+        json_out(['ok'=>true, 'stats'=>$stats,
+          'devices'=>array_map(fn($d)=>['name'=>$d['name'],'type'=>$d['type'],'key'=>$d['connection_key'],'online'=>(bool)$d['online']], $devices),
+          'operators'=>array_map(fn($o)=>['name'=>$o['name'],'role'=>$o['role'],
+              'status'=>$o['online']?$o['work_status']:'offline','online'=>(bool)$o['online'],
+              'last_seen'=>$o['last_seen']?date('H:i',strtotime($o['last_seen'])):'—'], $operators)]);
+    }
     view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators'));
 }
 
