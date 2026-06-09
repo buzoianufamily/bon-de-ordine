@@ -72,6 +72,19 @@
   }
   window.qmsTransfer = transfer;
 
+  /* apeleaza un bilet ANUME (ales de operator din lista) */
+  async function callSpecific(id){
+    const res = await QMS.api('api/call-specific', { ticket_id: id, counter_id: cfg.counterId });
+    if(!res.ok){ QMS.toast(res.error||'Eroare','error'); refresh(); return; }
+    if(res.ticket) announce(res.ticket);
+    refresh();
+  }
+  // delegare: click pe un rand din coada => cheama acel bilet
+  if(elList) elList.addEventListener('click', function(e){
+    const row = e.target.closest('.qrow'); if(!row || !row.dataset.id) return;
+    callSpecific(+row.dataset.id);
+  });
+
   /* status operator (prezenta) */
   async function setStatus(s){ const r=await QMS.api('api/user-status',{status:s}); if(r&&r.ok){ const sel=document.getElementById('opStatus'); if(sel)sel.value=s; } }
   window.qmsStatus = setStatus;
@@ -96,11 +109,12 @@
     }
     elWaitCount.textContent = res.waiting_count;
     notifyNew(res.waiting || []);
-    elList.innerHTML = res.waiting.map(t=>`<div class="qrow">
+    elList.innerHTML = res.waiting.map(t=>`<div class="qrow" data-id="${t.id}" title="Apasa pentru a chema acest bilet">
       <span class="tag" style="background:${t.color}">${t.label[0]}</span>
       <span class="lbl">${t.label}</span>
       ${t.priority? '<span class="pill" style="background:#fee2e2;color:#b91c1c">PRIORITAR</span>':''}
-      <span class="muted" style="margin-left:auto">${t.service_name}</span></div>`).join('')
+      <span class="muted" style="margin:0 .6rem 0 auto">${esc(t.service_name)}</span>
+      <span class="callbtn">Cheama →</span></div>`).join('')
       || '<div class="muted" style="padding:1rem">Coada este goala.</div>';
   }
   refresh();

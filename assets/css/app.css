@@ -131,8 +131,11 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .current-ticket{font-family:var(--display);font-size:4.5rem;font-weight:800;line-height:1}
 .qbtns{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
 .qlist{max-height:60vh;overflow:auto}
-.qrow{display:flex;align-items:center;gap:.7rem;padding:.6rem;border-bottom:1px solid var(--line)}
+.qrow{display:flex;align-items:center;gap:.7rem;padding:.6rem;border-bottom:1px solid var(--line);cursor:pointer;border-radius:8px;transition:.1s}
+.qrow:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .qrow .lbl{font-family:var(--display);font-weight:800;font-size:1.1rem}
+.qrow .callbtn{font-weight:700;color:var(--accent);font-size:.85rem;opacity:0;white-space:nowrap}
+.qrow:hover .callbtn{opacity:1}
 
 /* ====== Display / TV ====== */
 .tv{min-height:100vh;background:#0b0d12;color:#fff;display:grid;grid-template-columns:1.4fr 1fr;gap:0}

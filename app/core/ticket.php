@@ -147,6 +147,34 @@ function call_next(int $counter_id, int $user_id): ?array {
     }
 }
 
+/** Apeleaza un bilet ANUME (ales de operator) la un ghiseu, indiferent de ordine/prioritate. */
+function call_specific(int $ticket_id, int $counter_id, int $user_id): ?array {
+    $counter = one('SELECT * FROM counters WHERE id = ?', [$counter_id]);
+    if (!$counter) throw new RuntimeException('Ghiseu inexistent');
+    db()->beginTransaction();
+    try {
+        $row = one("SELECT * FROM tickets WHERE id = ? AND status = 'waiting' FOR UPDATE", [$ticket_id]);
+        if (!$row) { db()->rollBack(); return null; } // deja chemat/anulat sau inexistent
+        if ((int)$row['branch_id'] !== (int)$counter['branch_id']) { db()->rollBack(); throw new RuntimeException('Biletul este din alta filiala'); }
+
+        // inchide biletul curent al ghiseului (daca era in lucru)
+        q("UPDATE tickets SET status = 'served', finished_at = NOW()
+           WHERE counter_id = ? AND status IN ('called','serving')", [$counter_id]);
+
+        $svc = one('SELECT * FROM services WHERE id = ?', [$row['service_id']]);
+        $newStatus = ((int)$svc['terminate_on_call'] === 1) ? 'served' : 'called';
+        q("UPDATE tickets SET status = ?, counter_id = ?, agent_id = ?, called_at = NOW()" .
+          ($newStatus === 'served' ? ", served_at = NOW(), finished_at = NOW()" : "") . " WHERE id = ?",
+          [$newStatus, $counter_id, $user_id, $ticket_id]);
+
+        db()->commit();
+        return one('SELECT * FROM tickets WHERE id = ?', [$ticket_id]);
+    } catch (Throwable $ex) {
+        if (db()->inTransaction()) db()->rollBack();
+        throw $ex;
+    }
+}
+
 function recall_ticket(int $ticket_id): void {
     q("UPDATE tickets SET called_at = NOW(), recall_count = recall_count + 1,
         status = CASE WHEN status IN ('served','no_show','cancelled') THEN 'called' ELSE status END
