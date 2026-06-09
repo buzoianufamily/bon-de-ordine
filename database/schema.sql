@@ -48,12 +48,26 @@ CREATE TABLE IF NOT EXISTS services (
   sort_order      INT NOT NULL DEFAULT 0,
   active_hours    VARCHAR(255) NULL,                -- optional program (json)
   form_id         INT NULL,                          -- formular la emiterea bonului
+  group_id        INT NULL,                            -- grup de servicii (dispenser)
+  i18n            LONGTEXT NULL,                       -- traduceri nume/descriere (JSON pe limba)
   appt_enabled    TINYINT(1) NOT NULL DEFAULT 0,      -- permite programari
   appt_slot_min   INT NOT NULL DEFAULT 15,            -- durata slot (min)
   appt_capacity   INT NOT NULL DEFAULT 1,             -- locuri per slot
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_services_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
   INDEX idx_services_branch (branch_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Grupuri de servicii (organizare pe dispenser) ----------
+CREATE TABLE IF NOT EXISTS service_groups (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  branch_id  INT NOT NULL,
+  name       VARCHAR(120) NOT NULL,
+  color      VARCHAR(20)  NOT NULL DEFAULT '#64748b',
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_sg_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+  INDEX idx_sg_branch (branch_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- Ghisee / birouri ----------
@@ -89,6 +103,8 @@ CREATE TABLE IF NOT EXISTS users (
   role          ENUM('admin','manager','agent') NOT NULL DEFAULT 'agent',
   pin           VARCHAR(12)  NULL,
   notify_browser TINYINT(1) NOT NULL DEFAULT 0,    -- notificari browser la terminalul operatorului
+  work_status   VARCHAR(16) NOT NULL DEFAULT 'offline', -- prezenta: available/busy/paused/offline
+  last_seen     DATETIME NULL,                     -- ultima activitate (terminal)
   active        TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -171,6 +187,17 @@ CREATE TABLE IF NOT EXISTS counter_sessions (
   CONSTRAINT fk_sess_counter FOREIGN KEY (counter_id) REFERENCES counters(id) ON DELETE CASCADE,
   CONSTRAINT fk_sess_user    FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,
   INDEX idx_sess_counter (counter_id, ended_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Istoric status operator (prezenta in timp) ----------
+CREATE TABLE IF NOT EXISTS user_status_log (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT NOT NULL,
+  status     VARCHAR(16) NOT NULL,
+  started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ended_at   DATETIME NULL,
+  INDEX idx_usl_user (user_id, started_at),
+  INDEX idx_usl_open (user_id, ended_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- Feedback client (optional, dupa servire) ----------

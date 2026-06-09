@@ -37,6 +37,13 @@ function admin_dispatch(array $seg, string $method): void {
             if (ctype_digit((string)$a)) { admin_service_form((int)$a); return; }
             admin_services_list(); return;
 
+        case 'groups':
+            if ($method === 'POST' && $a === null) { admin_group_save(); return; }
+            if ($method === 'POST' && $b === 'delete') { csrf_check();
+                q('UPDATE services SET group_id=NULL WHERE group_id=?', [(int)$a]);
+                q('DELETE FROM service_groups WHERE id=?', [(int)$a]); flash('Grup sters.'); redirect('admin/groups'); }
+            admin_groups_list(); return;
+
         case 'counters':
             if ($method === 'POST' && $a === null) { admin_counter_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); flash('Ghiseu sters.'); redirect('admin/counters'); }
@@ -128,7 +135,21 @@ function admin_dashboard(): void {
         $per_hour[(int)$r['h']] = (int)$r['c'];
     $devices = all('SELECT name, type, connection_key, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices ORDER BY type');
-    view('admin/dashboard', compact('stats','per_service','per_hour','devices'));
+    // prezenta operatori (status efectiv: offline daca nu a mai dat semn de viata 2 min)
+    $operators = all("SELECT name, role, work_status, last_seen,
+        (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online
+        FROM users WHERE active=1 AND (role='agent' OR last_seen IS NOT NULL)
+        ORDER BY online DESC, name");
+
+    // actualizare live a panourilor (poll JSON)
+    if (($_GET['format'] ?? '') === 'json' || want_json()) {
+        json_out(['ok'=>true, 'stats'=>$stats,
+          'devices'=>array_map(fn($d)=>['name'=>$d['name'],'type'=>$d['type'],'key'=>$d['connection_key'],'online'=>(bool)$d['online']], $devices),
+          'operators'=>array_map(fn($o)=>['name'=>$o['name'],'role'=>$o['role'],
+              'status'=>$o['online']?$o['work_status']:'offline','online'=>(bool)$o['online'],
+              'last_seen'=>$o['last_seen']?date('H:i',strtotime($o['last_seen'])):'—'], $operators)]);
+    }
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators'));
 }
 
 /* ----------------------- SERVICES ----------------------- */
@@ -140,7 +161,8 @@ function admin_service_form(?int $id): void {
     $row = $id ? one('SELECT * FROM services WHERE id=?', [$id]) : null;
     $branches = all('SELECT id, name FROM branches ORDER BY name');
     $forms = all('SELECT id, name FROM forms ORDER BY name');
-    view('admin/service_edit', ['row' => $row, 'branches' => $branches, 'forms' => $forms]);
+    $groups = all('SELECT g.id, g.name, b.name branch_name FROM service_groups g JOIN branches b ON b.id=g.branch_id ORDER BY b.name, g.sort_order, g.name');
+    view('admin/service_edit', ['row' => $row, 'branches' => $branches, 'forms' => $forms, 'groups' => $groups]);
 }
 function admin_service_save(): void {
     csrf_check();
@@ -157,6 +179,19 @@ function admin_service_save(): void {
         }
         $ah = json_encode(['enabled'=>true,'days'=>$days], JSON_UNESCAPED_UNICODE);
     }
+    // traduceri serviciu (cod | nume | descriere pe linie)
+    $i18n = null;
+    $rawI = trim((string)($_POST['svc_i18n'] ?? ''));
+    if ($rawI !== '') {
+        $map = [];
+        foreach (preg_split('/\r?\n/', $rawI) as $ln) {
+            $parts = array_map('trim', explode('|', $ln));
+            $code = strtolower($parts[0] ?? '');
+            if ($code === '' || ($parts[1] ?? '') === '') continue;
+            $map[$code] = ['name'=>$parts[1], 'description'=>($parts[2] ?? '')];
+        }
+        if ($map) $i18n = json_encode($map, JSON_UNESCAPED_UNICODE);
+    }
     $f = [
         'branch_id'=>(int)($_POST['branch_id'] ?? 1), 'prefix'=>strtoupper(trim($_POST['prefix'] ?? 'A')),
         'name'=>trim($_POST['name'] ?? ''), 'abbreviation'=>trim($_POST['abbreviation'] ?? ''),
@@ -167,7 +202,8 @@ function admin_service_save(): void {
         'terminate_on_call'=>isset($_POST['terminate_on_call'])?1:0,
         'kpi_wait_sec'=>(int)($_POST['kpi_wait_sec'] ?? 600), 'kpi_service_sec'=>(int)($_POST['kpi_service_sec'] ?? 300),
         'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
-        'active_hours'=>$ah,
+        'active_hours'=>$ah, 'i18n'=>$i18n,
+        'group_id'=>((int)($_POST['group_id'] ?? 0)) ?: null,
         'form_id'=>((int)($_POST['form_id'] ?? 0)) ?: null,
         'appt_enabled'=>isset($_POST['appt_enabled'])?1:0,
         'appt_slot_min'=>max(5,(int)($_POST['appt_slot_min'] ?? 15)),
@@ -184,6 +220,31 @@ function admin_service_save(): void {
         flash('Serviciu creat.');
     }
     redirect('admin/services');
+}
+
+/* ----------------------- SERVICE GROUPS ----------------------- */
+function admin_groups_list(): void {
+    $rows = all('SELECT g.*, b.name branch_name, (SELECT COUNT(*) FROM services s WHERE s.group_id=g.id) svc
+                 FROM service_groups g JOIN branches b ON b.id=g.branch_id ORDER BY b.name, g.sort_order, g.name');
+    $branches = all('SELECT id,name FROM branches ORDER BY name');
+    view('admin/groups', compact('rows','branches'));
+}
+function admin_group_save(): void {
+    csrf_check();
+    $id = (int)($_POST['id'] ?? 0);
+    $f = ['branch_id'=>(int)($_POST['branch_id'] ?? 1), 'name'=>trim($_POST['name'] ?? ''),
+          'color'=>trim($_POST['color'] ?? '#64748b'), 'sort_order'=>(int)($_POST['sort_order'] ?? 0)];
+    if ($f['name'] === '') { flash('Numele grupului este obligatoriu.', 'error'); redirect('admin/groups'); }
+    if ($id) {
+        $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
+        q("UPDATE service_groups SET $set WHERE id=?", array_merge(array_values($f), [$id]));
+        flash('Grup actualizat.');
+    } else {
+        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
+        q("INSERT INTO service_groups ($cols) VALUES ($ph)", array_values($f));
+        flash('Grup creat.');
+    }
+    redirect('admin/groups');
 }
 
 /* ----------------------- COUNTERS ----------------------- */
@@ -278,13 +339,26 @@ function admin_device_save(): void {
 
 /* ----------------------- TICKETS ----------------------- */
 function admin_tickets(): void {
-    $date = $_GET['date'] ?? date('Y-m-d');
+    $date    = $_GET['date'] ?? date('Y-m-d');
+    $status  = (string)($_GET['status'] ?? '');
+    $service = (int)($_GET['service'] ?? 0);
+    $fbranch = (int)($_GET['fbranch'] ?? 0);
+    $qstr    = trim((string)($_GET['q'] ?? ''));
+
+    $where = 'DATE(t.issued_at)=?'; $args = [$date];
+    $valid = ['waiting','called','serving','served','no_show','cancelled','transferred'];
+    if (in_array($status, $valid, true)) { $where .= ' AND t.status=?'; $args[] = $status; }
+    if ($service) { $where .= ' AND t.service_id=?'; $args[] = $service; }
+    if ($fbranch) { $where .= ' AND t.branch_id=?'; $args[] = $fbranch; }
+    if ($qstr !== '') { $where .= ' AND t.label LIKE ?'; $args[] = '%'.$qstr.'%'; }
+
     $rows = all("SELECT t.*, s.name service_name, s.color, c.code counter_code
                  FROM tickets t JOIN services s ON s.id=t.service_id
                  LEFT JOIN counters c ON c.id=t.counter_id
-                 WHERE DATE(t.issued_at)=? ORDER BY t.issued_at DESC LIMIT 500", [$date]);
+                 WHERE $where ORDER BY t.issued_at DESC LIMIT 500", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
-    view('admin/tickets', compact('rows','date','branches'));
+    $services = all('SELECT id,prefix,name FROM services ORDER BY sort_order, name');
+    view('admin/tickets', compact('rows','date','branches','services','status','service','fbranch','qstr'));
 }
 
 /** Reset bonuri: STERGE complet biletele (coada + istoric/statistici) si reincepe numerotarea de la 0. */
@@ -339,6 +413,11 @@ function admin_settings_save(): void {
     set_setting('ticket_show_position', isset($_POST['ticket_show_position']) ? '1' : '0');
     set_setting('ticket_show_datetime', isset($_POST['ticket_show_datetime']) ? '1' : '0');
     set_setting('ticket_show_qr', isset($_POST['ticket_show_qr']) ? '1' : '0');
+    // limbi dispenser (romana mereu inclusa)
+    $langOk = array_keys(disp_lang_meta());
+    $langs = array_values(array_intersect($langOk, (array)($_POST['dispenser_langs'] ?? [])));
+    if (!in_array('ro', $langs, true)) array_unshift($langs, 'ro');
+    set_setting('dispenser_langs', implode(',', array_unique($langs)));
     flash('Setari salvate.'); redirect('admin/settings');
 }
 
@@ -586,6 +665,14 @@ function admin_statistics(): void {
     $fb_dist  = all("SELECT rating, COUNT(*) c FROM feedback f WHERE $fbWhere GROUP BY rating", $fbArgs);
     $fb_recent = all("SELECT rating, comment, created_at FROM feedback f WHERE $fbWhere AND comment IS NOT NULL AND comment<>'' ORDER BY created_at DESC LIMIT 15", $fbArgs);
 
+    // activitate operatori: timp pe status in interval (clamped la interval)
+    $fromDt = $from.' 00:00:00'; $toDt = $to.' 23:59:59';
+    $op_activity = all("SELECT u.name, l.status,
+        SUM(TIMESTAMPDIFF(SECOND, GREATEST(l.started_at, ?), LEAST(COALESCE(l.ended_at, NOW()), ?))) secs
+      FROM user_status_log l JOIN users u ON u.id=l.user_id
+      WHERE l.started_at < ? AND COALESCE(l.ended_at, NOW()) > ?
+      GROUP BY u.id, l.status", [$fromDt, $toDt, $toDt, $fromDt]);
+
     // export CSV per set de date (fiecare grafic are buton propriu de download)
     if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user'], true)) {
         $ds = $_GET['dataset'];
@@ -620,7 +707,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity'));
 }
 
 /**

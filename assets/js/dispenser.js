@@ -106,7 +106,10 @@
     let s=Math.max(2,cfg.autoReturn||7); const cd=$('cd'); cd.textContent=s;
     clearInterval(timer); timer=setInterval(()=>{ s--; cd.textContent=s; if(s<=0) closeTicket(); },1000);
   }
-  function closeTicket(){ clearInterval(timer); overlay.classList.remove('show'); }
+  function closeTicket(){ clearInterval(timer); overlay.classList.remove('show');
+    // revino la limba implicita dupa bilet (urmatorul vizitator vede limba standard)
+    if(cfg.lang && cfg.lang!=='ro' && cfg.revertUrl){ setTimeout(()=>location.replace(cfg.revertUrl), 250); }
+  }
   window.qmsCloseTicket=closeTicket;
 
   function printBrowser(res, btn){

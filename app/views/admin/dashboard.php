@@ -16,11 +16,11 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
 </div>
 
 <div class="statcards">
-  <div class="statcard"><div class="t">Bilete azi</div><div class="s">Total emise</div><div class="v"><?= $stats['today'] ?></div></div>
-  <div class="statcard"><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>
-  <div class="statcard"><div class="t">In servire</div><div class="s">Chemate / la ghiseu</div><div class="v" style="color:var(--accent)"><?= $stats['serving'] ?></div></div>
-  <div class="statcard"><div class="t">Servite azi</div><div class="s">Finalizate</div><div class="v" style="color:var(--ok)"><?= $stats['served'] ?></div></div>
-  <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · azi</div><div class="v"><?= mmss($stats['avg_wait']) ?></div></div>
+  <div class="statcard"><div class="t">Bilete azi</div><div class="s">Total emise</div><div class="v" id="sv-today"><?= $stats['today'] ?></div></div>
+  <div class="statcard"><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" id="sv-waiting" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>
+  <div class="statcard"><div class="t">In servire</div><div class="s">Chemate / la ghiseu</div><div class="v" id="sv-serving" style="color:var(--accent)"><?= $stats['serving'] ?></div></div>
+  <div class="statcard"><div class="t">Servite azi</div><div class="s">Finalizate</div><div class="v" id="sv-served" style="color:var(--ok)"><?= $stats['served'] ?></div></div>
+  <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · azi</div><div class="v" id="sv-avg"><?= mmss($stats['avg_wait']) ?></div></div>
 </div>
 
 <div class="panel-grid">
@@ -94,8 +94,8 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     </div>
   </div>
   <div class="panel">
-    <h4>Dispozitive <span class="live"><?= $onlineDev ?>/<?= count($devices) ?> online</span></h4>
-    <table><tbody>
+    <h4>Dispozitive <span class="live" id="devActive"><?= $onlineDev ?>/<?= count($devices) ?> online</span></h4>
+    <table><tbody id="devRows">
     <?php foreach($devices as $d): ?>
       <tr><td style="width:1%">
         <span class="pill" style="background:<?= $d['online']?'color-mix(in srgb,var(--ok) 22%,transparent)':'var(--track)' ?>;color:<?= $d['online']?'var(--ok)':'var(--muted)' ?>">
@@ -106,5 +106,47 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <?php if(!$devices): ?><tr><td class="muted">Niciun dispozitiv.</td></tr><?php endif; ?>
     </tbody></table>
   </div>
+  <div class="panel">
+    <?php $stMeta=['available'=>['Disponibil','#16a34a'],'busy'=>['Ocupat','#dc2626'],'paused'=>['Pauza','#d97706'],'offline'=>['Indisponibil','#6b7280']];
+      $onCnt=count(array_filter($operators??[], fn($o)=>$o['online'])); ?>
+    <h4>Operatori <span class="live" id="opActive"><?= $onCnt ?> activi</span></h4>
+    <table><tbody id="opRows">
+    <?php foreach(($operators??[]) as $o): $eff=$o['online']?$o['work_status']:'offline'; $m=$stMeta[$eff]??$stMeta['offline']; ?>
+      <tr>
+        <td style="width:1%"><span class="pill" style="background:color-mix(in srgb,<?= $m[1] ?> 22%,transparent);color:<?= $m[1] ?>;white-space:nowrap"><?= e($m[0]) ?></span></td>
+        <td><strong><?= e($o['name']) ?></strong><br><span class="muted" style="font-size:.8rem"><?= e($o['role']) ?></span></td>
+        <td style="text-align:right" class="muted"><?= $o['last_seen']?e(date('H:i',strtotime($o['last_seen']))):'—' ?></td>
+      </tr>
+    <?php endforeach; ?>
+    <?php if(empty($operators)): ?><tr><td class="muted">Niciun operator.</td></tr><?php endif; ?>
+    </tbody></table>
+  </div>
 </div>
+<script>
+/* dashboard live — actualizeaza statcards, operatori si dispozitive periodic */
+window.addEventListener('load', function(){
+  if(!window.QMS) return;
+  var stMeta={available:['Disponibil','#16a34a'],busy:['Ocupat','#dc2626'],paused:['Pauza','#d97706'],offline:['Indisponibil','#6b7280']};
+  function mmss(s){s=Math.max(0,s|0);return ('0'+((s/60|0)%100)).slice(-2)+':'+('0'+(s%60)).slice(-2);}
+  function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+  function set(id,v){var el=document.getElementById(id); if(el)el.textContent=v;}
+  async function refresh(){
+    var r; try{ r=await QMS.api('admin/dashboard?format=json',null,'GET'); }catch(e){ return; }
+    if(!r||!r.ok)return;
+    set('sv-today',r.stats.today); set('sv-waiting',r.stats.waiting); set('sv-serving',r.stats.serving);
+    set('sv-served',r.stats.served); set('sv-avg',mmss(r.stats.avg_wait));
+    var op=document.getElementById('opRows');
+    if(op){ op.innerHTML=(r.operators||[]).map(function(o){var m=stMeta[o.status]||stMeta.offline;
+      return '<tr><td style="width:1%"><span class="pill" style="background:color-mix(in srgb,'+m[1]+' 22%,transparent);color:'+m[1]+';white-space:nowrap">'+esc(m[0])+'</span></td><td><strong>'+esc(o.name)+'</strong><br><span class="muted" style="font-size:.8rem">'+esc(o.role)+'</span></td><td style="text-align:right" class="muted">'+esc(o.last_seen)+'</td></tr>';
+    }).join('')||'<tr><td class="muted">Niciun operator.</td></tr>';
+      set('opActive',(r.operators||[]).filter(function(o){return o.online;}).length+' activi'); }
+    var dv=document.getElementById('devRows');
+    if(dv){ dv.innerHTML=(r.devices||[]).map(function(d){
+      return '<tr><td style="width:1%"><span class="pill" style="background:'+(d.online?'color-mix(in srgb,var(--ok) 22%,transparent)':'var(--track)')+';color:'+(d.online?'var(--ok)':'var(--muted)')+'">'+(d.online?'● online':'○ offline')+'</span></td><td><strong>'+esc(d.name)+'</strong><br><span class="muted" style="font-size:.8rem">'+esc(d.type)+'</span></td><td style="text-align:right"><code>'+esc(d.key)+'</code></td></tr>';
+    }).join('')||'<tr><td class="muted">Niciun dispozitiv.</td></tr>';
+      set('devActive',(r.devices||[]).filter(function(d){return d.online;}).length+'/'+(r.devices||[]).length+' online'); }
+  }
+  setInterval(refresh, 7000);
+});
+</script>
 <?php require __DIR__.'/_footer.php'; ?>

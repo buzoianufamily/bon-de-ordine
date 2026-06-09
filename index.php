@@ -49,6 +49,7 @@ try {
                 'label' => $t['label'], 'status' => $t['status'], 'service' => $t['service_name'],
                 'color' => $t['color'], 'counter' => $t['counter_code'] ? ($t['counter_name'] ?: $t['counter_code']) : null,
                 'position' => $t['status'] === 'waiting' ? ticket_position($t) : 0,
+                'wait_est' => $t['status'] === 'waiting' ? est_wait_seconds($t) : 0,
                 'priority' => (int)$t['priority'],
             ]]);
         }
@@ -89,8 +90,17 @@ try {
         // ---- endpoint-uri ce necesita autentificare (operator) ----
         $u = require_login();
         if ($method === 'POST') csrf_check();
+        q('UPDATE users SET last_seen = NOW() WHERE id = ?', [(int)$u['id']]); // prezenta
 
         switch ($action) {
+            case 'user-status': {
+                $allowed = ['available','busy','paused','offline'];
+                $stt = (string) input('status', '');
+                if (!in_array($stt, $allowed, true)) json_out(['ok' => false, 'error' => 'Status invalid'], 422);
+                log_user_status((int)$u['id'], $stt);
+                q('UPDATE users SET work_status = ?, last_seen = NOW() WHERE id = ?', [$stt, (int)$u['id']]);
+                json_out(['ok' => true, 'status' => $stt]);
+            }
             case 'call-next':
                 $t = call_next((int)input('counter_id', 0), (int)$u['id']);
                 json_out(['ok' => true, 'ticket' => $t]);
@@ -126,7 +136,7 @@ try {
         view('public/login');
         return;
     }
-    if ($seg[0] === 'logout') { logout(); redirect('login'); }
+    if ($seg[0] === 'logout') { if ($cu = current_user()) { log_user_status((int)$cu['id'],'offline'); q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); } logout(); redirect('login'); }
 
     // dispozitiv prin connection key:  /launcher?key=XXX  sau  /d/XXX  /screen/XXX
     if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen') {

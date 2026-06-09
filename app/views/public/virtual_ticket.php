@@ -5,6 +5,7 @@
   <div class="vt-num" id="vNum" style="color:<?= e($t['color']) ?>"><?= e($t['label']) ?></div>
   <div class="vt-status" id="vStatus">Se incarca…</div>
   <div class="vt-pos" id="vPos"></div>
+  <div class="muted" id="vEst" style="margin-top:.3rem"></div>
   <div class="muted" id="vCtr" style="margin-top:.6rem;font-weight:700"></div>
   <p class="muted" style="font-size:.78rem;margin-top:1.4rem">Pagina se actualizeaza automat. Pastrati-o deschisa.</p>
 </div></div>
@@ -28,6 +29,9 @@ async function tick(){
   else if(t.status==='transferred' && ALERTS.transfer) txt = ALERTS.transfer;
   const s=document.getElementById('vStatus'); s.textContent=txt; s.style.background=st[1]; s.style.color='#06210f';
   document.getElementById('vPos').textContent = t.status==='waiting' ? ('Sunt '+t.position+' persoane inaintea dvs.') : '';
+  var estEl=document.getElementById('vEst');
+  if(t.status==='waiting' && t.wait_est>0){ var mn=Math.round(t.wait_est/60); estEl.textContent='Timp estimat: '+(mn<1?'sub 1 minut':('~ '+mn+' min')); }
+  else estEl.textContent='';
   document.getElementById('vCtr').textContent = t.counter ? ('Mergeti la: '+t.counter) : '';
   // alerta (vibratie) o singura data la trecerea in "apelat", cu intarzierea configurata
   if(t.status==='called' && prevStatus!=='called'){

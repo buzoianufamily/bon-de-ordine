@@ -57,7 +57,7 @@ function require_role(array $roles): array {
 /** Ariile de administrare ce pot fi permise/blocate per rol. */
 function perm_areas(): array {
     return [
-        'statistics'=>'Statistici', 'branches'=>'Filiale', 'services'=>'Servicii', 'counters'=>'Ghisee',
+        'statistics'=>'Statistici', 'branches'=>'Filiale', 'services'=>'Servicii', 'groups'=>'Grupuri', 'counters'=>'Ghisee',
         'devices'=>'Dispozitive', 'media'=>'Multimedia', 'forms'=>'Formulare', 'tickets'=>'Bilete',
         'appointments'=>'Programari', 'feedback'=>'Feedback', 'users'=>'Utilizatori', 'settings'=>'Setari',
     ];
