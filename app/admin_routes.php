@@ -291,13 +291,26 @@ function admin_device_save(): void {
 
 /* ----------------------- TICKETS ----------------------- */
 function admin_tickets(): void {
-    $date = $_GET['date'] ?? date('Y-m-d');
+    $date    = $_GET['date'] ?? date('Y-m-d');
+    $status  = (string)($_GET['status'] ?? '');
+    $service = (int)($_GET['service'] ?? 0);
+    $fbranch = (int)($_GET['fbranch'] ?? 0);
+    $qstr    = trim((string)($_GET['q'] ?? ''));
+
+    $where = 'DATE(t.issued_at)=?'; $args = [$date];
+    $valid = ['waiting','called','serving','served','no_show','cancelled','transferred'];
+    if (in_array($status, $valid, true)) { $where .= ' AND t.status=?'; $args[] = $status; }
+    if ($service) { $where .= ' AND t.service_id=?'; $args[] = $service; }
+    if ($fbranch) { $where .= ' AND t.branch_id=?'; $args[] = $fbranch; }
+    if ($qstr !== '') { $where .= ' AND t.label LIKE ?'; $args[] = '%'.$qstr.'%'; }
+
     $rows = all("SELECT t.*, s.name service_name, s.color, c.code counter_code
                  FROM tickets t JOIN services s ON s.id=t.service_id
                  LEFT JOIN counters c ON c.id=t.counter_id
-                 WHERE DATE(t.issued_at)=? ORDER BY t.issued_at DESC LIMIT 500", [$date]);
+                 WHERE $where ORDER BY t.issued_at DESC LIMIT 500", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
-    view('admin/tickets', compact('rows','date','branches'));
+    $services = all('SELECT id,prefix,name FROM services ORDER BY sort_order, name');
+    view('admin/tickets', compact('rows','date','branches','services','status','service','fbranch','qstr'));
 }
 
 /** Reset bonuri: STERGE complet biletele (coada + istoric/statistici) si reincepe numerotarea de la 0. */
