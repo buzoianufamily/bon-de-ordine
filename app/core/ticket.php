@@ -248,7 +248,7 @@ function counter_view(array $counter): array {
     if ($svcIds) {
         $in = implode(',', array_fill(0, count($svcIds), '?'));
         $waiting = all(
-            "SELECT t.id, t.label, t.priority, t.issued_at, s.name AS service_name, s.color
+            "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, s.name AS service_name, s.color
              FROM tickets t JOIN services s ON s.id = t.service_id
              WHERE t.status = 'waiting' AND t.service_id IN ($in)
              ORDER BY t.priority DESC, t.issued_at ASC LIMIT 50", $svcIds);
