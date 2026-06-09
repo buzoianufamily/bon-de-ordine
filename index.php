@@ -104,6 +104,9 @@ try {
             case 'call-next':
                 $t = call_next((int)input('counter_id', 0), (int)$u['id']);
                 json_out(['ok' => true, 'ticket' => $t]);
+            case 'call-specific':
+                $t = call_specific((int)input('ticket_id', 0), (int)input('counter_id', 0), (int)$u['id']);
+                json_out(['ok' => (bool)$t, 'ticket' => $t] + ($t ? [] : ['error' => 'Biletul nu mai este la rand']));
             case 'recall':    recall_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'serving':   start_serving((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'finish':    finish_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);

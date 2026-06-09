@@ -37,6 +37,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <div style="display:flex;justify-content:space-between;align-items:center">
         <strong>La rand</strong><span class="pill" style="background:#eef2ff;color:#3730a3"><span id="waitCount">0</span> bilete</span>
       </div>
+      <div class="muted" style="font-size:.8rem;margin-top:.3rem">Apasa pe un bilet ca sa-l chemi exact pe el, sau foloseste „CHEAMA URMATORUL".</div>
       <div class="qlist" id="qList" style="margin-top:.6rem"></div>
     </div>
   </div>
@@ -55,5 +56,5 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   repeat:<?= (int)setting('display_repeat','2') ?>,
   myStatus:<?= json_encode($myStatus) ?>
 };</script>
-<script src="<?= e(asset('js/counter.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/counter.js')) ?>?v=4"></script>
 </body></html>
