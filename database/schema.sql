@@ -176,6 +176,17 @@ CREATE TABLE IF NOT EXISTS counter_sessions (
   INDEX idx_sess_counter (counter_id, ended_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ---------- Istoric status operator (prezenta in timp) ----------
+CREATE TABLE IF NOT EXISTS user_status_log (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT NOT NULL,
+  status     VARCHAR(16) NOT NULL,
+  started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ended_at   DATETIME NULL,
+  INDEX idx_usl_user (user_id, started_at),
+  INDEX idx_usl_open (user_id, ended_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ---------- Feedback client (optional, dupa servire) ----------
 CREATE TABLE IF NOT EXISTS feedback (
   id         INT AUTO_INCREMENT PRIMARY KEY,

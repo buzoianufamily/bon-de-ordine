@@ -93,6 +93,16 @@ function gen_token(int $len = 20): string { return bin2hex(random_bytes($len)); 
 
 function now(): string { return date('Y-m-d H:i:s'); }
 
+/** Inregistreaza o schimbare de status operator (inchide intervalul anterior, deschide unul nou). */
+function log_user_status(int $userId, string $status): void {
+    try {
+        $cur = val("SELECT status FROM user_status_log WHERE user_id=? AND ended_at IS NULL ORDER BY id DESC LIMIT 1", [$userId]);
+        if ($cur === $status) return; // niciun schimb real
+        q("UPDATE user_status_log SET ended_at=NOW() WHERE user_id=? AND ended_at IS NULL", [$userId]);
+        q("INSERT INTO user_status_log (user_id, status) VALUES (?, ?)", [$userId, $status]);
+    } catch (Throwable $e) {}
+}
+
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
 function disp_lang_meta(): array {
     return [
@@ -176,7 +186,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '8') ON DUPLICATE KEY UPDATE v = '8'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '9') ON DUPLICATE KEY UPDATE v = '9'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -184,7 +194,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 8;
+    $target = 9;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -237,13 +247,20 @@ function run_migrations(): void {
     if (!$hasCol('users','work_status')) $ddl("ALTER TABLE users ADD COLUMN work_status VARCHAR(16) NOT NULL DEFAULT 'offline'");
     if (!$hasCol('users','last_seen'))   $ddl("ALTER TABLE users ADD COLUMN last_seen DATETIME NULL");
 
+    // v9: istoric status operator (cat timp Disponibil/Ocupat/Pauza)
+    if (!$hasTable('user_status_log')) $ddl("CREATE TABLE user_status_log (
+        id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, status VARCHAR(16) NOT NULL,
+        started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ended_at DATETIME NULL,
+        INDEX idx_usl_user (user_id, started_at), INDEX idx_usl_open (user_id, ended_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
             && $hasCol('services','form_id') && $hasCol('tickets','form_data')
             && $hasCol('services','appt_enabled') && $hasCol('services','appt_slot_min') && $hasCol('services','appt_capacity')
             && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')
-            && $hasCol('users','work_status') && $hasCol('users','last_seen')) {
+            && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

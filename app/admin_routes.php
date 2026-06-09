@@ -631,6 +631,14 @@ function admin_statistics(): void {
     $fb_dist  = all("SELECT rating, COUNT(*) c FROM feedback f WHERE $fbWhere GROUP BY rating", $fbArgs);
     $fb_recent = all("SELECT rating, comment, created_at FROM feedback f WHERE $fbWhere AND comment IS NOT NULL AND comment<>'' ORDER BY created_at DESC LIMIT 15", $fbArgs);
 
+    // activitate operatori: timp pe status in interval (clamped la interval)
+    $fromDt = $from.' 00:00:00'; $toDt = $to.' 23:59:59';
+    $op_activity = all("SELECT u.name, l.status,
+        SUM(TIMESTAMPDIFF(SECOND, GREATEST(l.started_at, ?), LEAST(COALESCE(l.ended_at, NOW()), ?))) secs
+      FROM user_status_log l JOIN users u ON u.id=l.user_id
+      WHERE l.started_at < ? AND COALESCE(l.ended_at, NOW()) > ?
+      GROUP BY u.id, l.status", [$fromDt, $toDt, $toDt, $fromDt]);
+
     // export CSV per set de date (fiecare grafic are buton propriu de download)
     if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user'], true)) {
         $ds = $_GET['dataset'];
@@ -665,7 +673,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity'));
 }
 
 /**

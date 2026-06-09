@@ -96,6 +96,7 @@ try {
                 $allowed = ['available','busy','paused','offline'];
                 $stt = (string) input('status', '');
                 if (!in_array($stt, $allowed, true)) json_out(['ok' => false, 'error' => 'Status invalid'], 422);
+                log_user_status((int)$u['id'], $stt);
                 q('UPDATE users SET work_status = ?, last_seen = NOW() WHERE id = ?', [$stt, (int)$u['id']]);
                 json_out(['ok' => true, 'status' => $stt]);
             }
@@ -134,7 +135,7 @@ try {
         view('public/login');
         return;
     }
-    if ($seg[0] === 'logout') { if ($cu = current_user()) q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); logout(); redirect('login'); }
+    if ($seg[0] === 'logout') { if ($cu = current_user()) { log_user_status((int)$cu['id'],'offline'); q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); } logout(); redirect('login'); }
 
     // dispozitiv prin connection key:  /launcher?key=XXX  sau  /d/XXX  /screen/XXX
     if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen') {

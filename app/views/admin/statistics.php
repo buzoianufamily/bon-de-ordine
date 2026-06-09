@@ -184,4 +184,20 @@ $totFin = max(1,$served+$noshow+$canc);
     <?php endif; ?>
   <?php endif; ?>
 </div>
+
+<?php $act=[]; foreach(($op_activity??[]) as $r){ $act[$r['name']][$r['status']]=(int)$r['secs']; } ?>
+<div class="card pad" style="margin-top:1.2rem">
+  <h3 style="margin:0 0 .6rem">Activitate operatori (timp pe status)</h3>
+  <?php if(!$act): ?>
+    <p class="muted">Niciun istoric de status in interval.</p>
+  <?php else: ?>
+    <table><thead><tr><th>Operator</th><th>🟢 Disponibil</th><th>🔴 Ocupat</th><th>🟡 Pauza</th><th>Total activ</th></tr></thead><tbody>
+    <?php foreach($act as $nm=>$d): $av=$d['available']??0; $bu=$d['busy']??0; $pa=$d['paused']??0; ?>
+      <tr><td><span class="badge" style="background:#2a2f3a;width:22px;height:22px;font-size:.7rem"><?= e(mb_strtoupper(mb_substr($nm,0,1))) ?></span> <?= e($nm) ?></td>
+        <td><?= mmss($av) ?></td><td><?= mmss($bu) ?></td><td><?= mmss($pa) ?></td><td><strong><?= mmss($av+$bu) ?></strong></td></tr>
+    <?php endforeach; ?>
+    </tbody></table>
+    <p class="muted" style="margin-top:.6rem;font-size:.82rem">„Total activ" = Disponibil + Ocupat. Timpul Offline nu este inclus.</p>
+  <?php endif; ?>
+</div>
 <?php require __DIR__.'/_footer.php'; ?>
