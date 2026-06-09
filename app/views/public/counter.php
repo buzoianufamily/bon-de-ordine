@@ -4,7 +4,13 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   <div class="topbar">
     <div><div class="muted">Operator: <?= e($u['name']) ?></div>
       <h1 style="margin:0"><?= e($counter['name']) ?> <span class="muted" style="font-weight:600">(<?= e($counter['code']) ?>)</span></h1></div>
-    <div><a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <?php $myStatus = (string)(val('SELECT work_status FROM users WHERE id=?', [$u['id']]) ?: 'offline');
+        $stOpts=['available'=>'🟢 Disponibil','busy'=>'🔴 Ocupat','paused'=>'🟡 Pauza','offline'=>'⚪ Indisponibil']; ?>
+      <select id="opStatus" onchange="qmsStatus(this.value)" style="width:auto">
+        <?php foreach($stOpts as $k=>$lab): ?><option value="<?= $k ?>" <?= $myStatus===$k?'selected':'' ?>><?= $lab ?></option><?php endforeach; ?>
+      </select>
+      <a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
   </div>
   <div class="row">
     <div class="card pad" style="flex:1.3">
@@ -46,7 +52,8 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   voice:<?= json_encode(setting('display_voice','ro-RO')) ?>,
   sayNumber:<?= setting('display_say_number','1')==='1'?'true':'false' ?>,
   sayCounter:<?= setting('display_say_counter','1')==='1'?'true':'false' ?>,
-  repeat:<?= (int)setting('display_repeat','2') ?>
+  repeat:<?= (int)setting('display_repeat','2') ?>,
+  myStatus:<?= json_encode($myStatus) ?>
 };</script>
-<script src="<?= e(asset('js/counter.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/counter.js')) ?>?v=3"></script>
 </body></html>

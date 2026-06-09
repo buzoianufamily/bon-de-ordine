@@ -89,8 +89,16 @@ try {
         // ---- endpoint-uri ce necesita autentificare (operator) ----
         $u = require_login();
         if ($method === 'POST') csrf_check();
+        q('UPDATE users SET last_seen = NOW() WHERE id = ?', [(int)$u['id']]); // prezenta
 
         switch ($action) {
+            case 'user-status': {
+                $allowed = ['available','busy','paused','offline'];
+                $stt = (string) input('status', '');
+                if (!in_array($stt, $allowed, true)) json_out(['ok' => false, 'error' => 'Status invalid'], 422);
+                q('UPDATE users SET work_status = ?, last_seen = NOW() WHERE id = ?', [$stt, (int)$u['id']]);
+                json_out(['ok' => true, 'status' => $stt]);
+            }
             case 'call-next':
                 $t = call_next((int)input('counter_id', 0), (int)$u['id']);
                 json_out(['ok' => true, 'ticket' => $t]);
@@ -126,7 +134,7 @@ try {
         view('public/login');
         return;
     }
-    if ($seg[0] === 'logout') { logout(); redirect('login'); }
+    if ($seg[0] === 'logout') { if ($cu = current_user()) q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); logout(); redirect('login'); }
 
     // dispozitiv prin connection key:  /launcher?key=XXX  sau  /d/XXX  /screen/XXX
     if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen') {

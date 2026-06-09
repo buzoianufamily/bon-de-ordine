@@ -72,6 +72,12 @@
   }
   window.qmsTransfer = transfer;
 
+  /* status operator (prezenta) */
+  async function setStatus(s){ const r=await QMS.api('api/user-status',{status:s}); if(r&&r.ok){ const sel=document.getElementById('opStatus'); if(sel)sel.value=s; } }
+  window.qmsStatus = setStatus;
+  // la deschiderea terminalului, daca era offline, devine Disponibil
+  if(cfg.myStatus==='offline'){ setStatus('available'); }
+
   async function refresh(){
     const res = await QMS.api('api/counter-state?counter_id='+cfg.counterId, null, 'GET');
     if(!res.ok) return;

@@ -128,7 +128,12 @@ function admin_dashboard(): void {
         $per_hour[(int)$r['h']] = (int)$r['c'];
     $devices = all('SELECT name, type, connection_key, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices ORDER BY type');
-    view('admin/dashboard', compact('stats','per_service','per_hour','devices'));
+    // prezenta operatori (status efectiv: offline daca nu a mai dat semn de viata 2 min)
+    $operators = all("SELECT name, role, work_status, last_seen,
+        (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online
+        FROM users WHERE active=1 AND (role='agent' OR last_seen IS NOT NULL)
+        ORDER BY online DESC, name");
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators'));
 }
 
 /* ----------------------- SERVICES ----------------------- */

@@ -106,5 +106,20 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <?php if(!$devices): ?><tr><td class="muted">Niciun dispozitiv.</td></tr><?php endif; ?>
     </tbody></table>
   </div>
+  <div class="panel">
+    <?php $stMeta=['available'=>['Disponibil','#16a34a'],'busy'=>['Ocupat','#dc2626'],'paused'=>['Pauza','#d97706'],'offline'=>['Indisponibil','#6b7280']];
+      $onCnt=count(array_filter($operators??[], fn($o)=>$o['online'])); ?>
+    <h4>Operatori <span class="live"><?= $onCnt ?> activi</span></h4>
+    <table><tbody>
+    <?php foreach(($operators??[]) as $o): $eff=$o['online']?$o['work_status']:'offline'; $m=$stMeta[$eff]??$stMeta['offline']; ?>
+      <tr>
+        <td style="width:1%"><span class="pill" style="background:color-mix(in srgb,<?= $m[1] ?> 22%,transparent);color:<?= $m[1] ?>;white-space:nowrap"><?= e($m[0]) ?></span></td>
+        <td><strong><?= e($o['name']) ?></strong><br><span class="muted" style="font-size:.8rem"><?= e($o['role']) ?></span></td>
+        <td style="text-align:right" class="muted"><?= $o['last_seen']?e(date('H:i',strtotime($o['last_seen']))):'—' ?></td>
+      </tr>
+    <?php endforeach; ?>
+    <?php if(empty($operators)): ?><tr><td class="muted">Niciun operator.</td></tr><?php endif; ?>
+    </tbody></table>
+  </div>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>
