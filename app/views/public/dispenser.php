@@ -28,6 +28,27 @@ parse_str((string)parse_url($__uri, PHP_URL_QUERY), $__qs); unset($__qs['lang'])
 $revertUrl = $__path . ($__qs ? '?'.http_build_query($__qs) : '');
 $langHref = function($code) use ($__path,$__qs){ $q=$__qs; $q['lang']=$code; return $__path.'?'.http_build_query($q); };
 $langMeta = disp_lang_meta();
+// ---- grupare servicii pe dispenser ----
+$groupsById = [];
+try { foreach (all('SELECT id,name,color,sort_order FROM service_groups WHERE branch_id=? ORDER BY sort_order,name', [$branch['id']]) as $g) $groupsById[(int)$g['id']] = $g; } catch (Throwable $e) {}
+$grouped = []; $ungrouped = [];
+foreach ($services as $s) { $gid=(int)($s['group_id']??0); if ($gid && isset($groupsById[$gid])) $grouped[$gid][]=$s; else $ungrouped[]=$s; }
+$hasGroups = !empty($grouped);
+// randeaza un buton de serviciu (folosit si in mod plat, si grupat)
+$renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc) {
+  $open=service_is_open($s); $snm=$svcName($s); $sds=$svcDesc($s); ?>
+      <button class="svc-btn<?= $open?'':' closed' ?>" <?= $open?'':'disabled' ?> data-id="<?= (int)$s['id'] ?>" data-color="<?= e($s['color']) ?>" data-priority="<?= $s['allow_priority']?'1':'0' ?>" data-name="<?= e($snm) ?>"
+              style="background:linear-gradient(135deg,<?= e($s['color']) ?>,<?= e($s['color']) ?>cc)">
+        <span class="pfx"><?= e($s['prefix']) ?></span>
+        <span class="nm"><?= e($snm) ?></span>
+        <span class="ds"><?= $open ? e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet'))) : e($tr('closed_hint',$gd($T,'closed_hint','Inchis acum'))) ?></span>
+        <?php if(!$open): ?>
+          <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('closed_label',$gd($T,'closed_label','🔒 Inchis'))) ?></span>
+        <?php elseif($s['allow_priority'] && !$gb($PU,'ask_type',false)): ?>
+          <span class="prio-btn pill" style="background:rgba(255,255,255,.25);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('priority_label',$gd($T,'priority_label','★ Bilet prioritar'))) ?></span>
+        <?php endif; ?>
+      </button>
+<?php };
 // formulare atasate serviciilor afisate
 $svcForms = [];
 $fids = array_values(array_unique(array_filter(array_map(fn($s)=>(int)($s['form_id']??0), $services))));
@@ -50,6 +71,8 @@ if ($fids) {
 .lang-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .7rem;border-radius:999px;background:rgba(0,0,0,.16);color:#1a1d23;font-weight:800;font-size:.9rem;text-decoration:none}
 .lang-pill .fl{font-size:1.15rem;line-height:1}
 .lang-pill.on{background:#1a1d23;color:#fff}
+.grp-head{font-weight:800;font-size:1.3rem;color:#1a1d23;margin:1.4rem auto .2rem;max-width:1100px;width:100%;padding:.3rem .8rem;background:rgba(0,0,0,.04);border-radius:8px}
+.grp-head:first-of-type{margin-top:.4rem}
 </style>
 <body><div class="kiosk">
   <?php if(count($enabledLangs)>1): ?>
@@ -64,22 +87,20 @@ if ($fids) {
     <h1><?= e($title_txt) ?></h1>
     <?php if($gd($T,'subtitle','')): ?><p class="muted"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
   </div>
-  <div class="svc-grid">
-    <?php if(!$services): ?><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p><?php endif; ?>
-    <?php foreach($services as $s): $open = service_is_open($s); $snm=$svcName($s); $sds=$svcDesc($s); ?>
-      <button class="svc-btn<?= $open?'':' closed' ?>" <?= $open?'':'disabled' ?> data-id="<?= (int)$s['id'] ?>" data-color="<?= e($s['color']) ?>" data-priority="<?= $s['allow_priority']?'1':'0' ?>" data-name="<?= e($snm) ?>"
-              style="background:linear-gradient(135deg,<?= e($s['color']) ?>,<?= e($s['color']) ?>cc)">
-        <span class="pfx"><?= e($s['prefix']) ?></span>
-        <span class="nm"><?= e($snm) ?></span>
-        <span class="ds"><?= $open ? e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet'))) : e($tr('closed_hint',$gd($T,'closed_hint','Inchis acum'))) ?></span>
-        <?php if(!$open): ?>
-          <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('closed_label',$gd($T,'closed_label','🔒 Inchis'))) ?></span>
-        <?php elseif($s['allow_priority'] && !$gb($PU,'ask_type',false)): ?>
-          <span class="prio-btn pill" style="background:rgba(255,255,255,.25);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('priority_label',$gd($T,'priority_label','★ Bilet prioritar'))) ?></span>
-        <?php endif; ?>
-      </button>
+  <?php if(!$services): ?>
+    <div class="svc-grid"><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
+  <?php elseif($hasGroups): ?>
+    <?php foreach($groupsById as $gid=>$g): if(empty($grouped[$gid])) continue; ?>
+      <div class="grp-head" style="border-left:5px solid <?= e($g['color']) ?>"><?= e($g['name']) ?></div>
+      <div class="svc-grid"><?php foreach($grouped[$gid] as $s) $renderBtn($s); ?></div>
     <?php endforeach; ?>
-  </div>
+    <?php if($ungrouped): ?>
+      <div class="grp-head" style="border-left:5px solid #64748b">Alte servicii</div>
+      <div class="svc-grid"><?php foreach($ungrouped as $s) $renderBtn($s); ?></div>
+    <?php endif; ?>
+  <?php else: ?>
+    <div class="svc-grid"><?php foreach($services as $s) $renderBtn($s); ?></div>
+  <?php endif; ?>
 </div>
 
 <!-- overlay bilet -->

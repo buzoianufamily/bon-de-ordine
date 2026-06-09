@@ -186,7 +186,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '9') ON DUPLICATE KEY UPDATE v = '9'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '10') ON DUPLICATE KEY UPDATE v = '10'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -194,7 +194,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 9;
+    $target = 10;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -254,13 +254,22 @@ function run_migrations(): void {
         INDEX idx_usl_user (user_id, started_at), INDEX idx_usl_open (user_id, ended_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    // v10: grupuri de servicii (organizare pe dispenser)
+    if (!$hasTable('service_groups')) $ddl("CREATE TABLE service_groups (
+        id INT AUTO_INCREMENT PRIMARY KEY, branch_id INT NOT NULL,
+        name VARCHAR(120) NOT NULL, color VARCHAR(20) NOT NULL DEFAULT '#64748b', sort_order INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_sg_branch (branch_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    if (!$hasCol('services','group_id')) $ddl("ALTER TABLE services ADD COLUMN group_id INT NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
             && $hasCol('services','form_id') && $hasCol('tickets','form_data')
             && $hasCol('services','appt_enabled') && $hasCol('services','appt_slot_min') && $hasCol('services','appt_capacity')
             && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')
-            && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')) {
+            && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')
+            && $hasTable('service_groups') && $hasCol('services','group_id')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

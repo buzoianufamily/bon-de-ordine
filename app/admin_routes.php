@@ -37,6 +37,13 @@ function admin_dispatch(array $seg, string $method): void {
             if (ctype_digit((string)$a)) { admin_service_form((int)$a); return; }
             admin_services_list(); return;
 
+        case 'groups':
+            if ($method === 'POST' && $a === null) { admin_group_save(); return; }
+            if ($method === 'POST' && $b === 'delete') { csrf_check();
+                q('UPDATE services SET group_id=NULL WHERE group_id=?', [(int)$a]);
+                q('DELETE FROM service_groups WHERE id=?', [(int)$a]); flash('Grup sters.'); redirect('admin/groups'); }
+            admin_groups_list(); return;
+
         case 'counters':
             if ($method === 'POST' && $a === null) { admin_counter_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); flash('Ghiseu sters.'); redirect('admin/counters'); }
@@ -154,7 +161,8 @@ function admin_service_form(?int $id): void {
     $row = $id ? one('SELECT * FROM services WHERE id=?', [$id]) : null;
     $branches = all('SELECT id, name FROM branches ORDER BY name');
     $forms = all('SELECT id, name FROM forms ORDER BY name');
-    view('admin/service_edit', ['row' => $row, 'branches' => $branches, 'forms' => $forms]);
+    $groups = all('SELECT g.id, g.name, b.name branch_name FROM service_groups g JOIN branches b ON b.id=g.branch_id ORDER BY b.name, g.sort_order, g.name');
+    view('admin/service_edit', ['row' => $row, 'branches' => $branches, 'forms' => $forms, 'groups' => $groups]);
 }
 function admin_service_save(): void {
     csrf_check();
@@ -195,6 +203,7 @@ function admin_service_save(): void {
         'kpi_wait_sec'=>(int)($_POST['kpi_wait_sec'] ?? 600), 'kpi_service_sec'=>(int)($_POST['kpi_service_sec'] ?? 300),
         'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
         'active_hours'=>$ah, 'i18n'=>$i18n,
+        'group_id'=>((int)($_POST['group_id'] ?? 0)) ?: null,
         'form_id'=>((int)($_POST['form_id'] ?? 0)) ?: null,
         'appt_enabled'=>isset($_POST['appt_enabled'])?1:0,
         'appt_slot_min'=>max(5,(int)($_POST['appt_slot_min'] ?? 15)),
@@ -211,6 +220,31 @@ function admin_service_save(): void {
         flash('Serviciu creat.');
     }
     redirect('admin/services');
+}
+
+/* ----------------------- SERVICE GROUPS ----------------------- */
+function admin_groups_list(): void {
+    $rows = all('SELECT g.*, b.name branch_name, (SELECT COUNT(*) FROM services s WHERE s.group_id=g.id) svc
+                 FROM service_groups g JOIN branches b ON b.id=g.branch_id ORDER BY b.name, g.sort_order, g.name');
+    $branches = all('SELECT id,name FROM branches ORDER BY name');
+    view('admin/groups', compact('rows','branches'));
+}
+function admin_group_save(): void {
+    csrf_check();
+    $id = (int)($_POST['id'] ?? 0);
+    $f = ['branch_id'=>(int)($_POST['branch_id'] ?? 1), 'name'=>trim($_POST['name'] ?? ''),
+          'color'=>trim($_POST['color'] ?? '#64748b'), 'sort_order'=>(int)($_POST['sort_order'] ?? 0)];
+    if ($f['name'] === '') { flash('Numele grupului este obligatoriu.', 'error'); redirect('admin/groups'); }
+    if ($id) {
+        $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
+        q("UPDATE service_groups SET $set WHERE id=?", array_merge(array_values($f), [$id]));
+        flash('Grup actualizat.');
+    } else {
+        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
+        q("INSERT INTO service_groups ($cols) VALUES ($ph)", array_values($f));
+        flash('Grup creat.');
+    }
+    redirect('admin/groups');
 }
 
 /* ----------------------- COUNTERS ----------------------- */

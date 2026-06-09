@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS services (
   sort_order      INT NOT NULL DEFAULT 0,
   active_hours    VARCHAR(255) NULL,                -- optional program (json)
   form_id         INT NULL,                          -- formular la emiterea bonului
+  group_id        INT NULL,                            -- grup de servicii (dispenser)
   i18n            LONGTEXT NULL,                       -- traduceri nume/descriere (JSON pe limba)
   appt_enabled    TINYINT(1) NOT NULL DEFAULT 0,      -- permite programari
   appt_slot_min   INT NOT NULL DEFAULT 15,            -- durata slot (min)
@@ -55,6 +56,18 @@ CREATE TABLE IF NOT EXISTS services (
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_services_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
   INDEX idx_services_branch (branch_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Grupuri de servicii (organizare pe dispenser) ----------
+CREATE TABLE IF NOT EXISTS service_groups (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  branch_id  INT NOT NULL,
+  name       VARCHAR(120) NOT NULL,
+  color      VARCHAR(20)  NOT NULL DEFAULT '#64748b',
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_sg_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+  INDEX idx_sg_branch (branch_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- Ghisee / birouri ----------

@@ -39,6 +39,12 @@ if ($row && !empty($row['i18n'])) { $ti=json_decode($row['i18n'],true);
       <div class="field"><label>Tinta servire (sec)</label><input type="number" name="kpi_service_sec" value="<?= $v('kpi_service_sec','300') ?>"></div>
     </div>
     <hr style="border:none;border-top:1px solid var(--line);margin:1.2rem 0">
+    <div class="field"><label>Grup (optional, pentru dispenser)</label>
+      <select name="group_id"><option value="0">— fara grup —</option>
+        <?php foreach(($groups??[]) as $gr): ?><option value="<?= (int)$gr['id'] ?>" <?= (int)($row['group_id']??0)===(int)$gr['id']?'selected':'' ?>><?= e($gr['branch_name'].' — '.$gr['name']) ?></option><?php endforeach; ?>
+      </select>
+      <span class="muted" style="font-size:.78rem;display:block;margin-top:.3rem">Creezi grupuri in meniul „Grupuri".</span>
+    </div>
     <div class="field"><label>Formular la emitere bilet (optional)</label>
       <select name="form_id"><option value="0">— fara formular —</option>
         <?php foreach(($forms??[]) as $fo): ?><option value="<?= (int)$fo['id'] ?>" <?= (int)($row['form_id']??0)===(int)$fo['id']?'selected':'' ?>><?= e($fo['name']) ?></option><?php endforeach; ?>
