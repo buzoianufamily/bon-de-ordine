@@ -49,6 +49,7 @@ try {
                 'label' => $t['label'], 'status' => $t['status'], 'service' => $t['service_name'],
                 'color' => $t['color'], 'counter' => $t['counter_code'] ? ($t['counter_name'] ?: $t['counter_code']) : null,
                 'position' => $t['status'] === 'waiting' ? ticket_position($t) : 0,
+                'wait_est' => $t['status'] === 'waiting' ? est_wait_seconds($t) : 0,
                 'priority' => (int)$t['priority'],
             ]]);
         }

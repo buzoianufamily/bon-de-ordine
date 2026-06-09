@@ -97,6 +97,18 @@ function ticket_position(array $t): int {
     );
 }
 
+/** Timp estimat de asteptare (secunde) = pozitie x timp mediu servire / nr. ghisee deschise. */
+function est_wait_seconds(array $t): int {
+    $pos = ticket_position($t);
+    if ($pos <= 0) return 0;
+    $avg = (int) (val("SELECT AVG(TIMESTAMPDIFF(SECOND, called_at, finished_at)) FROM tickets
+                       WHERE service_id = ? AND status = 'served' AND called_at IS NOT NULL
+                         AND finished_at >= NOW() - INTERVAL 7 DAY", [$t['service_id']]) ?? 0);
+    if ($avg <= 0) { $svc = one('SELECT kpi_service_sec FROM services WHERE id=?', [$t['service_id']]); $avg = (int)($svc['kpi_service_sec'] ?? 0) ?: 300; }
+    $open = max(1, (int) val("SELECT COUNT(*) FROM counters WHERE branch_id=? AND status='open'", [$t['branch_id']]));
+    return (int) round($pos * $avg / $open);
+}
+
 /**
  * Apeleaza urmatorul bilet pentru un ghiseu.
  * Alege: prioritate DESC, apoi cel mai vechi. Tranzactie cu lock.
