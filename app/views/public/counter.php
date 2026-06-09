@@ -13,31 +13,19 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
   </div>
   <div class="row">
-    <div class="card pad" style="flex:1.3">
+    <div class="card pad" style="flex:1.1">
       <div class="muted">Bilet in lucru</div>
       <div class="current-ticket" id="curTicket">—</div>
       <div id="curSvc" class="muted" style="font-weight:700;margin-bottom:1rem">Niciun bilet in lucru</div>
       <div id="curForm"></div>
       <button class="callnext" id="btnCall">CHEAMA URMATORUL</button>
-      <div class="qbtns">
-        <button class="btn" id="btnRecall">🔁 Recheama</button>
-        <button class="btn" id="btnServing">▶️ In servire</button>
-        <button class="btn btn-primary" id="btnFinish">✔️ Finalizat</button>
-        <button class="btn btn-danger" id="btnNoShow">✖️ Neprezentat</button>
-      </div>
-      <div class="field" style="margin-top:1rem">
-        <label>Transfera catre serviciu</label>
-        <select onchange="if(this.value){qmsTransfer(+this.value);this.value=''}">
-          <option value="">— alege serviciu —</option>
-          <?php foreach($services as $s): ?><option value="<?= (int)$s['id'] ?>"><?= e($s['prefix'].' · '.$s['name']) ?></option><?php endforeach; ?>
-        </select>
-      </div>
     </div>
-    <div class="card pad" style="flex:1">
+    <div class="card pad" style="flex:1.2">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <strong>La rand</strong><span class="pill" style="background:#eef2ff;color:#3730a3"><span id="waitCount">0</span> bilete</span>
+        <strong>Bilete</strong><span class="pill" style="background:#eef2ff;color:#3730a3"><span id="waitCount">0</span> la rand</span>
       </div>
-      <div class="muted" style="font-size:.8rem;margin-top:.3rem">Apasa pe un bilet ca sa-l chemi exact pe el, sau foloseste „CHEAMA URMATORUL".</div>
+      <div class="muted" style="font-size:.8rem;margin-top:.3rem">Selecteaza un bilet (un singur bilet) ca sa apara optiunile: chemare / recheamare / in servire / finalizat / neprezentat.</div>
+      <div id="selBar" class="selbar" style="display:none"></div>
       <div class="qlist" id="qList" style="margin-top:.6rem"></div>
     </div>
   </div>
@@ -54,7 +42,8 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   sayNumber:<?= setting('display_say_number','1')==='1'?'true':'false' ?>,
   sayCounter:<?= setting('display_say_counter','1')==='1'?'true':'false' ?>,
   repeat:<?= (int)setting('display_repeat','2') ?>,
-  myStatus:<?= json_encode($myStatus) ?>
+  myStatus:<?= json_encode($myStatus) ?>,
+  services:<?= json_encode(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name']], $services), JSON_UNESCAPED_UNICODE) ?>
 };</script>
-<script src="<?= e(asset('js/counter.js')) ?>?v=4"></script>
+<script src="<?= e(asset('js/counter.js')) ?>?v=5"></script>
 </body></html>
