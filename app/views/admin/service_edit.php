@@ -3,7 +3,10 @@ $v=fn($k,$d='')=>e($row[$k]??$d);
 $sched = $row && !empty($row['active_hours']) ? json_decode($row['active_hours'], true) : null;
 $schEnabled = !empty($sched['enabled']);
 $dayNames = [1=>'Luni',2=>'Marti',3=>'Miercuri',4=>'Joi',5=>'Vineri',6=>'Sambata',0=>'Duminica'];
-$dayVal = function($d) use ($sched){ return $sched['days'][$d] ?? ($sched['days'][(string)$d] ?? null); }; ?>
+$dayVal = function($d) use ($sched){ return $sched['days'][$d] ?? ($sched['days'][(string)$d] ?? null); };
+$i18nText='';
+if ($row && !empty($row['i18n'])) { $ti=json_decode($row['i18n'],true);
+  if (is_array($ti)) foreach ($ti as $lg=>$vv) $i18nText .= $lg.' | '.($vv['name']??'').' | '.($vv['description']??'')."\n"; } ?>
 <div class="topbar"><h1><?= $row?'Editare serviciu':'Serviciu nou' ?></h1><a class="btn btn-ghost" href="<?= e(url('admin/services')) ?>">← Inapoi</a></div>
 <form method="post" action="<?= e(url('admin/services')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
@@ -41,6 +44,11 @@ $dayVal = function($d) use ($sched){ return $sched['days'][$d] ?? ($sched['days'
         <?php foreach(($forms??[]) as $fo): ?><option value="<?= (int)$fo['id'] ?>" <?= (int)($row['form_id']??0)===(int)$fo['id']?'selected':'' ?>><?= e($fo['name']) ?></option><?php endforeach; ?>
       </select>
       <span class="muted" style="font-size:.78rem;display:block;margin-top:.3rem">Daca alegi un formular, clientul completeaza datele inainte de a primi bonul. Creezi formulare in meniul „Formulare".</span>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--line);margin:1.2rem 0">
+    <div class="field"><label>Traduceri nume serviciu (optional, pentru dispenser multi-limba)</label>
+      <textarea name="svc_i18n" rows="3" placeholder="en | Cashier | Pay here&#10;de | Kasse | Hier bezahlen"><?= e($i18nText) ?></textarea>
+      <span class="muted" style="font-size:.78rem;display:block;margin-top:.3rem">Cate o linie per limba, in formatul <code>cod | nume | descriere</code> (descrierea e optionala). Limbile se activeaza din Setari → General.</span>
     </div>
     <hr style="border:none;border-top:1px solid var(--line);margin:1.2rem 0">
     <label style="font-weight:700"><input type="checkbox" name="sched_enabled" id="schEn" <?= $schEnabled?'checked':'' ?> style="width:auto;margin-right:.4rem">Program de functionare <span class="muted" style="font-weight:400">(nebifat = mereu deschis)</span></label>

@@ -93,6 +93,34 @@ function gen_token(int $len = 20): string { return bin2hex(random_bytes($len)); 
 
 function now(): string { return date('Y-m-d H:i:s'); }
 
+/** Limbi disponibile la dispenser: cod => [nume, steag]. */
+function disp_lang_meta(): array {
+    return [
+        'ro'=>['Romana','🇷🇴'], 'en'=>['English','🇬🇧'], 'de'=>['Deutsch','🇩🇪'],
+        'fr'=>['Francais','🇫🇷'], 'hu'=>['Magyar','🇭🇺'], 'it'=>['Italiano','🇮🇹'], 'es'=>['Espanol','🇪🇸'],
+    ];
+}
+/** Dictionar de traduceri pentru textele standard ale dispenserului. */
+function disp_strings(): array {
+    return [
+      'title'           => ['en'=>'CHOOSE A SERVICE','de'=>'DIENST WÄHLEN','fr'=>'CHOISISSEZ UN SERVICE','hu'=>'VÁLASSZON SZOLGÁLTATÁST','it'=>'SCEGLI UN SERVIZIO','es'=>'ELIJA UN SERVICIO'],
+      'btn_hint'        => ['en'=>'Tap to get a ticket','de'=>'Tippen für ein Ticket','fr'=>'Touchez pour un ticket','hu'=>'Érintse meg a jegyért','it'=>'Tocca per un biglietto','es'=>'Toque para un boleto'],
+      'no_services'     => ['en'=>'No services available right now','de'=>'Derzeit keine Dienste verfügbar','fr'=>'Aucun service disponible','hu'=>'Jelenleg nincs elérhető szolgáltatás','it'=>'Nessun servizio disponibile','es'=>'No hay servicios disponibles'],
+      'priority_label'  => ['en'=>'★ Priority ticket','de'=>'★ Prioritätsticket','fr'=>'★ Ticket prioritaire','hu'=>'★ Elsőbbségi jegy','it'=>'★ Biglietto prioritario','es'=>'★ Boleto prioritario'],
+      'closed_hint'     => ['en'=>'Closed now','de'=>'Jetzt geschlossen','fr'=>'Fermé','hu'=>'Most zárva','it'=>'Ora chiuso','es'=>'Cerrado ahora'],
+      'closed_label'    => ['en'=>'🔒 Closed','de'=>'🔒 Geschlossen','fr'=>'🔒 Fermé','hu'=>'🔒 Zárva','it'=>'🔒 Chiuso','es'=>'🔒 Cerrado'],
+      'popup_title'     => ['en'=>'Your ticket','de'=>'Ihr Ticket','fr'=>'Votre ticket','hu'=>'Az Ön jegye','it'=>'Il tuo biglietto','es'=>'Su boleto'],
+      'ahead_text'      => ['en'=>'{n} people ahead of you','de'=>'{n} Personen vor Ihnen','fr'=>'{n} personnes avant vous','hu'=>'{n} ember van Ön előtt','it'=>'{n} persone prima di te','es'=>'{n} personas antes que usted'],
+      'ahead_first'     => ['en'=>'You are next in line','de'=>'Sie sind als Nächstes dran','fr'=>'Vous êtes le prochain','hu'=>'Ön következik','it'=>'Sei il prossimo','es'=>'Usted es el siguiente'],
+      'qr_hint'         => ['en'=>'Follow on your phone','de'=>'Auf dem Handy verfolgen','fr'=>'Suivez sur votre téléphone','hu'=>'Kövesse telefonon','it'=>'Segui sul telefono','es'=>'Siga en su teléfono'],
+      'done_btn'        => ['en'=>'Done','de'=>'Fertig','fr'=>'Terminé','hu'=>'Kész','it'=>'Fatto','es'=>'Listo'],
+      'regular_label'   => ['en'=>'REGULAR TICKET','de'=>'NORMALES TICKET','fr'=>'TICKET NORMAL','hu'=>'NORMÁL JEGY','it'=>'BIGLIETTO NORMALE','es'=>'BOLETO NORMAL'],
+      'priority_label_pu'=>['en'=>'PRIORITY TICKET','de'=>'PRIORITÄTSTICKET','fr'=>'TICKET PRIORITAIRE','hu'=>'ELSŐBBSÉGI JEGY','it'=>'BIGLIETTO PRIORITARIO','es'=>'BOLETO PRIORITARIO'],
+      'policy_cancel'   => ['en'=>'Cancel','de'=>'Abbrechen','fr'=>'Annuler','hu'=>'Mégse','it'=>'Annulla','es'=>'Cancelar'],
+      'policy_ok'       => ['en'=>'Continue','de'=>'Weiter','fr'=>'Continuer','hu'=>'Tovább','it'=>'Continua','es'=>'Continuar'],
+    ];
+}
+
 /** Render view cu layout. $view relativ la app/views. */
 function view(string $view, array $data = []): void {
     extract($data, EXTR_SKIP);
@@ -148,7 +176,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '6') ON DUPLICATE KEY UPDATE v = '6'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '7') ON DUPLICATE KEY UPDATE v = '7'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -156,7 +184,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 6;
+    $target = 7;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -202,12 +230,15 @@ function run_migrations(): void {
     if ($hasCol('feedback','ticket_id')) $ddl("ALTER TABLE feedback MODIFY ticket_id BIGINT NULL");
     if (!$hasCol('feedback','branch_id')) $ddl("ALTER TABLE feedback ADD COLUMN branch_id INT NULL");
 
+    // v7: traduceri nume/descriere serviciu (multi-limba la dispenser)
+    if (!$hasCol('services','i18n')) $ddl("ALTER TABLE services ADD COLUMN i18n LONGTEXT NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
             && $hasCol('services','form_id') && $hasCol('tickets','form_data')
             && $hasCol('services','appt_enabled') && $hasCol('services','appt_slot_min') && $hasCol('services','appt_capacity')
-            && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id')) {
+            && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

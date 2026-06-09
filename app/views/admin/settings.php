@@ -20,6 +20,15 @@
         <div id="logoGrid" style="display:none;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:.5rem"></div>
       </div>
       <div class="field"><label>Limba interfata</label><select name="language"><option value="ro" selected>Romana</option></select></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Limbi la dispenser</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Bifeaza limbile oferite pe ecranul de bilete. Daca alegi mai multe, apare o bara de limbi (steaguri). Romana e mereu disponibila.</p>
+      <?php $dl = array_filter(array_map('trim', explode(',', setting('dispenser_langs','ro')))); ?>
+      <div style="display:flex;flex-wrap:wrap;gap:.8rem">
+        <?php foreach(disp_lang_meta() as $code=>$m): ?>
+          <label style="display:flex;align-items:center;gap:.4rem;margin:0"><input type="checkbox" name="dispenser_langs[]" value="<?= e($code) ?>" <?= ($code==='ro' || in_array($code,$dl,true))?'checked':'' ?> <?= $code==='ro'?'disabled':'' ?> style="width:auto"><?= $m[1] ?> <?= e($m[0]) ?></label>
+        <?php endforeach; ?>
+      </div>
     </div>
   </div>
 

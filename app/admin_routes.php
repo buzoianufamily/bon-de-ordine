@@ -157,6 +157,19 @@ function admin_service_save(): void {
         }
         $ah = json_encode(['enabled'=>true,'days'=>$days], JSON_UNESCAPED_UNICODE);
     }
+    // traduceri serviciu (cod | nume | descriere pe linie)
+    $i18n = null;
+    $rawI = trim((string)($_POST['svc_i18n'] ?? ''));
+    if ($rawI !== '') {
+        $map = [];
+        foreach (preg_split('/\r?\n/', $rawI) as $ln) {
+            $parts = array_map('trim', explode('|', $ln));
+            $code = strtolower($parts[0] ?? '');
+            if ($code === '' || ($parts[1] ?? '') === '') continue;
+            $map[$code] = ['name'=>$parts[1], 'description'=>($parts[2] ?? '')];
+        }
+        if ($map) $i18n = json_encode($map, JSON_UNESCAPED_UNICODE);
+    }
     $f = [
         'branch_id'=>(int)($_POST['branch_id'] ?? 1), 'prefix'=>strtoupper(trim($_POST['prefix'] ?? 'A')),
         'name'=>trim($_POST['name'] ?? ''), 'abbreviation'=>trim($_POST['abbreviation'] ?? ''),
@@ -167,7 +180,7 @@ function admin_service_save(): void {
         'terminate_on_call'=>isset($_POST['terminate_on_call'])?1:0,
         'kpi_wait_sec'=>(int)($_POST['kpi_wait_sec'] ?? 600), 'kpi_service_sec'=>(int)($_POST['kpi_service_sec'] ?? 300),
         'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
-        'active_hours'=>$ah,
+        'active_hours'=>$ah, 'i18n'=>$i18n,
         'form_id'=>((int)($_POST['form_id'] ?? 0)) ?: null,
         'appt_enabled'=>isset($_POST['appt_enabled'])?1:0,
         'appt_slot_min'=>max(5,(int)($_POST['appt_slot_min'] ?? 15)),
@@ -339,6 +352,11 @@ function admin_settings_save(): void {
     set_setting('ticket_show_position', isset($_POST['ticket_show_position']) ? '1' : '0');
     set_setting('ticket_show_datetime', isset($_POST['ticket_show_datetime']) ? '1' : '0');
     set_setting('ticket_show_qr', isset($_POST['ticket_show_qr']) ? '1' : '0');
+    // limbi dispenser (romana mereu inclusa)
+    $langOk = array_keys(disp_lang_meta());
+    $langs = array_values(array_intersect($langOk, (array)($_POST['dispenser_langs'] ?? [])));
+    if (!in_array('ro', $langs, true)) array_unshift($langs, 'ro');
+    set_setting('dispenser_langs', implode(',', array_unique($langs)));
     flash('Setari salvate.'); redirect('admin/settings');
 }
 

@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS services (
   sort_order      INT NOT NULL DEFAULT 0,
   active_hours    VARCHAR(255) NULL,                -- optional program (json)
   form_id         INT NULL,                          -- formular la emiterea bonului
+  i18n            LONGTEXT NULL,                       -- traduceri nume/descriere (JSON pe limba)
   appt_enabled    TINYINT(1) NOT NULL DEFAULT 0,      -- permite programari
   appt_slot_min   INT NOT NULL DEFAULT 15,            -- durata slot (min)
   appt_capacity   INT NOT NULL DEFAULT 1,             -- locuri per slot
