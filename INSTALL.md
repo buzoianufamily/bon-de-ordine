@@ -44,6 +44,7 @@ Acest ghid te duce pas cu pas de la zero la o instanță funcțională. Durează
    ],
    ```
 3. **Save**. (Nu mai există `setup_token`/`app_key` — nu trebuie configurate.)
+4. (Recomandat) În File Manager, asigură‑te că folderul **`assets/uploads/`** există și e **scriibil** (permisiuni 755). E folosit de **Multimedia** pentru logo/imagini. Dacă lipsește, aplicația încearcă să‑l creeze automat la primul upload.
 
 ---
 
@@ -72,8 +73,11 @@ La prima accesare, aplicația **își creează singură** baza de date (schema +
 ---
 
 ## Pasul 6 — Personalizează pentru client
-Admin → **Setari**: nume brand, culoare accent, logo, text bon, voce/anunț.
-Admin → **Servicii / Ghisee / Dispozitive / Utilizatori**: configurează ce are clientul.
+- Admin → **Setări** (pe taburi): **General** (nume brand, culoare accent, logo, **limbi dispenser**), **Bilet** (antet/subsol + conținut bon tipărit), **Afișaj & voce** (voce TTS, anunț la terminal), **Digital & alerte** (bilet digital + mesaje de alertă client).
+- Admin → **Servicii** (prefix/culoare/interval, program de funcționare, formular, programări, **traduceri**, **grup**), **Grupuri** (categorii pe dispenser), **Ghișee**, **Dispozitive**, **Utilizatori** (cu notificări browser per operator).
+- Admin → **Dispozitive**: pentru afișajele TV folosește **Configurează** (editor de widget‑uri: grilă bilete, listă, ceas, QR, vreme, playlist, iframe, ticker, formular feedback etc.); pentru dispensere, **Configurează** (Logic/Aspect/Texte/Popup).
+- **Temă deschisă/închisă:** comutatorul 🌙/☀️ din bara de sus a backoffice‑ului.
+- **Feedback client:** adaugă widget‑ul „Formular feedback" pe afișaj (QR către `…/feedback`); răspunsurile apar în **Feedback** și în **Statistici**.
 
 ---
 
@@ -81,9 +85,23 @@ Admin → **Servicii / Ghisee / Dispozitive / Utilizatori**: configurează ce ar
 Sistemul suportă 3 moduri (Admin → Dispozitive → editezi dispenserul → **Mod printare**):
 - **Browser** — pentru test, fără hardware (folosește dialogul de print al browserului).
 - **Retea** — Bixolon cu Ethernet/WiFi. Pune **IP-ul imprimantei** și portul **9100**. Serverul trimite bonul direct (ESC/POS RAW).
-- **Android** — imprimantă USB/Bluetooth legată la tabletă, prin aplicația launcher (vezi `android/README.md`).
+- **Android** — imprimantă USB legată la un mini‑PC/tabletă Android, prin aplicația din `android/` (vezi mai jos).
 
-> Pe rețea: imprimanta și serverul/tableta trebuie să „se vadă". Pentru cPanel (server extern), modul **rețea** funcționează doar dacă imprimanta are IP public sau ești pe aceeași rețea (VPN). În practică, pentru un magazin, varianta **Android** (tabletă + imprimantă USB/Bluetooth) e cea mai simplă. Detalii și recomandări în `README.md`.
+> Pe rețea: imprimanta și serverul/tableta trebuie să „se vadă". Pentru cPanel (server extern), modul **rețea** funcționează doar dacă imprimanta are IP public sau ești pe aceeași rețea (VPN). În practică, varianta **Android** (mini‑PC + imprimantă USB) e cea mai simplă. Detalii și recomandări în `README.md`.
+
+---
+
+## Aplicația Android (mini‑PC la intrare + imprimantă Bixolon USB)
+Pentru a tipări automat bonul când clientul apasă pe ecran, pe un mini‑PC cu Android:
+
+1. **Obține APK‑ul:** pe GitHub, tab **Actions → „Build Android APK" → Run workflow**, apoi descarcă artifact‑ul `bon-de-ordine-launcher-apk` (sau compilează din Android Studio folderul `android/launcher`).
+2. **Instalează** APK‑ul pe mini‑PC (permite „Surse necunoscute").
+3. **Configurează modul de printare:** Admin → **Dispozitive** → editează dispenserul → **Mod printare = Android** → Salvează.
+4. **Pornește aplicația** și lipește **linkul dispenserului** (Admin → Dispozitive → Deschide → `…/launcher?key=CHEIE`).
+5. **Conectează imprimanta Bixolon** (ex: BK3‑31ZC/BEG) pe USB și acordă permisiunea USB când e cerută.
+6. Testează din **butonul Înapoi → Test imprimantă**. De acum, la fiecare bon emis pe ecran, se tipărește automat.
+
+Ghid complet (build, kiosk, depanare): **`android/README.md`**.
 
 ---
 
