@@ -1,79 +1,87 @@
-# Aplicația Android Launcher (tabletă) — specificație
+# Aplicația Android „Bon de ordine" (kiosk + imprimantă USB)
 
-Aplicația de tabletă are exact rolul launcher-ului Moviik (am analizat APK-ul lor): un **WebView în mod kiosk** care deschide pagina dispenserului/afișajului prin cheia de conectare și, la nevoie, **tipărește bonul pe o imprimantă termică USB/Bluetooth** printr-o punte JavaScript ↔ nativ.
+Aplicație pentru un **mini‑PC / tabletă cu Android** așezată la intrare: deschide pe tot ecranul pagina dispenserului de bilete (linkul pe care îl introduci tu) și, când clientul apasă pe ecran și se emite un bon, **îl tipărește pe imprimanta termică Bixolon conectată pe USB** (testat conceptual cu **Bixolon BK3‑31ZC/BEG**, protocol ESC/POS standard).
 
-> Nu e nevoie de ea pentru a testa sistemul (modul „browser" și „rețea" funcționează fără). E necesară doar pentru tablete cu imprimantă USB/Bluetooth în mod kiosk.
+Codul sursă complet este în `android/launcher/`.
 
-## Arhitectură (identică conceptual cu Moviik)
+---
+
+## Cum funcționează
 ```
-[Server PHP]  ──HTTP──>  [WebView pe tabletă]  ──JS bridge──>  [cod nativ Kotlin]  ──USB/BT──>  [imprimantă ESC/POS]
-   (dispenser)              (pagina /launcher?key=...)            (Android.print)        (Bixolon etc.)
+[Server PHP]  --HTTP-->  [WebView pe mini-PC]  --JS bridge-->  [cod Kotlin]  --USB-->  [Bixolon BK3-31ZC]
+ (dispenser)              (pagina /launcher?key=...)        (AndroidPrinter)     (octeti ESC/POS)
 ```
-Moviik folosește: WebView + `addJavascriptInterface`, **CSN Printer SDK** (ESC/POS generic USB/serial/Bluetooth/rețea), randare bon ca HTML → bitmap, și **Lock Task Mode** (kiosk). Replicăm același tipar.
+Octeții bonului (layout, QR, tăiere) sunt construiți **pe server** (`app/core/printer.php`), identic pentru toate canalele. Aplicația doar îi trimite la imprimantă — deci bonul arată la fel peste tot.
 
-## Ce face aplicația
-1. La prima pornire cere **URL-ul serverului** + **cheia de conectare** (sau scanezi un QR de configurare). Le salvează.
-2. Deschide `https://SERVER/launcher?key=CHEIE` într-un WebView pe tot ecranul.
-3. Expune obiectul nativ `AndroidPrinter` în pagina web (vezi contractul mai jos).
-4. Rulează în **kiosk** (Lock Task) ca utilizatorul să nu poată ieși din aplicație.
-5. (Opțional) verifică periodic o adresă pentru update de versiune.
-
-## Contractul punții JS (ce cheamă pagina web)
-Pagina web (dispenser) detectează `window.AndroidPrinter` și, când dispozitivul e pe mod „android", cheamă:
-
+Pagina dispenserului cheamă automat puntea nativă:
 ```js
-// trimis de server ca res.escpos_b64 (octeti ESC/POS gata construiti, in base64)
-if (window.AndroidPrinter && res.escpos_b64) {
-    window.AndroidPrinter.printBase64(res.escpos_b64);
-}
+if (window.AndroidPrinter && res.escpos_b64) window.AndroidPrinter.printBase64(res.escpos_b64);
 ```
 
-Metode native expuse (interfața `AndroidPrinter`):
-| Metodă | Descriere |
+Metode expuse paginii (interfața `AndroidPrinter`):
+| Metodă | Rol |
 |---|---|
-| `printBase64(String b64)` | Decodează base64 → octeți ESC/POS → trimite la imprimanta conectată. |
-| `printHtml(String html)` | (alternativă, ca Moviik) randează HTML într-un WebView ascuns → bitmap → printează. |
-| `getStatus()` | Întoarce starea imprimantei (ready/offline/no-paper) ca JSON. |
-| `setConfig(String url, String key)` | Salvează configurarea (folosit de QR de provizionare). |
+| `printBase64(b64)` | decodează base64 → octeți ESC/POS → trimite pe USB |
+| `getStatus()` | stare imprimantă ca JSON (`{"ready":true,...}`) |
+| `setConfig(url)` | schimbă linkul încărcat (opțional, pentru provizionare) |
 
-## Schelet Kotlin (MainActivity)
-```kotlin
-class MainActivity : AppCompatActivity() {
-    private lateinit var web: WebView
-    override fun onCreate(s: Bundle?) {
-        super.onCreate(s)
-        web = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            addJavascriptInterface(Bridge(this@MainActivity), "AndroidPrinter")
-            webViewClient = WebViewClient()
-        }
-        setContentView(web)
-        val url = prefs.getString("server", "") + "/launcher?key=" + prefs.getString("key", "")
-        web.loadUrl(url)
-        startLockTask() // kiosk (necesita device owner sau allow-list)
-    }
-    class Bridge(val ctx: Context) {
-        @JavascriptInterface fun printBase64(b64: String) {
-            val bytes = Base64.decode(b64, Base64.DEFAULT)
-            ThermalPrinter.send(ctx, bytes)   // implementare USB/Bluetooth ESC/POS
-        }
-        @JavascriptInterface fun getStatus(): String = ThermalPrinter.status(ctx)
-    }
-}
+---
+
+## 1) Obține APK‑ul
+
+### Varianta A — automat, prin GitHub Actions (recomandat, fără să instalezi nimic)
+1. Pune codul pe GitHub (e deja în acest repo).
+2. Tab‑ul **Actions** → workflow‑ul **„Build Android APK"** → **Run workflow**.
+3. Când termină, descarcă artifact‑ul **`bon-de-ordine-launcher-apk`** → conține `app-debug.apk`.
+
+### Varianta B — local, cu Android Studio
+1. Deschide folderul `android/launcher` în Android Studio (Giraffe+ / AGP 8.5).
+2. **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
+3. APK‑ul rezultă în `android/launcher/app/build/outputs/apk/debug/app-debug.apk`.
+
+### Varianta C — linie de comandă
+```bash
+cd android/launcher
+gradle assembleDebug      # sau ./gradlew assembleDebug daca ai wrapper-ul
 ```
 
-## Imprimanta (ESC/POS USB/Bluetooth)
-Două variante de bibliotecă (oricare merge cu Bixolon):
-- **DantSu/ESCPOS-ThermalPrinter-Android** (open-source, ușor de integrat) — USB și Bluetooth.
-- **CSN Printer SDK** (cel folosit de Moviik) — generic, suportă USB/serial/Bluetooth/rețea cu descoperire UDP.
-- Bixolon oferă și **BXL SDK** oficial, dar nu e necesar — protocolul ESC/POS e standard.
+---
 
-Octeții ESC/POS sunt deja generați de server (`app/core/printer.php` → `build_ticket_escpos`), deci aplicația doar îi trimite la imprimantă. Asta înseamnă că **logica bonului (layout, QR, tăiere) e una singură**, pe server, și e identică pe toate canalele.
+## 2) Instalează pe mini‑PC
+1. Copiază `app-debug.apk` pe mini‑PC (USB stick / link) și deschide‑l (permite „Surse necunoscute").
+2. La prima pornire, aplicația cere **linkul dispenserului** — lipești linkul din **Backoffice → Dispozitive → (dispenserul tău) → Deschide** (forma `https://site/launcher?key=CHEIE`).
+3. Gata: pagina se încarcă pe tot ecranul.
 
-## Kiosk (Lock Task Mode)
-- Cel mai curat: setezi tableta ca **device owner** (prin Android Enterprise / `adb dpm set-device-owner`) și aplicația intră singură în Lock Task.
-- Alternativ: **Screen Pinning** (Setări → Securitate → Fixare ecran) — mai simplu, dar utilizatorul îl poate dezactiva ținând butoanele.
+> Butonul **Înapoi** deschide meniul de administrare (Reîncarcă / Schimbă linkul / Test imprimantă / Ieșire) — util ca să nu se închidă accidental.
 
-## Update OTA (opțional, ca Moviik)
-Moviik verifică un JSON cu versiunea curentă și descarcă APK-ul nou. Poți face la fel: un fișier `launcher.json` pe serverul tău cu `{ "version": 5, "url": "https://.../launcher.apk" }`, verificat la pornire.
+---
+
+## 3) Setează modul de printare = Android
+Pentru ca serverul să trimită octeții către aplicație:
+**Backoffice → Dispozitive → editează dispenserul → Mod printare = `Android`** → Salvează.
+
+(La modul „browser" pagina ar încerca dialogul de print al sistemului; la „Android" trimite ESC/POS direct prin aplicație.)
+
+---
+
+## 4) Imprimanta Bixolon BK3‑31ZC/BEG (USB)
+- Conectează imprimanta pe USB la mini‑PC și pornește‑o (hârtie pusă).
+- La prima tipărire Android cere permisiunea de acces la dispozitivul USB — apasă **OK** (bifează „Folosește implicit pentru acest dispozitiv" ca să nu mai întrebe).
+- Verifică din **meniul Înapoi → Test imprimantă** — trebuie să iasă un bon de test.
+
+Aplicația găsește imprimanta în această ordine: interfață USB de tip *Printer* (clasă 7) → vendor Bixolon (`0x1504`) → primul dispozitiv cu endpoint bulk OUT. Nu necesită SDK de la producător (ESC/POS standard, trimitere RAW pe USB).
+
+---
+
+## 5) Mod kiosk (opțional, recomandat în producție)
+Ca să nu poată ieși nimeni din aplicație:
+- **Simplu:** Setări Android → Securitate → **Fixare ecran (Screen pinning)**, apoi fixează aplicația.
+- **Robust:** setează aplicația ca **device owner** (`adb shell dpm set-device-owner ro.bondeordine.launcher/...`) — aplicația intră singură în Lock Task la pornire (`startLockTask()` e deja apelat).
+
+---
+
+## Depanare
+- **„Imprimanta indisponibilă"** → cablu/USB OTG, imprimanta pornită, permisiunea USB acordată. Testează din meniul Înapoi → Test imprimantă.
+- **Nu se tipărește la emiterea bonului** → dispozitivul nu e pe **Mod printare = Android**, sau linkul deschis nu e dispenserul corect.
+- **Pagina nu se încarcă** → verifică linkul și conexiunea; dacă serverul e pe `http://` simplu, e permis (cleartext activat).
+- **Vrei alt link** → buton Înapoi → Schimbă linkul.

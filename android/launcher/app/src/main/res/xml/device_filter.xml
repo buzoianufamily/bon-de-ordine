@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Orice imprimanta cu interfata USB de tip "Printer" (clasa 7) -->
+    <usb-device class="7" />
+    <!-- BIXOLON (vendor 0x1504 = 5380) — acopera BK3-31ZC/BEG -->
+    <usb-device vendor-id="5380" />
+</resources>
