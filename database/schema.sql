@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   status        ENUM('waiting','called','serving','served','no_show','cancelled','transferred')
                 NOT NULL DEFAULT 'waiting',
   counter_id    INT NULL,
+  target_counter_id INT NULL,                        -- bilet directionat catre un anumit ghiseu (transfer)
   agent_id      INT NULL,
   channel       ENUM('paper','qr','web','sms','appointment') NOT NULL DEFAULT 'paper',
   customer_phone VARCHAR(32) NULL,
