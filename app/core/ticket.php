@@ -236,6 +236,21 @@ function transfer_ticket(int $ticket_id, int $service_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
+/** Coada unei filiale pentru modul Concierge: bilete individuale la rand + ghisee. */
+function branch_queue(int $branch_id): array {
+    $waiting = all(
+        "SELECT t.id, t.label, t.priority, t.issued_at, s.name AS service_name, s.color
+         FROM tickets t JOIN services s ON s.id = t.service_id
+         WHERE t.branch_id = ? AND t.status = 'waiting'
+         ORDER BY t.priority DESC, t.issued_at ASC LIMIT 100", [$branch_id]);
+    $counters = all(
+        "SELECT c.id, c.code, c.name, c.status,
+                (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
+                 ORDER BY t.called_at DESC LIMIT 1) AS current_label
+         FROM counters c WHERE c.branch_id = ? ORDER BY c.code", [$branch_id]);
+    return ['waiting' => $waiting, 'waiting_count' => count($waiting), 'counters' => $counters];
+}
+
 /**
  * Starea curenta a cozii pentru o filiala.
  * Folosita de afisaj (player) si terminal (polling/SSE).

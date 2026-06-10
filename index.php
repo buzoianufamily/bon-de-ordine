@@ -121,6 +121,8 @@ try {
                 $c = one('SELECT * FROM counters WHERE id = ?', [(int)($_GET['counter_id'] ?? 0)]);
                 if (!$c) json_out(['ok' => false], 404);
                 json_out(['ok' => true] + counter_view($c));
+            case 'branch-state':
+                json_out(['ok' => true] + branch_queue((int)($_GET['branch'] ?? 1)));
         }
         json_out(['ok' => false, 'error' => 'Endpoint necunoscut'], 404);
     }
@@ -224,6 +226,17 @@ try {
             catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }
         }
         view('public/appointment', ['a' => $appt]);
+        return;
+    }
+
+    // ===================== CONCIERGE (receptie: cheama pentru orice ghiseu) =====================
+    if ($seg[0] === 'concierge') {
+        $u = require_login();
+        $branches = all('SELECT id,name FROM branches ORDER BY name');
+        $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));
+        $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: ($branches[0] ?? ['id'=>0,'name'=>'—']);
+        $counters = all('SELECT id,code,name,status FROM counters WHERE branch_id=? ORDER BY code', [$branch['id']]);
+        view('public/concierge', compact('u','branches','branch','counters'));
         return;
     }
 
