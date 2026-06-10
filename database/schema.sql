@@ -105,6 +105,8 @@ CREATE TABLE IF NOT EXISTS users (
   notify_browser TINYINT(1) NOT NULL DEFAULT 0,    -- notificari browser la terminalul operatorului
   work_status   VARCHAR(16) NOT NULL DEFAULT 'offline', -- prezenta: available/busy/paused/offline
   last_seen     DATETIME NULL,                     -- ultima activitate (terminal)
+  totp_secret   VARCHAR(64) NULL,                  -- secret 2FA (base32)
+  totp_enabled  TINYINT(1) NOT NULL DEFAULT 0,     -- 2FA activ
   active        TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

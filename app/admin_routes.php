@@ -120,6 +120,10 @@ function admin_dispatch(array $seg, string $method): void {
         case 'audit':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             admin_audit_list(); return;
+
+        case 'security':
+            if ($method === 'POST') { admin_security_save(); return; }
+            admin_security_page(); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
 }
@@ -337,6 +341,7 @@ function admin_user_save(): void {
             [$name,$email,$role,$active,$notify,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
+    if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0 WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
     audit($id?'update':'create','user',$id); flash('Utilizator salvat.'); redirect('admin/users');
 }
 
@@ -434,6 +439,37 @@ function admin_feedback_list(): void {
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
+}
+
+/* ----------------------- SECURITATE (2FA) ----------------------- */
+function admin_security_page(): void {
+    $u = current_user();
+    $enabled = (int) val('SELECT totp_enabled FROM users WHERE id=?', [$u['id']]) === 1;
+    $secret = '';
+    if (!$enabled) {
+        if (empty($_SESSION['2fa_setup_secret'])) $_SESSION['2fa_setup_secret'] = totp_secret();
+        $secret = $_SESSION['2fa_setup_secret'];
+    }
+    view('admin/security', compact('u', 'enabled', 'secret'));
+}
+function admin_security_save(): void {
+    csrf_check();
+    $u = current_user();
+    $act = $_POST['act'] ?? '';
+    if ($act === 'enable') {
+        $secret = (string)($_SESSION['2fa_setup_secret'] ?? '');
+        if ($secret !== '' && totp_verify($secret, (string)($_POST['code'] ?? ''))) {
+            q('UPDATE users SET totp_secret=?, totp_enabled=1 WHERE id=?', [$secret, $u['id']]);
+            unset($_SESSION['2fa_setup_secret']);
+            audit('2fa_enabled', 'user', $u['id']);
+            flash('Autentificarea in doi pasi a fost activata.');
+        } else { flash('Cod incorect. Verifica ora telefonului si mai incearca.', 'error'); }
+    } elseif ($act === 'disable') {
+        q('UPDATE users SET totp_secret=NULL, totp_enabled=0 WHERE id=?', [$u['id']]);
+        audit('2fa_disabled', 'user', $u['id']);
+        flash('Autentificarea in doi pasi a fost dezactivata.');
+    }
+    redirect('admin/security');
 }
 
 /* ----------------------- AUDIT LOG ----------------------- */

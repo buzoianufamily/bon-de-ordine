@@ -1,0 +1,18 @@
+<?php $title='Verificare in doi pasi'; require __DIR__.'/_head.php'; ?>
+<body><div class="center"><div class="auth">
+  <div class="card pad">
+    <h1 style="text-align:center;margin-bottom:.2rem"><?= e(setting('brand_name','Bon de ordine')) ?></h1>
+    <p class="muted" style="text-align:center;margin-top:0">Verificare in doi pasi</p>
+    <?php foreach (get_flashes() as $f): ?>
+      <div class="pill" style="display:block;text-align:center;background:#fee2e2;color:#b91c1c;margin-bottom:.8rem"><?= e($f['msg']) ?></div>
+    <?php endforeach; ?>
+    <p class="muted" style="text-align:center;font-size:.88rem">Introdu codul de 6 cifre din aplicatia ta de autentificare (Google Authenticator, Authy etc.).</p>
+    <form method="post" action="<?= e(url('login/2fa')) ?>">
+      <?= csrf_field() ?>
+      <div class="field"><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" required autofocus
+           style="text-align:center;letter-spacing:.5em;font-size:1.6rem;font-weight:800" placeholder="••••••"></div>
+      <button class="btn btn-primary btn-lg" style="width:100%">Verifica</button>
+    </form>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:1rem;font-size:.85rem"><a href="<?= e(url('logout')) ?>">← Anuleaza</a></p>
+</div></div></body></html>

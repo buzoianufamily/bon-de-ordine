@@ -13,6 +13,11 @@
     </div>
     <div class="field"><label>Parola <?= $row?'(lasa gol = nu schimba)':'' ?></label><input type="password" name="password" <?= $row?'':'required' ?>></div>
     <div class="field"><label style="margin:0"><input type="checkbox" name="notify_browser" <?= ($row['notify_browser']??0)?'checked':'' ?> style="width:auto"> Notificari in browser la terminalul operatorului (anunta biletele noi / transferate)</label></div>
+    <?php if($row && ($row['totp_enabled']??0)): ?>
+      <div class="field"><label style="margin:0"><input type="checkbox" name="reset_2fa" style="width:auto"> 🛡 Reseteaza 2FA (utilizatorul are 2FA activ; bifeaza daca a pierdut accesul la aplicatie)</label></div>
+    <?php elseif($row): ?>
+      <p class="muted" style="font-size:.82rem">2FA: dezactivat pentru acest utilizator.</p>
+    <?php endif; ?>
     <button class="btn btn-primary btn-lg">Salveaza</button>
   </div>
 </form>

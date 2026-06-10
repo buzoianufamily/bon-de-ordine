@@ -237,7 +237,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '14') ON DUPLICATE KEY UPDATE v = '14'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '15') ON DUPLICATE KEY UPDATE v = '15'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -245,7 +245,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 14;
+    $target = 15;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -334,6 +334,10 @@ function run_migrations(): void {
     // v14: remindere programari (marcaj ca sa nu trimitem de doua ori)
     if (!$hasCol('appointments','reminded_at')) $ddl("ALTER TABLE appointments ADD COLUMN reminded_at DATETIME NULL");
 
+    // v15: autentificare in doi pasi (TOTP) pentru conturi backoffice
+    if (!$hasCol('users','totp_secret'))  $ddl("ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64) NULL");
+    if (!$hasCol('users','totp_enabled')) $ddl("ALTER TABLE users ADD COLUMN totp_enabled TINYINT(1) NOT NULL DEFAULT 0");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -342,7 +346,8 @@ function run_migrations(): void {
             && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')
             && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')
             && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')
-            && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')) {
+            && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')
+            && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

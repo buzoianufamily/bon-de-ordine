@@ -194,16 +194,42 @@ SWJS;
         return;
     }
     if ($seg[0] === 'login') {
+        // ---- pasul 2: cod 2FA ----
+        if (($seg[1] ?? '') === '2fa') {
+            $puid = (int)($_SESSION['2fa_uid'] ?? 0);
+            if (!$puid || (time() - (int)($_SESSION['2fa_time'] ?? 0)) > 300) {
+                unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']); redirect('login');
+            }
+            if ($method === 'POST') {
+                csrf_check();
+                $pu = one('SELECT * FROM users WHERE id=? AND active=1', [$puid]);
+                if ($pu && !empty($pu['totp_enabled']) && totp_verify((string)$pu['totp_secret'], (string)($_POST['code'] ?? ''))) {
+                    unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']);
+                    complete_login($puid); audit('login', 'auth');
+                    redirect($pu['role'] === 'agent' ? 'counter' : 'admin');
+                }
+                audit('login_failed_2fa', 'auth', null, $pu['email'] ?? '');
+                flash('Cod incorect. Incearca din nou.', 'error');
+            }
+            view('public/login_2fa');
+            return;
+        }
         if ($method === 'POST') {
             csrf_check();
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             // throttling: max 10 incercari esuate / IP in 10 minute
             $fails = 0;
-            try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action='login_failed' AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
+            try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action IN('login_failed','login_failed_2fa') AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
             if ($fails >= 10) { flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login'); }
-            if (attempt_login((string)($_POST['email'] ?? ''), (string)($_POST['password'] ?? ''))) {
-                audit('login', 'auth');
-                redirect(current_user()['role'] === 'agent' ? 'counter' : 'admin');
+            $u = verify_credentials((string)($_POST['email'] ?? ''), (string)($_POST['password'] ?? ''));
+            if ($u) {
+                if (!empty($u['totp_enabled']) && !empty($u['totp_secret'])) {
+                    // parola OK -> cere codul 2FA (sesiune intermediara, fara uid)
+                    $_SESSION['2fa_uid'] = (int)$u['id']; $_SESSION['2fa_time'] = time();
+                    redirect('login/2fa');
+                }
+                complete_login((int)$u['id']); audit('login', 'auth');
+                redirect($u['role'] === 'agent' ? 'counter' : 'admin');
             }
             audit('login_failed', 'auth', null, substr((string)($_POST['email'] ?? ''), 0, 120));
             flash('Email sau parola incorecte.', 'error');

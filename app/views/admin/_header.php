@@ -53,6 +53,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
       <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
     <?php endif; ?>
     <div class="side-foot">
+      <a href="<?= e(url('admin/security')) ?>" class="<?= ($active??'')==='security'?'active':'' ?>"><span class="ic">🛡</span><span class="lbl">Securitate (2FA)</span></a>
       <a href="<?= e(url('counter')) ?>"><span class="ic">▶</span><span class="lbl">Terminal operator</span></a>
       <a href="<?= e(url('logout')) ?>"><span class="ic">⇥</span><span class="lbl">Iesire</span></a>
     </div>
