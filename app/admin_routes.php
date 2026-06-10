@@ -118,28 +118,54 @@ function admin_dispatch(array $seg, string $method): void {
 /* ----------------------- DASHBOARD ----------------------- */
 function admin_dashboard(): void {
     $today = date('Y-m-d');
+    $branch = (int)($_GET['branch'] ?? 0);
+    $branches = all('SELECT id,name FROM branches ORDER BY name');
+    $bc = $branch ? ' AND branch_id=?' : '';            // conditie filtru filiala
+    $td = fn(array $extra=[]) => array_merge([$today], $branch ? array_merge($extra,[$branch]) : $extra);
+    $nb = fn() => $branch ? [$branch] : [];
+
     $stats = [
-        'today'   => (int) val('SELECT COUNT(*) FROM tickets WHERE DATE(issued_at)=?', [$today]),
-        'waiting' => (int) val('SELECT COUNT(*) FROM tickets WHERE status="waiting"'),
-        'serving' => (int) val('SELECT COUNT(*) FROM tickets WHERE status IN ("called","serving")'),
-        'served'  => (int) val('SELECT COUNT(*) FROM tickets WHERE status="served" AND DATE(issued_at)=?', [$today]),
-        'no_show' => (int) val('SELECT COUNT(*) FROM tickets WHERE status="no_show" AND DATE(issued_at)=?', [$today]),
-        'avg_wait'=> (int) (val('SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, called_at)) FROM tickets WHERE called_at IS NOT NULL AND DATE(issued_at)=?', [$today]) ?? 0),
+        'today'     => (int) val("SELECT COUNT(*) FROM tickets WHERE DATE(issued_at)=?$bc", $td()),
+        'waiting'   => (int) val("SELECT COUNT(*) FROM tickets WHERE status='waiting'$bc", $nb()),
+        'serving'   => (int) val("SELECT COUNT(*) FROM tickets WHERE status IN ('called','serving')$bc", $nb()),
+        'served'    => (int) val("SELECT COUNT(*) FROM tickets WHERE status='served' AND DATE(issued_at)=?$bc", $td()),
+        'no_show'   => (int) val("SELECT COUNT(*) FROM tickets WHERE status='no_show' AND DATE(issued_at)=?$bc", $td()),
+        'cancelled' => (int) val("SELECT COUNT(*) FROM tickets WHERE status='cancelled' AND DATE(issued_at)=?$bc", $td()),
+        'avg_wait'  => (int) (val("SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, called_at)) FROM tickets WHERE called_at IS NOT NULL AND DATE(issued_at)=?$bc", $td()) ?? 0),
     ];
-    $per_service = all('SELECT s.name, s.color, COUNT(t.id) cnt
+    $closed = $stats['served'] + $stats['no_show'] + $stats['cancelled'];
+    $stats['abandon'] = $closed > 0 ? (int) round(($stats['no_show'] + $stats['cancelled']) / $closed * 100) : 0;
+
+    $per_service = all("SELECT s.name, s.color, COUNT(t.id) cnt
         FROM services s LEFT JOIN tickets t ON t.service_id=s.id AND DATE(t.issued_at)=?
-        GROUP BY s.id ORDER BY cnt DESC, s.sort_order', [$today]);
-    // aflux pe ora (azi) — pentru graficul de tendinta
+        WHERE 1=1" . ($branch ? ' AND s.branch_id=?' : '') . "
+        GROUP BY s.id ORDER BY cnt DESC, s.sort_order", $branch ? [$today,$branch] : [$today]);
+
     $per_hour = array_fill(0, 24, 0);
-    foreach (all('SELECT HOUR(issued_at) h, COUNT(*) c FROM tickets WHERE DATE(issued_at)=? GROUP BY h', [$today]) as $r)
+    foreach (all("SELECT HOUR(issued_at) h, COUNT(*) c FROM tickets WHERE DATE(issued_at)=?$bc GROUP BY h", $td()) as $r)
         $per_hour[(int)$r['h']] = (int)$r['c'];
-    $devices = all('SELECT name, type, connection_key, last_seen,
-        (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices ORDER BY type');
-    // prezenta operatori (status efectiv: offline daca nu a mai dat semn de viata 2 min)
+    $peakVal = 0; $peakH = -1;
+    foreach ($per_hour as $h => $v) if ($v > $peakVal) { $peakVal = $v; $peakH = $h; }
+    $stats['peak'] = $peakH >= 0 ? sprintf('%02d:00', $peakH) : '—';
+    $stats['peak_val'] = $peakVal;
+
+    $devices = all("SELECT name, type, connection_key, last_seen,
+        (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices" .
+        ($branch ? ' WHERE branch_id=?' : '') . " ORDER BY type", $nb());
     $operators = all("SELECT name, role, work_status, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online
         FROM users WHERE active=1 AND (role='agent' OR last_seen IS NOT NULL)
         ORDER BY online DESC, name");
+
+    // comparatie filiale (azi) — doar cand privesti toate filialele
+    $branch_cmp = [];
+    if (!$branch && count($branches) > 1) {
+        $branch_cmp = all("SELECT b.name, COUNT(t.id) total,
+            SUM(t.status='served') served, SUM(t.status='waiting') waiting,
+            AVG(CASE WHEN t.called_at IS NOT NULL THEN TIMESTAMPDIFF(SECOND,t.issued_at,t.called_at) END) avg_wait
+            FROM branches b LEFT JOIN tickets t ON t.branch_id=b.id AND DATE(t.issued_at)=?
+            GROUP BY b.id ORDER BY total DESC", [$today]);
+    }
 
     // actualizare live a panourilor (poll JSON)
     if (($_GET['format'] ?? '') === 'json' || want_json()) {
@@ -149,7 +175,7 @@ function admin_dashboard(): void {
               'status'=>$o['online']?$o['work_status']:'offline','online'=>(bool)$o['online'],
               'last_seen'=>$o['last_seen']?date('H:i',strtotime($o['last_seen'])):'—'], $operators)]);
     }
-    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators'));
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp'));
 }
 
 /* ----------------------- SERVICES ----------------------- */
