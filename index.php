@@ -102,7 +102,7 @@ try {
                 json_out(['ok' => true, 'status' => $stt]);
             }
             case 'call-next':
-                $t = call_next((int)input('counter_id', 0), (int)$u['id']);
+                $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);
             case 'call-specific':
                 $t = call_specific((int)input('ticket_id', 0), (int)input('counter_id', 0), (int)$u['id']);

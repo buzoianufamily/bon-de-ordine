@@ -113,17 +113,22 @@ function est_wait_seconds(array $t): int {
  * Apeleaza urmatorul bilet pentru un ghiseu.
  * Alege: prioritate DESC, apoi cel mai vechi. Tranzactie cu lock.
  */
-function call_next(int $counter_id, int $user_id): ?array {
+function call_next(int $counter_id, int $user_id, int $service_id = 0): ?array {
     $counter = one('SELECT * FROM counters WHERE id = ?', [$counter_id]);
     if (!$counter) throw new RuntimeException('Ghiseu inexistent');
     $svcIds = counter_service_ids($counter);
 
-    // bilete eligibile: directionate catre acest ghiseu (prioritar) + serviciile ghiseului
-    $cond = "t.target_counter_id = ?"; $args = [$counter_id];
-    if ($svcIds) {
-        $in = implode(',', array_fill(0, count($svcIds), '?'));
-        $cond .= " OR (t.target_counter_id IS NULL AND t.service_id IN ($in))";
-        $args = array_merge($args, $svcIds);
+    if ($service_id > 0) {
+        // urmatorul dintr-un serviciu anume (din filiala ghiseului)
+        $cond = "t.service_id = ? AND t.branch_id = ?"; $args = [$service_id, (int)$counter['branch_id']];
+    } else {
+        // bilete eligibile: directionate catre acest ghiseu (prioritar) + serviciile ghiseului
+        $cond = "t.target_counter_id = ?"; $args = [$counter_id];
+        if ($svcIds) {
+            $in = implode(',', array_fill(0, count($svcIds), '?'));
+            $cond .= " OR (t.target_counter_id IS NULL AND t.service_id IN ($in))";
+            $args = array_merge($args, $svcIds);
+        }
     }
     db()->beginTransaction();
     try {

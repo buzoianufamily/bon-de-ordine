@@ -64,12 +64,40 @@
   window.qmsStatus = setStatus;
   if(cfg.myStatus==='offline') setStatus('available');
 
-  /* ---- CHEAMA URMATORUL (auto) ---- */
-  document.getElementById('btnCall').addEventListener('click', async ()=>{
-    const res = await QMS.api('api/call-next', { counter_id: cfg.counterId });
+  /* ---- CHEAMA URMATORUL (auto, optional dintr-un serviciu anume) ---- */
+  async function callNext(serviceId){
+    const body = { counter_id: cfg.counterId }; if(serviceId) body.service_id = serviceId;
+    const res = await QMS.api('api/call-next', body);
     if(!res.ok){ QMS.toast(res.error||'Eroare','error'); return; }
-    if(!res.ticket){ QMS.toast('Coada este goala',''); } else { selId=res.ticket.id; announce(res.ticket); }
+    if(!res.ticket){ QMS.toast(serviceId?'Niciun bilet la rand pentru acest serviciu':'Coada este goala',''); }
+    else { selId=res.ticket.id; announce(res.ticket); }
     refresh(true);
+  }
+  document.getElementById('btnCall').addEventListener('click', ()=>callNext(0));
+  const elCallSvc = document.getElementById('callSvc');
+  if(elCallSvc) elCallSvc.addEventListener('change', ()=>{ const sid=+elCallSvc.value; elCallSvc.value=''; if(sid) callNext(sid); });
+
+  /* ---- scurtaturi tastatura ---- */
+  function moveSel(dir){
+    if(!items.length) return;
+    let idx = items.findIndex(x=>x.id===selId);
+    idx = idx<0 ? (dir>0?0:items.length-1) : Math.max(0, Math.min(items.length-1, idx+dir));
+    selId = items[idx].id; syncUI(true);
+    const row = elList.querySelector('.qrow.sel'); if(row && row.scrollIntoView) row.scrollIntoView({block:'nearest'});
+  }
+  document.addEventListener('keydown', e=>{
+    if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    const k = e.key.toLowerCase();
+    if(k===' ' || k==='enter'){ e.preventDefault(); callNext(0); }
+    else if(k==='escape'){ if(selId){ selId=null; syncUI(true); } }
+    else if(k==='arrowdown'){ e.preventDefault(); moveSel(1); }
+    else if(k==='arrowup'){ e.preventDefault(); moveSel(-1); }
+    else if(selId){
+      if(k==='f') doMenu('finish');
+      else if(k==='n') doMenu('noshow');
+      else if(k==='r') doMenu('recall');
+      else if(k==='s') doMenu('serving');
+    }
   });
 
   /* ---- actiuni pe biletul SELECTAT (acelasi meniu pentru orice bilet) ----
