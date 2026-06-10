@@ -42,14 +42,14 @@ function json_out($data, int $code = 200): void {
     exit;
 }
 
-/* ----- Setari (cu cache pe request) ----- */
+/* ----- Setari (cu cache pe request, coerent cu scrierile) ----- */
 function settings_all(): array {
-    static $cache = null;
-    if ($cache === null) {
-        $cache = [];
-        foreach (all('SELECT k, v FROM settings') as $row) $cache[$row['k']] = $row['v'];
+    if (!isset($GLOBALS['__settings_cache'])) {
+        $c = [];
+        foreach (all('SELECT k, v FROM settings') as $row) $c[$row['k']] = $row['v'];
+        $GLOBALS['__settings_cache'] = $c;
     }
-    return $cache;
+    return $GLOBALS['__settings_cache'];
 }
 function setting(string $key, $default = null) {
     $s = settings_all();
@@ -57,6 +57,7 @@ function setting(string $key, $default = null) {
 }
 function set_setting(string $key, $value): void {
     q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [$key, $value]);
+    if (isset($GLOBALS['__settings_cache'])) $GLOBALS['__settings_cache'][$key] = (string)$value;
 }
 
 /* ----- CSRF ----- */
@@ -236,7 +237,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '12') ON DUPLICATE KEY UPDATE v = '12'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '13') ON DUPLICATE KEY UPDATE v = '13'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -244,7 +245,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 12;
+    $target = 13;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -323,6 +324,13 @@ function run_migrations(): void {
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_audit_time (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    // v13: rate-limiting pentru API-ul public (un rand per cheie, contor pe minut)
+    if (!$hasTable('api_rate')) $ddl("CREATE TABLE api_rate (
+        rk VARCHAR(64) NOT NULL PRIMARY KEY,
+        minute BIGINT NOT NULL,
+        cnt INT NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -331,7 +339,7 @@ function run_migrations(): void {
             && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')
             && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')
             && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')
-            && $hasTable('audit_log')) {
+            && $hasTable('audit_log') && $hasTable('api_rate')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

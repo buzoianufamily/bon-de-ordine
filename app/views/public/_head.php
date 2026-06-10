@@ -10,7 +10,7 @@
 <style>:root{--accent:<?= e($accent) ?>}</style>
 <link rel="manifest" href="<?= e(url('manifest.webmanifest')) ?>">
 <meta name="theme-color" content="<?= e($accent) ?>">
-<link rel="apple-touch-icon" href="<?= e(asset('icon.svg')) ?>">
+<link rel="apple-touch-icon" href="<?= e(asset('icon-192.png')) ?>">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('<?= e(url('sw.js')) ?>').catch(function(){});});}</script>
 </head>

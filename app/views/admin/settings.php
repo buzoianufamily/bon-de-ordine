@@ -5,6 +5,7 @@
   <a data-tab="ticket"><span class="ic">🎫</span>Bilet</a>
   <a data-tab="display"><span class="ic">📺</span>Afisaj &amp; voce</a>
   <a data-tab="digital"><span class="ic">📱</span>Digital &amp; alerte</a>
+  <a data-tab="email"><span class="ic">✉️</span>Email</a>
 </div>
 <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
 
@@ -72,6 +73,37 @@
       <div class="field"><label>Mesaj la transfer (max 250)</label><textarea name="alert_transfer" rows="2" maxlength="250"><?= $s('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.') ?></textarea></div>
       <div class="field"><label>Intarziere alerta pe telefon (secunde)</label><input type="number" name="alert_delay" value="<?= $s('alert_delay','0') ?>" min="0" max="120">
         <p class="muted" style="font-size:.82rem;margin-top:.3rem">Dupa apelare, telefonul vibreaza/atentioneaza dupa acest numar de secunde (0 = imediat).</p></div>
+    </div>
+  </div>
+
+  <div class="settab dv-hidden" data-pane="email">
+    <div class="card pad" style="max-width:640px">
+      <h3 style="margin-top:0">Trimitere email</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Folosit pentru confirmari/anulari de programari. Fara SMTP configurat, se foloseste functia <code>mail()</code> a serverului (merge pe cPanel). Pentru livrare sigura, completeaza SMTP-ul contului tau de email.</p>
+      <label style="margin:.5rem 0;display:block"><input type="checkbox" name="mail_enabled" <?= setting('mail_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Activeaza trimiterea de emailuri</label>
+      <div class="row">
+        <div class="field"><label>Nume expeditor</label><input name="mail_from_name" value="<?= $s('mail_from_name') ?>" placeholder="<?= $s('brand_name','Bon de ordine') ?>"></div>
+        <div class="field"><label>Email expeditor</label><input type="email" name="mail_from" value="<?= $s('mail_from') ?>" placeholder="no-reply@domeniul-tau.ro"></div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">SMTP (optional, recomandat)</h3>
+      <div class="row">
+        <div class="field" style="flex:2"><label>Host SMTP</label><input name="smtp_host" value="<?= $s('smtp_host') ?>" placeholder="mail.domeniul-tau.ro"></div>
+        <div class="field" style="flex:0 0 110px"><label>Port</label><input type="number" name="smtp_port" value="<?= $s('smtp_port','587') ?>"></div>
+        <div class="field" style="flex:0 0 150px"><label>Securitate</label><select name="smtp_secure">
+          <?php foreach(['tls'=>'STARTTLS (587)','ssl'=>'SSL (465)','none'=>'Fara'] as $k=>$lab): ?>
+            <option value="<?= $k ?>" <?= setting('smtp_secure','tls')===$k?'selected':'' ?>><?= $lab ?></option><?php endforeach; ?>
+        </select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Utilizator SMTP</label><input name="smtp_user" value="<?= $s('smtp_user') ?>" autocomplete="off"></div>
+        <div class="field"><label>Parola SMTP</label><input type="password" name="smtp_pass" value="<?= $s('smtp_pass') ?>" autocomplete="new-password"></div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <div class="row" style="align-items:flex-end">
+        <div class="field" style="flex:2"><label>Trimite un email de test catre</label><input type="email" name="mail_test_to" placeholder="adresa@ta.ro"></div>
+        <div class="field"><button class="btn" name="mail_test" value="1">✉️ Salveaza si testeaza</button></div>
+      </div>
     </div>
   </div>
 
