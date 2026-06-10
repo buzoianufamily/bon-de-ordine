@@ -72,27 +72,42 @@
     refresh(true);
   });
 
-  /* ---- actiuni pe biletul SELECTAT ---- */
-  async function act(path, extra, opt){
+  /* ---- actiuni pe biletul SELECTAT (acelasi meniu pentru orice bilet) ----
+     Daca biletul e „la rand", il chemam intai (il asignam ghiseului), apoi aplicam actiunea. */
+  async function doMenu(action){
     if(!selId){ QMS.toast('Selecteaza un bilet',''); return; }
-    const res = await QMS.api(path, Object.assign({ticket_id:selId}, extra||{}));
-    if(!res.ok){ QMS.toast(res.error||'Eroare','error'); refresh(true); return; }
-    if(opt&&opt.keepSel&&res.ticket) selId = res.ticket.id; // ramane selectat dupa chemare
-    if(opt&&opt.announce) announce(res.ticket || items.find(x=>x.id===selId));
-    if(opt&&opt.clear) selId = null;
+    const it = items.find(x=>x.id===selId);
+    const wasWaiting = it && it.status==='waiting';
+    const willAnnounce = (action==='recall' || action==='serving');
+    if(wasWaiting){
+      const cr = await QMS.api('api/call-specific', {ticket_id:selId, counter_id:cfg.counterId});
+      if(!cr.ok){ QMS.toast(cr.error||'Eroare','error'); refresh(true); return; }
+      if(cr.ticket) selId = cr.ticket.id;
+      if(willAnnounce) announce(cr.ticket);
+    }
+    if(action==='recall'){
+      if(!wasWaiting){ const r = await QMS.api('api/recall', {ticket_id:selId}); if(r&&r.ok) announce(items.find(x=>x.id===selId)); }
+      refresh(true); return;
+    }
+    const map = {serving:'api/serving', finish:'api/finish', noshow:'api/no-show'};
+    if(!map[action]){ refresh(true); return; }
+    const r = await QMS.api(map[action], {ticket_id:selId});
+    if(!r.ok){ QMS.toast(r.error||'Eroare','error'); }
+    if(action==='finish' || action==='noshow') selId = null;
     refresh(true);
   }
-  elBar.addEventListener('click', e=>{ const b=e.target.closest('[data-a]'); if(!b || b.tagName==='SELECT') return; const a=b.getAttribute('data-a');
-    if(a==='call')         act('api/call-specific',{counter_id:cfg.counterId},{announce:true,keepSel:true});
-    else if(a==='recall')  act('api/recall',null,{announce:true});
-    else if(a==='serving') act('api/serving');
-    else if(a==='finish')  act('api/finish',null,{clear:true});
-    else if(a==='noshow')  act('api/no-show',null,{clear:true});
-    else if(a==='deselect'){ selId=null; syncUI(true); }
+  async function doTransfer(serviceId){
+    if(!selId || !serviceId) return;
+    const r = await QMS.api('api/transfer', {ticket_id:selId, service_id:serviceId});
+    if(!r.ok){ QMS.toast(r.error||'Eroare','error'); refresh(true); return; }
+    selId = null; refresh(true);
+  }
+  elBar.addEventListener('click', e=>{ const b=e.target.closest('button[data-a]'); if(!b) return; const a=b.getAttribute('data-a');
+    if(a==='deselect'){ selId=null; syncUI(true); } else doMenu(a);
   });
   elBar.addEventListener('change', e=>{ const s=e.target.closest('select[data-a="transfer"]'); if(!s||!s.value) return;
     const name = s.options[s.selectedIndex].text;
-    if(confirm('Transferi biletul către „'+name+'"?')) act('api/transfer',{service_id:+s.value},{clear:true});
+    if(confirm('Transferi biletul către „'+name+'"?')) doTransfer(+s.value);
     else s.value=''; // anuleaza — ramai la lista, fara transfer
   });
 
@@ -115,18 +130,13 @@
   function renderBar(){
     const it = items.find(x=>x.id===selId);
     if(!it){ elBar.style.display='none'; elBar.innerHTML=''; return; }
-    const st = it.status || 'waiting';
     let h = `<div class="selbar-head"><button class="selbar-x" data-a="deselect" title="Deselecteaza biletul">✕</button>Selectat: <strong style="color:${it.color||cfg.accent}">${esc(it.label)}</strong> <span class="muted">${esc(it.service_name||'')}</span></div><div class="selbar-btns">`;
-    if(st==='waiting'){
-      h += `<button class="btn btn-primary" data-a="call">📣 Cheama</button>`;
-    } else {
-      h += `<button class="btn" data-a="recall">🔁 Recheama</button>`;
-      if(st==='called') h += `<button class="btn" data-a="serving">▶️ In servire</button>`;
-      h += `<button class="btn btn-primary" data-a="finish">✔️ Finalizat</button>`;
-      h += `<button class="btn btn-danger" data-a="noshow">✖️ Neprezentat</button>`;
-    }
+    h += `<button class="btn" data-a="recall">🔁 Recheama</button>`;
+    h += `<button class="btn" data-a="serving">▶️ In servire</button>`;
+    h += `<button class="btn btn-primary" data-a="finish">✔️ Finalizat</button>`;
+    h += `<button class="btn btn-danger" data-a="noshow">✖️ Neprezentat</button>`;
     h += `</div>`;
-    if(st!=='waiting' && cfg.services && cfg.services.length){
+    if(cfg.services && cfg.services.length){
       h += `<div class="field" style="margin:.6rem 0 0"><label>Transfera catre serviciu</label><select data-a="transfer"><option value="">— alege serviciu —</option>`+
         cfg.services.map(s=>`<option value="${s.id}">${esc(s.prefix+' · '+s.name)}</option>`).join('')+`</select></div>`;
     }
@@ -149,8 +159,8 @@
   function syncUI(force){
     const sig = items.map(t=>t.id+','+(t.status||'w')+','+(t.priority?1:0)).join('|')+'#'+selId;
     if(force || sig!==lastSig){ renderList(); lastSig=sig; }
-    const selIt = items.find(x=>x.id===selId);
-    const barKey = selIt ? selIt.id+':'+selIt.status : '';
+    // meniul e identic indiferent de status -> reconstruim doar la schimbarea selectiei
+    const barKey = selId===null ? '' : String(selId);
     if(force || barKey!==lastBarKey){ renderBar(); lastBarKey=barKey; }
   }
 
