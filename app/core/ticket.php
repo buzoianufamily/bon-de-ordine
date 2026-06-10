@@ -117,16 +117,21 @@ function call_next(int $counter_id, int $user_id): ?array {
     $counter = one('SELECT * FROM counters WHERE id = ?', [$counter_id]);
     if (!$counter) throw new RuntimeException('Ghiseu inexistent');
     $svcIds = counter_service_ids($counter);
-    if (!$svcIds) return null;
 
-    $in = implode(',', array_fill(0, count($svcIds), '?'));
+    // bilete eligibile: directionate catre acest ghiseu (prioritar) + serviciile ghiseului
+    $cond = "t.target_counter_id = ?"; $args = [$counter_id];
+    if ($svcIds) {
+        $in = implode(',', array_fill(0, count($svcIds), '?'));
+        $cond .= " OR (t.target_counter_id IS NULL AND t.service_id IN ($in))";
+        $args = array_merge($args, $svcIds);
+    }
     db()->beginTransaction();
     try {
-        // inchide biletul curent al ghiseului (daca era in servire si nu e terminate_on_call)
+        // urmatorul bilet: intai cele transferate la acest ghiseu, apoi dupa prioritate/vechime
         $row = one("SELECT t.* FROM tickets t
-                    WHERE t.status = 'waiting' AND t.service_id IN ($in)
-                    ORDER BY t.priority DESC, t.issued_at ASC, t.id ASC
-                    LIMIT 1 FOR UPDATE", $svcIds);
+                    WHERE t.status = 'waiting' AND ($cond)
+                    ORDER BY (t.target_counter_id = ?) DESC, t.priority DESC, t.issued_at ASC, t.id ASC
+                    LIMIT 1 FOR UPDATE", array_merge($args, [$counter_id]));
         if (!$row) { db()->commit(); return null; }
 
         // marcheaza precedentul bilet servit de acest ghiseu ca 'served' daca inca era 'serving'
@@ -135,7 +140,7 @@ function call_next(int $counter_id, int $user_id): ?array {
 
         $svc = one('SELECT * FROM services WHERE id = ?', [$row['service_id']]);
         $newStatus = ((int)$svc['terminate_on_call'] === 1) ? 'served' : 'called';
-        q("UPDATE tickets SET status = ?, counter_id = ?, agent_id = ?, called_at = NOW()" .
+        q("UPDATE tickets SET status = ?, counter_id = ?, agent_id = ?, called_at = NOW(), target_counter_id = NULL" .
           ($newStatus === 'served' ? ", served_at = NOW(), finished_at = NOW()" : "") . " WHERE id = ?",
           [$newStatus, $counter_id, $user_id, $row['id']]);
 
@@ -163,7 +168,7 @@ function call_specific(int $ticket_id, int $counter_id, int $user_id): ?array {
 
         $svc = one('SELECT * FROM services WHERE id = ?', [$row['service_id']]);
         $newStatus = ((int)$svc['terminate_on_call'] === 1) ? 'served' : 'called';
-        q("UPDATE tickets SET status = ?, counter_id = ?, agent_id = ?, called_at = NOW()" .
+        q("UPDATE tickets SET status = ?, counter_id = ?, agent_id = ?, called_at = NOW(), target_counter_id = NULL" .
           ($newStatus === 'served' ? ", served_at = NOW(), finished_at = NOW()" : "") . " WHERE id = ?",
           [$newStatus, $counter_id, $user_id, $ticket_id]);
 
@@ -173,6 +178,15 @@ function call_specific(int $ticket_id, int $counter_id, int $user_id): ?array {
         if (db()->inTransaction()) db()->rollBack();
         throw $ex;
     }
+}
+
+/** Transfera biletul catre alt GHISEU (birou): revine la rand, directionat catre acel ghiseu. */
+function transfer_to_counter(int $ticket_id, int $target_counter_id): void {
+    $c = one('SELECT * FROM counters WHERE id = ?', [$target_counter_id]);
+    if (!$c) throw new RuntimeException('Ghiseu inexistent');
+    q("UPDATE tickets SET status = 'waiting', counter_id = NULL, agent_id = NULL,
+        called_at = NULL, served_at = NULL, finished_at = NULL, target_counter_id = ?
+       WHERE id = ?", [$target_counter_id, $ticket_id]);
 }
 
 function recall_ticket(int $ticket_id): void {
@@ -243,16 +257,21 @@ function queue_state(int $branch_id): array {
 
 /** Lista pentru terminalul operatorului (coada + ultimele chemate). */
 function counter_view(array $counter): array {
+    $cid = (int)$counter['id'];
     $svcIds = counter_service_ids($counter);
-    $waiting = [];
+    // bilete la rand: cele directionate exact catre acest ghiseu + cele ale serviciilor sale (nedirectionate altundeva)
+    $cond = "t.target_counter_id = ?"; $args = [$cid];
     if ($svcIds) {
         $in = implode(',', array_fill(0, count($svcIds), '?'));
-        $waiting = all(
-            "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, s.name AS service_name, s.color
-             FROM tickets t JOIN services s ON s.id = t.service_id
-             WHERE t.status = 'waiting' AND t.service_id IN ($in)
-             ORDER BY t.priority DESC, t.issued_at ASC LIMIT 50", $svcIds);
+        $cond .= " OR (t.target_counter_id IS NULL AND t.service_id IN ($in))";
+        $args = array_merge($args, $svcIds);
     }
+    $waiting = all(
+        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id, s.name AS service_name, s.color
+         FROM tickets t JOIN services s ON s.id = t.service_id
+         WHERE t.status = 'waiting' AND ($cond)
+         ORDER BY (t.target_counter_id = ?) DESC, t.priority DESC, t.issued_at ASC LIMIT 50",
+        array_merge($args, [$cid]));
     $current = one(
         "SELECT t.*, s.name AS service_name, s.color FROM tickets t
          JOIN services s ON s.id = t.service_id

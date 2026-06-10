@@ -186,7 +186,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '10') ON DUPLICATE KEY UPDATE v = '10'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '11') ON DUPLICATE KEY UPDATE v = '11'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -194,7 +194,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 10;
+    $target = 11;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -262,6 +262,9 @@ function run_migrations(): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     if (!$hasCol('services','group_id')) $ddl("ALTER TABLE services ADD COLUMN group_id INT NULL");
 
+    // v11: transfer catre alt ghiseu (bilet directionat catre un birou anume)
+    if (!$hasCol('tickets','target_counter_id')) $ddl("ALTER TABLE tickets ADD COLUMN target_counter_id INT NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -269,7 +272,7 @@ function run_migrations(): void {
             && $hasCol('services','appt_enabled') && $hasCol('services','appt_slot_min') && $hasCol('services','appt_capacity')
             && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')
             && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')
-            && $hasTable('service_groups') && $hasCol('services','group_id')) {
+            && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

@@ -102,13 +102,22 @@
     if(!r.ok){ QMS.toast(r.error||'Eroare','error'); refresh(true); return; }
     selId = null; refresh(true);
   }
+  async function doTransferCounter(counterId){
+    if(!selId || !counterId) return;
+    const r = await QMS.api('api/transfer-counter', {ticket_id:selId, target_counter:counterId});
+    if(!r.ok){ QMS.toast(r.error||'Eroare','error'); refresh(true); return; }
+    QMS.toast('Bilet transferat la alt birou','ok'); selId = null; refresh(true);
+  }
   elBar.addEventListener('click', e=>{ const b=e.target.closest('button[data-a]'); if(!b) return; const a=b.getAttribute('data-a');
     if(a==='deselect'){ selId=null; syncUI(true); } else doMenu(a);
   });
-  elBar.addEventListener('change', e=>{ const s=e.target.closest('select[data-a="transfer"]'); if(!s||!s.value) return;
-    const name = s.options[s.selectedIndex].text;
-    if(confirm('Transferi biletul către „'+name+'"?')) doTransfer(+s.value);
-    else s.value=''; // anuleaza — ramai la lista, fara transfer
+  elBar.addEventListener('change', e=>{
+    const ts=e.target.closest('select[data-a="transfer"]');
+    if(ts&&ts.value){ const name=ts.options[ts.selectedIndex].text;
+      if(confirm('Transferi biletul către serviciul „'+name+'"?')) doTransfer(+ts.value); else ts.value=''; return; }
+    const tc=e.target.closest('select[data-a="transfer-counter"]');
+    if(tc&&tc.value){ const name=tc.options[tc.selectedIndex].text;
+      if(confirm('Transferi biletul la biroul „'+name+'"?')) doTransferCounter(+tc.value); else tc.value=''; }
   });
 
   /* ---- selectare / DESELECTARE cu click (un singur bilet) ---- */
@@ -123,6 +132,7 @@
       <span class="tag" style="background:${t.color}">${esc((t.label||'?')[0])}</span>
       <span class="lbl">${esc(t.label)}</span>
       ${t.priority? '<span class="pill" style="background:#fee2e2;color:#b91c1c">PRIORITAR</span>':''}
+      ${t.targeted? '<span class="pill" style="background:#e0e7ff;color:#3730a3">⇆ transferat aici</span>':''}
       <span class="pill st-${t.status||'waiting'}">${stLab[t.status]||'la rand'}</span>
       <span class="muted" style="margin-left:auto">${esc(t.service_name||'')}</span></label>`).join('')
       || '<div class="muted" style="padding:1rem">Niciun bilet.</div>';
@@ -139,6 +149,10 @@
     if(cfg.services && cfg.services.length){
       h += `<div class="field" style="margin:.6rem 0 0"><label>Transfera catre serviciu</label><select data-a="transfer"><option value="">— alege serviciu —</option>`+
         cfg.services.map(s=>`<option value="${s.id}">${esc(s.prefix+' · '+s.name)}</option>`).join('')+`</select></div>`;
+    }
+    if(cfg.counters && cfg.counters.length){
+      h += `<div class="field" style="margin:.5rem 0 0"><label>Transfera la alt birou (ghiseu)</label><select data-a="transfer-counter"><option value="">— alege birou —</option>`+
+        cfg.counters.map(c=>`<option value="${c.id}">${esc(c.code+' · '+c.name)}</option>`).join('')+`</select></div>`;
     }
     if(it.form_data){ try{ const d=JSON.parse(it.form_data);
       if(Array.isArray(d)&&d.length) h+='<div class="selform">'+d.map(x=>`<div><span class="muted">${esc(x.label||'')}</span> <strong>${esc(x.value||'—')}</strong></div>`).join('')+'</div>';
@@ -157,7 +171,7 @@
 
   /* re-deseneaza DOAR ce s-a schimbat (ca sa nu inchida dropdown-ul de transfer la refresh) */
   function syncUI(force){
-    const sig = items.map(t=>t.id+','+(t.status||'w')+','+(t.priority?1:0)).join('|')+'#'+selId;
+    const sig = items.map(t=>t.id+','+(t.status||'w')+','+(t.priority?1:0)+','+(t.targeted?1:0)).join('|')+'#'+selId;
     if(force || sig!==lastSig){ renderList(); lastSig=sig; }
     // meniul e identic indiferent de status -> reconstruim doar la schimbarea selectiei
     const barKey = selId===null ? '' : String(selId);
@@ -175,7 +189,7 @@
 
     const ni = [];
     if(c) ni.push({id:c.id,label:c.label,service_name:c.service_name,color:c.color,status:c.status,priority:c.priority,form_data:c.form_data});
-    (res.waiting||[]).forEach(w=> ni.push({id:w.id,label:w.label,service_name:w.service_name,color:w.color,status:'waiting',priority:w.priority,form_data:w.form_data}));
+    (res.waiting||[]).forEach(w=> ni.push({id:w.id,label:w.label,service_name:w.service_name,color:w.color,status:'waiting',priority:w.priority,form_data:w.form_data,targeted:!!w.target_counter_id}));
     elWait.textContent = res.waiting_count;
     notifyNew(res.waiting||[]);
     items = ni;

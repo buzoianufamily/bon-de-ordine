@@ -113,6 +113,7 @@ try {
             case 'no-show':   no_show_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'cancel':    cancel_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'transfer':  transfer_ticket((int)input('ticket_id', 0), (int)input('service_id', 0)); json_out(['ok' => true]);
+            case 'transfer-counter': transfer_to_counter((int)input('ticket_id', 0), (int)input('target_counter', 0)); json_out(['ok' => true]);
             case 'counter-state':
                 $c = one('SELECT * FROM counters WHERE id = ?', [(int)($_GET['counter_id'] ?? 0)]);
                 if (!$c) json_out(['ok' => false], 404);
