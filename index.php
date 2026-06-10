@@ -136,9 +136,16 @@ try {
     if ($seg[0] === 'login') {
         if ($method === 'POST') {
             csrf_check();
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            // throttling: max 10 incercari esuate / IP in 10 minute
+            $fails = 0;
+            try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action='login_failed' AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
+            if ($fails >= 10) { flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login'); }
             if (attempt_login((string)($_POST['email'] ?? ''), (string)($_POST['password'] ?? ''))) {
+                audit('login', 'auth');
                 redirect(current_user()['role'] === 'agent' ? 'counter' : 'admin');
             }
+            audit('login_failed', 'auth', null, substr((string)($_POST['email'] ?? ''), 0, 120));
             flash('Email sau parola incorecte.', 'error');
             redirect('login');
         }

@@ -35,6 +35,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Antete de securitate (fallback la nivel PHP daca mod_headers nu e activ)
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') header('Strict-Transport-Security: max-age=15552000');
+}
+
 require __DIR__ . '/db.php';
 require __DIR__ . '/helpers.php';
 require __DIR__ . '/auth.php';
