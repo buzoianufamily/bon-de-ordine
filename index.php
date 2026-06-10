@@ -26,6 +26,52 @@ function input(string $key, $default = null) {
 }
 
 try {
+    // ===================== PWA (manifest + service worker) =====================
+    if ($route === '/manifest.webmanifest') {
+        header('Content-Type: application/manifest+json; charset=utf-8');
+        $brand = (string) setting('brand_name', 'Bon de ordine');
+        echo json_encode([
+            'name' => $brand, 'short_name' => mb_substr($brand, 0, 12) ?: 'Bon',
+            'start_url' => base_url() . '/', 'scope' => base_url() . '/',
+            'display' => 'standalone', 'background_color' => '#0a0b0d',
+            'theme_color' => (string) setting('accent_color', '#2563eb'),
+            'icons' => [['src' => url('assets/icon.svg'), 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any maskable']],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    if ($route === '/sw.js') {
+        header('Content-Type: application/javascript; charset=utf-8');
+        header('Service-Worker-Allowed: /');
+        header('Cache-Control: no-cache');
+        echo <<<'SWJS'
+const CACHE = 'bdo-v1';
+const ASSET_RE = /\.(css|js|woff2?|ttf|png|jpe?g|webp|svg|gif|ico)$/i;
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== location.origin) return;       // doar same-origin
+  if (url.pathname.indexOf('/api/') !== -1) return;  // niciodata cache la API (date live)
+  if (ASSET_RE.test(url.pathname)) {                 // assets: cache-first
+    e.respondWith(caches.open(CACHE).then(c => c.match(req).then(hit =>
+      hit || fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }))));
+    return;
+  }
+  if (req.mode === 'navigate') {                     // pagini: network-first, fallback la cache
+    e.respondWith(fetch(req).then(res => {
+      const cc = res.clone(); caches.open(CACHE).then(c => c.put(req, cc)); return res;
+    }).catch(() => caches.match(req)));
+  }
+});
+SWJS;
+        exit;
+    }
+
     // =========================== API ===========================
     if ($seg[0] === 'api') {
         // ---- API public v1 (autentificat cu cheie) ----
