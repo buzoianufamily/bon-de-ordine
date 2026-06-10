@@ -118,28 +118,54 @@ function admin_dispatch(array $seg, string $method): void {
 /* ----------------------- DASHBOARD ----------------------- */
 function admin_dashboard(): void {
     $today = date('Y-m-d');
+    $branch = (int)($_GET['branch'] ?? 0);
+    $branches = all('SELECT id,name FROM branches ORDER BY name');
+    $bc = $branch ? ' AND branch_id=?' : '';            // conditie filtru filiala
+    $td = fn(array $extra=[]) => array_merge([$today], $branch ? array_merge($extra,[$branch]) : $extra);
+    $nb = fn() => $branch ? [$branch] : [];
+
     $stats = [
-        'today'   => (int) val('SELECT COUNT(*) FROM tickets WHERE DATE(issued_at)=?', [$today]),
-        'waiting' => (int) val('SELECT COUNT(*) FROM tickets WHERE status="waiting"'),
-        'serving' => (int) val('SELECT COUNT(*) FROM tickets WHERE status IN ("called","serving")'),
-        'served'  => (int) val('SELECT COUNT(*) FROM tickets WHERE status="served" AND DATE(issued_at)=?', [$today]),
-        'no_show' => (int) val('SELECT COUNT(*) FROM tickets WHERE status="no_show" AND DATE(issued_at)=?', [$today]),
-        'avg_wait'=> (int) (val('SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, called_at)) FROM tickets WHERE called_at IS NOT NULL AND DATE(issued_at)=?', [$today]) ?? 0),
+        'today'     => (int) val("SELECT COUNT(*) FROM tickets WHERE DATE(issued_at)=?$bc", $td()),
+        'waiting'   => (int) val("SELECT COUNT(*) FROM tickets WHERE status='waiting'$bc", $nb()),
+        'serving'   => (int) val("SELECT COUNT(*) FROM tickets WHERE status IN ('called','serving')$bc", $nb()),
+        'served'    => (int) val("SELECT COUNT(*) FROM tickets WHERE status='served' AND DATE(issued_at)=?$bc", $td()),
+        'no_show'   => (int) val("SELECT COUNT(*) FROM tickets WHERE status='no_show' AND DATE(issued_at)=?$bc", $td()),
+        'cancelled' => (int) val("SELECT COUNT(*) FROM tickets WHERE status='cancelled' AND DATE(issued_at)=?$bc", $td()),
+        'avg_wait'  => (int) (val("SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, called_at)) FROM tickets WHERE called_at IS NOT NULL AND DATE(issued_at)=?$bc", $td()) ?? 0),
     ];
-    $per_service = all('SELECT s.name, s.color, COUNT(t.id) cnt
+    $closed = $stats['served'] + $stats['no_show'] + $stats['cancelled'];
+    $stats['abandon'] = $closed > 0 ? (int) round(($stats['no_show'] + $stats['cancelled']) / $closed * 100) : 0;
+
+    $per_service = all("SELECT s.name, s.color, COUNT(t.id) cnt
         FROM services s LEFT JOIN tickets t ON t.service_id=s.id AND DATE(t.issued_at)=?
-        GROUP BY s.id ORDER BY cnt DESC, s.sort_order', [$today]);
-    // aflux pe ora (azi) — pentru graficul de tendinta
+        WHERE 1=1" . ($branch ? ' AND s.branch_id=?' : '') . "
+        GROUP BY s.id ORDER BY cnt DESC, s.sort_order", $branch ? [$today,$branch] : [$today]);
+
     $per_hour = array_fill(0, 24, 0);
-    foreach (all('SELECT HOUR(issued_at) h, COUNT(*) c FROM tickets WHERE DATE(issued_at)=? GROUP BY h', [$today]) as $r)
+    foreach (all("SELECT HOUR(issued_at) h, COUNT(*) c FROM tickets WHERE DATE(issued_at)=?$bc GROUP BY h", $td()) as $r)
         $per_hour[(int)$r['h']] = (int)$r['c'];
-    $devices = all('SELECT name, type, connection_key, last_seen,
-        (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices ORDER BY type');
-    // prezenta operatori (status efectiv: offline daca nu a mai dat semn de viata 2 min)
+    $peakVal = 0; $peakH = -1;
+    foreach ($per_hour as $h => $v) if ($v > $peakVal) { $peakVal = $v; $peakH = $h; }
+    $stats['peak'] = $peakH >= 0 ? sprintf('%02d:00', $peakH) : '—';
+    $stats['peak_val'] = $peakVal;
+
+    $devices = all("SELECT name, type, connection_key, last_seen,
+        (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices" .
+        ($branch ? ' WHERE branch_id=?' : '') . " ORDER BY type", $nb());
     $operators = all("SELECT name, role, work_status, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online
         FROM users WHERE active=1 AND (role='agent' OR last_seen IS NOT NULL)
         ORDER BY online DESC, name");
+
+    // comparatie filiale (azi) — doar cand privesti toate filialele
+    $branch_cmp = [];
+    if (!$branch && count($branches) > 1) {
+        $branch_cmp = all("SELECT b.name, COUNT(t.id) total,
+            SUM(t.status='served') served, SUM(t.status='waiting') waiting,
+            AVG(CASE WHEN t.called_at IS NOT NULL THEN TIMESTAMPDIFF(SECOND,t.issued_at,t.called_at) END) avg_wait
+            FROM branches b LEFT JOIN tickets t ON t.branch_id=b.id AND DATE(t.issued_at)=?
+            GROUP BY b.id ORDER BY total DESC", [$today]);
+    }
 
     // actualizare live a panourilor (poll JSON)
     if (($_GET['format'] ?? '') === 'json' || want_json()) {
@@ -149,7 +175,7 @@ function admin_dashboard(): void {
               'status'=>$o['online']?$o['work_status']:'offline','online'=>(bool)$o['online'],
               'last_seen'=>$o['last_seen']?date('H:i',strtotime($o['last_seen'])):'—'], $operators)]);
     }
-    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators'));
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp'));
 }
 
 /* ----------------------- SERVICES ----------------------- */
@@ -703,7 +729,16 @@ function admin_statistics(): void {
             ? ('Filiala: ' . ((string)(val('SELECT name FROM branches WHERE id=?', [$branch]) ?? $branch)))
             : 'Toate filialele';
         $accent = (string) setting('accent_color', '#2563eb');
-        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent);
+        // combina bilete pe utilizator + timp pe status pentru foaia "Operatori"
+        $opMap = [];
+        foreach ($per_user as $r) $opMap[$r['name']] = ['name'=>$r['name'],'total'=>(int)$r['c'],'served'=>(int)$r['served'],
+            'w'=>round((float)$r['w']),'sv'=>round((float)$r['sv']),'available'=>0,'busy'=>0,'paused'=>0];
+        foreach (($op_activity ?? []) as $r) {
+            if (!isset($opMap[$r['name']])) $opMap[$r['name']] = ['name'=>$r['name'],'total'=>0,'served'=>0,'w'=>0,'sv'=>0,'available'=>0,'busy'=>0,'paused'=>0];
+            if (in_array($r['status'], ['available','busy','paused'], true)) $opMap[$r['name']][$r['status']] = (int)$r['secs'];
+        }
+        $op_rows = array_values($opMap);
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
@@ -716,7 +751,7 @@ function admin_statistics(): void {
  */
 function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
                           array $kpi, array $per_day, array $per_service, array $per_hour,
-                          array $per_counter, string $accent): Xlsx {
+                          array $per_counter, string $accent, array $op_rows = []): Xlsx {
     $mins = fn($s) => round(((float)$s) / 60, 1);
     $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
 
@@ -820,6 +855,29 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
         'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
         'series' => [['name' => 'Bilete', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'color' => $accent]],
     ]);
+
+    /* ---- Foaia 6: Operatori (bilete + timp pe status) ---- */
+    if ($op_rows) {
+        $s = $xl->add_sheet('Operatori');
+        $s->set_col_widths([1 => 22, 2 => 9, 3 => 9, 4 => 20, 5 => 18, 6 => 17, 7 => 14, 8 => 13]);
+        $s->row([['v' => 'Activitate operatori', 's' => Xlsx::S_TITLE]]);
+        $s->row([['v' => 'Perioada: ' . $from . ' – ' . $to, 's' => Xlsx::S_MUTED]]);
+        $hdr = $s->row(['Operator', 'Total', 'Servite', 'Timp asteptare (min)', 'Timp servire (min)', 'Disponibil (min)', 'Ocupat (min)', 'Pauza (min)'], Xlsx::S_HEAD);
+        $cats = []; $vals = []; $first = $hdr + 1;
+        foreach ($op_rows as $r) {
+            $s->row([$r['name'], (int)$r['total'], (int)$r['served'],
+                ['v' => $mins($r['w']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['sv']), 's' => Xlsx::S_NUM1],
+                ['v' => $mins($r['available']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['busy']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['paused']), 's' => Xlsx::S_NUM1]]);
+            $cats[] = $r['name']; $vals[] = (int)$r['served'];
+        }
+        $last = $s->row_count();
+        if ($vals) $s->chart([
+            'type' => 'bar', 'title' => 'Bilete servite pe operator',
+            'anchor' => ['col' => 9, 'row' => 1, 'col2' => 18, 'row2' => 21],
+            'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+            'series' => [['name' => 'Servite', 'name_ref' => '$C$' . $hdr, 'ref' => '$C$' . $first . ':$C$' . $last, 'vals' => $vals, 'color' => $accent]],
+        ]);
+    }
 
     return $xl;
 }

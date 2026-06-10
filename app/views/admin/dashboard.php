@@ -12,7 +12,17 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
 ?>
 <div class="topbar">
   <h1>Dashboard</h1>
-  <span class="muted" style="font-size:.85rem">Interval actualizare: la reincarcare · <?= date('l, d.m.Y') ?></span>
+  <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+    <?php if(count($branches)>1): ?>
+    <form method="get" action="<?= e(url('admin')) ?>" style="margin:0">
+      <select name="branch" onchange="this.form.submit()" style="width:auto">
+        <option value="0">Toate filialele</option>
+        <?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>" <?= $branch===(int)$b['id']?'selected':'' ?>><?= e($b['name']) ?></option><?php endforeach; ?>
+      </select>
+    </form>
+    <?php endif; ?>
+    <span class="muted" style="font-size:.85rem"><?= date('l, d.m.Y') ?></span>
+  </div>
 </div>
 
 <div class="statcards">
@@ -20,8 +30,21 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   <div class="statcard"><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" id="sv-waiting" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>
   <div class="statcard"><div class="t">In servire</div><div class="s">Chemate / la ghiseu</div><div class="v" id="sv-serving" style="color:var(--accent)"><?= $stats['serving'] ?></div></div>
   <div class="statcard"><div class="t">Servite azi</div><div class="s">Finalizate</div><div class="v" id="sv-served" style="color:var(--ok)"><?= $stats['served'] ?></div></div>
+  <div class="statcard"><div class="t">Abandon</div><div class="s">neprez. + anulate</div><div class="v" id="sv-abandon" style="color:var(--danger)"><?= $stats['abandon'] ?>%</div></div>
   <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · azi</div><div class="v" id="sv-avg"><?= mmss($stats['avg_wait']) ?></div></div>
+  <div class="statcard"><div class="t">Varf de zi</div><div class="s">ora cu cele mai multe</div><div class="v" id="sv-peak"><?= e($stats['peak']) ?></div></div>
 </div>
+
+<?php if(!empty($branch_cmp)): ?>
+<div class="panel" style="margin-bottom:1.3rem">
+  <h4>Comparatie filiale (azi)</h4>
+  <table><thead><tr><th>Filiala</th><th>Total</th><th>La rand</th><th>Servite</th><th>Timp mediu asteptare</th></tr></thead><tbody>
+  <?php foreach($branch_cmp as $b): ?>
+    <tr><td><strong><?= e($b['name']) ?></strong></td><td><?= (int)$b['total'] ?></td><td><?= (int)$b['waiting'] ?></td><td><?= (int)$b['served'] ?></td><td class="muted"><?= mmss((int)($b['avg_wait']??0)) ?></td></tr>
+  <?php endforeach; ?>
+  </tbody></table>
+</div>
+<?php endif; ?>
 
 <div class="panel-grid">
   <div class="panel">
@@ -130,11 +153,13 @@ window.addEventListener('load', function(){
   function mmss(s){s=Math.max(0,s|0);return ('0'+((s/60|0)%100)).slice(-2)+':'+('0'+(s%60)).slice(-2);}
   function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
   function set(id,v){var el=document.getElementById(id); if(el)el.textContent=v;}
+  var dashBranch = <?= (int)$branch ?>;
   async function refresh(){
-    var r; try{ r=await QMS.api('admin/dashboard?format=json',null,'GET'); }catch(e){ return; }
+    var r; try{ r=await QMS.api('admin/dashboard?format=json&branch='+dashBranch,null,'GET'); }catch(e){ return; }
     if(!r||!r.ok)return;
     set('sv-today',r.stats.today); set('sv-waiting',r.stats.waiting); set('sv-serving',r.stats.serving);
     set('sv-served',r.stats.served); set('sv-avg',mmss(r.stats.avg_wait));
+    set('sv-abandon',(r.stats.abandon||0)+'%'); set('sv-peak',r.stats.peak||'—');
     var op=document.getElementById('opRows');
     if(op){ op.innerHTML=(r.operators||[]).map(function(o){var m=stMeta[o.status]||stMeta.offline;
       return '<tr><td style="width:1%"><span class="pill" style="background:color-mix(in srgb,'+m[1]+' 22%,transparent);color:'+m[1]+';white-space:nowrap">'+esc(m[0])+'</span></td><td><strong>'+esc(o.name)+'</strong><br><span class="muted" style="font-size:.8rem">'+esc(o.role)+'</span></td><td style="text-align:right" class="muted">'+esc(o.last_seen)+'</td></tr>';
