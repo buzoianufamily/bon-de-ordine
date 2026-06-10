@@ -19,10 +19,22 @@
     o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.setValueAtTime(.0001,ac.currentTime);
     g.gain.exponentialRampToValueAtTime(.25,ac.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.5);o.start();o.stop(ac.currentTime+.5);}catch(e){} }
   const spellLabel=l=>String(l||'').split('').join(' ');
-  function announce(t){ ding(); let phrase='';
+  function announce(t){
+    let phrase='';
     if(cfg.sayNumber)phrase+='Bonul '+spellLabel(t.label)+'. ';
-    if(cfg.sayCounter&&(t.counter_code||t.counter_name))phrase+='Va rugam prezentati-va la '+(t.counter_name||('ghiseul '+t.counter_code))+'.';
-    const rep=+(cfg.repeat||1); let i=0; const fire=()=>{speak(phrase); if(++i<rep)setTimeout(fire,2600);}; setTimeout(fire,450); }
+    if(cfg.sayCounter&&(t.counter_code||t.counter_name))phrase+='Vă rugăm să vă prezentați la '+(t.counter_name||('ghiseul '+t.counter_code))+'.';
+    if(!phrase.trim()||!window.speechSynthesis){ ding(); return; }
+    try{ speechSynthesis.cancel(); }catch(e){}   // o singura curatare, la inceput
+    ding();
+    const rep=Math.max(1,+(cfg.repeat||1)); let i=0;
+    const v=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith((cfg.voice||'ro').slice(0,2).toLowerCase()));
+    // repeta DOAR dupa ce s-a terminat citirea precedenta (fara sa o taie la mijloc)
+    const fire=()=>{ if(i>=rep)return; i++;
+      const u=new SpeechSynthesisUtterance(phrase); u.lang=cfg.voice||'ro-RO'; if(v)u.voice=v; u.rate=.95;
+      u.onend=()=>{ if(i<rep) setTimeout(fire,700); }; u.onerror=()=>{ if(i<rep) setTimeout(fire,700); };
+      try{ speechSynthesis.speak(u); }catch(e){} };
+    setTimeout(fire,450);
+  }
   function announceIfNew(state){ const last=state.last; if(!last)return;
     const sig=last.id+':'+(last.recall_count||0)+':'+last.called_at;
     if(sig!==lastCalledSig){ lastCalledSig=sig; flashNow(); announce(last); } }
