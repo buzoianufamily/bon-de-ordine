@@ -190,6 +190,13 @@ CREATE TABLE IF NOT EXISTS counter_sessions (
   INDEX idx_sess_counter (counter_id, ended_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ---------- Rate-limiting API public (contor pe minut, un rand per cheie) ----------
+CREATE TABLE IF NOT EXISTS api_rate (
+  rk     VARCHAR(64) NOT NULL PRIMARY KEY,
+  minute BIGINT NOT NULL,
+  cnt    INT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ---------- Jurnal de audit (actiuni admin) ----------
 CREATE TABLE IF NOT EXISTS audit_log (
   id         INT AUTO_INCREMENT PRIMARY KEY,

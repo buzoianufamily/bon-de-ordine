@@ -17,7 +17,7 @@ $allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.ser
       <form method="post" action="<?= e(url('admin/api')) ?>" onsubmit="return confirm('Regenerezi cheia? Integrarile existente vor trebui actualizate.')"><?= csrf_field() ?>
         <input type="hidden" name="regen" value="1"><button class="btn">↻ Regenereaza cheia</button></form>
     </div>
-    <p class="muted" style="font-size:.82rem;margin-bottom:0">URL de baza: <code><?= e($base) ?></code></p>
+    <p class="muted" style="font-size:.82rem;margin-bottom:0">URL de baza: <code><?= e($base) ?></code> · Limita: <strong>120 cereri/minut</strong> (antete <code>X-RateLimit-*</code>, raspuns <code>429</code> la depasire).</p>
   </div>
 
   <form method="post" action="<?= e(url('admin/api')) ?>" class="card pad" style="flex:1;min-width:320px"><?= csrf_field() ?>

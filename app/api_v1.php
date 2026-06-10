@@ -16,6 +16,23 @@ function api_v1(array $seg, string $method): void {
         json_out(['ok' => false, 'error' => 'Cheie API invalida sau lipsa'], 401);
     }
 
+    // rate-limit: max 120 cereri/minut per cheie (contor pe minut, un singur rand)
+    $limit = 120;
+    try {
+        $rk = substr(sha1('api:' . $key), 0, 64);
+        $minute = (int) floor(time() / 60);
+        q("INSERT INTO api_rate (rk, minute, cnt) VALUES (?, ?, 1)
+           ON DUPLICATE KEY UPDATE cnt = IF(minute = VALUES(minute), cnt + 1, 1), minute = VALUES(minute)",
+          [$rk, $minute]);
+        $cnt = (int) val("SELECT cnt FROM api_rate WHERE rk = ?", [$rk]);
+        header('X-RateLimit-Limit: ' . $limit);
+        header('X-RateLimit-Remaining: ' . max(0, $limit - $cnt));
+        if ($cnt > $limit) {
+            header('Retry-After: ' . (60 - (time() % 60)));
+            json_out(['ok' => false, 'error' => 'Prea multe cereri (limita ' . $limit . '/minut)'], 429);
+        }
+    } catch (Throwable $e) {} // tabela lipsa pre-migrare -> nu bloca API-ul
+
     $res = $seg[2] ?? '';
     $arg = $seg[3] ?? null;
 
