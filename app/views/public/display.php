@@ -41,5 +41,5 @@ window.DISPLAY = {
   layout: <?= $hasLayout ? json_encode($layout, JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>
-<script src="<?= e(asset('js/display.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/display.js')) ?>?v=4"></script>
 </body></html>
