@@ -26,6 +26,16 @@ function input(string $key, $default = null) {
 }
 
 try {
+    // ===================== CRON (sarcini programate, protejat cu token) =====================
+    if ($seg[0] === 'cron') {
+        $token = (string) setting('cron_token', '');
+        if ($token === '' || !hash_equals($token, (string)($_GET['key'] ?? ''))) {
+            json_out(['ok' => false, 'error' => 'Token cron invalid'], 403);
+        }
+        require APP_ROOT . '/app/cron.php';
+        json_out(run_cron_jobs());
+    }
+
     // ===================== PWA (manifest + service worker) =====================
     if ($route === '/manifest.webmanifest') {
         header('Content-Type: application/manifest+json; charset=utf-8');

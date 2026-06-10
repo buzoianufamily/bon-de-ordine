@@ -237,7 +237,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '13') ON DUPLICATE KEY UPDATE v = '13'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '14') ON DUPLICATE KEY UPDATE v = '14'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -245,7 +245,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 13;
+    $target = 14;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -331,6 +331,9 @@ function run_migrations(): void {
         cnt INT NOT NULL DEFAULT 1
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    // v14: remindere programari (marcaj ca sa nu trimitem de doua ori)
+    if (!$hasCol('appointments','reminded_at')) $ddl("ALTER TABLE appointments ADD COLUMN reminded_at DATETIME NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -339,7 +342,7 @@ function run_migrations(): void {
             && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')
             && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')
             && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')
-            && $hasTable('audit_log') && $hasTable('api_rate')) {
+            && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

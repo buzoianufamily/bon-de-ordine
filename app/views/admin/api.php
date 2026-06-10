@@ -5,6 +5,8 @@ $wurl = setting('webhook_url','');
 $wsec = setting('webhook_secret','');
 $wev  = array_filter(array_map('trim', explode(',', setting('webhook_events',''))));
 $allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.serving'=>'In servire','ticket.served'=>'Finalizat','ticket.no_show'=>'Neprezentat','ticket.cancelled'=>'Anulat','ticket.transferred'=>'Transferat','ticket.recalled'=>'Rechemat'];
+$cron = setting('cron_token','');
+$cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
 ?>
 <div class="topbar"><h1>API & Webhooks</h1></div>
 
@@ -18,6 +20,15 @@ $allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.ser
         <input type="hidden" name="regen" value="1"><button class="btn">↻ Regenereaza cheia</button></form>
     </div>
     <p class="muted" style="font-size:.82rem;margin-bottom:0">URL de baza: <code><?= e($base) ?></code> · Limita: <strong>120 cereri/minut</strong> (antete <code>X-RateLimit-*</code>, raspuns <code>429</code> la depasire).</p>
+  </div>
+
+  <div class="card pad" style="flex:1;min-width:320px">
+    <h3 style="margin-top:0">Sarcini programate (cron)</h3>
+    <p class="muted" style="margin-top:0;font-size:.85rem">Pentru remindere de programari si raportul zilnic, configureaza in cPanel un <strong>Cron Job</strong> care deschide linkul de mai jos la fiecare 15 minute.</p>
+    <div class="field"><label>URL cron</label><input readonly value="<?= e($cronUrl) ?>" onclick="this.select()" style="font-family:monospace;font-size:.78rem"></div>
+    <p class="muted" style="font-size:.82rem">Comanda cPanel (interval */15):</p>
+    <pre style="background:#0f1115;color:#cde3ff;padding:.8rem;border-radius:10px;overflow:auto;font-size:.78rem">*/15 * * * * curl -s "<?= e($cronUrl) ?>" >/dev/null 2>&1</pre>
+    <p class="muted" style="font-size:.8rem;margin-bottom:0">Activeaza remindere/raport din <a href="<?= e(url('admin/settings')) ?>">Setari → Email</a>.</p>
   </div>
 
   <form method="post" action="<?= e(url('admin/api')) ?>" class="card pad" style="flex:1;min-width:320px"><?= csrf_field() ?>

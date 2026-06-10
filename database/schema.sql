@@ -266,6 +266,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   ticket_id     BIGINT NULL,
   public_token  VARCHAR(40) NULL,
   note          VARCHAR(255) NULL,
+  reminded_at   DATETIME NULL,                          -- email reminder trimis
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_appt_branch  FOREIGN KEY (branch_id)  REFERENCES branches(id) ON DELETE CASCADE,
   CONSTRAINT fk_appt_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,

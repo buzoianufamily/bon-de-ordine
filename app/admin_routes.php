@@ -447,6 +447,7 @@ function admin_audit_list(): void {
 /* ----------------------- API & WEBHOOKS ----------------------- */
 function admin_api_page(): void {
     if (setting('api_key', '') === '') set_setting('api_key', bin2hex(random_bytes(24)));
+    if (setting('cron_token', '') === '') set_setting('cron_token', bin2hex(random_bytes(16)));
     view('admin/api');
 }
 function admin_api_save(): void {
@@ -468,10 +469,12 @@ function admin_settings_save(): void {
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size',
              'alert_called','alert_transfer','alert_delay',
-             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass'];
+             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
+    set_setting('reminder_enabled', isset($_POST['reminder_enabled']) ? '1' : '0');
+    set_setting('daily_report_enabled', isset($_POST['daily_report_enabled']) ? '1' : '0');
     set_setting('display_say_number', isset($_POST['display_say_number']) ? '1' : '0');
     set_setting('display_say_counter', isset($_POST['display_say_counter']) ? '1' : '0');
     set_setting('counter_voice', isset($_POST['counter_voice']) ? '1' : '0');

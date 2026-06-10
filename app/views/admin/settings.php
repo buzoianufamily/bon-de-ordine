@@ -104,6 +104,12 @@
         <div class="field" style="flex:2"><label>Trimite un email de test catre</label><input type="email" name="mail_test_to" placeholder="adresa@ta.ro"></div>
         <div class="field"><button class="btn" name="mail_test" value="1">✉️ Salveaza si testeaza</button></div>
       </div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Automatizari (necesita cron)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Configureaza job-ul cron din <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>. Apoi activeaza:</p>
+      <label style="margin:.4rem 0;display:block"><input type="checkbox" name="reminder_enabled" <?= setting('reminder_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>reminder</strong> pe email cu ~24h inainte de programare</label>
+      <label style="margin:.4rem 0;display:block"><input type="checkbox" name="daily_report_enabled" <?= setting('daily_report_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>raport zilnic</strong> pe email (despre ziua precedenta)</label>
+      <div class="field"><label>Destinatari raport zilnic (gol = toti adminii)</label><input name="daily_report_to" value="<?= $s('daily_report_to') ?>" placeholder="a@x.ro, b@y.ro"></div>
     </div>
   </div>
 
