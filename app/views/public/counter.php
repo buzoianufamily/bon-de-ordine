@@ -45,5 +45,5 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   myStatus:<?= json_encode($myStatus) ?>,
   services:<?= json_encode(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name']], $services), JSON_UNESCAPED_UNICODE) ?>
 };</script>
-<script src="<?= e(asset('js/counter.js')) ?>?v=6"></script>
+<script src="<?= e(asset('js/counter.js')) ?>?v=7"></script>
 </body></html>
