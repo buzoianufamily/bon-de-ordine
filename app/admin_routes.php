@@ -965,7 +965,17 @@ function admin_form_save(): void {
 function admin_appointments_list(): void {
     $date   = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
     $branch = (int)($_GET['branch'] ?? 0);
-    $w = 'DATE(a.slot_start)=?'; $args = [$date];
+    $viewMode = (($_GET['view'] ?? 'day') === 'week') ? 'week' : 'day';
+
+    if ($viewMode === 'week') {
+        // saptamana (luni-duminica) care contine $date
+        $weekStart = date('Y-m-d', strtotime($date . ' -' . ((((int)date('N', strtotime($date))) - 1)) . ' days'));
+        $weekEnd   = date('Y-m-d', strtotime($weekStart . ' +6 days'));
+        $w = 'DATE(a.slot_start) BETWEEN ? AND ?'; $args = [$weekStart, $weekEnd];
+    } else {
+        $weekStart = $weekEnd = null;
+        $w = 'DATE(a.slot_start)=?'; $args = [$date];
+    }
     if ($branch) { $w .= ' AND a.branch_id=?'; $args[] = $branch; }
     $rows = all("SELECT a.*, s.name service_name, s.color, s.prefix, b.name branch_name,
                     t.label ticket_label, t.public_token ticket_token
@@ -973,7 +983,7 @@ function admin_appointments_list(): void {
                  LEFT JOIN tickets t ON t.id=a.ticket_id WHERE $w ORDER BY a.slot_start", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     $services = all('SELECT id,prefix,name,branch_id FROM services WHERE appt_enabled=1 AND status="active" ORDER BY name');
-    view('admin/appointments', compact('rows','date','branch','branches','services'));
+    view('admin/appointments', compact('rows','date','branch','branches','services','viewMode','weekStart','weekEnd'));
 }
 function admin_appointment_create(): void {
     csrf_check();
