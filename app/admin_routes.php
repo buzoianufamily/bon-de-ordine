@@ -21,7 +21,7 @@ function admin_dispatch(array $seg, string $method): void {
         case 'branches':
             if ($method === 'POST' && $a === null) { admin_branch_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
-                if ((int)val('SELECT COUNT(*) FROM branches') > 1) { q('DELETE FROM branches WHERE id=?', [(int)$a]); flash('Filiala stearsa.'); }
+                if ((int)val('SELECT COUNT(*) FROM branches') > 1) { q('DELETE FROM branches WHERE id=?', [(int)$a]); audit('delete','branch',(int)$a); flash('Filiala stearsa.'); }
                 else flash('Nu poti sterge ultima filiala.', 'error');
                 redirect('admin/branches'); }
             if ($method === 'POST' && $b === 'duplicate') { admin_branch_duplicate((int)$a); return; }
@@ -32,7 +32,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'services':
             if ($method === 'POST' && $a === null) { admin_service_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM services WHERE id=?', [(int)$a]); flash('Serviciu sters.'); redirect('admin/services'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM services WHERE id=?', [(int)$a]); audit('delete','service',(int)$a); flash('Serviciu sters.'); redirect('admin/services'); }
             if ($a === 'new') { admin_service_form(null); return; }
             if (ctype_digit((string)$a)) { admin_service_form((int)$a); return; }
             admin_services_list(); return;
@@ -41,26 +41,26 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $a === null) { admin_group_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 q('UPDATE services SET group_id=NULL WHERE group_id=?', [(int)$a]);
-                q('DELETE FROM service_groups WHERE id=?', [(int)$a]); flash('Grup sters.'); redirect('admin/groups'); }
+                q('DELETE FROM service_groups WHERE id=?', [(int)$a]); audit('delete','group',(int)$a); flash('Grup sters.'); redirect('admin/groups'); }
             admin_groups_list(); return;
 
         case 'counters':
             if ($method === 'POST' && $a === null) { admin_counter_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); flash('Ghiseu sters.'); redirect('admin/counters'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); audit('delete','counter',(int)$a); flash('Ghiseu sters.'); redirect('admin/counters'); }
             if ($a === 'new') { admin_counter_form(null); return; }
             if (ctype_digit((string)$a)) { admin_counter_form((int)$a); return; }
             admin_counters_list(); return;
 
         case 'users':
             if ($method === 'POST' && $a === null) { admin_user_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); flash('Utilizator sters.'); redirect('admin/users'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); audit('delete','user',(int)$a); flash('Utilizator sters.'); redirect('admin/users'); }
             if ($a === 'new') { admin_user_form(null); return; }
             if (ctype_digit((string)$a)) { admin_user_form((int)$a); return; }
             admin_users_list(); return;
 
         case 'devices':
             if ($method === 'POST' && $a === null) { admin_device_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM devices WHERE id=?', [(int)$a]); flash('Dispozitiv sters.'); redirect('admin/devices'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM devices WHERE id=?', [(int)$a]); audit('delete','device',(int)$a); flash('Dispozitiv sters.'); redirect('admin/devices'); }
             if (ctype_digit((string)$a) && $b === 'player') {   // editor canvas afisaj
                 if ($method === 'POST') { admin_player_save((int)$a); return; }
                 admin_player_builder((int)$a); return;
@@ -78,7 +78,7 @@ function admin_dispatch(array $seg, string $method): void {
             admin_tickets(); return;
 
         case 'feedback':
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM feedback WHERE id=?', [(int)$a]); flash('Feedback sters.'); redirect('admin/feedback'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM feedback WHERE id=?', [(int)$a]); audit('delete','feedback',(int)$a); flash('Feedback sters.'); redirect('admin/feedback'); }
             admin_feedback_list(); return;
 
         case 'appointments':
@@ -109,8 +109,17 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST') { csrf_check();
                 $m = []; foreach (array_keys(perm_areas()) as $ar) $m[$ar] = isset($_POST['manager'][$ar]);
                 set_setting('role_perms', json_encode(['manager'=>$m], JSON_UNESCAPED_UNICODE));
-                flash('Permisiuni salvate.'); redirect('admin/roles'); }
+                audit('update','roles'); flash('Permisiuni salvate.'); redirect('admin/roles'); }
             admin_roles(); return;
+
+        case 'api':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST') { admin_api_save(); return; }
+            admin_api_page(); return;
+
+        case 'audit':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            admin_audit_list(); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
 }
@@ -245,6 +254,7 @@ function admin_service_save(): void {
         q("INSERT INTO services ($cols) VALUES ($ph)", array_values($f));
         flash('Serviciu creat.');
     }
+    audit($id?'update':'create','service',$id ?: insert_id());
     redirect('admin/services');
 }
 
@@ -270,6 +280,7 @@ function admin_group_save(): void {
         q("INSERT INTO service_groups ($cols) VALUES ($ph)", array_values($f));
         flash('Grup creat.');
     }
+    audit($id?'update':'create','group',$id ?: insert_id());
     redirect('admin/groups');
 }
 
@@ -301,7 +312,7 @@ function admin_counter_save(): void {
     }
     q('DELETE FROM counter_services WHERE counter_id=?', [$id]);
     if (!$f['all_services']) foreach (($_POST['services'] ?? []) as $sid) q('INSERT IGNORE INTO counter_services (counter_id,service_id) VALUES (?,?)', [$id,(int)$sid]);
-    flash('Ghiseu salvat.'); redirect('admin/counters');
+    audit($id?'update':'create','counter',$id); flash('Ghiseu salvat.'); redirect('admin/counters');
 }
 
 /* ----------------------- USERS ----------------------- */
@@ -326,7 +337,7 @@ function admin_user_save(): void {
             [$name,$email,$role,$active,$notify,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
-    flash('Utilizator salvat.'); redirect('admin/users');
+    audit($id?'update':'create','user',$id); flash('Utilizator salvat.'); redirect('admin/users');
 }
 
 /* ----------------------- DEVICES ----------------------- */
@@ -360,7 +371,7 @@ function admin_device_save(): void {
     }
     q('DELETE FROM device_services WHERE device_id=?', [$id]);
     if (!$f['all_services']) foreach (($_POST['services'] ?? []) as $sid) q('INSERT IGNORE INTO device_services (device_id,service_id) VALUES (?,?)', [$id,(int)$sid]);
-    flash('Dispozitiv salvat.'); redirect('admin/devices');
+    audit($id?'update':'create','device',$id); flash('Dispozitiv salvat.'); redirect('admin/devices');
 }
 
 /* ----------------------- TICKETS ----------------------- */
@@ -406,6 +417,7 @@ function admin_tickets_reset(): void {
         flash('Resetarea a esuat: '.$e->getMessage(), 'error');
         redirect('admin/tickets');
     }
+    audit('reset','tickets', $branch ?: 'all');
     flash('Bonuri sterse complet: coada, statisticile si numerotarea au fost resetate de la 0.');
     redirect('admin/tickets');
 }
@@ -422,6 +434,31 @@ function admin_feedback_list(): void {
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
+}
+
+/* ----------------------- AUDIT LOG ----------------------- */
+function admin_audit_list(): void {
+    $page = max(1, (int)($_GET['p'] ?? 1)); $per = 80; $off = ($page-1)*$per;
+    $total = (int) val('SELECT COUNT(*) FROM audit_log');
+    $rows  = all("SELECT * FROM audit_log ORDER BY id DESC LIMIT $per OFFSET $off");
+    view('admin/audit', compact('rows','page','per','total'));
+}
+
+/* ----------------------- API & WEBHOOKS ----------------------- */
+function admin_api_page(): void {
+    if (setting('api_key', '') === '') set_setting('api_key', bin2hex(random_bytes(24)));
+    view('admin/api');
+}
+function admin_api_save(): void {
+    csrf_check();
+    if (isset($_POST['regen'])) { set_setting('api_key', bin2hex(random_bytes(24))); audit('regenerate','api_key'); flash('Cheie API regenerata.'); redirect('admin/api'); }
+    set_setting('webhook_url', trim((string)($_POST['webhook_url'] ?? '')));
+    set_setting('webhook_secret', trim((string)($_POST['webhook_secret'] ?? '')));
+    $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled'];
+    $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
+    set_setting('webhook_events', implode(',', $evs));
+    audit('update','webhook');
+    flash('Setari API salvate.'); redirect('admin/api');
 }
 
 /* ----------------------- SETTINGS ----------------------- */
@@ -444,7 +481,7 @@ function admin_settings_save(): void {
     $langs = array_values(array_intersect($langOk, (array)($_POST['dispenser_langs'] ?? [])));
     if (!in_array('ro', $langs, true)) array_unshift($langs, 'ro');
     set_setting('dispenser_langs', implode(',', array_unique($langs)));
-    flash('Setari salvate.'); redirect('admin/settings');
+    audit('update','settings'); flash('Setari salvate.'); redirect('admin/settings');
 }
 
 /* ----------------------- PLAYER (editor afisaj canvas) ----------------------- */
@@ -489,6 +526,7 @@ function admin_branch_save(): void {
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO branches ($cols) VALUES ($ph)", array_values($f));
     }
+    audit($id?'update':'create','branch',$id ?: insert_id());
     flash('Filiala salvata.'); redirect('admin/branches');
 }
 /** Duplica o filiala impreuna cu serviciile, ghiseele si dispozitivele ei (chei noi). */
@@ -545,6 +583,7 @@ function admin_branch_duplicate(int $id): void {
         flash('Duplicarea a esuat: '.$e->getMessage(), 'error');
         redirect('admin/branches');
     }
+    audit('duplicate','branch',$newBranch);
     flash('Filiala duplicata (servicii, ghisee si dispozitive incluse).');
     redirect('admin/branches');
 }

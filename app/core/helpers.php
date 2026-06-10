@@ -103,6 +103,56 @@ function log_user_status(int $userId, string $status): void {
     } catch (Throwable $e) {}
 }
 
+/** Jurnalizeaza o actiune din admin (cine, ce, cand). Best-effort. */
+function audit(string $action, string $entity = '', $entity_id = null, string $details = ''): void {
+    try {
+        $u = function_exists('current_user') ? current_user() : null;
+        q("INSERT INTO audit_log (user_id, user_name, action, entity, entity_id, details, ip) VALUES (?,?,?,?,?,?,?)",
+          [$u['id'] ?? null, $u['name'] ?? null, $action, $entity ?: null,
+           $entity_id !== null ? (string)$entity_id : null, $details ?: null, $_SERVER['REMOTE_ADDR'] ?? null]);
+    } catch (Throwable $e) {}
+}
+
+/* ----- Webhooks (notificare evenimente catre un URL extern) ----- */
+/** Construieste payload-ul compact pentru un bilet. */
+function webhook_ticket(?array $t): array {
+    if (!$t) return [];
+    return [
+        'id'           => (int)$t['id'],
+        'label'        => $t['label'] ?? null,
+        'status'       => $t['status'] ?? null,
+        'branch_id'    => isset($t['branch_id']) ? (int)$t['branch_id'] : null,
+        'service_id'   => isset($t['service_id']) ? (int)$t['service_id'] : null,
+        'counter_id'   => isset($t['counter_id']) && $t['counter_id'] !== null ? (int)$t['counter_id'] : null,
+        'priority'     => (int)($t['priority'] ?? 0),
+        'channel'      => $t['channel'] ?? null,
+        'public_token' => $t['public_token'] ?? null,
+        'issued_at'    => $t['issued_at'] ?? null,
+        'called_at'    => $t['called_at'] ?? null,
+        'finished_at'  => $t['finished_at'] ?? null,
+    ];
+}
+/** Trimite un eveniment catre webhook-ul configurat (best-effort, timeout scurt, semnat HMAC). */
+function fire_webhook(string $event, array $data): void {
+    try {
+        $url = trim((string) setting('webhook_url', ''));
+        if ($url === '' || !preg_match('#^https?://#i', $url)) return;
+        $events = array_filter(array_map('trim', explode(',', (string) setting('webhook_events', ''))));
+        if ($events && !in_array($event, $events, true)) return;   // lista goala = toate evenimentele
+        if (!function_exists('curl_init')) return;
+        $payload = json_encode(['event' => $event, 'ts' => time(), 'data' => $data], JSON_UNESCAPED_UNICODE);
+        $headers = ['Content-Type: application/json', 'User-Agent: BonDeOrdine-Webhook'];
+        $secret = (string) setting('webhook_secret', '');
+        if ($secret !== '') $headers[] = 'X-Signature: sha256=' . hash_hmac('sha256', $payload, $secret);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 3, CURLOPT_CONNECTTIMEOUT => 2,
+        ]);
+        curl_exec($ch); curl_close($ch);
+    } catch (Throwable $e) {}
+}
+
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
 function disp_lang_meta(): array {
     return [
@@ -186,7 +236,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '11') ON DUPLICATE KEY UPDATE v = '11'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '12') ON DUPLICATE KEY UPDATE v = '12'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -194,7 +244,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 11;
+    $target = 12;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -265,6 +315,14 @@ function run_migrations(): void {
     // v11: transfer catre alt ghiseu (bilet directionat catre un birou anume)
     if (!$hasCol('tickets','target_counter_id')) $ddl("ALTER TABLE tickets ADD COLUMN target_counter_id INT NULL");
 
+    // v12: jurnal de audit (cine ce a modificat in admin)
+    if (!$hasTable('audit_log')) $ddl("CREATE TABLE audit_log (
+        id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NULL, user_name VARCHAR(120) NULL,
+        action VARCHAR(40) NOT NULL, entity VARCHAR(40) NULL, entity_id VARCHAR(40) NULL,
+        details VARCHAR(255) NULL, ip VARCHAR(45) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_audit_time (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -272,7 +330,8 @@ function run_migrations(): void {
             && $hasCol('services','appt_enabled') && $hasCol('services','appt_slot_min') && $hasCol('services','appt_capacity')
             && $hasCol('users','notify_browser') && $hasCol('feedback','branch_id') && $hasCol('services','i18n')
             && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')
-            && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')) {
+            && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')
+            && $hasTable('audit_log')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

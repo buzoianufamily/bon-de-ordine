@@ -8,4 +8,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap"></noscript>
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=13">
 <style>:root{--accent:<?= e($accent) ?>}</style>
+<link rel="manifest" href="<?= e(url('manifest.webmanifest')) ?>">
+<meta name="theme-color" content="<?= e($accent) ?>">
+<link rel="apple-touch-icon" href="<?= e(asset('icon.svg')) ?>">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('<?= e(url('sw.js')) ?>').catch(function(){});});}</script>
 </head>

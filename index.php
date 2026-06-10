@@ -26,8 +26,57 @@ function input(string $key, $default = null) {
 }
 
 try {
+    // ===================== PWA (manifest + service worker) =====================
+    if ($route === '/manifest.webmanifest') {
+        header('Content-Type: application/manifest+json; charset=utf-8');
+        $brand = (string) setting('brand_name', 'Bon de ordine');
+        echo json_encode([
+            'name' => $brand, 'short_name' => mb_substr($brand, 0, 12) ?: 'Bon',
+            'start_url' => base_url() . '/', 'scope' => base_url() . '/',
+            'display' => 'standalone', 'background_color' => '#0a0b0d',
+            'theme_color' => (string) setting('accent_color', '#2563eb'),
+            'icons' => [['src' => url('assets/icon.svg'), 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any maskable']],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    if ($route === '/sw.js') {
+        header('Content-Type: application/javascript; charset=utf-8');
+        header('Service-Worker-Allowed: /');
+        header('Cache-Control: no-cache');
+        echo <<<'SWJS'
+const CACHE = 'bdo-v1';
+const ASSET_RE = /\.(css|js|woff2?|ttf|png|jpe?g|webp|svg|gif|ico)$/i;
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== location.origin) return;       // doar same-origin
+  if (url.pathname.indexOf('/api/') !== -1) return;  // niciodata cache la API (date live)
+  if (ASSET_RE.test(url.pathname)) {                 // assets: cache-first
+    e.respondWith(caches.open(CACHE).then(c => c.match(req).then(hit =>
+      hit || fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }))));
+    return;
+  }
+  if (req.mode === 'navigate') {                     // pagini: network-first, fallback la cache
+    e.respondWith(fetch(req).then(res => {
+      const cc = res.clone(); caches.open(CACHE).then(c => c.put(req, cc)); return res;
+    }).catch(() => caches.match(req)));
+  }
+});
+SWJS;
+        exit;
+    }
+
     // =========================== API ===========================
     if ($seg[0] === 'api') {
+        // ---- API public v1 (autentificat cu cheie) ----
+        if (($seg[1] ?? '') === 'v1') { require APP_ROOT . '/app/api_v1.php'; api_v1($seg, $method); exit; }
+
         header('Cache-Control: no-store');
         $action = $seg[1] ?? '';
 
@@ -102,7 +151,7 @@ try {
                 json_out(['ok' => true, 'status' => $stt]);
             }
             case 'call-next':
-                $t = call_next((int)input('counter_id', 0), (int)$u['id']);
+                $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);
             case 'call-specific':
                 $t = call_specific((int)input('ticket_id', 0), (int)input('counter_id', 0), (int)$u['id']);
@@ -118,6 +167,8 @@ try {
                 $c = one('SELECT * FROM counters WHERE id = ?', [(int)($_GET['counter_id'] ?? 0)]);
                 if (!$c) json_out(['ok' => false], 404);
                 json_out(['ok' => true] + counter_view($c));
+            case 'branch-state':
+                json_out(['ok' => true] + branch_queue((int)($_GET['branch'] ?? 1)));
         }
         json_out(['ok' => false, 'error' => 'Endpoint necunoscut'], 404);
     }
@@ -131,9 +182,16 @@ try {
     if ($seg[0] === 'login') {
         if ($method === 'POST') {
             csrf_check();
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            // throttling: max 10 incercari esuate / IP in 10 minute
+            $fails = 0;
+            try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action='login_failed' AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
+            if ($fails >= 10) { flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login'); }
             if (attempt_login((string)($_POST['email'] ?? ''), (string)($_POST['password'] ?? ''))) {
+                audit('login', 'auth');
                 redirect(current_user()['role'] === 'agent' ? 'counter' : 'admin');
             }
+            audit('login_failed', 'auth', null, substr((string)($_POST['email'] ?? ''), 0, 120));
             flash('Email sau parola incorecte.', 'error');
             redirect('login');
         }
@@ -221,6 +279,17 @@ try {
             catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }
         }
         view('public/appointment', ['a' => $appt]);
+        return;
+    }
+
+    // ===================== CONCIERGE (receptie: cheama pentru orice ghiseu) =====================
+    if ($seg[0] === 'concierge') {
+        $u = require_login();
+        $branches = all('SELECT id,name FROM branches ORDER BY name');
+        $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));
+        $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: ($branches[0] ?? ['id'=>0,'name'=>'—']);
+        $counters = all('SELECT id,code,name,status FROM counters WHERE branch_id=? ORDER BY code', [$branch['id']]);
+        view('public/concierge', compact('u','branches','branch','counters'));
         return;
     }
 

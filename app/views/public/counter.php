@@ -19,6 +19,15 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <div id="curSvc" class="muted" style="font-weight:700;margin-bottom:1rem">Niciun bilet in lucru</div>
       <div id="curForm"></div>
       <button class="callnext" id="btnCall">CHEAMA URMATORUL</button>
+      <?php if(count($services)>1): ?>
+      <div class="field" style="margin-top:.7rem">
+        <label>Cheama urmatorul dintr-un serviciu anume</label>
+        <select id="callSvc"><option value="">— alege serviciu —</option>
+          <?php foreach($services as $s): ?><option value="<?= (int)$s['id'] ?>"><?= e($s['prefix'].' · '.$s['name']) ?></option><?php endforeach; ?>
+        </select>
+      </div>
+      <?php endif; ?>
+      <div class="muted" style="font-size:.76rem;margin-top:.6rem">Scurtaturi: <b>Space/Enter</b> = cheama urmatorul · <b>↑/↓</b> = navighezi · <b>R</b> recheama · <b>S</b> in servire · <b>F</b> finalizat · <b>N</b> neprezentat · <b>Esc</b> deselecteaza</div>
     </div>
     <div class="card pad" style="flex:1.2">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -47,5 +56,5 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   counters:<?php $otherCounters = all('SELECT id, code, name FROM counters WHERE branch_id=? AND id<>? ORDER BY code', [$counter['branch_id'], $counter['id']]);
     echo json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $otherCounters), JSON_UNESCAPED_UNICODE); ?>
 };</script>
-<script src="<?= e(asset('js/counter.js')) ?>?v=8"></script>
+<script src="<?= e(asset('js/counter.js')) ?>?v=9"></script>
 </body></html>

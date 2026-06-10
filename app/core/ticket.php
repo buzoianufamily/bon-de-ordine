@@ -74,7 +74,9 @@ function issue_ticket(int $service_id, bool $priority = false, string $channel =
       [$svc['branch_id'], $service_id, $number, $label, $priority ? 1 : 0, $channel, $phone, $token, $form_data]);
 
     $id = insert_id();
-    return one('SELECT * FROM tickets WHERE id = ?', [$id]);
+    $t = one('SELECT * FROM tickets WHERE id = ?', [$id]);
+    fire_webhook('ticket.created', webhook_ticket($t));
+    return $t;
 }
 
 /** ID-urile serviciilor pe care le deserveste un ghiseu. */
@@ -113,17 +115,22 @@ function est_wait_seconds(array $t): int {
  * Apeleaza urmatorul bilet pentru un ghiseu.
  * Alege: prioritate DESC, apoi cel mai vechi. Tranzactie cu lock.
  */
-function call_next(int $counter_id, int $user_id): ?array {
+function call_next(int $counter_id, int $user_id, int $service_id = 0): ?array {
     $counter = one('SELECT * FROM counters WHERE id = ?', [$counter_id]);
     if (!$counter) throw new RuntimeException('Ghiseu inexistent');
     $svcIds = counter_service_ids($counter);
 
-    // bilete eligibile: directionate catre acest ghiseu (prioritar) + serviciile ghiseului
-    $cond = "t.target_counter_id = ?"; $args = [$counter_id];
-    if ($svcIds) {
-        $in = implode(',', array_fill(0, count($svcIds), '?'));
-        $cond .= " OR (t.target_counter_id IS NULL AND t.service_id IN ($in))";
-        $args = array_merge($args, $svcIds);
+    if ($service_id > 0) {
+        // urmatorul dintr-un serviciu anume (din filiala ghiseului)
+        $cond = "t.service_id = ? AND t.branch_id = ?"; $args = [$service_id, (int)$counter['branch_id']];
+    } else {
+        // bilete eligibile: directionate catre acest ghiseu (prioritar) + serviciile ghiseului
+        $cond = "t.target_counter_id = ?"; $args = [$counter_id];
+        if ($svcIds) {
+            $in = implode(',', array_fill(0, count($svcIds), '?'));
+            $cond .= " OR (t.target_counter_id IS NULL AND t.service_id IN ($in))";
+            $args = array_merge($args, $svcIds);
+        }
     }
     db()->beginTransaction();
     try {
@@ -145,7 +152,9 @@ function call_next(int $counter_id, int $user_id): ?array {
           [$newStatus, $counter_id, $user_id, $row['id']]);
 
         db()->commit();
-        return one('SELECT * FROM tickets WHERE id = ?', [$row['id']]);
+        $t = one('SELECT * FROM tickets WHERE id = ?', [$row['id']]);
+        fire_webhook('ticket.called', webhook_ticket($t));
+        return $t;
     } catch (Throwable $ex) {
         db()->rollBack();
         throw $ex;
@@ -173,11 +182,18 @@ function call_specific(int $ticket_id, int $counter_id, int $user_id): ?array {
           [$newStatus, $counter_id, $user_id, $ticket_id]);
 
         db()->commit();
-        return one('SELECT * FROM tickets WHERE id = ?', [$ticket_id]);
+        $t = one('SELECT * FROM tickets WHERE id = ?', [$ticket_id]);
+        fire_webhook('ticket.called', webhook_ticket($t));
+        return $t;
     } catch (Throwable $ex) {
         if (db()->inTransaction()) db()->rollBack();
         throw $ex;
     }
+}
+
+/** Eveniment webhook dupa o tranzitie de status. */
+function ticket_event(int $ticket_id, string $event): void {
+    fire_webhook($event, webhook_ticket(one('SELECT * FROM tickets WHERE id = ?', [$ticket_id])));
 }
 
 /** Transfera biletul catre alt GHISEU (birou): revine la rand, directionat catre acel ghiseu. */
@@ -187,30 +203,52 @@ function transfer_to_counter(int $ticket_id, int $target_counter_id): void {
     q("UPDATE tickets SET status = 'waiting', counter_id = NULL, agent_id = NULL,
         called_at = NULL, served_at = NULL, finished_at = NULL, target_counter_id = ?
        WHERE id = ?", [$target_counter_id, $ticket_id]);
+    ticket_event($ticket_id, 'ticket.transferred');
 }
 
 function recall_ticket(int $ticket_id): void {
     q("UPDATE tickets SET called_at = NOW(), recall_count = recall_count + 1,
         status = CASE WHEN status IN ('served','no_show','cancelled') THEN 'called' ELSE status END
        WHERE id = ?", [$ticket_id]);
+    ticket_event($ticket_id, 'ticket.recalled');
 }
 function start_serving(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'serving', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND status = 'called'", [$ticket_id]);
+    $st = q("UPDATE tickets SET status = 'serving', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND status = 'called'", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.serving');
 }
 function finish_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'served', served_at = COALESCE(served_at, NOW()), finished_at = NOW()
+    $st = q("UPDATE tickets SET status = 'served', served_at = COALESCE(served_at, NOW()), finished_at = NOW()
        WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.served');
 }
 function no_show_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'no_show', finished_at = NOW() WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+    $st = q("UPDATE tickets SET status = 'no_show', finished_at = NOW() WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.no_show');
 }
 function cancel_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'cancelled', finished_at = NOW() WHERE id = ? AND status IN ('waiting','called','serving')", [$ticket_id]);
+    $st = q("UPDATE tickets SET status = 'cancelled', finished_at = NOW() WHERE id = ? AND status IN ('waiting','called','serving')", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.cancelled');
 }
 /** Transfera biletul catre alt serviciu (revine in asteptare). */
 function transfer_ticket(int $ticket_id, int $service_id): void {
     q("UPDATE tickets SET service_id = ?, status = 'waiting', counter_id = NULL, called_at = NULL, served_at = NULL
        WHERE id = ?", [$service_id, $ticket_id]);
+    ticket_event($ticket_id, 'ticket.transferred');
+}
+
+/** Coada unei filiale pentru modul Concierge: bilete individuale la rand + ghisee. */
+function branch_queue(int $branch_id): array {
+    $waiting = all(
+        "SELECT t.id, t.label, t.priority, t.issued_at, s.name AS service_name, s.color
+         FROM tickets t JOIN services s ON s.id = t.service_id
+         WHERE t.branch_id = ? AND t.status = 'waiting'
+         ORDER BY t.priority DESC, t.issued_at ASC LIMIT 100", [$branch_id]);
+    $counters = all(
+        "SELECT c.id, c.code, c.name, c.status,
+                (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
+                 ORDER BY t.called_at DESC LIMIT 1) AS current_label
+         FROM counters c WHERE c.branch_id = ? ORDER BY c.code", [$branch_id]);
+    return ['waiting' => $waiting, 'waiting_count' => count($waiting), 'counters' => $counters];
 }
 
 /**
