@@ -190,6 +190,20 @@ CREATE TABLE IF NOT EXISTS counter_sessions (
   INDEX idx_sess_counter (counter_id, ended_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ---------- Jurnal de audit (actiuni admin) ----------
+CREATE TABLE IF NOT EXISTS audit_log (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT NULL,
+  user_name  VARCHAR(120) NULL,
+  action     VARCHAR(40) NOT NULL,
+  entity     VARCHAR(40) NULL,
+  entity_id  VARCHAR(40) NULL,
+  details    VARCHAR(255) NULL,
+  ip         VARCHAR(45) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_audit_time (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ---------- Istoric status operator (prezenta in timp) ----------
 CREATE TABLE IF NOT EXISTS user_status_log (
   id         INT AUTO_INCREMENT PRIMARY KEY,
