@@ -703,7 +703,16 @@ function admin_statistics(): void {
             ? ('Filiala: ' . ((string)(val('SELECT name FROM branches WHERE id=?', [$branch]) ?? $branch)))
             : 'Toate filialele';
         $accent = (string) setting('accent_color', '#2563eb');
-        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent);
+        // combina bilete pe utilizator + timp pe status pentru foaia "Operatori"
+        $opMap = [];
+        foreach ($per_user as $r) $opMap[$r['name']] = ['name'=>$r['name'],'total'=>(int)$r['c'],'served'=>(int)$r['served'],
+            'w'=>round((float)$r['w']),'sv'=>round((float)$r['sv']),'available'=>0,'busy'=>0,'paused'=>0];
+        foreach (($op_activity ?? []) as $r) {
+            if (!isset($opMap[$r['name']])) $opMap[$r['name']] = ['name'=>$r['name'],'total'=>0,'served'=>0,'w'=>0,'sv'=>0,'available'=>0,'busy'=>0,'paused'=>0];
+            if (in_array($r['status'], ['available','busy','paused'], true)) $opMap[$r['name']][$r['status']] = (int)$r['secs'];
+        }
+        $op_rows = array_values($opMap);
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
@@ -716,7 +725,7 @@ function admin_statistics(): void {
  */
 function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
                           array $kpi, array $per_day, array $per_service, array $per_hour,
-                          array $per_counter, string $accent): Xlsx {
+                          array $per_counter, string $accent, array $op_rows = []): Xlsx {
     $mins = fn($s) => round(((float)$s) / 60, 1);
     $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
 
@@ -820,6 +829,29 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
         'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
         'series' => [['name' => 'Bilete', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'color' => $accent]],
     ]);
+
+    /* ---- Foaia 6: Operatori (bilete + timp pe status) ---- */
+    if ($op_rows) {
+        $s = $xl->add_sheet('Operatori');
+        $s->set_col_widths([1 => 22, 2 => 9, 3 => 9, 4 => 20, 5 => 18, 6 => 17, 7 => 14, 8 => 13]);
+        $s->row([['v' => 'Activitate operatori', 's' => Xlsx::S_TITLE]]);
+        $s->row([['v' => 'Perioada: ' . $from . ' – ' . $to, 's' => Xlsx::S_MUTED]]);
+        $hdr = $s->row(['Operator', 'Total', 'Servite', 'Timp asteptare (min)', 'Timp servire (min)', 'Disponibil (min)', 'Ocupat (min)', 'Pauza (min)'], Xlsx::S_HEAD);
+        $cats = []; $vals = []; $first = $hdr + 1;
+        foreach ($op_rows as $r) {
+            $s->row([$r['name'], (int)$r['total'], (int)$r['served'],
+                ['v' => $mins($r['w']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['sv']), 's' => Xlsx::S_NUM1],
+                ['v' => $mins($r['available']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['busy']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['paused']), 's' => Xlsx::S_NUM1]]);
+            $cats[] = $r['name']; $vals[] = (int)$r['served'];
+        }
+        $last = $s->row_count();
+        if ($vals) $s->chart([
+            'type' => 'bar', 'title' => 'Bilete servite pe operator',
+            'anchor' => ['col' => 9, 'row' => 1, 'col2' => 18, 'row2' => 21],
+            'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+            'series' => [['name' => 'Servite', 'name_ref' => '$C$' . $hdr, 'ref' => '$C$' . $first . ':$C$' . $last, 'vals' => $vals, 'color' => $accent]],
+        ]);
+    }
 
     return $xl;
 }
