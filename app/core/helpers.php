@@ -42,14 +42,14 @@ function json_out($data, int $code = 200): void {
     exit;
 }
 
-/* ----- Setari (cu cache pe request) ----- */
+/* ----- Setari (cu cache pe request, coerent cu scrierile) ----- */
 function settings_all(): array {
-    static $cache = null;
-    if ($cache === null) {
-        $cache = [];
-        foreach (all('SELECT k, v FROM settings') as $row) $cache[$row['k']] = $row['v'];
+    if (!isset($GLOBALS['__settings_cache'])) {
+        $c = [];
+        foreach (all('SELECT k, v FROM settings') as $row) $c[$row['k']] = $row['v'];
+        $GLOBALS['__settings_cache'] = $c;
     }
-    return $cache;
+    return $GLOBALS['__settings_cache'];
 }
 function setting(string $key, $default = null) {
     $s = settings_all();
@@ -57,6 +57,7 @@ function setting(string $key, $default = null) {
 }
 function set_setting(string $key, $value): void {
     q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [$key, $value]);
+    if (isset($GLOBALS['__settings_cache'])) $GLOBALS['__settings_cache'][$key] = (string)$value;
 }
 
 /* ----- CSRF ----- */

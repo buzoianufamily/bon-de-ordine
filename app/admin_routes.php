@@ -467,8 +467,11 @@ function admin_settings_save(): void {
     csrf_check();
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size',
-             'alert_called','alert_transfer','alert_delay'];
+             'alert_called','alert_transfer','alert_delay',
+             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
+    if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
+    set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
     set_setting('display_say_number', isset($_POST['display_say_number']) ? '1' : '0');
     set_setting('display_say_counter', isset($_POST['display_say_counter']) ? '1' : '0');
     set_setting('counter_voice', isset($_POST['counter_voice']) ? '1' : '0');
@@ -481,7 +484,20 @@ function admin_settings_save(): void {
     $langs = array_values(array_intersect($langOk, (array)($_POST['dispenser_langs'] ?? [])));
     if (!in_array('ro', $langs, true)) array_unshift($langs, 'ro');
     set_setting('dispenser_langs', implode(',', array_unique($langs)));
-    audit('update','settings'); flash('Setari salvate.'); redirect('admin/settings');
+    audit('update','settings');
+
+    // email de test (dupa salvare, cu valorile proaspete)
+    if (isset($_POST['mail_test'])) {
+        $to = trim((string)($_POST['mail_test_to'] ?? '')) ?: (string)(current_user()['email'] ?? '');
+        if ($to === '') { flash('Completeaza adresa pentru emailul de test.', 'error'); redirect('admin/settings'); }
+        if (!mail_enabled()) { flash('Setari salvate, dar trimiterea de emailuri nu este activata (bifeaza optiunea).', 'error'); redirect('admin/settings'); }
+        $ok = send_mail($to, 'Test email — ' . setting('brand_name', 'Bon de ordine'),
+            mail_template('Functioneaza!', '<p>Acesta este un email de test trimis din setarile aplicatiei <strong>Bon de ordine</strong>.</p><p>Daca il citesti, configurarea emailului este corecta.</p>'));
+        flash($ok ? ('Setari salvate. Email de test trimis catre ' . $to . '.')
+                  : 'Setari salvate, dar emailul de test NU a putut fi trimis. Verifica host/port/user/parola SMTP (sau lasa hostul gol pentru mail() de pe server).', $ok ? 'info' : 'error');
+        redirect('admin/settings');
+    }
+    flash('Setari salvate.'); redirect('admin/settings');
 }
 
 /* ----------------------- PLAYER (editor afisaj canvas) ----------------------- */
@@ -974,7 +990,20 @@ function admin_appointment_action(int $id, string $act): void {
     $a = one('SELECT * FROM appointments WHERE id=?', [$id]);
     if (!$a) redirect('admin/appointments');
     if ($act === 'checkin') { try { appt_checkin($a); flash('Check-in efectuat, bilet generat.'); } catch (Throwable $e) { flash($e->getMessage(), 'error'); } }
-    elseif ($act === 'cancel') { q("UPDATE appointments SET status='cancelled' WHERE id=?", [$id]); flash('Programare anulata.'); }
+    elseif ($act === 'cancel') {
+        q("UPDATE appointments SET status='cancelled' WHERE id=?", [$id]);
+        // anunta clientul pe email (best-effort)
+        if (!empty($a['customer_email']) && mail_enabled()) {
+            $svcName = (string) (val('SELECT name FROM services WHERE id=?', [$a['service_id']]) ?? '');
+            $when = date('d.m.Y H:i', strtotime($a['slot_start']));
+            send_mail($a['customer_email'], 'Programare anulata — ' . $svcName,
+                mail_template('Programare anulata',
+                    '<p>Programarea ta la <strong>' . e($svcName) . '</strong> din <strong>' . e($when) . '</strong> a fost anulata.</p>'
+                  . '<p>Te rugam sa faci o noua programare daca mai ai nevoie.</p>',
+                    'Programeaza-te din nou', url('book')));
+        }
+        flash('Programare anulata.');
+    }
     redirect('admin/appointments?date='.urlencode(substr($a['slot_start'],0,10)));
 }
 

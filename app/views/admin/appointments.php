@@ -52,6 +52,7 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
         <div class="field"><label>Ora</label><input type="time" name="time" required></div></div>
       <div class="field"><label>Nume client</label><input name="name"></div>
       <div class="field"><label>Telefon</label><input name="phone" type="tel"></div>
+      <div class="field"><label>Email (optional — primeste confirmarea)</label><input name="email" type="email"></div>
       <button class="btn btn-primary" style="width:100%">Adauga programare</button>
     </form>
     <?php endif; ?>

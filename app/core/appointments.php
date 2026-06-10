@@ -55,7 +55,23 @@ function appt_book(int $service_id, string $slot_start, ?string $name, ?string $
     q("INSERT INTO appointments (branch_id,service_id,customer_name,customer_phone,customer_email,slot_start,slot_end,status,public_token,note)
        VALUES (?,?,?,?,?,?,?, 'booked', ?, ?)",
       [$svc['branch_id'], $service_id, $name, $phone, $email, $key, date('Y-m-d H:i:00', $ts+$len*60), $token, $note]);
-    return one('SELECT * FROM appointments WHERE id=?', [insert_id()]);
+    $appt = one('SELECT * FROM appointments WHERE id=?', [insert_id()]);
+
+    // email de confirmare (best-effort, doar daca emailul e completat si modulul e activ)
+    if ($email && function_exists('send_mail') && mail_enabled()) {
+        $branch = one('SELECT name, address, city FROM branches WHERE id=?', [$svc['branch_id']]);
+        $when = date('d.m.Y', $ts) . ' la ora ' . date('H:i', $ts);
+        $loc  = trim(($branch['name'] ?? '') . ($branch['address'] ? ', ' . $branch['address'] : '') . ($branch['city'] ? ', ' . $branch['city'] : ''));
+        $body = '<p>Buna' . ($name ? ' <strong>' . e($name) . '</strong>' : '') . ',</p>'
+              . '<p>Programarea ta a fost <strong>confirmata</strong>:</p>'
+              . '<ul><li>Serviciu: <strong>' . e($svc['name']) . '</strong></li>'
+              . '<li>Data: <strong>' . e($when) . '</strong></li>'
+              . ($loc ? '<li>Locatie: ' . e($loc) . '</li>' : '') . '</ul>'
+              . '<p>In ziua programarii, deschide linkul de mai jos si apasa <strong>Check-in</strong> cand ajungi — primesti automat bonul de ordine.</p>';
+        send_mail($email, 'Confirmare programare — ' . $svc['name'],
+                  mail_template('Programare confirmata', $body, 'Vezi programarea', url('a/' . $token)));
+    }
+    return $appt;
 }
 
 /** Check-in: genereaza biletul si leaga programarea. */
