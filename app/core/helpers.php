@@ -103,6 +103,46 @@ function log_user_status(int $userId, string $status): void {
     } catch (Throwable $e) {}
 }
 
+/* ----- Webhooks (notificare evenimente catre un URL extern) ----- */
+/** Construieste payload-ul compact pentru un bilet. */
+function webhook_ticket(?array $t): array {
+    if (!$t) return [];
+    return [
+        'id'           => (int)$t['id'],
+        'label'        => $t['label'] ?? null,
+        'status'       => $t['status'] ?? null,
+        'branch_id'    => isset($t['branch_id']) ? (int)$t['branch_id'] : null,
+        'service_id'   => isset($t['service_id']) ? (int)$t['service_id'] : null,
+        'counter_id'   => isset($t['counter_id']) && $t['counter_id'] !== null ? (int)$t['counter_id'] : null,
+        'priority'     => (int)($t['priority'] ?? 0),
+        'channel'      => $t['channel'] ?? null,
+        'public_token' => $t['public_token'] ?? null,
+        'issued_at'    => $t['issued_at'] ?? null,
+        'called_at'    => $t['called_at'] ?? null,
+        'finished_at'  => $t['finished_at'] ?? null,
+    ];
+}
+/** Trimite un eveniment catre webhook-ul configurat (best-effort, timeout scurt, semnat HMAC). */
+function fire_webhook(string $event, array $data): void {
+    try {
+        $url = trim((string) setting('webhook_url', ''));
+        if ($url === '' || !preg_match('#^https?://#i', $url)) return;
+        $events = array_filter(array_map('trim', explode(',', (string) setting('webhook_events', ''))));
+        if ($events && !in_array($event, $events, true)) return;   // lista goala = toate evenimentele
+        if (!function_exists('curl_init')) return;
+        $payload = json_encode(['event' => $event, 'ts' => time(), 'data' => $data], JSON_UNESCAPED_UNICODE);
+        $headers = ['Content-Type: application/json', 'User-Agent: BonDeOrdine-Webhook'];
+        $secret = (string) setting('webhook_secret', '');
+        if ($secret !== '') $headers[] = 'X-Signature: sha256=' . hash_hmac('sha256', $payload, $secret);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 3, CURLOPT_CONNECTTIMEOUT => 2,
+        ]);
+        curl_exec($ch); curl_close($ch);
+    } catch (Throwable $e) {}
+}
+
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
 function disp_lang_meta(): array {
     return [

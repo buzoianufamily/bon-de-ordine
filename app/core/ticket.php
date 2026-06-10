@@ -74,7 +74,9 @@ function issue_ticket(int $service_id, bool $priority = false, string $channel =
       [$svc['branch_id'], $service_id, $number, $label, $priority ? 1 : 0, $channel, $phone, $token, $form_data]);
 
     $id = insert_id();
-    return one('SELECT * FROM tickets WHERE id = ?', [$id]);
+    $t = one('SELECT * FROM tickets WHERE id = ?', [$id]);
+    fire_webhook('ticket.created', webhook_ticket($t));
+    return $t;
 }
 
 /** ID-urile serviciilor pe care le deserveste un ghiseu. */
@@ -150,7 +152,9 @@ function call_next(int $counter_id, int $user_id, int $service_id = 0): ?array {
           [$newStatus, $counter_id, $user_id, $row['id']]);
 
         db()->commit();
-        return one('SELECT * FROM tickets WHERE id = ?', [$row['id']]);
+        $t = one('SELECT * FROM tickets WHERE id = ?', [$row['id']]);
+        fire_webhook('ticket.called', webhook_ticket($t));
+        return $t;
     } catch (Throwable $ex) {
         db()->rollBack();
         throw $ex;
@@ -178,11 +182,18 @@ function call_specific(int $ticket_id, int $counter_id, int $user_id): ?array {
           [$newStatus, $counter_id, $user_id, $ticket_id]);
 
         db()->commit();
-        return one('SELECT * FROM tickets WHERE id = ?', [$ticket_id]);
+        $t = one('SELECT * FROM tickets WHERE id = ?', [$ticket_id]);
+        fire_webhook('ticket.called', webhook_ticket($t));
+        return $t;
     } catch (Throwable $ex) {
         if (db()->inTransaction()) db()->rollBack();
         throw $ex;
     }
+}
+
+/** Eveniment webhook dupa o tranzitie de status. */
+function ticket_event(int $ticket_id, string $event): void {
+    fire_webhook($event, webhook_ticket(one('SELECT * FROM tickets WHERE id = ?', [$ticket_id])));
 }
 
 /** Transfera biletul catre alt GHISEU (birou): revine la rand, directionat catre acel ghiseu. */
@@ -192,30 +203,37 @@ function transfer_to_counter(int $ticket_id, int $target_counter_id): void {
     q("UPDATE tickets SET status = 'waiting', counter_id = NULL, agent_id = NULL,
         called_at = NULL, served_at = NULL, finished_at = NULL, target_counter_id = ?
        WHERE id = ?", [$target_counter_id, $ticket_id]);
+    ticket_event($ticket_id, 'ticket.transferred');
 }
 
 function recall_ticket(int $ticket_id): void {
     q("UPDATE tickets SET called_at = NOW(), recall_count = recall_count + 1,
         status = CASE WHEN status IN ('served','no_show','cancelled') THEN 'called' ELSE status END
        WHERE id = ?", [$ticket_id]);
+    ticket_event($ticket_id, 'ticket.recalled');
 }
 function start_serving(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'serving', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND status = 'called'", [$ticket_id]);
+    $st = q("UPDATE tickets SET status = 'serving', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND status = 'called'", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.serving');
 }
 function finish_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'served', served_at = COALESCE(served_at, NOW()), finished_at = NOW()
+    $st = q("UPDATE tickets SET status = 'served', served_at = COALESCE(served_at, NOW()), finished_at = NOW()
        WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.served');
 }
 function no_show_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'no_show', finished_at = NOW() WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+    $st = q("UPDATE tickets SET status = 'no_show', finished_at = NOW() WHERE id = ? AND status IN ('called','serving')", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.no_show');
 }
 function cancel_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET status = 'cancelled', finished_at = NOW() WHERE id = ? AND status IN ('waiting','called','serving')", [$ticket_id]);
+    $st = q("UPDATE tickets SET status = 'cancelled', finished_at = NOW() WHERE id = ? AND status IN ('waiting','called','serving')", [$ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.cancelled');
 }
 /** Transfera biletul catre alt serviciu (revine in asteptare). */
 function transfer_ticket(int $ticket_id, int $service_id): void {
     q("UPDATE tickets SET service_id = ?, status = 'waiting', counter_id = NULL, called_at = NULL, served_at = NULL
        WHERE id = ?", [$service_id, $ticket_id]);
+    ticket_event($ticket_id, 'ticket.transferred');
 }
 
 /**

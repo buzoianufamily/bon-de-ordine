@@ -111,6 +111,11 @@ function admin_dispatch(array $seg, string $method): void {
                 set_setting('role_perms', json_encode(['manager'=>$m], JSON_UNESCAPED_UNICODE));
                 flash('Permisiuni salvate.'); redirect('admin/roles'); }
             admin_roles(); return;
+
+        case 'api':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST') { admin_api_save(); return; }
+            admin_api_page(); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
 }
@@ -422,6 +427,22 @@ function admin_feedback_list(): void {
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
+}
+
+/* ----------------------- API & WEBHOOKS ----------------------- */
+function admin_api_page(): void {
+    if (setting('api_key', '') === '') set_setting('api_key', bin2hex(random_bytes(24)));
+    view('admin/api');
+}
+function admin_api_save(): void {
+    csrf_check();
+    if (isset($_POST['regen'])) { set_setting('api_key', bin2hex(random_bytes(24))); flash('Cheie API regenerata.'); redirect('admin/api'); }
+    set_setting('webhook_url', trim((string)($_POST['webhook_url'] ?? '')));
+    set_setting('webhook_secret', trim((string)($_POST['webhook_secret'] ?? '')));
+    $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled'];
+    $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
+    set_setting('webhook_events', implode(',', $evs));
+    flash('Setari API salvate.'); redirect('admin/api');
 }
 
 /* ----------------------- SETTINGS ----------------------- */

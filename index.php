@@ -28,6 +28,9 @@ function input(string $key, $default = null) {
 try {
     // =========================== API ===========================
     if ($seg[0] === 'api') {
+        // ---- API public v1 (autentificat cu cheie) ----
+        if (($seg[1] ?? '') === 'v1') { require APP_ROOT . '/app/api_v1.php'; api_v1($seg, $method); exit; }
+
         header('Cache-Control: no-store');
         $action = $seg[1] ?? '';
 
