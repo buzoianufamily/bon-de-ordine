@@ -331,6 +331,15 @@ SWJS;
         return;
     }
 
+    // ===================== AFISAJ DE GHISEU (tableta la birou):  /cd/{counter_id} =====================
+    if ($seg[0] === 'cd' && !empty($seg[1]) && ctype_digit((string)$seg[1])) {
+        $counter = one('SELECT * FROM counters WHERE id = ?', [(int)$seg[1]]);
+        if (!$counter) { http_response_code(404); echo 'Ghiseu inexistent.'; return; }
+        $branch = one('SELECT * FROM branches WHERE id = ?', [$counter['branch_id']]);
+        view('public/counter_display', compact('counter', 'branch'));
+        return;
+    }
+
     // ===================== CONCIERGE (receptie: cheama pentru orice ghiseu) =====================
     if ($seg[0] === 'concierge') {
         if (setting('mod_concierge', '1') !== '1') { http_response_code(404); echo 'Modulul Concierge este dezactivat.'; return; }
