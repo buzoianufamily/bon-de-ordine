@@ -6,7 +6,18 @@
  *  - raport zilnic pe email (o data pe zi)
  */
 function run_cron_jobs(): array {
-    $out = ['ok' => true, 'ran_at' => now(), 'reminders' => 0, 'daily_report' => false];
+    $out = ['ok' => true, 'ran_at' => now(), 'reminders' => 0, 'daily_report' => false, 'cleaned' => 0];
+
+    /* 0) Curatare automata: sterge biletele mai vechi decat perioada de retentie (nu necesita email). */
+    $months = (int) setting('retention_months', '0');
+    if ($months > 0) {
+        try {
+            $out['cleaned'] = q("DELETE FROM tickets WHERE issued_at < NOW() - INTERVAL $months MONTH LIMIT 1000")->rowCount();
+            q("DELETE FROM ticket_sequences WHERE seq_date < CURDATE() - INTERVAL $months MONTH");
+            q("DELETE FROM appointments WHERE slot_start < NOW() - INTERVAL $months MONTH AND status <> 'booked'");
+        } catch (Throwable $e) {}
+    }
+
     if (!function_exists('mail_enabled') || !mail_enabled()) { $out['note'] = 'Email dezactivat'; return $out; }
 
     /* 1) Remindere pentru programarile din urmatoarele 24h, inca neremindate. */

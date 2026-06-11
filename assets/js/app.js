@@ -32,6 +32,27 @@ window.QMS = {
       btns.append(bNo, bYes); card.append(p, btns); ov.append(card); document.body.append(ov);
       bYes.focus();
     });
+  },
+  /* modal cu camp text; intoarce Promise<string|null> (null = anulat) */
+  prompt(msg, opt = {}) {
+    return new Promise(resolve => {
+      const ov = document.createElement('div'); ov.className = 'qmodal';
+      const card = document.createElement('div'); card.className = 'qm-card';
+      const p = document.createElement('p'); p.className = 'qm-msg'; p.textContent = msg;
+      const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = opt.placeholder || '';
+      inp.value = opt.value || ''; inp.style.marginBottom = '1rem';
+      const btns = document.createElement('div'); btns.className = 'qm-btns';
+      const bNo = document.createElement('button'); bNo.type = 'button'; bNo.className = 'btn'; bNo.textContent = opt.cancel || 'Anuleaza';
+      const bYes = document.createElement('button'); bYes.type = 'button'; bYes.className = 'btn btn-primary'; bYes.textContent = opt.ok || 'OK';
+      const done = v => { ov.remove(); document.removeEventListener('keydown', esc); resolve(v); };
+      const esc = e => { if (e.key === 'Escape') done(null); };
+      bNo.onclick = () => done(null); bYes.onclick = () => done(inp.value);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); done(inp.value); } });
+      ov.onclick = e => { if (e.target === ov) done(null); };
+      document.addEventListener('keydown', esc);
+      btns.append(bNo, bYes); card.append(p, inp, btns); ov.append(card); document.body.append(ov);
+      inp.focus();
+    });
   }
 };
 

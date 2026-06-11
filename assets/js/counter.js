@@ -59,6 +59,20 @@
     setTimeout(fire, 350);
   }
 
+  /* ---- pauza ghiseu (cu mesaj afisat clientilor) ---- */
+  (function(){
+    var bp=document.getElementById('btnPauseC'), br=document.getElementById('btnResumeC');
+    if(bp) bp.addEventListener('click', function(){
+      QMS.prompt('Mesaj afisat clientilor cat timp ghiseul e in pauza (optional):', {placeholder:'ex: Revenim in 10 minute', ok:'Pune in pauza'})
+        .then(function(v){ if(v===null) return;
+          QMS.api('api/counter-pause',{counter_id:cfg.counterId, note:v}).then(function(r){ if(r&&r.ok) location.reload(); });
+        });
+    });
+    if(br) br.addEventListener('click', function(){
+      QMS.api('api/counter-open',{counter_id:cfg.counterId}).then(function(r){ if(r&&r.ok) location.reload(); });
+    });
+  })();
+
   /* ---- status operator ---- */
   async function setStatus(s){ const r=await QMS.api('api/user-status',{status:s}); if(r&&r.ok){ const sel=document.getElementById('opStatus'); if(sel)sel.value=s; } }
   window.qmsStatus = setStatus;

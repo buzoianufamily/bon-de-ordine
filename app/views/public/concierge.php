@@ -25,7 +25,7 @@
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
 <script>
 window.CONCIERGE = {
   branch: <?= (int)$branch['id'] ?>,
@@ -63,6 +63,7 @@ window.CONCIERGE = {
     elCtr.innerHTML = (res.counters||[]).map(c=>`<div class="qrow">
       <span class="lbl" style="font-size:1rem">${esc(c.code)}</span>
       <span class="muted">${esc(c.name)}</span>
+      ${c.status==='paused'?'<span class="pill" style="background:#fef3c7;color:#92400e" title="'+esc(c.pause_note||'')+'">⏸ pauza</span>':''}
       <span style="margin-left:auto;font-family:var(--display);font-weight:800;color:${cfg.accent}">${c.current_label?esc(c.current_label):'—'}</span>
     </div>`).join('') || '<div class="muted" style="padding:1rem">Niciun ghiseu.</div>';
   }

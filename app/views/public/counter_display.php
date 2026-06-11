@@ -7,7 +7,7 @@
   <div id="cdNum" style="font-family:var(--display);font-weight:800;font-size:34vh;line-height:1;margin-top:1vh">—</div>
   <div id="cdHint" class="muted" style="font-size:2.6vh;color:#7d8696">Asteptam urmatorul bon…</div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
 <script>
 (function(){
   var branch = <?= (int)$counter['branch_id'] ?>, counterId = <?= (int)$counter['id'] ?>;
@@ -20,6 +20,12 @@
     setTimeout(function(){ document.body.style.transition='background 1s'; document.body.style.background='#0b0d12'; },140); }
   function render(state){
     var c = (state.counters||[]).find(function(x){ return +x.id === counterId; });
+    if(c && c.status === 'paused'){
+      elNum.textContent = '⏸';
+      elHint.textContent = c.pause_note || 'Ghiseul este in pauza';
+      lastLabel = null;
+      return;
+    }
     var label = c && c.current_label ? c.current_label : null;
     elNum.textContent = label || '—';
     elHint.textContent = label ? 'Va rugam prezentati-va la ghiseu' : 'Asteptam urmatorul bon…';

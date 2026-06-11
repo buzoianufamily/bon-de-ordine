@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS counters (
   code         VARCHAR(10)  NOT NULL,               -- ex: B1
   name         VARCHAR(80)  NOT NULL,               -- ex: Birou 1
   status       ENUM('open','paused','closed') NOT NULL DEFAULT 'closed',
+  pause_note   VARCHAR(120) NULL,                  -- mesaj afisat clientilor in pauza
   all_services TINYINT(1) NOT NULL DEFAULT 1,       -- 1 = toate serviciile filialei
   priority     INT NOT NULL DEFAULT 0,              -- prioritate ghiseu (tie-break)
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

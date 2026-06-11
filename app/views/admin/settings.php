@@ -127,6 +127,8 @@
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="reminder_enabled" <?= setting('reminder_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>reminder</strong> pe email cu ~24h inainte de programare</label>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="daily_report_enabled" <?= setting('daily_report_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>raport zilnic</strong> pe email (despre ziua precedenta)</label>
       <div class="field"><label>Destinatari raport zilnic (gol = toti adminii)</label><input name="daily_report_to" value="<?= $s('daily_report_to') ?>" placeholder="a@x.ro, b@y.ro"></div>
+      <div class="field"><label>Sterge automat biletele mai vechi de … luni (0 = pastreaza tot)</label><input type="number" name="retention_months" min="0" max="120" value="<?= $s('retention_months','0') ?>">
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Curatarea ruleaza prin cron (nu necesita email activ). Statisticile pentru perioadele sterse dispar — fa un backup inainte.</p></div>
     </div>
   </div>
 
