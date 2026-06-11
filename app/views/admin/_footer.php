@@ -30,7 +30,7 @@ document.addEventListener('click',function(e){
   if(ch) ch.classList.toggle('dv-hidden', mode!=='chart');
   if(tb) tb.classList.toggle('dv-hidden', mode!=='table');
 });
-/* comutator tema deschisa/inchisa — persista in localStorage */
+/* comutator tema deschisa/inchisa — persista in localStorage; fara preferinta, urmeaza sistemul */
 (function(){
   var btn=document.getElementById('theme-toggle');
   if(!btn)return;
@@ -41,6 +41,16 @@ document.addEventListener('click',function(e){
     try{ localStorage.setItem('admin_theme', light?'light':'dark'); }catch(e){}
     setIcon();
   });
+  // daca utilizatorul NU a ales manual, urmarim live schimbarile temei din sistemul de operare
+  if(window.matchMedia){
+    try{
+      matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(ev){
+        try{ if(localStorage.getItem('admin_theme')) return; }catch(e){}
+        document.body.classList.toggle('light', ev.matches);
+        setIcon();
+      });
+    }catch(e){}
+  }
 })();
 /* sidebar toggle — persista starea in localStorage */
 (function(){
