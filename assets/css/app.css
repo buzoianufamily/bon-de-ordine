@@ -236,8 +236,6 @@ body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var
   .shell.nav-collapsed .side .grp{display:block}
   .shell.nav-collapsed .side .lbl{display:inline}
   .shell.nav-collapsed .side a{justify-content:flex-start;padding:.58rem .7rem;gap:.7rem;height:auto}
-  .navbk{display:none}
-  .shell.nav-open .navbk{display:block;position:fixed;inset:0;background:rgba(8,10,14,.55);z-index:94}
   .adminbar .menubtn{display:inline-flex}
   .portal-grid{grid-template-columns:1fr}.tv{grid-template-columns:1fr}
 }
