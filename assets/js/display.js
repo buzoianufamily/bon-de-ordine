@@ -57,6 +57,24 @@
   // la update de stare redesenam DOAR widget-urile live (restul raman asezate o data)
   function renderLayout(state){ lastState=state; stage.querySelectorAll('.lw').forEach(el=>{ if(LIVE[el.__w.type]) paintWidget(el,el.__w,state); }); }
 
+  /* multi-limba pe etichete: scrii "Text RO | Text EN" si textele alterneaza la 6s */
+  let langCycle = 0;
+  const MLKEYS = ['label','title','text','caption'];
+  const pickML = s => { if(typeof s!=='string' || s.indexOf('|')===-1) return s;
+    const parts = s.split('|').map(x=>x.trim()).filter(Boolean);
+    return parts.length ? parts[langCycle % parts.length] : s; };
+  function startLangCycle(){
+    setInterval(()=>{
+      const els = Array.prototype.filter.call(stage.querySelectorAll('.lw'), el=>{
+        const p = (el.__w && el.__w.props) || {};
+        return MLKEYS.some(k => typeof p[k]==='string' && p[k].indexOf('|')!==-1);
+      });
+      if(!els.length) return;
+      langCycle++;
+      els.forEach(el=>paintWidget(el, el.__w, lastState));
+    }, 6000);
+  }
+
   function paintWidget(el,w,state){
     const H=el.clientHeight||100, p=w.props||{}, accent=cfg.accent||'#2563eb';
     switch(w.type){
@@ -64,14 +82,14 @@
       case 'now_serving': {
         const last=state.last; el.style.background=p.bg||`linear-gradient(135deg,${accent},${accent}66)`;
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';
-        el.innerHTML=`<div style="opacity:.85;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.09)}px">${esc(p.label||'Se serveste bonul')}</div>
+        el.innerHTML=`<div style="opacity:.85;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.09)}px">${esc(pickML(p.label||'Se serveste bonul'))}</div>
           <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;line-height:.95;font-size:${H*.46}px">${last?esc(last.label):'—'}</div>
           <div style="font-weight:800;font-size:${H*.14}px">${last?esc(last.counter_name||last.counter_code||''):''}</div>`;
         break; }
       case 'called_list': {
         const rows=(state.called||[]).slice(0,+(p.rows||6)); const rh=Math.max(16,(H-30)/Math.max(1,(p.rows||6)));
         el.style.background=p.bg||'#11141b';el.style.padding='10px';el.style.display='block';
-        el.innerHTML=`<div style="color:#7d8696;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.08)}px;margin-bottom:6px">${esc(p.title||'Ultimele apelate')}</div>`+
+        el.innerHTML=`<div style="color:#7d8696;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.08)}px;margin-bottom:6px">${esc(pickML(p.title||'Ultimele apelate'))}</div>`+
           rows.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;height:${rh}px;border-bottom:1px solid #1c2029">
             <b style="font-family:'Bricolage Grotesque';font-size:${rh*.55}px">${esc(c.label)}</b>
             <span style="color:${accent};font-weight:800;font-size:${rh*.42}px">${esc(c.counter_name||c.counter_code||'')}</span></div>`).join('');
@@ -79,7 +97,7 @@
       case 'waiting_list': {
         const rows=state.waiting||[]; const rh=Math.max(18,(H-30)/Math.max(1,rows.length||1));
         el.style.background=p.bg||'#11141b';el.style.padding='10px';el.style.display='block';
-        el.innerHTML=`<div style="color:#7d8696;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.07)}px;margin-bottom:6px">${esc(p.title||'La rand')}</div>`+
+        el.innerHTML=`<div style="color:#7d8696;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.07)}px;margin-bottom:6px">${esc(pickML(p.title||'La rand'))}</div>`+
           rows.map(wi=>`<div style="display:flex;align-items:center;gap:8px;height:${rh}px;border-bottom:1px solid #1c2029">
             <span style="background:${esc(wi.color)};width:${rh*.6}px;height:${rh*.6}px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${rh*.34}px">${esc(wi.prefix)}</span>
             <span style="flex:1;font-size:${rh*.36}px">${esc(wi.name)}</span>
@@ -95,8 +113,8 @@
       case 'text': {
         el.style.display='flex';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.fontWeight='700';
         const fs=(p.size||24);
-        if(p.marquee){ el.style.justifyContent='flex-start'; el.innerHTML=`<div style="white-space:nowrap;animation:lwm 12s linear infinite;font-size:${fs}px">${esc(p.text||'')}</div>`; ensureMarquee(); }
-        else el.innerHTML=`<div style="font-size:${fs}px">${esc(p.text||'')}</div>`;
+        if(p.marquee){ el.style.justifyContent='flex-start'; el.innerHTML=`<div style="white-space:nowrap;animation:lwm 12s linear infinite;font-size:${fs}px">${esc(pickML(p.text||''))}</div>`; ensureMarquee(); }
+        else el.innerHTML=`<div style="font-size:${fs}px">${esc(pickML(p.text||''))}</div>`;
         break; }
       case 'image': {
         el.style.padding='0';
@@ -107,7 +125,7 @@
         const svcs=(state.waiting||[]).slice(0,+(p.rows||6));
         const byPrefix={}; (state.called||[]).forEach(c=>{ if(!byPrefix[c.prefix]) byPrefix[c.prefix]=c; });
         const rh=Math.max(26,(H-(p.title?26:8))/Math.max(1,svcs.length||1)-(H*.012));
-        el.innerHTML=(p.title?`<div style="color:#9aa3b2;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.05)}px;margin-bottom:4px">${esc(p.title)}</div>`:'')+
+        el.innerHTML=(p.title?`<div style="color:#9aa3b2;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.05)}px;margin-bottom:4px">${esc(pickML(p.title))}</div>`:'')+
           (svcs.length?svcs.map(s=>{ const c=byPrefix[s.prefix]; const lab=c?c.label:'—'; const ctr=c?(c.counter_code||c.counter_name||''):'';
             return `<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);border-left:5px solid ${esc(s.color)};border-radius:8px;padding:0 12px;height:${rh}px">
               <span style="opacity:.45;font-family:'Bricolage Grotesque';font-weight:800;font-size:${rh*.5}px;min-width:${rh*.8}px;text-align:center">${s.cnt}</span>
@@ -118,7 +136,7 @@
         break; }
       case 'people_counting': {
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=p.bg||'#11141b';
-        el.innerHTML=`<div style="opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:${Math.max(11,H*.1)}px">${esc(p.label||'Persoane inauntru')}</div>
+        el.innerHTML=`<div style="opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:${Math.max(11,H*.1)}px">${esc(pickML(p.label||'Persoane inauntru'))}</div>
           <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.4}px;line-height:1.05">${(+p.inside||0)} <span style="opacity:.45">/ ${(+p.capacity||0)}</span></div>`;
         break; }
       case 'qr_code': {
@@ -126,7 +144,7 @@
         const data=encodeURIComponent(p.url||location.origin);
         const sz=Math.max(60,Math.min(el.clientWidth,el.clientHeight)-(p.caption?34:14));
         el.innerHTML=`<img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=${sz}x${sz}&margin=0&data=${data}" style="width:${sz}px;height:${sz}px">`+
-          (p.caption?`<div style="color:#111;font-weight:700;margin-top:6px;text-align:center;font-size:${Math.max(11,H*.07)}px">${esc(p.caption)}</div>`:'');
+          (p.caption?`<div style="color:#111;font-weight:700;margin-top:6px;text-align:center;font-size:${Math.max(11,H*.07)}px">${esc(pickML(p.caption))}</div>`:'');
         break; }
       case 'iframe': {
         el.style.padding='0';
@@ -136,13 +154,13 @@
       case 'ticker': {
         el.style.background=p.bg||'#000';el.style.display='flex';el.style.alignItems='center';el.style.overflow='hidden';
         const sp=Math.max(5,+(p.speed||18));
-        el.innerHTML=`<div style="white-space:nowrap;font-weight:700;font-size:${Math.max(14,H*.5)}px;animation:lwm ${sp}s linear infinite">${esc(p.text||'')}</div>`;
+        el.innerHTML=`<div style="white-space:nowrap;font-weight:700;font-size:${Math.max(14,H*.5)}px;animation:lwm ${sp}s linear infinite">${esc(pickML(p.text||''))}</div>`;
         ensureMarquee(); break; }
       case 'form': {
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=p.bg||'#11141b';el.style.padding='10px';
         const link=p.url||(QMS.base()+'/feedback?branch='+(cfg.branch||1));
         const sz=Math.max(60,Math.min(el.clientWidth,el.clientHeight)-70);
-        el.innerHTML=`<div style="font-weight:700;margin-bottom:8px;font-size:${Math.max(12,H*.09)}px">${esc(p.title||'Spune-ne parerea ta')}</div>
+        el.innerHTML=`<div style="font-weight:700;margin-bottom:8px;font-size:${Math.max(12,H*.09)}px">${esc(pickML(p.title||'Spune-ne parerea ta'))}</div>
           <img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=${sz}x${sz}&margin=0&data=${encodeURIComponent(link)}" style="width:${sz}px;height:${sz}px;background:#fff;border-radius:6px;padding:4px">
           <div style="margin-top:8px;color:#f5b301;font-size:${Math.max(13,H*.1)}px">★★★★★</div>
           <div style="margin-top:2px;opacity:.75;font-size:${Math.max(10,H*.06)}px">Scaneaza pentru a evalua</div>`;
@@ -202,6 +220,6 @@
   document.body.addEventListener('click',()=>{ if(window.speechSynthesis)speak(' '); },{once:true});
 
   /* init */
-  if(hasLayout){ buildScreen(0); window.addEventListener('resize',()=>{ buildScreen(curScreen); renderLayout(lastState); }); startRotation(); }
+  if(hasLayout){ buildScreen(0); window.addEventListener('resize',()=>{ buildScreen(curScreen); renderLayout(lastState); }); startRotation(); startLangCycle(); }
   if(cfg.useSSE && !!window.EventSource) startSSE(); else startPolling();
 })();

@@ -89,5 +89,5 @@ window.PLAYER = {
   config: <?= $cfg ? json_encode($cfg, JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>
-<script src="<?= e(asset('js/player_builder.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/player_builder.js')) ?>?v=4"></script>
 </body></html>
