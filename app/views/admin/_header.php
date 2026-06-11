@@ -31,7 +31,11 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20">
 <style>:root{--accent:<?= e($accent) ?>}</style>
 </head><body class="admin">
-<script>(function(){try{if(localStorage.getItem('admin_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
+<script>(function(){try{
+  var t=localStorage.getItem('admin_theme');
+  /* fara preferinta salvata -> urmeaza tema sistemului de operare */
+  if(t==='light' || (!t && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+}catch(e){}})();</script>
 <div class="shell">
   <nav class="side">
     <button class="side-top" id="side-toggle" title="Ascunde/Arata bara laterala"><span class="ic">☰</span></button>
