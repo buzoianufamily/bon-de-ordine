@@ -22,6 +22,6 @@ $roleLabel=['admin'=>'Administrator','manager'=>'Manager','agent'=>'Operator']; 
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty">Niciun utilizator.</div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">◉</div><p>Niciun utilizator inca.</p><a class="btn btn-primary" href="<?= e(url('admin/users/new')) ?>">+ Adauga utilizator</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

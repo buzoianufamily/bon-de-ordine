@@ -73,6 +73,37 @@
   }
   const screen = () => doc.screens[cur];
 
+  // ---- sabloane de ecran (preset-uri gata facute) ----
+  const PRESETS = {
+    clasic: { label:'Clasic', icon:'🖥', widgets:()=>[
+      {id:uid(),type:'now_serving',x:3,y:4,w:44,h:46,props:{label:'Se serveste bonul'}},
+      {id:uid(),type:'called_list',x:3,y:54,w:44,h:42,props:{title:'Ultimele apelate',rows:5}},
+      {id:uid(),type:'waiting_list',x:50,y:4,w:47,h:62,props:{title:'La rand'}},
+      {id:uid(),type:'clock',x:50,y:70,w:47,h:26,props:{mode:'full'}},
+    ]},
+    grila: { label:'Grila servicii', icon:'▦', widgets:()=>[
+      {id:uid(),type:'tickets_grid',x:3,y:4,w:64,h:84,props:{title:'',rows:6,show_counter:true}},
+      {id:uid(),type:'now_serving',x:70,y:4,w:27,h:38,props:{label:'Ultimul apelat'}},
+      {id:uid(),type:'clock',x:70,y:46,w:27,h:20,props:{mode:'full'}},
+      {id:uid(),type:'qr_code',x:70,y:68,w:27,h:20,props:{url:'',caption:'Scaneaza pentru bilet digital'}},
+      {id:uid(),type:'ticker',x:0,y:91,w:100,h:9,props:{text:'Bun venit! Va rugam asteptati apelarea bonului. ',speed:18}},
+    ]},
+    minimal: { label:'Minimal', icon:'◻', widgets:()=>[
+      {id:uid(),type:'now_serving',x:14,y:14,w:72,h:58,props:{label:'Se serveste bonul'}},
+      {id:uid(),type:'clock',x:30,y:76,w:40,h:18,props:{mode:'time'}},
+    ]},
+  };
+  const presetsEl = document.getElementById('presets');
+  if (presetsEl) {
+    presetsEl.innerHTML = Object.entries(PRESETS).map(([k,p])=>`<button data-pr="${k}"><span class="ic">${p.icon}</span>${p.label}</button>`).join('');
+    presetsEl.querySelectorAll('button').forEach(b=> b.onclick=()=>{
+      const apply = ()=>{ screen().widgets = PRESETS[b.dataset.pr].widgets(); sel=null; renderStage(); renderInspector(); };
+      if (!screen().widgets.length) { apply(); return; }
+      (window.QMS && QMS.confirm ? QMS.confirm('Inlocuiesti widget-urile ecranului curent cu sablonul „'+PRESETS[b.dataset.pr].label+'"?', {ok:'Aplica'}) : Promise.resolve(confirm('Inlocuiesti widget-urile?')))
+        .then(ok=>{ if(ok) apply(); });
+    });
+  }
+
   // ---- paleta ----
   const pal = document.getElementById('palette');
   pal.innerHTML = Object.entries(WIDGETS).map(([t,w])=>`<button data-t="${t}"><span class="ic">${w.icon}</span>${w.label}</button>`).join('');

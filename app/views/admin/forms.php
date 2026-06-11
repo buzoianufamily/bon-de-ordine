@@ -20,6 +20,6 @@
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty">Niciun formular. Creeaza primul.</div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">🗒</div><p>Niciun formular inca. Formularele colecteaza date de la client inainte de emiterea bonului.</p><a class="btn btn-primary" href="<?= e(url('admin/forms/new')) ?>">+ Creeaza primul formular</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>
