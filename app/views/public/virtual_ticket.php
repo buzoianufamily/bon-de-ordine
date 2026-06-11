@@ -7,6 +7,9 @@
   <div class="vt-pos" id="vPos"></div>
   <div class="muted" id="vEst" style="margin-top:.3rem"></div>
   <div class="muted" id="vCtr" style="margin-top:.6rem;font-weight:700"></div>
+  <?php if (setting('mod_feedback','1')==='1'): ?>
+  <a id="vRate" href="<?= e(url('feedback')) ?>?branch=<?= (int)$t['branch_id'] ?>" class="btn btn-primary" style="display:none;margin-top:1rem">⭐ Evalueaza experienta</a>
+  <?php endif; ?>
   <p class="muted" style="font-size:.78rem;margin-top:1.4rem">Pagina se actualizeaza automat. Pastrati-o deschisa.</p>
 </div></div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
@@ -28,6 +31,7 @@ async function tick(){
   if(t.status==='called' && ALERTS.called) txt = ALERTS.called;
   else if(t.status==='transferred' && ALERTS.transfer) txt = ALERTS.transfer;
   const s=document.getElementById('vStatus'); s.textContent=txt; s.style.background=st[1]; s.style.color='#06210f';
+  const rate=document.getElementById('vRate'); if(rate) rate.style.display = (t.status==='served') ? 'inline-flex' : 'none';
   document.getElementById('vPos').textContent = t.status==='waiting' ? ('Sunt '+t.position+' persoane inaintea dvs.') : '';
   var estEl=document.getElementById('vEst');
   if(t.status==='waiting' && t.wait_est>0){ var mn=Math.round(t.wait_est/60); estEl.textContent='Timp estimat: '+(mn<1?'sub 1 minut':('~ '+mn+' min')); }
