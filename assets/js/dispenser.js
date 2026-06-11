@@ -102,6 +102,8 @@
     $('tkDone').textContent = cfg.texts.done||'Gata';
     const qr=$('tkQr');
     if(cfg.virtual && res.virtual_url){ qr.style.display=''; qr.src='https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(res.virtual_url); } else qr.style.display='none';
+    // reporneste animatia bifei la fiecare bon
+    const chk=overlay.querySelector('.tk-check'); if(chk){ const c2=chk.cloneNode(true); chk.replaceWith(c2); }
     overlay.classList.add('show');
     let s=Math.max(2,cfg.autoReturn||7); const cd=$('cd'); cd.textContent=s;
     clearInterval(timer); timer=setInterval(()=>{ s--; cd.textContent=s; if(s<=0) closeTicket(); },1000);
@@ -134,6 +136,16 @@
     const reset=()=>{ saver.classList.remove('show'); clearTimeout(st); st=setTimeout(()=>saver.classList.add('show'), cfg.screensaver*1000); };
     ['click','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,reset,{passive:true})); reset();
   }
+  /* efect de atingere (ripple) pe butoanele de serviciu */
+  document.addEventListener('pointerdown', e=>{
+    const b=e.target.closest('.svc-btn'); if(!b || b.disabled) return;
+    const r=b.getBoundingClientRect(), d=Math.max(r.width, r.height);
+    const s=document.createElement('span'); s.className='rip';
+    s.style.width=s.style.height=d+'px';
+    s.style.left=(e.clientX-r.left-d/2)+'px'; s.style.top=(e.clientY-r.top-d/2)+'px';
+    b.appendChild(s); setTimeout(()=>s.remove(), 600);
+  }, {passive:true});
+
   setInterval(()=> QMS.api('api/heartbeat',{device_key:cfg.key}).catch(()=>{}), 45000);
   QMS.api('api/heartbeat',{device_key:cfg.key}).catch(()=>{});
 })();

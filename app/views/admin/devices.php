@@ -29,7 +29,7 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
       <span class="st <?= $d['online']?'on':'' ?>"><span class="d"></span><?= $d['online']?'Online':'Offline' ?></span>
       <span>
         <a class="lnk" href="<?= e(url('admin/devices/'.$d['id'])) ?>">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/devices/'.$d['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" onsubmit="return confirm('Stergi dispozitivul?')"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <form method="post" action="<?= e(url('admin/devices/'.$d['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi dispozitivul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>

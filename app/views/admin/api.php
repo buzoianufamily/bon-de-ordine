@@ -16,7 +16,7 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
     <p class="muted" style="margin-top:0;font-size:.85rem">Trimite-o in antetul <code>X-Api-Key</code> (sau <code>?key=</code>) la fiecare cerere.</p>
     <div class="field"><input readonly value="<?= e($key) ?>" onclick="this.select()" style="font-family:monospace"></div>
     <div style="display:flex;gap:.5rem;align-items:center">
-      <form method="post" action="<?= e(url('admin/api')) ?>" onsubmit="return confirm('Regenerezi cheia? Integrarile existente vor trebui actualizate.')"><?= csrf_field() ?>
+      <form method="post" action="<?= e(url('admin/api')) ?>" data-confirm="Regenerezi cheia? Integrarile existente vor trebui actualizate."><?= csrf_field() ?>
         <input type="hidden" name="regen" value="1"><button class="btn">↻ Regenereaza cheia</button></form>
     </div>
     <p class="muted" style="font-size:.82rem;margin-bottom:0">URL de baza: <code><?= e($base) ?></code> · Limita: <strong>120 cereri/minut</strong> (antete <code>X-RateLimit-*</code>, raspuns <code>429</code> la depasire).</p>

@@ -2,7 +2,7 @@
 $st=['waiting'=>['La rand','#fef3c7','#92400e'],'called'=>['Apelat','#dbeafe','#1e40af'],'serving'=>['In servire','#dbeafe','#1e40af'],
   'served'=>['Servit','#dcfce7','#166534'],'no_show'=>['Neprezentat','#f1f5f9','#64748b'],'cancelled'=>['Anulat','#fee2e2','#b91c1c'],'transferred'=>['Transferat','#e0e7ff','#3730a3']]; ?>
 <div class="topbar"><h1>Bilete</h1>
-  <form method="post" action="<?= e(url('admin/tickets/reset')) ?>" onsubmit="return confirm('Resetezi bonurile? Se STERG TOATE biletele (coada + istoric + statistici) si numerotarea reincepe de la 0. Actiunea NU poate fi anulata.')" style="display:flex;gap:.4rem;align-items:center">
+  <form method="post" action="<?= e(url('admin/tickets/reset')) ?>" data-confirm="Resetezi bonurile? Se STERG TOATE biletele (coada + istoric + statistici) si numerotarea reincepe de la 0. Actiunea NU poate fi anulata." style="display:flex;gap:.4rem;align-items:center">
     <?= csrf_field() ?>
     <?php if(count($branches)>1): ?><select name="branch" style="width:auto"><option value="0">Toate filialele</option><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select><?php endif; ?>
     <button class="btn btn-danger">↺ Reset bonuri</button>

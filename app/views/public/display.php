@@ -28,7 +28,7 @@ $sound = $hasLayout && !empty($layout['sound']) ? $layout['sound'] : [
     </div>
   </div>
 <?php endif; ?>
-<script src="<?= e(asset('js/app.js')) ?>"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
 <script>
 window.DISPLAY = {
   branch: <?= (int)$branch['id'] ?>,

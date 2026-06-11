@@ -25,7 +25,7 @@
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
 <script>
 window.CONCIERGE = {
   branch: <?= (int)$branch['id'] ?>,
@@ -46,7 +46,7 @@ window.CONCIERGE = {
   }
   elList.addEventListener('change', e=>{ const s=e.target.closest('select[data-tid]'); if(!s||!s.value)return;
     const tid=+s.getAttribute('data-tid'), cid=+s.value; const cn=s.options[s.selectedIndex].text;
-    if(confirm('Chemi biletul la „'+cn+'"?')) callTo(tid,cid); else s.value='';
+    QMS.confirm('Chemi biletul la „'+cn+'"?', {ok:'Cheama'}).then(ok=>{ if(ok) callTo(tid,cid); else s.value=''; });
   });
 
   async function refresh(){

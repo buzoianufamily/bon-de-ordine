@@ -24,11 +24,11 @@ $qr = $uri ? 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&
     <p class="pill" style="display:inline-block;background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--ok)">✔ 2FA este activ pentru contul tau</p>
     <p class="muted" style="font-size:.85rem">Coduri de recuperare ramase: <strong><?= (int)$backupLeft ?></strong><?= $backupLeft<=2?' — recomandam sa generezi altele noi':'' ?>.</p>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem">
-      <form method="post" action="<?= e(url('admin/security')) ?>" onsubmit="return confirm('Generezi coduri de recuperare noi? Cele vechi nu vor mai functiona.')">
+      <form method="post" action="<?= e(url('admin/security')) ?>" data-confirm="Generezi coduri de recuperare noi? Cele vechi nu vor mai functiona.">
         <?= csrf_field() ?><input type="hidden" name="act" value="regen_codes">
         <button class="btn">↻ Coduri de recuperare noi</button>
       </form>
-      <form method="post" action="<?= e(url('admin/security')) ?>" onsubmit="return confirm('Dezactivezi autentificarea in doi pasi?')">
+      <form method="post" action="<?= e(url('admin/security')) ?>" data-confirm="Dezactivezi autentificarea in doi pasi?">
         <?= csrf_field() ?><input type="hidden" name="act" value="disable">
         <button class="btn btn-danger">Dezactiveaza 2FA</button>
       </form>

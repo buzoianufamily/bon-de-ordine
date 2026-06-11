@@ -81,7 +81,7 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
         <td style="text-align:right;white-space:nowrap">
           <?php if($a['status']==='booked'): ?>
             <form method="post" action="<?= e(url('admin/appointments/'.$a['id'].'/checkin')) ?>" style="display:inline"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--accent)">Check-in</button></form>
-            <form method="post" action="<?= e(url('admin/appointments/'.$a['id'].'/cancel')) ?>" style="display:inline" onsubmit="return confirm('Anulezi programarea?')"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger)">Anuleaza</button></form>
+            <form method="post" action="<?= e(url('admin/appointments/'.$a['id'].'/cancel')) ?>" style="display:inline" data-confirm="Anulezi programarea?"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger)">Anuleaza</button></form>
           <?php endif; ?>
         </td>
       </tr>
