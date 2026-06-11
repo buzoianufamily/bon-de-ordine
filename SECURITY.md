@@ -9,6 +9,7 @@ Rezumatul măsurilor de securitate și recomandări de hardening.
 - **SQL**: exclusiv prepared statements (PDO, `EMULATE_PREPARES=false`). Fără concatenare de input în SQL.
 - **XSS**: tot ce se afișează trece prin `e()` (`htmlspecialchars`). În JS se folosește escaping la randare.
 - **Brute-force login**: max 10 încercări eșuate / IP în 10 minute (din `audit_log`), apoi cooldown.
+- **2FA (TOTP)**: autentificare în doi pași opțională pentru conturile de backoffice (Google Authenticator/Authy etc.), implementată în PHP pur (RFC 6238). Se activează din Admin → Securitate; un alt admin poate reseta 2FA al unui utilizator din Utilizatori.
 - **Audit log**: cine/ce/când a modificat în admin (creare/modificare/ștergere/reset/regenerare cheie). Vezi Admin → Jurnal audit.
 - **Antete de securitate**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `HSTS` pe HTTPS — setate în `.htaccess` (mod_headers) și, ca fallback, la nivel PHP în `app/core/init.php`.
 - **Foldere/fișiere sensibile blocate** prin `.htaccess`: `app/`, `config/`, `database/` și fișierele `*.sql|*.md|*.log|*.ini`. `Options -Indexes`.
@@ -26,7 +27,6 @@ Rezumatul măsurilor de securitate și recomandări de hardening.
 6. Pentru API/webhooks: folosește un secret pentru webhook și păstrează cheia API secretă; regenereaz-o dacă a fost expusă.
 
 ## Posibile întăriri viitoare (opțional)
-- Rate-limiting și pe API-ul public (pe cheie/IP).
-- 2FA pentru conturile de admin.
 - `Content-Security-Policy` strict (atenție la scripturile inline și la widget-ul iframe de pe afișaj).
 - Rotația periodică a cheii API.
+- Coduri de recuperare („backup codes") pentru 2FA.

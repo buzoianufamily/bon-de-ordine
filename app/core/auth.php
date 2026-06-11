@@ -11,17 +11,26 @@ function current_user(): ?array {
     return $u;
 }
 
-function attempt_login(string $email, string $password): bool {
+/** Verifica doar parola (fara a deschide sesiunea). Returneaza randul userului sau null. */
+function verify_credentials(string $email, string $password): ?array {
     $u = one('SELECT * FROM users WHERE email = ? AND active = 1', [trim($email)]);
-    if (!$u) return false;
-    if (!password_verify($password, $u['password_hash'])) return false;
-    // re-hash daca s-a schimbat algoritmul implicit
+    if (!$u || !password_verify($password, $u['password_hash'])) return null;
     if (password_needs_rehash($u['password_hash'], PASSWORD_DEFAULT)) {
-        q('UPDATE users SET password_hash = ? WHERE id = ?',
-          [password_hash($password, PASSWORD_DEFAULT), $u['id']]);
+        q('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $u['id']]);
     }
+    return $u;
+}
+
+/** Finalizeaza autentificarea (dupa parola + eventual 2FA). */
+function complete_login(int $uid): void {
     session_regenerate_id(true);
-    $_SESSION['uid'] = (int)$u['id'];
+    $_SESSION['uid'] = $uid;
+}
+
+function attempt_login(string $email, string $password): bool {
+    $u = verify_credentials($email, $password);
+    if (!$u) return false;
+    complete_login((int)$u['id']);
     return true;
 }
 

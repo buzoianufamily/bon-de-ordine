@@ -105,6 +105,9 @@ CREATE TABLE IF NOT EXISTS users (
   notify_browser TINYINT(1) NOT NULL DEFAULT 0,    -- notificari browser la terminalul operatorului
   work_status   VARCHAR(16) NOT NULL DEFAULT 'offline', -- prezenta: available/busy/paused/offline
   last_seen     DATETIME NULL,                     -- ultima activitate (terminal)
+  totp_secret   VARCHAR(64) NULL,                  -- secret 2FA (base32)
+  totp_enabled  TINYINT(1) NOT NULL DEFAULT 0,     -- 2FA activ
+  totp_backup   TEXT NULL,                         -- coduri de recuperare (hash-uri JSON)
   active        TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -266,6 +269,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   ticket_id     BIGINT NULL,
   public_token  VARCHAR(40) NULL,
   note          VARCHAR(255) NULL,
+  reminded_at   DATETIME NULL,                          -- email reminder trimis
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_appt_branch  FOREIGN KEY (branch_id)  REFERENCES branches(id) ON DELETE CASCADE,
   CONSTRAINT fk_appt_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,

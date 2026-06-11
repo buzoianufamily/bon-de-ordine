@@ -13,6 +13,16 @@ function admin_dispatch(array $seg, string $method): void {
         elseif (in_array($area, array_keys(perm_areas()), true) && !can($area)) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
     }
 
+    // ---- politica: adminii sunt obligati sa aiba 2FA activ (pot accesa doar pagina Securitate) ----
+    if ($area !== 'security' && current_user()['role'] === 'admin' && setting('force_2fa_admin', '0') === '1') {
+        try {
+            if ((int) val('SELECT totp_enabled FROM users WHERE id=?', [current_user()['id']]) !== 1) {
+                flash('Politica de securitate: activeaza autentificarea in doi pasi (2FA) pentru a continua.', 'error');
+                redirect('admin/security');
+            }
+        } catch (Throwable $e) {}
+    }
+
     switch ($res) {
         case 'dashboard': case '': admin_dashboard(); return;
 
@@ -120,6 +130,10 @@ function admin_dispatch(array $seg, string $method): void {
         case 'audit':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             admin_audit_list(); return;
+
+        case 'security':
+            if ($method === 'POST') { admin_security_save(); return; }
+            admin_security_page(); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
 }
@@ -337,6 +351,7 @@ function admin_user_save(): void {
             [$name,$email,$role,$active,$notify,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
+    if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
     audit($id?'update':'create','user',$id); flash('Utilizator salvat.'); redirect('admin/users');
 }
 
@@ -436,6 +451,58 @@ function admin_feedback_list(): void {
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
 }
 
+/* ----------------------- SECURITATE (2FA) ----------------------- */
+function admin_security_page(): void {
+    $u = current_user();
+    $row = one('SELECT totp_enabled, totp_backup FROM users WHERE id=?', [$u['id']]) ?: [];
+    $enabled = (int)($row['totp_enabled'] ?? 0) === 1;
+    $backupLeft = $enabled ? count(json_decode($row['totp_backup'] ?? '[]', true) ?: []) : 0;
+    $secret = '';
+    if (!$enabled) {
+        if (empty($_SESSION['2fa_setup_secret'])) $_SESSION['2fa_setup_secret'] = totp_secret();
+        $secret = $_SESSION['2fa_setup_secret'];
+    }
+    // codurile noi se afiseaza O SINGURA DATA (puse in sesiune la activare/regenerare)
+    $newCodes = $_SESSION['2fa_new_codes'] ?? null;
+    unset($_SESSION['2fa_new_codes']);
+    $force2fa = setting('force_2fa_admin', '0') === '1';
+    view('admin/security', compact('u', 'enabled', 'secret', 'backupLeft', 'newCodes', 'force2fa'));
+}
+function admin_security_save(): void {
+    csrf_check();
+    $u = current_user();
+    $act = $_POST['act'] ?? '';
+    if ($act === 'enable') {
+        $secret = (string)($_SESSION['2fa_setup_secret'] ?? '');
+        if ($secret !== '' && totp_verify($secret, (string)($_POST['code'] ?? ''))) {
+            [$plain, $hashes] = totp_backup_generate();
+            q('UPDATE users SET totp_secret=?, totp_enabled=1, totp_backup=? WHERE id=?',
+              [$secret, json_encode($hashes), $u['id']]);
+            unset($_SESSION['2fa_setup_secret']);
+            $_SESSION['2fa_new_codes'] = $plain;
+            audit('2fa_enabled', 'user', $u['id']);
+            flash('Autentificarea in doi pasi a fost activata. Salveaza codurile de recuperare de mai jos!');
+        } else { flash('Cod incorect. Verifica ora telefonului si mai incearca.', 'error'); }
+    } elseif ($act === 'disable') {
+        q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$u['id']]);
+        audit('2fa_disabled', 'user', $u['id']);
+        flash('Autentificarea in doi pasi a fost dezactivata.');
+    } elseif ($act === 'regen_codes') {
+        if ((int) val('SELECT totp_enabled FROM users WHERE id=?', [$u['id']]) === 1) {
+            [$plain, $hashes] = totp_backup_generate();
+            q('UPDATE users SET totp_backup=? WHERE id=?', [json_encode($hashes), $u['id']]);
+            $_SESSION['2fa_new_codes'] = $plain;
+            audit('2fa_codes_regen', 'user', $u['id']);
+            flash('Coduri de recuperare noi generate. Cele vechi nu mai sunt valabile.');
+        }
+    } elseif ($act === 'policy' && $u['role'] === 'admin') {
+        set_setting('force_2fa_admin', isset($_POST['force_2fa_admin']) ? '1' : '0');
+        audit('update', 'security_policy');
+        flash('Politica de securitate salvata.');
+    }
+    redirect('admin/security');
+}
+
 /* ----------------------- AUDIT LOG ----------------------- */
 function admin_audit_list(): void {
     $page = max(1, (int)($_GET['p'] ?? 1)); $per = 80; $off = ($page-1)*$per;
@@ -447,6 +514,7 @@ function admin_audit_list(): void {
 /* ----------------------- API & WEBHOOKS ----------------------- */
 function admin_api_page(): void {
     if (setting('api_key', '') === '') set_setting('api_key', bin2hex(random_bytes(24)));
+    if (setting('cron_token', '') === '') set_setting('cron_token', bin2hex(random_bytes(16)));
     view('admin/api');
 }
 function admin_api_save(): void {
@@ -468,10 +536,12 @@ function admin_settings_save(): void {
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size',
              'alert_called','alert_transfer','alert_delay',
-             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass'];
+             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
+    set_setting('reminder_enabled', isset($_POST['reminder_enabled']) ? '1' : '0');
+    set_setting('daily_report_enabled', isset($_POST['daily_report_enabled']) ? '1' : '0');
     set_setting('display_say_number', isset($_POST['display_say_number']) ? '1' : '0');
     set_setting('display_say_counter', isset($_POST['display_say_counter']) ? '1' : '0');
     set_setting('counter_voice', isset($_POST['counter_voice']) ? '1' : '0');

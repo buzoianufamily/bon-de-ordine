@@ -154,6 +154,7 @@
     h += `<hr><div class="pb-grp">Pozitie & marime (%)</div><div class="field row2">
       ${miniNum('f_x','X',w.x)}${miniNum('f_y','Y',w.y)}</div><div class="field row2">
       ${miniNum('f_w','Latime',w.w)}${miniNum('f_h','Inaltime',w.h)}</div>`;
+    h += `<p class="muted" style="font-size:.72rem;margin:.5rem 0 0">Sfat multi-limba: la texte/titluri poti scrie <b>"Text RO | Text EN"</b> — pe afisaj alterneaza la 6 secunde.</p>`;
     h += `<button class="pb-btn" id="delW" style="width:100%;justify-content:center;border-color:#5b2330;color:#ff8a8a;margin-top:.5rem">🗑 Sterge widget</button>`;
     insp.innerHTML = h;
     def.fields.forEach(([key,,type])=>{
