@@ -1,6 +1,8 @@
     </div><!-- .content -->
   </main>
 </div><!-- .shell -->
+<!-- fundal drawer mobil: in afara grilei + ascuns inline => nu poate strica layout-ul indiferent de CSS -->
+<div id="navbk" style="display:none;position:fixed;inset:0;background:rgba(8,10,14,.55);z-index:94"></div>
 <script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
 <script>
 /* cautare + comutator grila/lista pentru paginile de liste (no-op daca lipsesc) */
@@ -51,13 +53,15 @@ document.addEventListener('click',function(e){
     localStorage.setItem('nav_collapsed', shell.classList.contains('nav-collapsed')?'1':'0');
   });
 })();
-/* drawer mobil pentru bara laterala */
+/* drawer mobil pentru bara laterala (fundalul e controlat doar din JS, prin stil inline) */
 (function(){
   var shell=document.querySelector('.shell'), btn=document.getElementById('nav-open'), bk=document.getElementById('navbk');
   if(!shell||!btn)return;
-  btn.addEventListener('click',function(){ shell.classList.add('nav-open'); });
-  if(bk) bk.addEventListener('click',function(){ shell.classList.remove('nav-open'); });
-  document.querySelectorAll('.side a').forEach(function(a){ a.addEventListener('click',function(){ shell.classList.remove('nav-open'); }); });
+  function openNav(){ shell.classList.add('nav-open'); if(bk) bk.style.display='block'; }
+  function closeNav(){ shell.classList.remove('nav-open'); if(bk) bk.style.display='none'; }
+  btn.addEventListener('click', openNav);
+  if(bk) bk.addEventListener('click', closeNav);
+  document.querySelectorAll('.side a').forEach(function(a){ a.addEventListener('click', closeNav); });
 })();
 /* cautare globala Ctrl+K / Cmd+K */
 (function(){
