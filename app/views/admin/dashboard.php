@@ -25,6 +25,24 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   </div>
 </div>
 
+<?php if(!empty($onboarding)): $doneCnt=count(array_filter($onboarding,fn($s)=>$s['done'])); ?>
+<div class="panel" style="margin-bottom:1.3rem;border-left:3px solid var(--accent)">
+  <h4 style="display:flex;align-items:center;gap:.6rem">Primii pasi · <?= $doneCnt ?>/<?= count($onboarding) ?> finalizati
+    <form method="post" action="<?= e(url('admin/dashboard/dismiss-onboarding')) ?>" style="margin-left:auto"><?= csrf_field() ?>
+      <button class="btn btn-ghost" style="padding:.2rem .55rem;font-size:.75rem;text-transform:none;letter-spacing:0">Ascunde</button></form>
+  </h4>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.4rem">
+    <?php foreach($onboarding as $s): ?>
+      <a href="<?= e($s['url']) ?>" style="display:flex;align-items:center;gap:.55rem;padding:.45rem .6rem;border-radius:9px;color:<?= $s['done']?'var(--muted)':'var(--ink)' ?>;<?= $s['done']?'text-decoration:line-through;':'' ?>">
+        <span style="width:20px;height:20px;border-radius:999px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;
+          background:<?= $s['done']?'color-mix(in srgb,var(--ok) 25%,transparent)':'var(--track)' ?>;color:<?= $s['done']?'var(--ok)':'var(--muted)' ?>"><?= $s['done']?'✓':'○' ?></span>
+        <?= e($s['label']) ?>
+      </a>
+    <?php endforeach; ?>
+  </div>
+</div>
+<?php endif; ?>
+
 <div class="statcards">
   <div class="statcard"><div class="t">Bilete azi</div><div class="s">Total emise</div><div class="v" id="sv-today"><?= $stats['today'] ?></div></div>
   <div class="statcard"><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" id="sv-waiting" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>

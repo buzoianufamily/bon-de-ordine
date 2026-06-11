@@ -51,5 +51,59 @@ document.addEventListener('click',function(e){
     localStorage.setItem('nav_collapsed', shell.classList.contains('nav-collapsed')?'1':'0');
   });
 })();
+/* cautare globala Ctrl+K / Cmd+K */
+(function(){
+  var pages=[]; document.querySelectorAll('.side a[href]').forEach(function(a){
+    var lbl=(a.querySelector('.lbl')||a).textContent.trim(); if(lbl) pages.push({group:'Pagini',label:lbl,url:a.href,sub:''});
+  });
+  var ov=null, idx=0, items=[], tdebounce=null;
+  function close(){ if(ov){ ov.remove(); ov=null; } }
+  function go(){ var it=items[idx]; if(it) location.href=it.url; }
+  function renderList(box, list){
+    items=list; idx=0;
+    if(!list.length){ box.innerHTML='<div class="ck-empty">Niciun rezultat.</div>'; return; }
+    var html='', grp='';
+    list.forEach(function(it,i){
+      if(it.group!==grp){ grp=it.group; html+='<div class="ck-grp">'+grp+'</div>'; }
+      html+='<a class="ck-it'+(i===0?' on':'')+'" data-i="'+i+'" href="'+it.url+'">'+it.label.replace(/[<>&]/g,'')+(it.sub?'<span class="sub">'+String(it.sub).replace(/[<>&]/g,'')+'</span>':'')+'</a>';
+    });
+    box.innerHTML=html;
+    box.querySelectorAll('.ck-it').forEach(function(el){ el.addEventListener('mousemove',function(){ mark(+el.dataset.i); }); });
+  }
+  function mark(i){ idx=i; if(ov) ov.querySelectorAll('.ck-it').forEach(function(el,j){ el.classList.toggle('on', j===i); }); }
+  function open(){
+    if(ov) return;
+    ov=document.createElement('div'); ov.className='cmdk';
+    ov.innerHTML='<div class="ck-card"><input type="text" placeholder="Cauta pagini, servicii, ghisee, bilete…">'+
+      '<div class="ck-list"></div><div class="ck-hint"><span><span class="kbd">↑↓</span> navighezi</span><span><span class="kbd">Enter</span> deschizi</span><span><span class="kbd">Esc</span> inchizi</span></div></div>';
+    document.body.appendChild(ov);
+    var inp=ov.querySelector('input'), box=ov.querySelector('.ck-list');
+    ov.addEventListener('click',function(e){ if(e.target===ov) close(); });
+    renderList(box, pages.slice(0,12));
+    inp.addEventListener('input',function(){
+      var q=inp.value.trim().toLowerCase();
+      var local=pages.filter(function(p){ return p.label.toLowerCase().indexOf(q)>-1; }).slice(0,6);
+      renderList(box, local);
+      clearTimeout(tdebounce);
+      if(q.length>=2) tdebounce=setTimeout(function(){
+        QMS.api('admin/search?q='+encodeURIComponent(q),null,'GET').then(function(r){
+          if(!r||!r.ok||!ov||inp.value.trim().toLowerCase()!==q) return;
+          renderList(box, local.concat(r.results||[]));
+        }).catch(function(){});
+      },180);
+    });
+    inp.addEventListener('keydown',function(e){
+      if(e.key==='ArrowDown'){ e.preventDefault(); mark(Math.min(items.length-1,idx+1)); }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); mark(Math.max(0,idx-1)); }
+      else if(e.key==='Enter'){ e.preventDefault(); go(); }
+      else if(e.key==='Escape'){ close(); }
+    });
+    inp.focus();
+  }
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); open(); }
+    else if(e.key==='Escape' && ov) close();
+  });
+})();
 </script>
 </body></html>

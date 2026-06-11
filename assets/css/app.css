@@ -109,6 +109,18 @@ body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var
 .qmodal .qm-btns{display:flex;gap:.6rem;justify-content:flex-end}
 @keyframes qmIn{from{opacity:0}}
 @keyframes qmPop{from{opacity:0;transform:scale(.94) translateY(8px)}}
+/* ====== Cautare globala (Ctrl+K) ====== */
+.cmdk{position:fixed;inset:0;background:rgba(8,10,14,.6);backdrop-filter:blur(4px);z-index:10001;display:flex;justify-content:center;align-items:flex-start;padding-top:12vh;animation:qmIn .12s}
+.cmdk .ck-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;max-width:560px;width:94%;box-shadow:0 30px 90px rgba(0,0,0,.5);overflow:hidden;animation:qmPop .15s}
+.cmdk input{width:100%;border:none;outline:none;background:transparent;color:var(--ink);font:inherit;font-size:1.05rem;padding:1rem 1.2rem;border-bottom:1px solid var(--line);border-radius:0}
+.cmdk .ck-list{max-height:46vh;overflow:auto;padding:.4rem}
+.cmdk .ck-grp{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.5rem .8rem .2rem;font-weight:700}
+.cmdk .ck-it{display:flex;align-items:center;gap:.6rem;padding:.55rem .8rem;border-radius:9px;cursor:pointer;color:var(--ink);text-decoration:none}
+.cmdk .ck-it .sub{margin-left:auto;color:var(--muted);font-size:.78rem}
+.cmdk .ck-it.on,.cmdk .ck-it:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.cmdk .ck-empty{padding:1rem;text-align:center;color:var(--muted);font-size:.9rem}
+.cmdk .ck-hint{padding:.5rem .9rem;border-top:1px solid var(--line);color:var(--muted);font-size:.72rem;display:flex;gap:1rem}
+.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 .35rem;font-family:monospace;font-size:.85em}
 .portal{max-width:760px;width:100%}
 .portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.2rem}
 .portal-grid a{display:block}
