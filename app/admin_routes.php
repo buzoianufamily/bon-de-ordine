@@ -45,6 +45,7 @@ function admin_dispatch(array $seg, string $method): void {
             admin_branches_list(); return;
 
         case 'services':
+            if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
             if ($method === 'POST' && $a === null) { admin_service_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM services WHERE id=?', [(int)$a]); audit('delete','service',(int)$a); flash('Serviciu sters.'); redirect('admin/services'); }
             if ($a === 'new') { admin_service_form(null); return; }
@@ -337,6 +338,17 @@ function admin_group_save(): void {
     }
     audit($id?'update':'create','group',$id ?: insert_id());
     redirect('admin/groups');
+}
+
+/** Salveaza ordinea serviciilor (drag & drop): sort_order = pozitia in lista primita. */
+function admin_services_reorder(): void {
+    csrf_check();
+    $ids = input('ids', []);
+    if (!is_array($ids) || !$ids) json_out(['ok' => false, 'error' => 'Lista goala'], 422);
+    $pos = 0;
+    foreach ($ids as $id) { $id = (int)$id; if ($id > 0) q('UPDATE services SET sort_order = ? WHERE id = ?', [$pos++, $id]); }
+    audit('reorder', 'services');
+    json_out(['ok' => true]);
 }
 
 /* ----------------------- COUNTERS ----------------------- */

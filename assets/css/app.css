@@ -321,6 +321,9 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .mcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1rem 1.1rem;display:flex;flex-direction:column;min-height:150px;transition:.12s}
 .mcard:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
 .mcard .mhead{display:flex;align-items:flex-start;gap:.7rem}
+.mcard .grip{cursor:grab;color:var(--muted);font-size:1.05rem;line-height:1;padding:.15rem .3rem;user-select:none;flex:0 0 auto}
+.mcard .grip:active{cursor:grabbing}
+.mcard.dragging{opacity:.45;outline:2px dashed var(--accent);outline-offset:2px}
 .mcard .badge{width:34px;height:34px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.9rem;flex:0 0 auto}
 .mcard .nm{font-weight:800;font-size:1rem;color:var(--ink);line-height:1.2}
 .mcard .sub{font-size:.8rem;margin-top:.15rem}
