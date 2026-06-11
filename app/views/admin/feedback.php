@@ -26,7 +26,7 @@ $qs = fn($p)=>e(url('admin/feedback').'?'.http_build_query(['rating'=>$rating,'p
       <td><?= $r['comment']!==null && $r['comment']!=='' ? e($r['comment']) : '<span class="muted">—</span>' ?></td>
       <td class="muted"><?= e($r['branch_name'] ?? '—') ?></td>
       <td class="muted"><?= e($r['ticket_label'] ?? '—') ?></td>
-      <td style="text-align:right"><form method="post" action="<?= e(url('admin/feedback/'.$r['id'].'/delete')) ?>" onsubmit="return confirm('Stergi acest feedback?')" style="display:inline"><?= csrf_field() ?><button class="lnk del">Sterge</button></form></td>
+      <td style="text-align:right"><form method="post" action="<?= e(url('admin/feedback/'.$r['id'].'/delete')) ?>" data-confirm="Stergi acest feedback?" style="display:inline"><?= csrf_field() ?><button class="lnk del">Sterge</button></form></td>
     </tr>
   <?php endforeach; ?>
   <?php if(!$rows): ?><tr><td colspan="6" class="muted">Niciun feedback<?= $rating?' cu aceasta nota':'' ?>. Adauga widget-ul „Formular feedback" pe afisaj sau partajeaza linkul <code><?= e(url('feedback')) ?></code>.</td></tr><?php endif; ?>

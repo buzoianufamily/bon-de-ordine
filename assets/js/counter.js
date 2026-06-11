@@ -141,11 +141,13 @@
   });
   elBar.addEventListener('change', e=>{
     const ts=e.target.closest('select[data-a="transfer"]');
-    if(ts&&ts.value){ const name=ts.options[ts.selectedIndex].text;
-      if(confirm('Transferi biletul către serviciul „'+name+'"?')) doTransfer(+ts.value); else ts.value=''; return; }
+    if(ts&&ts.value){ const name=ts.options[ts.selectedIndex].text, v=+ts.value;
+      QMS.confirm('Transferi biletul către serviciul „'+name+'"?', {ok:'Transferă'})
+        .then(ok=>{ if(ok) doTransfer(v); else ts.value=''; }); return; }
     const tc=e.target.closest('select[data-a="transfer-counter"]');
-    if(tc&&tc.value){ const name=tc.options[tc.selectedIndex].text;
-      if(confirm('Transferi biletul la biroul „'+name+'"?')) doTransferCounter(+tc.value); else tc.value=''; }
+    if(tc&&tc.value){ const name=tc.options[tc.selectedIndex].text, v=+tc.value;
+      QMS.confirm('Transferi biletul la biroul „'+name+'"?', {ok:'Transferă'})
+        .then(ok=>{ if(ok) doTransferCounter(v); else tc.value=''; }); }
   });
 
   /* ---- selectare / DESELECTARE cu click (un singur bilet) ---- */

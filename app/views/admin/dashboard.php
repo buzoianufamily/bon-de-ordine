@@ -1,5 +1,15 @@
 <?php $title='Dashboard'; $active=''; require __DIR__.'/_header.php';
 function mmss($s){ $s=(int)$s; return sprintf('%02d:%02d', intdiv($s,60), $s%60); }
+/* sparkline SVG mic (tendinta 7 zile) pentru statcards */
+function spark(array $v, string $color='var(--accent)'): string {
+    if (count($v) < 2 || max($v) <= 0) return '';
+    $W=86; $H=24; $max=max($v); $min=min($v); $rng=max(1,$max-$min);
+    $pts=[]; $n=count($v);
+    foreach ($v as $i=>$x) $pts[] = round($i/($n-1)*$W,1).','.round($H-2-($x-$min)/$rng*($H-4),1);
+    return '<svg class="spk" viewBox="0 0 '.$W.' '.$H.'" width="'.$W.'" height="'.$H.'" preserveAspectRatio="none">'
+         . '<polyline points="'.implode(' ',$pts).'" fill="none" stroke="'.$color.'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>'
+         . '</svg>';
+}
 $totalSvc = array_sum(array_map(fn($p)=>(int)$p['cnt'], $per_service));
 $maxSvc   = max(1, max(array_map(fn($p)=>(int)$p['cnt'], $per_service ?: [['cnt'=>0]])));
 $maxHour  = max(1, max($per_hour));
@@ -25,13 +35,31 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   </div>
 </div>
 
+<?php if(!empty($onboarding)): $doneCnt=count(array_filter($onboarding,fn($s)=>$s['done'])); ?>
+<div class="panel" style="margin-bottom:1.3rem;border-left:3px solid var(--accent)">
+  <h4 style="display:flex;align-items:center;gap:.6rem">Primii pasi · <?= $doneCnt ?>/<?= count($onboarding) ?> finalizati
+    <form method="post" action="<?= e(url('admin/dashboard/dismiss-onboarding')) ?>" style="margin-left:auto"><?= csrf_field() ?>
+      <button class="btn btn-ghost" style="padding:.2rem .55rem;font-size:.75rem;text-transform:none;letter-spacing:0">Ascunde</button></form>
+  </h4>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.4rem">
+    <?php foreach($onboarding as $s): ?>
+      <a href="<?= e($s['url']) ?>" style="display:flex;align-items:center;gap:.55rem;padding:.45rem .6rem;border-radius:9px;color:<?= $s['done']?'var(--muted)':'var(--ink)' ?>;<?= $s['done']?'text-decoration:line-through;':'' ?>">
+        <span style="width:20px;height:20px;border-radius:999px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;
+          background:<?= $s['done']?'color-mix(in srgb,var(--ok) 25%,transparent)':'var(--track)' ?>;color:<?= $s['done']?'var(--ok)':'var(--muted)' ?>"><?= $s['done']?'✓':'○' ?></span>
+        <?= e($s['label']) ?>
+      </a>
+    <?php endforeach; ?>
+  </div>
+</div>
+<?php endif; ?>
+
 <div class="statcards">
-  <div class="statcard"><div class="t">Bilete azi</div><div class="s">Total emise</div><div class="v" id="sv-today"><?= $stats['today'] ?></div></div>
+  <div class="statcard"><div class="t">Bilete azi</div><div class="s">Total emise · 7 zile</div><div class="v" id="sv-today"><?= $stats['today'] ?></div><?= spark($trend['total'] ?? []) ?></div>
   <div class="statcard"><div class="t">La rand acum</div><div class="s">In asteptare</div><div class="v" id="sv-waiting" style="color:var(--warn)"><?= $stats['waiting'] ?></div></div>
   <div class="statcard"><div class="t">In servire</div><div class="s">Chemate / la ghiseu</div><div class="v" id="sv-serving" style="color:var(--accent)"><?= $stats['serving'] ?></div></div>
-  <div class="statcard"><div class="t">Servite azi</div><div class="s">Finalizate</div><div class="v" id="sv-served" style="color:var(--ok)"><?= $stats['served'] ?></div></div>
-  <div class="statcard"><div class="t">Abandon</div><div class="s">neprez. + anulate</div><div class="v" id="sv-abandon" style="color:var(--danger)"><?= $stats['abandon'] ?>%</div></div>
-  <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · azi</div><div class="v" id="sv-avg"><?= mmss($stats['avg_wait']) ?></div></div>
+  <div class="statcard"><div class="t">Servite azi</div><div class="s">Finalizate · 7 zile</div><div class="v" id="sv-served" style="color:var(--ok)"><?= $stats['served'] ?></div><?= spark($trend['served'] ?? [], 'var(--ok)') ?></div>
+  <div class="statcard"><div class="t">Abandon</div><div class="s">neprez. + anulate · 7 zile</div><div class="v" id="sv-abandon" style="color:var(--danger)"><?= $stats['abandon'] ?>%</div><?= spark($trend['abandon'] ?? [], 'var(--danger)') ?></div>
+  <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · 7 zile</div><div class="v" id="sv-avg"><?= mmss($stats['avg_wait']) ?></div><?= spark($trend['wait'] ?? []) ?></div>
   <div class="statcard"><div class="t">Varf de zi</div><div class="s">ora cu cele mai multe</div><div class="v" id="sv-peak"><?= e($stats['peak']) ?></div></div>
 </div>
 

@@ -28,7 +28,7 @@
         </div>
         <div style="display:flex;gap:.35rem">
           <button class="btn btn-ghost" style="font-size:.8rem;padding:.4rem .6rem" onclick="copyUrl(this,'<?= e($m['url']) ?>')">⧉ Copiaza URL</button>
-          <form method="post" action="<?= e(url('admin/media/'.$m['id'].'/delete')) ?>" style="margin-left:auto" onsubmit="return confirm('Stergi fisierul?')"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger);font-size:.8rem;padding:.4rem .6rem">🗑</button></form>
+          <form method="post" action="<?= e(url('admin/media/'.$m['id'].'/delete')) ?>" style="margin-left:auto" data-confirm="Stergi fisierul?"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger);font-size:.8rem;padding:.4rem .6rem">🗑</button></form>
         </div>
       </div>
     </div>

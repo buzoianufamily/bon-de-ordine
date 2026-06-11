@@ -80,7 +80,7 @@ hr{border:none;border-top:1px solid #1c2029;margin:1rem 0}
   </div>
   <div class="pb-pane pb-right" id="inspector"></div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
 <script>
 window.PLAYER = {
   deviceId: <?= (int)$dev['id'] ?>,

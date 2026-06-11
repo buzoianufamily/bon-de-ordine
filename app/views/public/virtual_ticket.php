@@ -12,7 +12,7 @@
   <?php endif; ?>
   <p class="muted" style="font-size:.78rem;margin-top:1.4rem">Pagina se actualizeaza automat. Pastrati-o deschisa.</p>
 </div></div>
-<script src="<?= e(asset('js/app.js')) ?>"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
 <script>
 const token = <?= json_encode($token) ?>;
 const ALERTS = {

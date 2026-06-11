@@ -39,7 +39,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
 <?php $notify = (int) (val('SELECT notify_browser FROM users WHERE id=?', [$u['id']]) ?? 0); ?>
 <script>window.COUNTER={
   counterId:<?= (int)$counter['id'] ?>,

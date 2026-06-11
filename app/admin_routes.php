@@ -24,7 +24,11 @@ function admin_dispatch(array $seg, string $method): void {
     }
 
     switch ($res) {
-        case 'dashboard': case '': admin_dashboard(); return;
+        case 'dashboard': case '':
+            if ($method === 'POST' && $a === 'dismiss-onboarding') { csrf_check(); set_setting('onboarding_dismissed', '1'); redirect('admin'); }
+            admin_dashboard(); return;
+
+        case 'search': admin_global_search(); return;
 
         case 'statistics': admin_statistics(); return;
 
@@ -180,6 +184,38 @@ function admin_dashboard(): void {
         FROM users WHERE active=1 AND (role='agent' OR last_seen IS NOT NULL)
         ORDER BY online DESC, name");
 
+    // tendinte pe ultimele 7 zile (pentru sparkline-urile din statcards)
+    $trend = ['total'=>[], 'served'=>[], 'wait'=>[], 'abandon'=>[]];
+    $byDay = [];
+    foreach (all("SELECT DATE(issued_at) d, COUNT(*) c, SUM(status='served') s,
+                  SUM(status IN('no_show','cancelled')) ab,
+                  AVG(TIMESTAMPDIFF(SECOND,issued_at,called_at)) w
+                  FROM tickets WHERE issued_at >= CURDATE() - INTERVAL 6 DAY$bc GROUP BY d", $nb()) as $r) $byDay[$r['d']] = $r;
+    for ($i = 6; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("-$i days"));
+        $r = $byDay[$d] ?? null;
+        $closed = $r ? ((int)$r['s'] + (int)$r['ab']) : 0;
+        $trend['total'][]   = $r ? (int)$r['c'] : 0;
+        $trend['served'][]  = $r ? (int)$r['s'] : 0;
+        $trend['wait'][]    = $r ? (int)round((float)$r['w']) : 0;
+        $trend['abandon'][] = $closed ? (int)round((int)$r['ab'] / $closed * 100) : 0;
+    }
+
+    // checklist de onboarding (ascuns dupa finalizare sau inchidere manuala)
+    $onboarding = [];
+    if (setting('onboarding_dismissed', '0') !== '1' && current_user()['role'] === 'admin') {
+        $defaultAdmin = (int) val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro' AND active=1") > 0;
+        $onboarding = [
+            ['done' => !$defaultAdmin, 'label' => 'Schimba contul implicit de admin (admin@example.ro)', 'url' => url('admin/users')],
+            ['done' => setting('brand_name', '') !== '' && setting('brand_name') !== 'Compania Mea', 'label' => 'Seteaza numele si culoarea brandului', 'url' => url('admin/settings')],
+            ['done' => (int) val('SELECT COUNT(*) FROM services') > 0, 'label' => 'Creeaza serviciile tale', 'url' => url('admin/services')],
+            ['done' => (int) val('SELECT COUNT(*) FROM counters') > 0, 'label' => 'Creeaza ghiseele', 'url' => url('admin/counters')],
+            ['done' => (int) val('SELECT COUNT(*) FROM devices') > 0, 'label' => 'Configureaza un dispozitiv (dispenser / afisaj)', 'url' => url('admin/devices')],
+            ['done' => (int) val('SELECT COUNT(*) FROM tickets') > 0, 'label' => 'Emite primul bon de test', 'url' => url('admin/devices')],
+        ];
+        if (!array_filter($onboarding, fn($s) => !$s['done'])) $onboarding = []; // tot bifat -> nu mai aratam
+    }
+
     // comparatie filiale (azi) — doar cand privesti toate filialele
     $branch_cmp = [];
     if (!$branch && count($branches) > 1) {
@@ -198,7 +234,7 @@ function admin_dashboard(): void {
               'status'=>$o['online']?$o['work_status']:'offline','online'=>(bool)$o['online'],
               'last_seen'=>$o['last_seen']?date('H:i',strtotime($o['last_seen'])):'—'], $operators)]);
     }
-    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp'));
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp','onboarding','trend'));
 }
 
 /* ----------------------- SERVICES ----------------------- */
@@ -451,6 +487,36 @@ function admin_feedback_list(): void {
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
+}
+
+/* ----------------------- CAUTARE GLOBALA (Ctrl+K) ----------------------- */
+function admin_global_search(): void {
+    $q = trim((string)($_GET['q'] ?? ''));
+    if (mb_strlen($q) < 2) json_out(['ok' => true, 'results' => []]);
+    $like = '%' . $q . '%';
+    $out = [];
+    $add = function(string $grp, string $label, string $url, string $sub = '') use (&$out) {
+        $out[] = ['group' => $grp, 'label' => $label, 'url' => $url, 'sub' => $sub];
+    };
+    if (can('services'))
+        foreach (all("SELECT id, prefix, name FROM services WHERE name LIKE ? OR prefix LIKE ? LIMIT 5", [$like, $like]) as $r)
+            $add('Servicii', $r['prefix'].' · '.$r['name'], url('admin/services/'.$r['id']));
+    if (can('counters'))
+        foreach (all("SELECT id, code, name FROM counters WHERE name LIKE ? OR code LIKE ? LIMIT 5", [$like, $like]) as $r)
+            $add('Ghisee', $r['code'].' · '.$r['name'], url('admin/counters/'.$r['id']));
+    if (can('branches'))
+        foreach (all("SELECT id, name, city FROM branches WHERE name LIKE ? OR city LIKE ? LIMIT 5", [$like, $like]) as $r)
+            $add('Filiale', $r['name'], url('admin/branches/'.$r['id']), $r['city'] ?? '');
+    if (can('devices'))
+        foreach (all("SELECT id, name, type, connection_key FROM devices WHERE name LIKE ? OR connection_key LIKE ? LIMIT 5", [$like, $like]) as $r)
+            $add('Dispozitive', $r['name'], url('admin/devices/'.$r['id']), $r['type'].' · '.$r['connection_key']);
+    if (can('users'))
+        foreach (all("SELECT id, name, email FROM users WHERE name LIKE ? OR email LIKE ? LIMIT 5", [$like, $like]) as $r)
+            $add('Utilizatori', $r['name'], url('admin/users/'.$r['id']), $r['email']);
+    if (can('tickets'))
+        foreach (all("SELECT label, DATE(issued_at) d FROM tickets WHERE label LIKE ? ORDER BY issued_at DESC LIMIT 5", [$like]) as $r)
+            $add('Bilete', $r['label'], url('admin/tickets').'?date='.$r['d'].'&q='.rawurlencode($r['label']), $r['d']);
+    json_out(['ok' => true, 'results' => array_slice($out, 0, 20)]);
 }
 
 /* ----------------------- SECURITATE (2FA) ----------------------- */
@@ -793,6 +859,18 @@ function admin_statistics(): void {
                 AVG(CASE WHEN status='served' THEN TIMESTAMPDIFF(SECOND,called_at,finished_at) END) avg_service
                 FROM tickets t WHERE $where", $args) ?: [];
 
+    // perioada precedenta, de aceeasi lungime (pentru comparatie)
+    $lenDays  = (int) floor((strtotime($to) - strtotime($from)) / 86400) + 1;
+    $prevTo   = date('Y-m-d', strtotime($from . ' -1 day'));
+    $prevFrom = date('Y-m-d', strtotime($prevTo . ' -' . ($lenDays - 1) . ' days'));
+    $prevArgs = [$prevFrom, $prevTo];
+    if ($branch) $prevArgs[] = $branch;
+    $kpiPrev = one("SELECT COUNT(*) total,
+                SUM(status='served') served, SUM(status='no_show') no_show, SUM(status='cancelled') cancelled,
+                AVG(TIMESTAMPDIFF(SECOND,issued_at,called_at)) avg_wait,
+                AVG(CASE WHEN status='served' THEN TIMESTAMPDIFF(SECOND,called_at,finished_at) END) avg_service
+                FROM tickets t WHERE $where", $prevArgs) ?: [];
+
     $per_day = all("SELECT DATE(t.issued_at) d, COUNT(*) c,
                     AVG(TIMESTAMPDIFF(SECOND,t.issued_at,t.called_at)) w
                     FROM tickets t WHERE $where GROUP BY d ORDER BY d", $args);
@@ -876,7 +954,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo'));
 }
 
 /**

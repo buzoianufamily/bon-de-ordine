@@ -81,6 +81,8 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .statcard .t{font-size:.85rem;font-weight:800;color:var(--ink)}
 .statcard .s{font-size:.72rem;color:var(--muted);margin:.1rem 0 .55rem}
 .statcard .v{font-family:var(--display);font-size:1.95rem;font-weight:800;line-height:1}
+.statcard .spk{position:absolute;right:.8rem;bottom:.7rem;opacity:.9}
+.kdelta{font-size:.74rem;font-weight:800;white-space:nowrap;margin-left:.3rem}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.2rem}
 .panel>h4{margin:0 0 1rem;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-family:var(--font);display:flex;align-items:center;justify-content:space-between;gap:.5rem}
 .panel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-bottom:1rem;align-items:stretch}
@@ -92,6 +94,35 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 /* ====== Auth / portal ====== */
 .center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
 .auth{width:100%;max-width:380px}
+/* ====== Login modern ====== */
+body.authpage{background:radial-gradient(900px 520px at 15% -10%,color-mix(in srgb,var(--accent) 32%,transparent),transparent),
+  radial-gradient(800px 500px at 110% 110%,color-mix(in srgb,var(--accent) 22%,transparent),transparent),#0b0d12;color:#e8eaef}
+body.authpage .card{background:rgba(21,23,28,.88);border:1px solid #23262e;backdrop-filter:blur(8px);box-shadow:0 24px 70px rgba(0,0,0,.45)}
+body.authpage h1{color:#fff}
+body.authpage label{color:#aab1bd}
+body.authpage input{background:#101216;color:#e8eaef;border-color:#272c36}
+body.authpage .muted, body.authpage .muted a{color:#8a93a3}
+body.authpage .auth-logo{display:block;margin:0 auto .8rem;max-height:54px}
+body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto .8rem;box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 45%,transparent)}
+/* ====== Modal de confirmare (inlocuieste confirm() nativ) ====== */
+.qmodal{position:fixed;inset:0;background:rgba(10,12,16,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:10000;animation:qmIn .14s}
+.qmodal .qm-card{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;max-width:420px;width:92%;padding:1.4rem 1.5rem;box-shadow:0 26px 70px rgba(0,0,0,.4);animation:qmPop .16s}
+.qmodal .qm-msg{font-size:.97rem;line-height:1.55;margin:0 0 1.1rem}
+.qmodal .qm-btns{display:flex;gap:.6rem;justify-content:flex-end}
+@keyframes qmIn{from{opacity:0}}
+@keyframes qmPop{from{opacity:0;transform:scale(.94) translateY(8px)}}
+/* ====== Cautare globala (Ctrl+K) ====== */
+.cmdk{position:fixed;inset:0;background:rgba(8,10,14,.6);backdrop-filter:blur(4px);z-index:10001;display:flex;justify-content:center;align-items:flex-start;padding-top:12vh;animation:qmIn .12s}
+.cmdk .ck-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;max-width:560px;width:94%;box-shadow:0 30px 90px rgba(0,0,0,.5);overflow:hidden;animation:qmPop .15s}
+.cmdk input{width:100%;border:none;outline:none;background:transparent;color:var(--ink);font:inherit;font-size:1.05rem;padding:1rem 1.2rem;border-bottom:1px solid var(--line);border-radius:0}
+.cmdk .ck-list{max-height:46vh;overflow:auto;padding:.4rem}
+.cmdk .ck-grp{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.5rem .8rem .2rem;font-weight:700}
+.cmdk .ck-it{display:flex;align-items:center;gap:.6rem;padding:.55rem .8rem;border-radius:9px;cursor:pointer;color:var(--ink);text-decoration:none}
+.cmdk .ck-it .sub{margin-left:auto;color:var(--muted);font-size:.78rem}
+.cmdk .ck-it.on,.cmdk .ck-it:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.cmdk .ck-empty{padding:1rem;text-align:center;color:var(--muted);font-size:.9rem}
+.cmdk .ck-hint{padding:.5rem .9rem;border-top:1px solid var(--line);color:var(--muted);font-size:.72rem;display:flex;gap:1rem}
+.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 .35rem;font-family:monospace;font-size:.85em}
 .portal{max-width:760px;width:100%}
 .portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.2rem}
 .portal-grid a{display:block}
@@ -114,9 +145,19 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .svc-btn .pfx{font-family:var(--display);font-size:3.4rem;font-weight:800;opacity:.35;position:absolute;right:1.2rem;top:.6rem}
 .svc-btn .nm{font-family:var(--display);font-size:1.7rem;font-weight:800;z-index:1}
 .svc-btn .ds{opacity:.9;font-weight:600;z-index:1}
-.kiosk-overlay{position:fixed;inset:0;background:rgba(15,17,21,.6);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(3px)}
-.kiosk-overlay.show{display:flex}
+.kiosk-overlay{position:fixed;inset:0;background:rgba(15,17,21,.6);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(3px);opacity:0;transition:opacity .22s}
+.kiosk-overlay.show{display:flex;opacity:1}
 .ticket-card{background:#fff;border-radius:26px;padding:2.4rem 2.6rem;text-align:center;max-width:440px;width:92%;box-shadow:0 30px 80px rgba(0,0,0,.3);animation:pop .25s}
+/* efect de atingere (ripple) pe butoanele de serviciu */
+.svc-btn{overflow:hidden}
+.svc-btn .rip{position:absolute;border-radius:999px;background:rgba(255,255,255,.45);transform:scale(0);animation:ripple .55s ease-out forwards;pointer-events:none}
+@keyframes ripple{to{transform:scale(3.2);opacity:0}}
+.svc-btn:not(.closed):active{transform:scale(.975)}
+/* bifa animata pe fereastra bonului */
+.tk-check{width:64px;height:64px;margin:0 auto .6rem}
+.tk-check circle{stroke:var(--ok);stroke-width:2.6;fill:none;stroke-dasharray:166;stroke-dashoffset:166;animation:tkc .5s ease-out forwards}
+.tk-check path{stroke:var(--ok);stroke-width:3.4;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:48;stroke-dashoffset:48;animation:tkc .35s .35s ease-out forwards}
+@keyframes tkc{to{stroke-dashoffset:0}}
 @keyframes pop{from{transform:scale(.9);opacity:0}}
 .ticket-card .big{font-family:var(--display);font-size:5.5rem;font-weight:800;line-height:1;margin:.4rem 0}
 .ticket-card .svc{font-size:1.2rem;font-weight:700;color:var(--muted)}

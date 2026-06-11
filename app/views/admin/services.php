@@ -17,7 +17,7 @@
       <span class="st <?= $r['status']==='active'?'on':'' ?>"><span class="d"></span><?= $r['status']==='active'?'Activ':'Inactiv' ?><?php if($open!==null): ?> · <?= $open?'deschis acum':'inchis acum' ?><?php endif; ?></span>
       <span>
         <a class="lnk" href="<?= e(url('admin/services/'.$r['id'])) ?>">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" onsubmit="return confirm('Stergi serviciul?')"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi serviciul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>

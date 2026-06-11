@@ -17,7 +17,7 @@ $roleLabel=['admin'=>'Administrator','manager'=>'Manager','agent'=>'Operator']; 
       <span class="st <?= $r['active']?'on':'' ?>"><span class="d"></span><?= $r['active']?'Activ':'Inactiv' ?></span>
       <span>
         <a class="lnk" href="<?= e(url('admin/users/'.$r['id'])) ?>">Editeaza</a>
-        <?php if($r['id']!=current_user()['id']): ?><form method="post" action="<?= e(url('admin/users/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" onsubmit="return confirm('Stergi utilizatorul?')"><?= csrf_field() ?><button class="lnk del">Sterge</button></form><?php endif; ?>
+        <?php if($r['id']!=current_user()['id']): ?><form method="post" action="<?= e(url('admin/users/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi utilizatorul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form><?php endif; ?>
       </span>
     </div>
   </div>

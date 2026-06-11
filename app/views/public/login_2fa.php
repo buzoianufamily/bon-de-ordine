@@ -1,7 +1,8 @@
 <?php $title='Verificare in doi pasi'; require __DIR__.'/_head.php'; ?>
-<body><div class="center"><div class="auth">
-  <div class="card pad">
-    <h1 style="text-align:center;margin-bottom:.2rem"><?= e(setting('brand_name','Bon de ordine')) ?></h1>
+<body class="authpage"><div class="center"><div class="auth">
+  <div class="card pad" style="padding:2rem 1.8rem">
+    <div class="auth-dot">🛡</div>
+    <h1 style="text-align:center;margin:0 0 .2rem;font-size:1.45rem"><?= e(setting('brand_name','Bon de ordine')) ?></h1>
     <p class="muted" style="text-align:center;margin-top:0">Verificare in doi pasi</p>
     <?php foreach (get_flashes() as $f): ?>
       <div class="pill" style="display:block;text-align:center;background:#fee2e2;color:#b91c1c;margin-bottom:.8rem"><?= e($f['msg']) ?></div>

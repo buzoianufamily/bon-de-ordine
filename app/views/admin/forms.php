@@ -15,7 +15,7 @@
       <span class="st"><span class="d" style="background:var(--accent)"></span><?= (int)$f['used'] ?> in uz</span>
       <span>
         <a class="lnk" href="<?= e(url('admin/forms/'.$f['id'])) ?>">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/forms/'.$f['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" onsubmit="return confirm('Stergi formularul?')"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <form method="post" action="<?= e(url('admin/forms/'.$f['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi formularul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>
