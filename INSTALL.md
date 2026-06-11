@@ -105,6 +105,27 @@ Ghid complet (build, kiosk, depanare): **`android/README.md`**.
 
 ---
 
+## Multi‑tenant — mai mulți clienți pe aceeași instalare
+Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul lui și cu baza lui de date (izolare completă).
+
+### Activare (o singură dată)
+1. În `config/config.php` setează o parolă lungă la `'landlord_pass' => '…'`.
+2. Deschide `https://domeniul-tau.ro/landlord` și autentifică‑te cu acea parolă.
+
+### Adaugi un client nou (~3 minute)
+1. **Subdomeniu:** cPanel → **Domains** → creează `client1.domeniul-tau.ro` cu **același document root** ca aplicația (sau creează o singură dată un subdomeniu wildcard `*`).
+2. **Bază de date:** cPanel → **MySQL Databases** → creează o bază + un utilizator noi, cu **ALL PRIVILEGES**.
+3. **Înregistrare:** în panoul `/landlord`, completează formularul (host + datele bazei) → **Salvează** (îți confirmă pe loc dacă conexiunea DB merge).
+4. **Prima accesare** a subdomeniului instalează automat schema, datele demo și adminul implicit (`admin@example.ro` / `123456`) — predă‑i clientului contul și pune‑l să‑l schimbe.
+5. Dacă clientul folosește emailuri (remindere/raport): adaugă în cPanel câte un **Cron Job** per instanță, cu URL‑ul de cron din **API & Webhooks** al acelei instanțe.
+
+### Operare zilnică
+- Tabelul din `/landlord` arată pentru fiecare instanță: **Funcționează / EROARE** (cu mesajul erorii), versiunea schemei (marcată „veche" dacă instanța n‑a fost accesată după un update — se actualizează singură la prima accesare), bilete azi, ultimul bon, dispozitive online, utilizatori.
+- **Suspendă** un client (neplată etc.) dintr‑un click — subdomeniul lui afișează „instanță suspendată"; **Activează** îl repune instant. **Șterge** doar scoate instanța din registru (baza de date rămâne neatinsă).
+- Un singur upload de fișiere actualizează **toți** clienții (migrările de schemă rulează automat per instanță).
+
+---
+
 ## Probleme frecvente
 - **„Eroare conexiune baza de date"** → datele din `config.php` nu sunt corecte sau userul nu e adăugat la bază cu ALL PRIVILEGES.
 - **Pagini 404 peste tot / linkurile nu merg** → modulul `mod_rewrite` sau `.htaccess` nu e activ. Pe majoritatea hosturilor e activ implicit; dacă nu, întreabă hostingul să activeze `AllowOverride All`.
