@@ -224,6 +224,8 @@ body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var
 .vt-status{display:inline-block;padding:.4rem 1rem;border-radius:999px;font-weight:800;margin:.5rem 0}
 .vt-pos{font-size:1.1rem;color:#9aa3b2;margin-top:.5rem}
 
+/* fundalul drawer-ului mobil — ascuns implicit pe ORICE latime (altfel ocupa coloana de continut din grila) */
+.navbk{display:none}
 /* ====== Admin pe mobil: bara laterala devine drawer ====== */
 @media(max-width:860px){
   .shell{grid-template-columns:1fr}
