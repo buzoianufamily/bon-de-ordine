@@ -25,6 +25,6 @@
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty">Niciun ghiseu. Creeaza primul.</div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">▤</div><p>Niciun ghiseu inca. Ghiseele sunt punctele unde operatorii cheama si servesc clientii.</p><a class="btn btn-primary" href="<?= e(url('admin/counters/new')) ?>">+ Creeaza primul ghiseu</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

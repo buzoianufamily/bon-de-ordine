@@ -69,7 +69,9 @@ hr{border:none;border-top:1px solid #1c2029;margin:1rem 0}
 </div>
 <div class="pb-wrap">
   <div class="pb-pane pb-left">
-    <div class="pb-grp">Adauga widget</div>
+    <div class="pb-grp">Sabloane ecran</div>
+    <div class="pb-pal" id="presets"></div>
+    <div class="pb-grp" style="margin-top:1.2rem">Adauga widget</div>
     <div class="pb-pal" id="palette"></div>
     <div class="pb-grp" style="margin-top:1.2rem">Ecrane</div>
     <div class="pb-screens" id="screens"></div>
@@ -89,5 +91,5 @@ window.PLAYER = {
   config: <?= $cfg ? json_encode($cfg, JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>
-<script src="<?= e(asset('js/player_builder.js')) ?>?v=4"></script>
+<script src="<?= e(asset('js/player_builder.js')) ?>?v=5"></script>
 </body></html>

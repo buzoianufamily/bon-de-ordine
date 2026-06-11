@@ -22,6 +22,6 @@
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty">Niciun serviciu. Creeaza primul.</div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">◆</div><p>Niciun serviciu inca. Serviciile sunt categoriile pentru care clientii iau bon (ex: Casierie, Acte).</p><a class="btn btn-primary" href="<?= e(url('admin/services/new')) ?>">+ Creeaza primul serviciu</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

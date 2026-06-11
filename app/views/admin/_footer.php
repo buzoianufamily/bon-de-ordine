@@ -51,6 +51,14 @@ document.addEventListener('click',function(e){
     localStorage.setItem('nav_collapsed', shell.classList.contains('nav-collapsed')?'1':'0');
   });
 })();
+/* drawer mobil pentru bara laterala */
+(function(){
+  var shell=document.querySelector('.shell'), btn=document.getElementById('nav-open'), bk=document.getElementById('navbk');
+  if(!shell||!btn)return;
+  btn.addEventListener('click',function(){ shell.classList.add('nav-open'); });
+  if(bk) bk.addEventListener('click',function(){ shell.classList.remove('nav-open'); });
+  document.querySelectorAll('.side a').forEach(function(a){ a.addEventListener('click',function(){ shell.classList.remove('nav-open'); }); });
+})();
 /* cautare globala Ctrl+K / Cmd+K */
 (function(){
   var pages=[]; document.querySelectorAll('.side a[href]').forEach(function(a){

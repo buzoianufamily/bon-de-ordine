@@ -35,7 +35,8 @@
   </div>
 
   <div class="settab dv-hidden" data-pane="ticket">
-    <div class="card pad" style="max-width:640px">
+    <div class="row" style="align-items:flex-start">
+    <div class="card pad" style="flex:1;min-width:300px;max-width:640px">
       <h3 style="margin-top:0">Bilet tiparit &amp; dispenser</h3>
       <div class="field"><label>Titlu dispenser</label><input name="dispenser_title" value="<?= $s('dispenser_title','ALEGE SERVICIUL') ?>"></div>
       <div class="field"><label>Text antet bon (sub numele filialei)</label><input name="ticket_header" value="<?= $s('ticket_header') ?>" placeholder="ex: Va uram bun venit!"></div>
@@ -47,6 +48,23 @@
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="ticket_show_datetime" <?= setting('ticket_show_datetime','1')==='1'?'checked':'' ?> style="width:auto"> Arata data si ora emiterii</label>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="ticket_show_qr" <?= setting('ticket_show_qr','1')==='1'?'checked':'' ?> style="width:auto"> Arata codul QR (bilet digital)</label>
       <p class="muted" style="font-size:.82rem">Antetul si subsolul apar pe bonul tiparit (ESC/POS). Codul QR apare doar daca biletul digital e activ si optiunea de mai sus e bifata.</p>
+    </div>
+    <div style="flex:0 0 250px">
+      <p class="muted" style="font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;margin:.2rem 0 .5rem">Previzualizare bon</p>
+      <div class="tkpv" id="tkpv">
+        <div class="b" id="pvBrand"><?= $s('brand_name','Compania Mea') ?></div>
+        <div id="pvBranch">Sediu Central</div>
+        <div id="pvHeader"></div>
+        <div class="ln">--------------------------------</div>
+        <div id="pvSvc">Casierie</div>
+        <div class="num" id="pvNum">A012</div>
+        <div id="pvPos">Inainte: 3 persoane</div>
+        <div id="pvDt"><?= date('d.m.Y H:i') ?></div>
+        <div id="pvQr" style="margin:.4rem 0">Urmariti pe telefon:<br><span class="qrbox">▩</span></div>
+        <div class="ln">--------------------------------</div>
+        <div id="pvFooter"></div>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -135,6 +153,28 @@
     tabs.forEach(function(x){x.classList.toggle('on',x===t);});
     document.querySelectorAll('.settab').forEach(function(p){ p.classList.toggle('dv-hidden', p.getAttribute('data-pane')!==name); });
   }); });
+})();
+/* previzualizare live a bonului (tabul Bilet) */
+(function(){
+  var f = document.querySelector('form[action*="admin/settings"]'); if(!f) return;
+  function el(n){ return f.querySelector('[name="'+n+'"]'); }
+  function upd(){
+    var hdr=el('ticket_header'), ftr=el('ticket_footer'), num=el('ticket_num_size'), brand=el('brand_name');
+    var sp=el('ticket_show_position'), sd=el('ticket_show_datetime'), sq=el('ticket_show_qr'), dig=el('virtual_enabled');
+    var g=function(id){ return document.getElementById(id); };
+    if(!g('tkpv')) return;
+    if(brand) g('pvBrand').textContent = brand.value || 'Compania Mea';
+    g('pvHeader').textContent = hdr ? hdr.value : '';
+    g('pvHeader').style.display = (hdr && hdr.value) ? '' : 'none';
+    g('pvFooter').textContent = ftr ? ftr.value : '';
+    g('pvFooter').style.display = (ftr && ftr.value) ? '' : 'none';
+    var sz = num ? Math.max(2, Math.min(6, +num.value||4)) : 4;
+    g('pvNum').style.fontSize = (0.55 + sz*0.28) + 'rem';
+    g('pvPos').style.display = (sp && sp.checked) ? '' : 'none';
+    g('pvDt').style.display  = (sd && sd.checked) ? '' : 'none';
+    g('pvQr').style.display  = (sq && sq.checked && (!dig || dig.checked)) ? '' : 'none';
+  }
+  f.addEventListener('input', upd); f.addEventListener('change', upd); upd();
 })();
 /* selector logo din galerie */
 document.getElementById('logoPick').onclick=async()=>{ const g=document.getElementById('logoGrid');

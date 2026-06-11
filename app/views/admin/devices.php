@@ -34,6 +34,6 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty">Niciun dispozitiv. Creeaza primul (dispenser/afisaj).</div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">▭</div><p>Niciun dispozitiv inca. Creeaza un dispenser (emitere bonuri) sau un afisaj TV.</p><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Creeaza primul dispozitiv</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

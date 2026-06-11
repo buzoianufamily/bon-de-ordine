@@ -28,7 +28,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
 <meta name="csrf" content="<?= e(csrf_token()) ?>"><meta name="base" content="<?= e(base_url()) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap"></noscript>
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=16">
+<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=17">
 <style>:root{--accent:<?= e($accent) ?>}</style>
 </head><body class="admin">
 <script>(function(){try{if(localStorage.getItem('admin_theme')==='light')document.body.classList.add('light');}catch(e){}})();</script>
@@ -59,8 +59,10 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
       <a href="<?= e(url('logout')) ?>"><span class="ic">⇥</span><span class="lbl">Iesire</span></a>
     </div>
   </nav>
+  <div class="navbk" id="navbk"></div>
   <main class="main">
     <div class="adminbar">
+      <button class="menubtn" id="nav-open" aria-label="Meniu">☰</button>
       <div class="brand">
         <?php if ($brandLogo): ?><img src="<?= e($brandLogo) ?>" alt="<?= e($brandName) ?>"><?php else: ?><span class="dot"></span><?= e($brandName) ?><?php endif; ?>
       </div>

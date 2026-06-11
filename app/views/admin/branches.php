@@ -25,6 +25,6 @@
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty">Nicio filiala. Creeaza prima.</div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">🏢</div><p>Nicio filiala inca. Fiecare locatie fizica are propriile servicii, ghisee si dispozitive.</p><a class="btn btn-primary" href="<?= e(url('admin/branches/new')) ?>">+ Creeaza prima filiala</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>
