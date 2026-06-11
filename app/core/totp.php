@@ -52,3 +52,35 @@ function totp_uri(string $secret, string $label, string $issuer): string {
     return 'otpauth://totp/' . rawurlencode($issuer . ':' . $label)
          . '?secret=' . $secret . '&issuer=' . rawurlencode($issuer) . '&digits=6&period=30';
 }
+
+/** Genereaza coduri de recuperare unice (format XXXX-XXXX). Returneaza [coduri_clar, hashuri]. */
+function totp_backup_generate(int $n = 8): array {
+    $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // fara caractere ambigue (0/O, 1/I/L)
+    $plain = [];
+    for ($i = 0; $i < $n; $i++) {
+        $c = '';
+        for ($j = 0; $j < 8; $j++) $c .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        $plain[] = substr($c, 0, 4) . '-' . substr($c, 4);
+    }
+    $hashes = array_map(fn($c) => hash('sha256', str_replace('-', '', $c)), $plain);
+    return [$plain, $hashes];
+}
+
+/**
+ * Verifica si CONSUMA un cod de recuperare din lista JSON de hash-uri.
+ * Returneaza noul JSON (fara codul folosit) sau null daca nu se potriveste.
+ */
+function totp_backup_consume(?string $json, string $code): ?string {
+    $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $code));
+    if (strlen($code) !== 8 || !$json) return null;
+    $hashes = json_decode($json, true);
+    if (!is_array($hashes)) return null;
+    $h = hash('sha256', $code);
+    foreach ($hashes as $i => $stored) {
+        if (is_string($stored) && hash_equals($stored, $h)) {
+            unset($hashes[$i]);
+            return json_encode(array_values($hashes));
+        }
+    }
+    return null;
+}

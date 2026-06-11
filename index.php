@@ -203,10 +203,17 @@ SWJS;
             if ($method === 'POST') {
                 csrf_check();
                 $pu = one('SELECT * FROM users WHERE id=? AND active=1', [$puid]);
-                if ($pu && !empty($pu['totp_enabled']) && totp_verify((string)$pu['totp_secret'], (string)($_POST['code'] ?? ''))) {
-                    unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']);
-                    complete_login($puid); audit('login', 'auth');
-                    redirect($pu['role'] === 'agent' ? 'counter' : 'admin');
+                $code = (string)($_POST['code'] ?? '');
+                if ($pu && !empty($pu['totp_enabled'])) {
+                    $okTotp = totp_verify((string)$pu['totp_secret'], $code);
+                    // fallback: cod de recuperare (de unica folosinta) — se consuma la folosire
+                    $newJson = $okTotp ? null : totp_backup_consume($pu['totp_backup'] ?? null, $code);
+                    if ($okTotp || $newJson !== null) {
+                        if (!$okTotp) { q('UPDATE users SET totp_backup=? WHERE id=?', [$newJson, $puid]); audit('2fa_backup_used', 'auth', $puid); }
+                        unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']);
+                        complete_login($puid); audit('login', 'auth');
+                        redirect($pu['role'] === 'agent' ? 'counter' : 'admin');
+                    }
                 }
                 audit('login_failed_2fa', 'auth', null, $pu['email'] ?? '');
                 flash('Cod incorect. Incearca din nou.', 'error');

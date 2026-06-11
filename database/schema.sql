@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_seen     DATETIME NULL,                     -- ultima activitate (terminal)
   totp_secret   VARCHAR(64) NULL,                  -- secret 2FA (base32)
   totp_enabled  TINYINT(1) NOT NULL DEFAULT 0,     -- 2FA activ
+  totp_backup   TEXT NULL,                         -- coduri de recuperare (hash-uri JSON)
   active        TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

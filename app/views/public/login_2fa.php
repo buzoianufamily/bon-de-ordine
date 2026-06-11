@@ -9,10 +9,11 @@
     <p class="muted" style="text-align:center;font-size:.88rem">Introdu codul de 6 cifre din aplicatia ta de autentificare (Google Authenticator, Authy etc.).</p>
     <form method="post" action="<?= e(url('login/2fa')) ?>">
       <?= csrf_field() ?>
-      <div class="field"><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" required autofocus
-           style="text-align:center;letter-spacing:.5em;font-size:1.6rem;font-weight:800" placeholder="••••••"></div>
+      <div class="field"><input type="text" name="code" autocomplete="one-time-code" maxlength="9" required autofocus
+           style="text-align:center;letter-spacing:.4em;font-size:1.5rem;font-weight:800" placeholder="••••••"></div>
       <button class="btn btn-primary btn-lg" style="width:100%">Verifica</button>
     </form>
+    <p class="muted" style="text-align:center;font-size:.78rem;margin-top:.8rem">Ai pierdut telefonul? Introdu unul dintre <strong>codurile de recuperare</strong> (format XXXX-XXXX).</p>
   </div>
   <p class="muted" style="text-align:center;margin-top:1rem;font-size:.85rem"><a href="<?= e(url('logout')) ?>">← Anuleaza</a></p>
 </div></div></body></html>

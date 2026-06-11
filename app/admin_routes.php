@@ -13,6 +13,16 @@ function admin_dispatch(array $seg, string $method): void {
         elseif (in_array($area, array_keys(perm_areas()), true) && !can($area)) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
     }
 
+    // ---- politica: adminii sunt obligati sa aiba 2FA activ (pot accesa doar pagina Securitate) ----
+    if ($area !== 'security' && current_user()['role'] === 'admin' && setting('force_2fa_admin', '0') === '1') {
+        try {
+            if ((int) val('SELECT totp_enabled FROM users WHERE id=?', [current_user()['id']]) !== 1) {
+                flash('Politica de securitate: activeaza autentificarea in doi pasi (2FA) pentru a continua.', 'error');
+                redirect('admin/security');
+            }
+        } catch (Throwable $e) {}
+    }
+
     switch ($res) {
         case 'dashboard': case '': admin_dashboard(); return;
 
@@ -341,7 +351,7 @@ function admin_user_save(): void {
             [$name,$email,$role,$active,$notify,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
-    if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0 WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
+    if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
     audit($id?'update':'create','user',$id); flash('Utilizator salvat.'); redirect('admin/users');
 }
 
@@ -444,13 +454,19 @@ function admin_feedback_list(): void {
 /* ----------------------- SECURITATE (2FA) ----------------------- */
 function admin_security_page(): void {
     $u = current_user();
-    $enabled = (int) val('SELECT totp_enabled FROM users WHERE id=?', [$u['id']]) === 1;
+    $row = one('SELECT totp_enabled, totp_backup FROM users WHERE id=?', [$u['id']]) ?: [];
+    $enabled = (int)($row['totp_enabled'] ?? 0) === 1;
+    $backupLeft = $enabled ? count(json_decode($row['totp_backup'] ?? '[]', true) ?: []) : 0;
     $secret = '';
     if (!$enabled) {
         if (empty($_SESSION['2fa_setup_secret'])) $_SESSION['2fa_setup_secret'] = totp_secret();
         $secret = $_SESSION['2fa_setup_secret'];
     }
-    view('admin/security', compact('u', 'enabled', 'secret'));
+    // codurile noi se afiseaza O SINGURA DATA (puse in sesiune la activare/regenerare)
+    $newCodes = $_SESSION['2fa_new_codes'] ?? null;
+    unset($_SESSION['2fa_new_codes']);
+    $force2fa = setting('force_2fa_admin', '0') === '1';
+    view('admin/security', compact('u', 'enabled', 'secret', 'backupLeft', 'newCodes', 'force2fa'));
 }
 function admin_security_save(): void {
     csrf_check();
@@ -459,15 +475,30 @@ function admin_security_save(): void {
     if ($act === 'enable') {
         $secret = (string)($_SESSION['2fa_setup_secret'] ?? '');
         if ($secret !== '' && totp_verify($secret, (string)($_POST['code'] ?? ''))) {
-            q('UPDATE users SET totp_secret=?, totp_enabled=1 WHERE id=?', [$secret, $u['id']]);
+            [$plain, $hashes] = totp_backup_generate();
+            q('UPDATE users SET totp_secret=?, totp_enabled=1, totp_backup=? WHERE id=?',
+              [$secret, json_encode($hashes), $u['id']]);
             unset($_SESSION['2fa_setup_secret']);
+            $_SESSION['2fa_new_codes'] = $plain;
             audit('2fa_enabled', 'user', $u['id']);
-            flash('Autentificarea in doi pasi a fost activata.');
+            flash('Autentificarea in doi pasi a fost activata. Salveaza codurile de recuperare de mai jos!');
         } else { flash('Cod incorect. Verifica ora telefonului si mai incearca.', 'error'); }
     } elseif ($act === 'disable') {
-        q('UPDATE users SET totp_secret=NULL, totp_enabled=0 WHERE id=?', [$u['id']]);
+        q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$u['id']]);
         audit('2fa_disabled', 'user', $u['id']);
         flash('Autentificarea in doi pasi a fost dezactivata.');
+    } elseif ($act === 'regen_codes') {
+        if ((int) val('SELECT totp_enabled FROM users WHERE id=?', [$u['id']]) === 1) {
+            [$plain, $hashes] = totp_backup_generate();
+            q('UPDATE users SET totp_backup=? WHERE id=?', [json_encode($hashes), $u['id']]);
+            $_SESSION['2fa_new_codes'] = $plain;
+            audit('2fa_codes_regen', 'user', $u['id']);
+            flash('Coduri de recuperare noi generate. Cele vechi nu mai sunt valabile.');
+        }
+    } elseif ($act === 'policy' && $u['role'] === 'admin') {
+        set_setting('force_2fa_admin', isset($_POST['force_2fa_admin']) ? '1' : '0');
+        audit('update', 'security_policy');
+        flash('Politica de securitate salvata.');
     }
     redirect('admin/security');
 }
