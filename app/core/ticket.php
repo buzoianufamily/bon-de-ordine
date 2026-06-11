@@ -244,7 +244,7 @@ function branch_queue(int $branch_id): array {
          WHERE t.branch_id = ? AND t.status = 'waiting'
          ORDER BY t.priority DESC, t.issued_at ASC LIMIT 100", [$branch_id]);
     $counters = all(
-        "SELECT c.id, c.code, c.name, c.status,
+        "SELECT c.id, c.code, c.name, c.status, c.pause_note,
                 (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
                  ORDER BY t.called_at DESC LIMIT 1) AS current_label
          FROM counters c WHERE c.branch_id = ? ORDER BY c.code", [$branch_id]);
@@ -278,7 +278,7 @@ function queue_state(int $branch_id): array {
 
     // ghisee si biletul curent
     $counters = all(
-        "SELECT c.id, c.code, c.name, c.status,
+        "SELECT c.id, c.code, c.name, c.status, c.pause_note,
                 (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
                  ORDER BY t.called_at DESC LIMIT 1) AS current_label
          FROM counters c WHERE c.branch_id = ? ORDER BY c.code", [$branch_id]);

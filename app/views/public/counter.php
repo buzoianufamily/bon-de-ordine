@@ -10,6 +10,11 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <select id="opStatus" onchange="qmsStatus(this.value)" style="width:auto">
         <?php foreach($stOpts as $k=>$lab): ?><option value="<?= $k ?>" <?= $myStatus===$k?'selected':'' ?>><?= $lab ?></option><?php endforeach; ?>
       </select>
+      <?php if($counter['status']==='paused'): ?>
+        <button class="btn" id="btnResumeC" title="<?= e($counter['pause_note'] ?? '') ?>">▶ Reia ghiseul</button>
+      <?php else: ?>
+        <button class="btn" id="btnPauseC">⏸ Pauza ghiseu</button>
+      <?php endif; ?>
       <a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
   </div>
   <div class="row">
@@ -39,7 +44,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
 <?php $notify = (int) (val('SELECT notify_browser FROM users WHERE id=?', [$u['id']]) ?? 0); ?>
 <script>window.COUNTER={
   counterId:<?= (int)$counter['id'] ?>,
@@ -56,5 +61,5 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   counters:<?php $otherCounters = all('SELECT id, code, name FROM counters WHERE branch_id=? AND id<>? ORDER BY code', [$counter['branch_id'], $counter['id']]);
     echo json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $otherCounters), JSON_UNESCAPED_UNICODE); ?>
 };</script>
-<script src="<?= e(asset('js/counter.js')) ?>?v=9"></script>
+<script src="<?= e(asset('js/counter.js')) ?>?v=10"></script>
 </body></html>

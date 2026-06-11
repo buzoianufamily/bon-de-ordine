@@ -177,6 +177,15 @@ SWJS;
             case 'cancel':    cancel_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'transfer':  transfer_ticket((int)input('ticket_id', 0), (int)input('service_id', 0)); json_out(['ok' => true]);
             case 'transfer-counter': transfer_to_counter((int)input('ticket_id', 0), (int)input('target_counter', 0)); json_out(['ok' => true]);
+            case 'counter-pause': {
+                $cid = (int) input('counter_id', 0);
+                $note = mb_substr(trim((string) input('note', '')), 0, 120);
+                q("UPDATE counters SET status='paused', pause_note=? WHERE id=?", [$note !== '' ? $note : null, $cid]);
+                json_out(['ok' => true]);
+            }
+            case 'counter-open':
+                q("UPDATE counters SET status='open', pause_note=NULL WHERE id=?", [(int) input('counter_id', 0)]);
+                json_out(['ok' => true]);
             case 'counter-state':
                 $c = one('SELECT * FROM counters WHERE id = ?', [(int)($_GET['counter_id'] ?? 0)]);
                 if (!$c) json_out(['ok' => false], 404);

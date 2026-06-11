@@ -122,7 +122,7 @@ if ($fids) {
 <!-- screensaver -->
 <div class="kiosk-overlay" id="saver" style="background:#000"><img id="saverLogo" src="<?= e($logo) ?>" style="max-width:60%;max-height:60%;opacity:.85"></div>
 
-<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
 <script>window.DISPENSER={
   key:<?= json_encode($dev['connection_key']) ?>, printerMode:<?= json_encode($printerMode) ?>,
   accent:<?= json_encode(setting('accent_color','#2563eb')) ?>, brand:<?= json_encode(setting('brand_name','')) ?>,

@@ -135,6 +135,11 @@ function admin_dispatch(array $seg, string $method): void {
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             admin_audit_list(); return;
 
+        case 'backup':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST') { admin_db_backup(); return; }
+            redirect('admin/api');
+
         case 'security':
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
@@ -571,6 +576,34 @@ function admin_security_save(): void {
     redirect('admin/security');
 }
 
+/* ----------------------- BACKUP BAZA DE DATE ----------------------- */
+function admin_db_backup(): void {
+    csrf_check();
+    audit('backup', 'database');
+    $pdo = db();
+    @set_time_limit(300);
+    header('Content-Type: application/sql; charset=utf-8');
+    header('Content-Disposition: attachment; filename="backup_' . date('Ymd_His') . '.sql"');
+    echo "-- Backup Bon de ordine · " . date('c') . "\n";
+    echo "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
+    $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($tables as $t) {
+        $create = one("SHOW CREATE TABLE `$t`");
+        echo "DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n\n";
+        $stmt = $pdo->query("SELECT * FROM `$t`");
+        $batch = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string)$v), array_values($row));
+            $batch[] = '(' . implode(',', $vals) . ')';
+            if (count($batch) >= 200) { echo "INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n"; $batch = []; }
+        }
+        if ($batch) echo "INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n";
+        echo "\n";
+    }
+    echo "SET FOREIGN_KEY_CHECKS=1;\n-- Gata.\n";
+    exit;
+}
+
 /* ----------------------- AUDIT LOG ----------------------- */
 function admin_audit_list(): void {
     $page = max(1, (int)($_GET['p'] ?? 1)); $per = 80; $off = ($page-1)*$per;
@@ -604,7 +637,7 @@ function admin_settings_save(): void {
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size',
              'alert_called','alert_transfer','alert_delay',
-             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to'];
+             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');

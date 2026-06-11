@@ -1,7 +1,7 @@
     </div><!-- .content -->
   </main>
 </div><!-- .shell -->
-<script src="<?= e(asset('js/app.js')) ?>?v=2"></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
 <script>
 /* cautare + comutator grila/lista pentru paginile de liste (no-op daca lipsesc) */
 document.addEventListener('input',function(e){
