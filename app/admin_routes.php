@@ -794,13 +794,17 @@ function admin_statistics(): void {
     $per_day = all("SELECT DATE(t.issued_at) d, COUNT(*) c,
                     AVG(TIMESTAMPDIFF(SECOND,t.issued_at,t.called_at)) w
                     FROM tickets t WHERE $where GROUP BY d ORDER BY d", $args);
-    $per_service = all("SELECT s.name, s.color, COUNT(t.id) c,
+    $per_service = all("SELECT s.name, s.color, s.kpi_wait_sec, COUNT(t.id) c,
                         SUM(t.status='served') served,
                         AVG(TIMESTAMPDIFF(SECOND,t.issued_at,t.called_at)) w,
-                        AVG(CASE WHEN t.status='served' THEN TIMESTAMPDIFF(SECOND,t.called_at,t.finished_at) END) sv
+                        AVG(CASE WHEN t.status='served' THEN TIMESTAMPDIFF(SECOND,t.called_at,t.finished_at) END) sv,
+                        SUM(t.called_at IS NOT NULL) called_cnt,
+                        SUM(t.called_at IS NOT NULL AND TIMESTAMPDIFF(SECOND,t.issued_at,t.called_at) <= s.kpi_wait_sec) kpi_ok
                         FROM services s LEFT JOIN tickets t ON t.service_id=s.id AND ($where)
                         GROUP BY s.id ORDER BY c DESC", $args);
     $per_hour = all("SELECT HOUR(t.issued_at) h, COUNT(*) c FROM tickets t WHERE $where GROUP BY h", $args);
+    // heatmap aglomeratie: zi a saptamanii x ora (DAYOFWEEK: 1=Duminica ... 7=Sambata)
+    $heat = all("SELECT DAYOFWEEK(t.issued_at) d, HOUR(t.issued_at) h, COUNT(*) c FROM tickets t WHERE $where GROUP BY d, h", $args);
     $per_counter = all("SELECT c.code, c.name, COUNT(t.id) cnt
                         FROM counters c LEFT JOIN tickets t ON t.counter_id=c.id AND ($where)
                         GROUP BY c.id ORDER BY cnt DESC", $args);
@@ -870,7 +874,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat'));
 }
 
 /**

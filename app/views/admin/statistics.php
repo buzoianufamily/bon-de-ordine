@@ -124,14 +124,42 @@ $totFin = max(1,$served+$noshow+$canc);
   </div>
 </div>
 
+<?php // ---- heatmap aglomeratie (zi x ora) ----
+  $hm = []; $hmMax = 1; $hMin = 8; $hMax = 17;
+  foreach (($heat ?? []) as $r) { $d=((int)$r['d']+5)%7; $h=(int)$r['h']; $c=(int)$r['c']; // 0=Luni..6=Duminica
+    $hm[$d][$h]=$c; $hmMax=max($hmMax,$c); $hMin=min($hMin,$h); $hMax=max($hMax,$h); }
+  $hmDays=['Luni','Marti','Miercuri','Joi','Vineri','Sambata','Duminica']; ?>
+<div class="card pad" style="margin-bottom:1.2rem">
+  <h3 style="margin:0 0 .6rem">Harta aglomeratiei (zi × ora)</h3>
+  <?php if(!$hm): ?><p class="muted">Fara date in interval.</p><?php else: ?>
+  <div style="overflow-x:auto"><table style="border-collapse:separate;border-spacing:3px;min-width:640px">
+    <thead><tr><th style="border:none"></th><?php for($h=$hMin;$h<=$hMax;$h++): ?><th style="border:none;text-align:center;font-size:.68rem;color:var(--muted);padding:.1rem"><?= $h ?></th><?php endfor; ?></tr></thead>
+    <tbody>
+    <?php for($d=0;$d<7;$d++): ?>
+      <tr><td style="border:none;font-size:.74rem;color:var(--muted);white-space:nowrap;padding:.1rem .4rem .1rem 0"><?= e($hmDays[$d]) ?></td>
+      <?php for($h=$hMin;$h<=$hMax;$h++): $c=$hm[$d][$h]??0; $pct=(int)round($c/$hmMax*100); ?>
+        <td title="<?= e($hmDays[$d]) ?> <?= sprintf('%02d:00',$h) ?> — <?= $c ?> bilete"
+            style="border:none;width:30px;height:24px;border-radius:5px;text-align:center;font-size:.66rem;font-weight:700;padding:0;
+                   background:<?= $c? 'color-mix(in srgb,var(--accent) '.max(12,$pct).'%,transparent)' : 'var(--track)' ?>;
+                   color:<?= $pct>55?'#fff':'var(--muted)' ?>"><?= $c?:'' ?></td>
+      <?php endfor; ?></tr>
+    <?php endfor; ?>
+    </tbody></table></div>
+  <p class="muted" style="font-size:.78rem;margin:.6rem 0 0">Cu cat celula e mai intensa, cu atat s-au emis mai multe bilete in acel interval — util pentru planificarea personalului.</p>
+  <?php endif; ?>
+</div>
+
 <div class="card pad">
   <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Detaliu pe serviciu</h3><?= $dlcsv('service') ?></div>
-  <table><thead><tr><th>Serviciu</th><th>Total</th><th>Servite</th><th>Timp mediu asteptare</th><th>Timp mediu servire</th></tr></thead><tbody>
-  <?php foreach($per_service as $r): ?>
+  <table><thead><tr><th>Serviciu</th><th>Total</th><th>Servite</th><th>Timp mediu asteptare</th><th>Timp mediu servire</th><th>In tinta KPI</th></tr></thead><tbody>
+  <?php foreach($per_service as $r): $called=(int)($r['called_cnt']??0); $kpiPct=$called?(int)round(((int)($r['kpi_ok']??0))/$called*100):null; ?>
     <tr><td><span class="tag" style="background:<?= e($r['color']) ?>;width:20px;height:20px;font-size:.7rem"><?= e(mb_substr($r['name'],0,1)) ?></span> <?= e($r['name']) ?></td>
-      <td><?= (int)$r['c'] ?></td><td><?= (int)$r['served'] ?></td><td><?= mmss($r['w']??0) ?></td><td><?= mmss($r['sv']??0) ?></td></tr>
+      <td><?= (int)$r['c'] ?></td><td><?= (int)$r['served'] ?></td><td><?= mmss($r['w']??0) ?></td><td><?= mmss($r['sv']??0) ?></td>
+      <td><?php if($kpiPct===null): ?><span class="muted">—</span><?php else: ?>
+        <span class="pill" style="background:color-mix(in srgb,<?= $kpiPct>=80?'var(--ok)':($kpiPct>=50?'var(--warn)':'var(--danger)') ?> 22%,transparent);color:<?= $kpiPct>=80?'var(--ok)':($kpiPct>=50?'var(--warn)':'var(--danger)') ?>"><?= $kpiPct ?>%</span>
+        <span class="muted" style="font-size:.74rem">tinta <?= mmss((int)($r['kpi_wait_sec']??0)) ?></span><?php endif; ?></td></tr>
   <?php endforeach; ?>
-  <?php if(!$per_service): ?><tr><td colspan="5" class="muted">Fara date.</td></tr><?php endif; ?>
+  <?php if(!$per_service): ?><tr><td colspan="6" class="muted">Fara date.</td></tr><?php endif; ?>
   </tbody></table>
   <p class="muted" style="margin-top:.8rem;font-size:.82rem">Defalcare status in interval: <strong style="color:var(--ok)"><?= round($served/$totFin*100) ?>%</strong> servite · <?= round($noshow/$totFin*100) ?>% neprezentate · <?= round($canc/$totFin*100) ?>% anulate</p>
 </div>
