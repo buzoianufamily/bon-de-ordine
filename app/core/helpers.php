@@ -237,7 +237,7 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '16') ON DUPLICATE KEY UPDATE v = '16'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '17') ON DUPLICATE KEY UPDATE v = '17'"); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -245,7 +245,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 16;
+    $target = 17;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(
@@ -341,6 +341,9 @@ function run_migrations(): void {
     // v16: coduri de recuperare 2FA (hash-uri JSON, consumate la folosire)
     if (!$hasCol('users','totp_backup')) $ddl("ALTER TABLE users ADD COLUMN totp_backup TEXT NULL");
 
+    // v17: atribuirea operatorilor pe ghisee (CSV de id-uri; gol = toate)
+    if (!$hasCol('users','allowed_counters')) $ddl("ALTER TABLE users ADD COLUMN allowed_counters TEXT NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -350,7 +353,8 @@ function run_migrations(): void {
             && $hasCol('users','work_status') && $hasCol('users','last_seen') && $hasTable('user_status_log')
             && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')
             && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')
-            && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')) {
+            && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
+            && $hasCol('users','allowed_counters')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}
