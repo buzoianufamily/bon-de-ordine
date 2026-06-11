@@ -26,6 +26,13 @@ function input(string $key, $default = null) {
 }
 
 try {
+    // ===================== LANDLORD (administrare instante clienti, multi-tenant) =====================
+    if ($seg[0] === 'landlord') {
+        require APP_ROOT . '/app/landlord.php';
+        landlord_dispatch($seg, $method);
+        return;
+    }
+
     // ===================== CRON (sarcini programate, protejat cu token) =====================
     if ($seg[0] === 'cron') {
         $token = (string) setting('cron_token', '');
