@@ -13,6 +13,15 @@
     </div>
     <div class="field"><label>Parola <?= $row?'(lasa gol = nu schimba)':'' ?></label><input type="password" name="password" <?= $row?'':'required' ?>></div>
     <div class="field"><label style="margin:0"><input type="checkbox" name="notify_browser" <?= ($row['notify_browser']??0)?'checked':'' ?> style="width:auto"> Notificari in browser la terminalul operatorului (anunta biletele noi / transferate)</label></div>
+    <?php if(!empty($counters)): $allowed = array_filter(array_map('intval', explode(',', (string)($row['allowed_counters'] ?? '')))); ?>
+    <div class="field"><label>Ghisee permise <span class="muted" style="font-weight:400">(nimic bifat = poate deschide orice ghiseu)</span></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.25rem;margin-top:.3rem">
+        <?php foreach($counters as $c): ?>
+          <label style="display:flex;align-items:center;gap:.4rem;margin:0;font-weight:500"><input type="checkbox" name="allowed_counters[]" value="<?= (int)$c['id'] ?>" <?= in_array((int)$c['id'],$allowed,true)?'checked':'' ?> style="width:auto"><?= e($c['code'].' · '.$c['name']) ?> <span class="muted" style="font-size:.72rem"><?= e($c['branch_name']) ?></span></label>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
     <?php if($row && ($row['totp_enabled']??0)): ?>
       <div class="field"><label style="margin:0"><input type="checkbox" name="reset_2fa" style="width:auto"> 🛡 Reseteaza 2FA (utilizatorul are 2FA activ; bifeaza daca a pierdut accesul la aplicatie)</label></div>
     <?php elseif($row): ?>

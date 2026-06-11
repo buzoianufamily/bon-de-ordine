@@ -355,14 +355,22 @@ SWJS;
     // ===================== TERMINAL OPERATOR =====================
     if ($seg[0] === 'counter') {
         $u = require_login();
+        // ghiseele atribuite utilizatorului (gol = toate)
+        $allowedCsv = (string) (val('SELECT allowed_counters FROM users WHERE id=?', [(int)$u['id']]) ?? '');
+        $allowedIds = array_filter(array_map('intval', explode(',', $allowedCsv)));
         if (!empty($seg[1])) {
             $c = one('SELECT * FROM counters WHERE id = ?', [(int)$seg[1]]);
             if (!$c) { http_response_code(404); die('Ghiseu inexistent'); }
+            if ($allowedIds && !in_array((int)$c['id'], $allowedIds, true)) {
+                flash('Nu ai acces la acest ghiseu. Alege unul dintre ghiseele atribuite tie.', 'error');
+                redirect('counter');
+            }
             $branch = one('SELECT * FROM branches WHERE id = ?', [$c['branch_id']]);
             view('public/counter', ['counter' => $c, 'branch' => $branch, 'u' => $u]);
             return;
         }
         $counters = all('SELECT * FROM counters ORDER BY code');
+        if ($allowedIds) $counters = array_values(array_filter($counters, fn($c) => in_array((int)$c['id'], $allowedIds, true)));
         view('public/counter_select', ['counters' => $counters, 'u' => $u]);
         return;
     }
