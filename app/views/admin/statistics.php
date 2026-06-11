@@ -14,6 +14,17 @@ $maxSvc = 1; foreach($per_service as $r) $maxSvc=max($maxSvc,(int)$r['c']);
 $maxCtr = 1; foreach($per_counter as $r) $maxCtr=max($maxCtr,(int)$r['cnt']);
 $served=(int)($kpi['served']??0); $noshow=(int)($kpi['no_show']??0); $canc=(int)($kpi['cancelled']??0);
 $totFin = max(1,$served+$noshow+$canc);
+// delta fata de perioada precedenta ($invert=true cand "mai putin = mai bine")
+$delta = function($cur, $prev, bool $invert=false): string {
+    $cur=(float)$cur; $prev=(float)$prev;
+    if ($prev <= 0) return '';
+    $pct = (int) round(($cur - $prev) / $prev * 100);
+    if ($pct === 0) return '<span class="kdelta" style="color:var(--muted)">= la fel</span>';
+    $good = $invert ? ($pct < 0) : ($pct > 0);
+    $col = $good ? 'var(--ok)' : 'var(--danger)';
+    $arrow = $pct > 0 ? '▲' : '▼';
+    return '<span class="kdelta" style="color:'.$col.'">'.$arrow.' '.($pct>0?'+':'').$pct.'%</span>';
+};
 ?>
 <div class="topbar">
   <h1>Statistici</h1>
@@ -39,13 +50,14 @@ $totFin = max(1,$served+$noshow+$canc);
 </form>
 
 <div class="kpis">
-  <div class="card pad kpi"><div class="n"><?= (int)($kpi['total']??0) ?></div><div class="l">Total bilete</div></div>
-  <div class="card pad kpi"><div class="n" style="color:var(--ok)"><?= $served ?></div><div class="l">Servite</div></div>
-  <div class="card pad kpi"><div class="n" style="color:var(--muted)"><?= $noshow ?></div><div class="l">Neprezentate</div></div>
-  <div class="card pad kpi"><div class="n" style="color:var(--danger)"><?= $canc ?></div><div class="l">Anulate</div></div>
-  <div class="card pad kpi"><div class="n"><?= mmss($kpi['avg_wait']??0) ?></div><div class="l">Timp mediu asteptare</div></div>
-  <div class="card pad kpi"><div class="n"><?= mmss($kpi['avg_service']??0) ?></div><div class="l">Timp mediu servire</div></div>
+  <div class="card pad kpi"><div class="n"><?= (int)($kpi['total']??0) ?></div><div class="l">Total bilete <?= $delta($kpi['total']??0, $kpiPrev['total']??0) ?></div></div>
+  <div class="card pad kpi"><div class="n" style="color:var(--ok)"><?= $served ?></div><div class="l">Servite <?= $delta($served, $kpiPrev['served']??0) ?></div></div>
+  <div class="card pad kpi"><div class="n" style="color:var(--muted)"><?= $noshow ?></div><div class="l">Neprezentate <?= $delta($noshow, $kpiPrev['no_show']??0, true) ?></div></div>
+  <div class="card pad kpi"><div class="n" style="color:var(--danger)"><?= $canc ?></div><div class="l">Anulate <?= $delta($canc, $kpiPrev['cancelled']??0, true) ?></div></div>
+  <div class="card pad kpi"><div class="n"><?= mmss($kpi['avg_wait']??0) ?></div><div class="l">Timp mediu asteptare <?= $delta($kpi['avg_wait']??0, $kpiPrev['avg_wait']??0, true) ?></div></div>
+  <div class="card pad kpi"><div class="n"><?= mmss($kpi['avg_service']??0) ?></div><div class="l">Timp mediu servire <?= $delta($kpi['avg_service']??0, $kpiPrev['avg_service']??0, true) ?></div></div>
 </div>
+<p class="muted" style="font-size:.78rem;margin:-.6rem 0 1.2rem">Comparatie cu perioada precedenta de aceeasi lungime: <?= e(date('d.m.Y',strtotime($prevFrom))) ?> – <?= e(date('d.m.Y',strtotime($prevTo))) ?></p>
 
 <div class="card pad dvbox" style="margin-bottom:1.2rem">
   <div class="dvhead"><h3>Bilete pe zi</h3><div class="dvctrl"><?= $dvtoggle ?><?= $dlcsv('day') ?></div></div>
