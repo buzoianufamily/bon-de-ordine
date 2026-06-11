@@ -8,8 +8,42 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__, 2));
 define('APP_START', microtime(true));
 
+define('APP_SCHEMA_VERSION', 18);   // versiunea curenta a schemei (folosita de migrari si landlord)
+
 $config = require APP_ROOT . '/config/config.php';
 $GLOBALS['__config'] = $config;
+
+// ---- Multi-tenant: alege baza de date dupa host (registru in config/tenants.json) ----
+function qms_tenants_file(): string { return APP_ROOT . '/config/tenants.json'; }
+function qms_tenants_load(): array {
+    $f = qms_tenants_file();
+    if (!is_file($f)) return [];
+    $j = json_decode((string)@file_get_contents($f), true);
+    return is_array($j['tenants'] ?? null) ? $j['tenants'] : [];
+}
+$GLOBALS['__tenant'] = null;
+$__host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+$__hostNoWww = preg_replace('/^www\./', '', $__host);
+foreach (qms_tenants_load() as $__t) {
+    $__th = strtolower(trim((string)($__t['host'] ?? '')));
+    if ($__th === '' || ($__th !== $__host && $__th !== $__hostNoWww)) continue;
+    if (empty($__t['active'])) {                       // instanta suspendata
+        http_response_code(503);
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Instanta suspendata</title>'
+           . '<body style="margin:0;font-family:system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0d12;color:#e8eaef">'
+           . '<div style="text-align:center;padding:2rem"><div style="font-size:3rem">⏸</div><h1 style="margin:.3em 0">Instanta este suspendata</h1>'
+           . '<p style="color:#8a93a3">Contactati administratorul platformei.</p></div>';
+        exit;
+    }
+    if (!empty($__t['db']['name'])) {                   // foloseste baza de date a clientului
+        $config['db'] = array_merge($config['db'], $__t['db']);
+        $GLOBALS['__config'] = $config;
+    }
+    $GLOBALS['__tenant'] = $__t;
+    break;
+}
+unset($__host, $__hostNoWww, $__t, $__th);
 
 // Erori in functie de mediu
 if (($config['app']['env'] ?? 'production') === 'dev') {
@@ -53,5 +87,11 @@ require __DIR__ . '/printer.php';
 require __DIR__ . '/mailer.php';
 require __DIR__ . '/xlsx.php';
 
+// panoul landlord nu depinde de nicio baza de date (functioneaza si cand una e picata)
+$__lpath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+$__lsdir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+define('IS_LANDLORD_REQ', str_starts_with('/' . ltrim(substr($__lpath, strlen($__lsdir)), '/'), '/landlord'));
+unset($__lpath, $__lsdir);
+
 // migrare automata a schemei (idempotent)
-run_migrations();
+if (!IS_LANDLORD_REQ) run_migrations();

@@ -237,7 +237,8 @@ function auto_install(): void {
     } catch (Throwable $e) {}
 
     // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '18') ON DUPLICATE KEY UPDATE v = '18'"); } catch (Throwable $e) {}
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)",
+            [(string)(defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 18)]); } catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
@@ -245,7 +246,7 @@ function run_migrations(): void {
     try {
         $cur = (int) (val("SELECT v FROM settings WHERE k='schema_version'") ?? 0);
     } catch (Throwable $e) { return; }
-    $target = 18;
+    $target = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 18;
     if ($cur >= $target) return;
 
     $hasTable = fn(string $t) => (int) val(

@@ -23,4 +23,9 @@ return [
         'timezone'  => 'Europe/Bucharest',
         'locale'    => 'ro',
     ],
+
+    // ---- Multi-tenant (optional) ----
+    // Parola panoului /landlord (administrarea instantelor clientilor).
+    // Gol = panoul e dezactivat. Pune un sir lung si aleatoriu cand il folosesti.
+    'landlord_pass' => '',
 ];
