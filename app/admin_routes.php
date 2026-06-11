@@ -546,6 +546,9 @@ function admin_settings_save(): void {
     set_setting('display_say_counter', isset($_POST['display_say_counter']) ? '1' : '0');
     set_setting('counter_voice', isset($_POST['counter_voice']) ? '1' : '0');
     set_setting('virtual_enabled', isset($_POST['virtual_enabled']) ? '1' : '0');
+    set_setting('mod_booking', isset($_POST['mod_booking']) ? '1' : '0');
+    set_setting('mod_feedback', isset($_POST['mod_feedback']) ? '1' : '0');
+    set_setting('mod_concierge', isset($_POST['mod_concierge']) ? '1' : '0');
     set_setting('ticket_show_position', isset($_POST['ticket_show_position']) ? '1' : '0');
     set_setting('ticket_show_datetime', isset($_POST['ticket_show_datetime']) ? '1' : '0');
     set_setting('ticket_show_qr', isset($_POST['ticket_show_qr']) ? '1' : '0');

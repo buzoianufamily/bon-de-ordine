@@ -4,9 +4,9 @@ $hasAppt = (int) val('SELECT COUNT(*) FROM services WHERE appt_enabled=1 AND sta
 $tiles = [
   ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('admin'), '🗂'],
   ['Terminal operator', 'Apeleaza si gestioneaza bilete de la ghiseu.', url('counter'), '🖥'],
-  ['Concierge', 'Receptie: cheama orice bilet la orice ghiseu.', url('concierge'), '🛎'],
 ];
-if ($hasAppt) $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu.', url('book'), '📅'];
+if (setting('mod_concierge','1')==='1') $tiles[] = ['Concierge', 'Receptie: cheama orice bilet la orice ghiseu.', url('concierge'), '🛎'];
+if ($hasAppt && setting('mod_booking','1')==='1') $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu.', url('book'), '📅'];
 ?>
 <body class="portalpage"><div class="center"><div class="portal">
   <div style="text-align:center;margin-bottom:1.6rem">

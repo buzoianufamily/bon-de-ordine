@@ -6,6 +6,7 @@
   <a data-tab="display"><span class="ic">📺</span>Afisaj &amp; voce</a>
   <a data-tab="digital"><span class="ic">📱</span>Digital &amp; alerte</a>
   <a data-tab="email"><span class="ic">✉️</span>Email</a>
+  <a data-tab="module"><span class="ic">🧩</span>Module</a>
 </div>
 <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
 
@@ -65,9 +66,7 @@
 
   <div class="settab dv-hidden" data-pane="digital">
     <div class="card pad" style="max-width:640px">
-      <h3 style="margin-top:0">Bilet digital (QR pe telefon)</h3>
-      <label style="margin:.5rem 0;display:block"><input type="checkbox" name="virtual_enabled" <?= setting('virtual_enabled','1')==='1'?'checked':'' ?> style="width:auto"> Activeaza biletul digital pe telefon</label>
-      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <p class="muted" style="font-size:.82rem;margin-top:0">Biletul digital se activeaza/dezactiveaza din tabul <strong>Module</strong>.</p>
       <h3 style="margin-top:0">Alerte client</h3>
       <div class="field"><label>Mesaj cand este apelat (max 250)</label><textarea name="alert_called" rows="2" maxlength="250"><?= $s('alert_called','Este randul dumneavoastra! Va rugam prezentati-va la ghiseu.') ?></textarea></div>
       <div class="field"><label>Mesaj la transfer (max 250)</label><textarea name="alert_transfer" rows="2" maxlength="250"><?= $s('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.') ?></textarea></div>
@@ -110,6 +109,18 @@
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="reminder_enabled" <?= setting('reminder_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>reminder</strong> pe email cu ~24h inainte de programare</label>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="daily_report_enabled" <?= setting('daily_report_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>raport zilnic</strong> pe email (despre ziua precedenta)</label>
       <div class="field"><label>Destinatari raport zilnic (gol = toti adminii)</label><input name="daily_report_to" value="<?= $s('daily_report_to') ?>" placeholder="a@x.ro, b@y.ro"></div>
+    </div>
+  </div>
+
+  <div class="settab dv-hidden" data-pane="module">
+    <div class="card pad" style="max-width:640px">
+      <h3 style="margin-top:0">Aplicatii optionale</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Activeaza sau dezactiveaza modulele instantei. Modulele oprite nu mai sunt accesibile public (linkurile dispar, paginile raspund cu „modul dezactivat").</p>
+      <label style="margin:.55rem 0;display:block"><input type="checkbox" name="virtual_enabled" <?= setting('virtual_enabled','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Bilet digital (QR)</strong> — urmarire bon pe telefon, QR pe bonul tiparit</label>
+      <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_booking" <?= setting('mod_booking','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Programari online</strong> — pagina publica <code><?= e(url('book')) ?></code></label>
+      <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_feedback" <?= setting('mod_feedback','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Feedback clienti</strong> — pagina publica <code><?= e(url('feedback')) ?></code> + sondaj pe biletul digital</label>
+      <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_concierge" <?= setting('mod_concierge','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Concierge</strong> — receptia cheama orice bilet la orice ghiseu</label>
+      <p class="muted" style="font-size:.8rem;margin-bottom:0">Module care necesita conturi externe (SMS / WhatsApp / Telegram) nu sunt incluse; pot fi integrate prin <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>.</p>
     </div>
   </div>
 

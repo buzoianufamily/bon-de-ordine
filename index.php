@@ -266,6 +266,7 @@ SWJS;
 
     // feedback client (anonim, prin QR pe afisaj):  /feedback
     if ($seg[0] === 'feedback') {
+        if (setting('mod_feedback', '1') !== '1') { http_response_code(404); echo 'Modulul de feedback este dezactivat.'; return; }
         $branch = (int)($_GET['branch'] ?? 1);
         if ($method === 'POST') {
             $rating  = (int) input('rating', 0);
@@ -293,6 +294,7 @@ SWJS;
 
     // ===================== PROGRAMARI (public) =====================
     if ($seg[0] === 'book') {
+        if (setting('mod_booking', '1') !== '1') { http_response_code(404); echo 'Modulul de programari este dezactivat.'; return; }
         if (!empty($seg[1]) && ctype_digit($seg[1])) {
             $svc = one('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                         WHERE s.id=? AND s.status="active" AND s.appt_enabled=1', [(int)$seg[1]]);
@@ -331,6 +333,7 @@ SWJS;
 
     // ===================== CONCIERGE (receptie: cheama pentru orice ghiseu) =====================
     if ($seg[0] === 'concierge') {
+        if (setting('mod_concierge', '1') !== '1') { http_response_code(404); echo 'Modulul Concierge este dezactivat.'; return; }
         $u = require_login();
         $branches = all('SELECT id,name FROM branches ORDER BY name');
         $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));

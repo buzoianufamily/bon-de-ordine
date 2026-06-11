@@ -1,6 +1,6 @@
 <?php $title='Alege ghiseul'; require __DIR__.'/_head.php'; ?>
 <body><div class="center"><div class="portal">
-  <div style="text-align:center"><h1>Alege ghiseul</h1><p class="muted">Bun venit, <?= e($u['name']) ?> · <a href="<?= e(url('concierge')) ?>">🛎 Concierge</a> · <a href="<?= e(url('logout')) ?>">iesire</a></p></div>
+  <div style="text-align:center"><h1>Alege ghiseul</h1><p class="muted">Bun venit, <?= e($u['name']) ?> · <?php if(setting('mod_concierge','1')==='1'): ?><a href="<?= e(url('concierge')) ?>">🛎 Concierge</a> · <?php endif; ?><a href="<?= e(url('logout')) ?>">iesire</a></p></div>
   <div class="portal-grid">
     <?php foreach($counters as $c): ?>
       <a href="<?= e(url('counter/'.$c['id'])) ?>"><div class="tile">

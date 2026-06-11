@@ -55,7 +55,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
     <div class="side-foot">
       <a href="<?= e(url('admin/security')) ?>" class="<?= ($active??'')==='security'?'active':'' ?>"><span class="ic">🛡</span><span class="lbl">Securitate (2FA)</span></a>
       <a href="<?= e(url('counter')) ?>"><span class="ic">▶</span><span class="lbl">Terminal operator</span></a>
-      <a href="<?= e(url('concierge')) ?>"><span class="ic">🛎</span><span class="lbl">Concierge</span></a>
+      <?php if (setting('mod_concierge','1')==='1'): ?><a href="<?= e(url('concierge')) ?>"><span class="ic">🛎</span><span class="lbl">Concierge</span></a><?php endif; ?>
       <a href="<?= e(url('logout')) ?>"><span class="ic">⇥</span><span class="lbl">Iesire</span></a>
     </div>
   </nav>
