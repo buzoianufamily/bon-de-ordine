@@ -38,6 +38,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, statistici) — documentate în Admin → API & Webhooks. Endpoint **`/health`** (JSON) pentru monitorizare uptime.
 - **Multi‑tenant**: subdomeniu + bază de date per client, panou **landlord** cu health‑check și suspendare instanțe.
 - **Temă deschisă/închisă** (cu auto după sistemul de operare), admin **responsive pe mobil**, căutare globală **Ctrl+K**, checklist de onboarding.
+- **Anunț general**: banner ad‑hoc (📢) cu expirare opțională, afișat pe dispenser, pagina de status, afișajele de ghișeu și terminalul operatorului — pentru mesaje rapide („azi program redus").
 - **White‑label**: nume, logo, culoare, texte — din Setări (pe taburi).
 
 ---
