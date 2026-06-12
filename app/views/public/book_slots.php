@@ -15,7 +15,11 @@ $dts=strtotime($date); $dateLabel=$zile[(int)date('w',$dts)].', '.(int)date('j',
       <a class="btn btn-ghost" href="<?= e(url('book/'.$svc['id'].'?date='.$next)) ?>">Zi →</a>
     </div>
     <?php if(!$slots): ?>
-      <p class="muted" style="text-align:center;padding:1rem">Inchis in aceasta zi. Alege alta data.</p>
+      <?php if(($closed ?? null) !== null): ?>
+        <p style="text-align:center;padding:1rem;color:#b91c1c;font-weight:700">🚫 Închis în această zi<?= $closed !== '' ? ' (' . e($closed) . ')' : '' ?>. Alege altă dată.</p>
+      <?php else: ?>
+        <p class="muted" style="text-align:center;padding:1rem">Inchis in aceasta zi. Alege alta data.</p>
+      <?php endif; ?>
     <?php else: ?>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem">
         <?php foreach($slots as $sl): $dis=$sl['full']||$sl['past']; ?>

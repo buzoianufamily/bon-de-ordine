@@ -411,7 +411,8 @@ SWJS;
             }
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
             $slots = appt_slots($svc, $date);
-            view('public/book_slots', compact('svc','date','slots'));
+            $closed = branch_closure_reason((int)$svc['branch_id'], strtotime($date.' 12:00:00'));
+            view('public/book_slots', compact('svc','date','slots','closed'));
             return;
         }
         $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
