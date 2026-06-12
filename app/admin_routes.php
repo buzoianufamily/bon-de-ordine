@@ -784,7 +784,7 @@ function admin_settings_save(): void {
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size',
              'alert_called','alert_transfer','alert_delay','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
-             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min'];
+             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');

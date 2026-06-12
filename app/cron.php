@@ -18,6 +18,20 @@ function run_cron_jobs(): array {
         } catch (Throwable $e) {}
     }
 
+    /* 0b) Inchidere automata a biletelor uitate (nu necesita email). */
+    $acMin = (int) setting('auto_close_min', '0');
+    if ($acMin > 0) {
+        try {
+            // in servire de prea mult timp -> finalizat (operatorul a uitat sa apese „finalizat")
+            $r1 = q("UPDATE tickets SET status='served', finished_at=NOW()
+                     WHERE status='serving' AND served_at < NOW() - INTERVAL $acMin MINUTE")->rowCount();
+            // chemat dar neprezentat de prea mult timp -> neprezentat
+            $r2 = q("UPDATE tickets SET status='no_show', finished_at=NOW()
+                     WHERE status='called' AND called_at < NOW() - INTERVAL $acMin MINUTE")->rowCount();
+            $out['auto_closed'] = $r1 + $r2;
+        } catch (Throwable $e) {}
+    }
+
     if (!function_exists('mail_enabled') || !mail_enabled()) { $out['note'] = 'Email dezactivat'; return $out; }
 
     /* 1) Remindere pentru programarile din urmatoarele 24h, inca neremindate. */
