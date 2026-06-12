@@ -19,9 +19,11 @@
   </form>
 
   <div class="card pad" style="flex:1">
-    <table><thead><tr><th>Grup</th><th>Filiala</th><th>Servicii</th><th>Ordine</th><th></th></tr></thead><tbody>
+    <p class="muted" style="margin-top:0;font-size:.82rem">Trage de ⠿ ca să rearanjezi ordinea grupurilor (în interiorul fiecărei filiale).</p>
+    <table><thead><tr><th></th><th>Grup</th><th>Filiala</th><th>Servicii</th><th>Ordine</th><th></th></tr></thead><tbody id="grpRows">
     <?php foreach($rows as $g): ?>
-      <tr>
+      <tr data-id="<?= (int)$g['id'] ?>">
+        <td style="width:1%;cursor:grab;color:var(--muted)" class="grip" title="Trage pentru a rearanja">⠿</td>
         <td><span class="tag" style="background:<?= e($g['color']) ?>;width:18px;height:18px"></span> <strong><?= e($g['name']) ?></strong></td>
         <td class="muted"><?= e($g['branch_name']) ?></td>
         <td><?= (int)$g['svc'] ?></td>
@@ -32,7 +34,7 @@
         </td>
       </tr>
     <?php endforeach; ?>
-    <?php if(!$rows): ?><tr><td colspan="5" class="muted">Niciun grup. Creeaza primul in stanga.</td></tr><?php endif; ?>
+    <?php if(!$rows): ?><tr><td colspan="6" class="muted">Niciun grup. Creeaza primul in stanga.</td></tr><?php endif; ?>
     </tbody></table>
   </div>
 </div>
@@ -43,5 +45,32 @@ function gEdit(g){
   document.getElementById('g_sort').value=g.sort_order; document.getElementById('g_title').textContent='Editare grup';
   document.getElementById('g_reset').style.display=''; window.scrollTo({top:0,behavior:'smooth'});
 }
+/* reordonare grupuri prin drag & drop (porneste din manerul ⠿) */
+window.addEventListener('load', function(){
+  var tb = document.getElementById('grpRows'); if(!tb) return;
+  var dragEl = null;
+  tb.querySelectorAll('tr[data-id]').forEach(function(row){
+    var grip = row.querySelector('.grip'); if(!grip) return;
+    grip.addEventListener('mousedown', function(){ row.draggable = true; });
+    grip.addEventListener('touchstart', function(){ row.draggable = true; }, {passive:true});
+    row.addEventListener('dragstart', function(e){ dragEl = row; row.classList.add('dragging');
+      try{ e.dataTransfer.setData('text/plain',''); e.dataTransfer.effectAllowed='move'; }catch(_){} });
+    row.addEventListener('dragend', function(){
+      row.classList.remove('dragging'); row.draggable = false;
+      if(!dragEl) return; dragEl = null;
+      var ids = Array.prototype.map.call(tb.querySelectorAll('tr[data-id]'), function(r){ return +r.dataset.id; });
+      QMS.api('admin/groups/reorder', {ids: ids}).then(function(r){
+        QMS.toast(r && r.ok ? 'Ordine salvata' : 'Eroare la salvare', r && r.ok ? 'ok' : 'error');
+      }).catch(function(){ QMS.toast('Eroare la salvare','error'); });
+    });
+  });
+  tb.addEventListener('dragover', function(e){
+    e.preventDefault();
+    var t = e.target.closest ? e.target.closest('tr[data-id]') : null;
+    if(!t || !dragEl || t === dragEl) return;
+    var rows = Array.prototype.slice.call(tb.querySelectorAll('tr[data-id]'));
+    if(rows.indexOf(dragEl) < rows.indexOf(t)) t.after(dragEl); else t.before(dragEl);
+  });
+});
 </script>
 <?php require __DIR__.'/_footer.php'; ?>

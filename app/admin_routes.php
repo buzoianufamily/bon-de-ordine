@@ -59,6 +59,7 @@ function admin_dispatch(array $seg, string $method): void {
             admin_services_list(); return;
 
         case 'groups':
+            if ($method === 'POST' && $a === 'reorder') { admin_groups_reorder(); return; }
             if ($method === 'POST' && $a === null) { admin_group_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 q('UPDATE services SET group_id=NULL WHERE group_id=?', [(int)$a]);
@@ -341,6 +342,15 @@ function admin_groups_list(): void {
                  FROM service_groups g JOIN branches b ON b.id=g.branch_id ORDER BY b.name, g.sort_order, g.name');
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     view('admin/groups', compact('rows','branches'));
+}
+function admin_groups_reorder(): void {
+    csrf_check();
+    $ids = input('ids', []);
+    if (!is_array($ids) || !$ids) json_out(['ok' => false, 'error' => 'Lista goala'], 422);
+    $pos = 0;
+    foreach ($ids as $id) { $id = (int)$id; if ($id > 0) q('UPDATE service_groups SET sort_order = ? WHERE id = ?', [$pos++, $id]); }
+    audit('reorder', 'groups');
+    json_out(['ok' => true]);
 }
 function admin_group_save(): void {
     csrf_check();
