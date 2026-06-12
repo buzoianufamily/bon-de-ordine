@@ -98,6 +98,7 @@ function admin_dispatch(array $seg, string $method): void {
         case 'tickets':
             if ($method === 'POST' && $a === 'reset') { admin_tickets_reset(); return; }
             if ($a === 'export') { admin_tickets_export(); return; }
+            if (ctype_digit((string)$a)) { admin_ticket_detail((int)$a); return; }
             admin_tickets(); return;
 
         case 'feedback':
@@ -543,6 +544,21 @@ function admin_tickets_export(): void {
     }
     fclose($out);
     exit;
+}
+
+/** Detaliu bilet: ciclul de viata complet (emis → chemat → servit), ghiseu, operator, formular. */
+function admin_ticket_detail(int $id): void {
+    $t = one("SELECT t.*, s.name service_name, s.prefix, s.color, s.kpi_wait_sec, s.kpi_service_sec,
+                     b.name branch_name, c.code counter_code, c.name counter_name,
+                     tc.code target_code, u.name agent_name
+              FROM tickets t JOIN services s ON s.id=t.service_id
+              LEFT JOIN branches b ON b.id=t.branch_id
+              LEFT JOIN counters c ON c.id=t.counter_id
+              LEFT JOIN counters tc ON tc.id=t.target_counter_id
+              LEFT JOIN users u ON u.id=t.agent_id
+              WHERE t.id=?", [$id]);
+    if (!$t) { http_response_code(404); echo 'Bilet inexistent.'; return; }
+    view('admin/ticket_detail', ['t' => $t]);
 }
 
 /** Reset bonuri: STERGE complet biletele (coada + istoric/statistici) si reincepe numerotarea de la 0. */
