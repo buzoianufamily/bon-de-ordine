@@ -75,6 +75,7 @@ La prima accesare, aplicația **își creează singură** baza de date (schema +
 ## Pasul 6 — Personalizează pentru client
 - Admin → **Setări** (pe taburi): **General** (nume brand, culoare accent, logo, **limbi dispenser**), **Bilet** (antet/subsol + conținut bon tipărit), **Afișaj & voce** (voce TTS, anunț la terminal), **Digital & alerte** (bilet digital + mesaje de alertă client).
 - Admin → **Servicii** (prefix/culoare/interval, program de funcționare, formular, programări, **traduceri**, **grup**), **Grupuri** (categorii pe dispenser), **Ghișee**, **Dispozitive**, **Utilizatori** (cu notificări browser per operator).
+- Admin → **Filiale → 📅 Zile închise:** marchează sărbătorile/zilele de inventar (per filială sau „toate filialele"). În acele zile dispenserul afișează „Închis astăzi" și nu se emit bonuri — programul săptămânal normal rămâne pe fiecare serviciu.
 - Admin → **Dispozitive**: pentru afișajele TV folosește **Configurează** (editor de widget‑uri: grilă bilete, listă, ceas, QR, vreme, playlist, iframe, ticker, formular feedback etc.); pentru dispensere, **Configurează** (Logic/Aspect/Texte/Popup).
 - **Temă deschisă/închisă:** comutatorul 🌙/☀️ din bara de sus a backoffice‑ului.
 - **Feedback client:** adaugă widget‑ul „Formular feedback" pe afișaj (QR către `…/feedback`); răspunsurile apar în **Feedback** și în **Statistici**.
