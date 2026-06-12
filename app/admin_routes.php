@@ -183,6 +183,17 @@ function admin_dashboard(): void {
     $stats['peak'] = $peakH >= 0 ? sprintf('%02d:00', $peakH) : '—';
     $stats['peak_val'] = $peakVal;
 
+    // depasiri SLA live: bilete care asteapta ACUM peste tinta serviciului (kpi_wait_sec)
+    $sla = all("SELECT s.id, s.name, s.color, s.prefix, s.kpi_wait_sec,
+                    COUNT(t.id) breaching,
+                    MAX(TIMESTAMPDIFF(SECOND, t.issued_at, NOW())) worst
+                FROM tickets t JOIN services s ON s.id=t.service_id
+                WHERE t.status='waiting' AND s.kpi_wait_sec > 0
+                  AND TIMESTAMPDIFF(SECOND, t.issued_at, NOW()) > s.kpi_wait_sec"
+                . ($branch ? ' AND t.branch_id=?' : '') . "
+                GROUP BY s.id ORDER BY worst DESC", $nb());
+    $stats['sla_breaches'] = array_sum(array_map(fn($r) => (int)$r['breaching'], $sla));
+
     $devices = all("SELECT name, type, connection_key, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices" .
         ($branch ? ' WHERE branch_id=?' : '') . " ORDER BY type", $nb());
@@ -236,12 +247,14 @@ function admin_dashboard(): void {
     // actualizare live a panourilor (poll JSON)
     if (($_GET['format'] ?? '') === 'json' || want_json()) {
         json_out(['ok'=>true, 'stats'=>$stats,
+          'sla'=>array_map(fn($r)=>['name'=>$r['name'],'color'=>$r['color'],'prefix'=>$r['prefix'],
+              'breaching'=>(int)$r['breaching'],'worst'=>(int)$r['worst'],'target'=>(int)$r['kpi_wait_sec']], $sla),
           'devices'=>array_map(fn($d)=>['name'=>$d['name'],'type'=>$d['type'],'key'=>$d['connection_key'],'online'=>(bool)$d['online']], $devices),
           'operators'=>array_map(fn($o)=>['name'=>$o['name'],'role'=>$o['role'],
               'status'=>$o['online']?$o['work_status']:'offline','online'=>(bool)$o['online'],
               'last_seen'=>$o['last_seen']?date('H:i',strtotime($o['last_seen'])):'—'], $operators)]);
     }
-    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp','onboarding','trend'));
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp','onboarding','trend','sla'));
 }
 
 /* ----------------------- SERVICES ----------------------- */
