@@ -44,6 +44,12 @@ function admin_dispatch(array $seg, string $method): void {
             if (ctype_digit((string)$a)) { admin_branch_detail((int)$a); return; }
             admin_branches_list(); return;
 
+        case 'closures':
+            if (!can('branches')) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
+            if ($method === 'POST' && $a === null) { admin_closure_save(); return; }
+            if ($method === 'POST' && $b === 'delete') { admin_closure_delete((int)$a); return; }
+            admin_closures_page(); return;
+
         case 'services':
             if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
             if ($method === 'POST' && $a === null) { admin_service_save(); return; }
@@ -818,6 +824,36 @@ function admin_branches_list(): void {
 function admin_branch_form(?int $id): void {
     $row = $id ? one('SELECT * FROM branches WHERE id=?', [$id]) : null;
     view('admin/branch_edit', ['row' => $row]);
+}
+
+/* ----------------------- ZILE INCHISE / SARBATORI ----------------------- */
+function admin_closures_page(): void {
+    $branches = all('SELECT id, name FROM branches ORDER BY name');
+    $rows = all("SELECT cl.*, b.name AS branch_name FROM branch_closures cl
+                 LEFT JOIN branches b ON b.id=cl.branch_id
+                 WHERE cl.closed_date >= CURDATE() - INTERVAL 7 DAY
+                 ORDER BY cl.closed_date ASC, b.name");
+    view('admin/closures', compact('branches', 'rows'));
+}
+function admin_closure_save(): void {
+    csrf_check();
+    $date   = trim((string)($_POST['closed_date'] ?? ''));
+    $bid    = (int)($_POST['branch_id'] ?? 0);            // 0 = toate filialele (global)
+    $reason = mb_substr(trim((string)($_POST['reason'] ?? '')), 0, 120);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { flash('Alege o data valida.', 'error'); redirect('admin/closures'); }
+    // evita dubluri (UNIQUE nu prinde branch_id NULL in MySQL) — sterge apoi insereaza
+    if ($bid) q("DELETE FROM branch_closures WHERE branch_id=? AND closed_date=?", [$bid, $date]);
+    else      q("DELETE FROM branch_closures WHERE branch_id IS NULL AND closed_date=?", [$date]);
+    q("INSERT INTO branch_closures (branch_id, closed_date, reason) VALUES (?,?,?)",
+      [$bid ?: null, $date, $reason !== '' ? $reason : null]);
+    audit('create', 'closure', $bid ?: 'all', $date);
+    flash('Zi inchisa adaugata.'); redirect('admin/closures');
+}
+function admin_closure_delete(int $id): void {
+    csrf_check();
+    q("DELETE FROM branch_closures WHERE id=?", [$id]);
+    audit('delete', 'closure', $id);
+    flash('Zi inchisa stearsa.'); redirect('admin/closures');
 }
 function admin_branch_save(): void {
     csrf_check();

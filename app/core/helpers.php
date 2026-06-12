@@ -381,6 +381,14 @@ function run_migrations(): void {
         INDEX idx_pr_token (token_hash), INDEX idx_pr_user (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    // v20: zile inchise / sarbatori (per filiala sau globale = branch_id NULL)
+    if (!$hasTable('branch_closures')) $ddl("CREATE TABLE branch_closures (
+        id INT AUTO_INCREMENT PRIMARY KEY, branch_id INT NULL,
+        closed_date DATE NOT NULL, reason VARCHAR(120) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_closure (branch_id, closed_date), INDEX idx_closure_date (closed_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -392,7 +400,7 @@ function run_migrations(): void {
             && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')
             && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
             && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
-            && $hasTable('password_resets')) {
+            && $hasTable('password_resets') && $hasTable('branch_closures')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

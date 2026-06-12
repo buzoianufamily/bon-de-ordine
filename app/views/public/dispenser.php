@@ -87,6 +87,11 @@ if ($fids) {
     <h1><?= e($title_txt) ?></h1>
     <?php if($gd($T,'subtitle','')): ?><p class="muted"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
   </div>
+  <?php $closedToday = branch_closure_reason((int)$branch['id']); if($closedToday !== null): ?>
+    <div style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fee2e2;color:#b91c1c;border-radius:14px;padding:1rem 1.3rem;text-align:center;font-weight:800;font-size:1.15rem">
+      🚫 <?= e($tr('closed_today', $gd($T,'closed_today','Închis astăzi'))) ?><?= $closedToday !== '' ? ' · '.e($closedToday) : '' ?>
+    </div>
+  <?php endif; ?>
   <?php if(!$services): ?>
     <div class="svc-grid"><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
   <?php elseif($hasGroups): ?>

@@ -1,5 +1,5 @@
 <?php $title='Filiale'; $active='branches'; require __DIR__.'/_header.php'; ?>
-<div class="topbar"><h1>Filiale</h1><a class="btn btn-primary" href="<?= e(url('admin/branches/new')) ?>">+ Filiala noua</a></div>
+<div class="topbar"><h1>Filiale</h1><div style="display:flex;gap:.5rem"><a class="btn btn-ghost" href="<?= e(url('admin/closures')) ?>">📅 Zile închise</a><a class="btn btn-primary" href="<?= e(url('admin/branches/new')) ?>">+ Filiala noua</a></div></div>
 <?= list_toolbar('Cauta filiala...') ?>
 <div class="cardgrid wide">
 <?php foreach($rows as $b): $loc=trim(($b['city']?:'').(($b['city']&&$b['country'])?', ':'').($b['country']?:'')); ?>
