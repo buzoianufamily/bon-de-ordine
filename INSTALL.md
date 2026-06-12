@@ -126,6 +126,13 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 
 ---
 
+## Monitorizare & parole
+- **Monitorizare uptime:** configurează serviciul de monitorizare (UptimeRobot, BetterStack etc.) pe `https://coada.firma-ta.ro/health`. Răspunde cu JSON `{"ok":true,"db":"up",…}` și cod **200** când totul e funcțional, sau **503** dacă baza de date e picată.
+- **Schimbarea parolei:** orice utilizator backoffice își poate schimba parola din **Securitate → Schimbă parola**.
+- **„Am uitat parola":** linkul de pe pagina de autentificare trimite un email cu un link de resetare (valabil 60 de minute). **Necesită modulul Email configurat** (Admin → Setări → Email — SMTP propriu sau `mail()` de pe cPanel). Fără email configurat, linkul nu poate fi trimis; un alt administrator poate reseta parola din **Utilizatori**.
+
+---
+
 ## Probleme frecvente
 - **„Eroare conexiune baza de date"** → datele din `config.php` nu sunt corecte sau userul nu e adăugat la bază cu ALL PRIVILEGES.
 - **Pagini 404 peste tot / linkurile nu merg** → modulul `mod_rewrite` sau `.htaccess` nu e activ. Pe majoritatea hosturilor e activ implicit; dacă nu, întreabă hostingul să activeze `AllowOverride All`.

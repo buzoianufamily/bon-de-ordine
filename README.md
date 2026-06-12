@@ -32,9 +32,9 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Module activabile**: bilet digital QR, programări, feedback, concierge — pornite/oprite din Setări.
 - **Printare ESC/POS** (Bixolon și orice imprimantă termică): rețea (port 9100), **Android USB** (aplicația din `android/`), sau browser (test). Conținutul bonului e configurabil, cu **preview live** în Setări.
 - **Email integrat** (SMTP propriu sau `mail()` de pe cPanel): confirmări + remindere programări, raport zilnic; **cron** inclus (și curățare automată a biletelor vechi).
-- **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set.
-- **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **jurnal de audit**, **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
-- **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, statistici) — documentate în Admin → API & Webhooks.
+- **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set; pagina **Bilete** are **export CSV** al listei filtrate.
+- **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit**, **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
+- **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, statistici) — documentate în Admin → API & Webhooks. Endpoint **`/health`** (JSON) pentru monitorizare uptime.
 - **Multi‑tenant**: subdomeniu + bază de date per client, panou **landlord** cu health‑check și suspendare instanțe.
 - **Temă deschisă/închisă** (cu auto după sistemul de operare), admin **responsive pe mobil**, căutare globală **Ctrl+K**, checklist de onboarding.
 - **White‑label**: nume, logo, culoare, texte — din Setări (pe taburi).
@@ -117,3 +117,5 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 1. Dezarhivează noua versiune **peste** fișierele vechi (suprascrie tot).
 2. Deschide aplicația o dată în browser — schema bazei se **actualizează singură**.
 3. Asigură‑te că `assets/uploads/` e scriibil (pentru Multimedia) — vezi `INSTALL.md`.
+
+> CSS/JS sunt **versionate automat** (după data modificării fișierului), deci după un update clienții primesc imediat versiunea nouă — fără să golească memoria cache.
