@@ -44,7 +44,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <?php $notify = (int) (val('SELECT notify_browser FROM users WHERE id=?', [$u['id']]) ?? 0); ?>
 <script>window.COUNTER={
   counterId:<?= (int)$counter['id'] ?>,
@@ -61,5 +61,5 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   counters:<?php $otherCounters = all('SELECT id, code, name FROM counters WHERE branch_id=? AND id<>? ORDER BY code', [$counter['branch_id'], $counter['id']]);
     echo json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $otherCounters), JSON_UNESCAPED_UNICODE); ?>
 };</script>
-<script src="<?= e(asset('js/counter.js')) ?>?v=10"></script>
+<script src="<?= e(asset('js/counter.js')) ?>"></script>
 </body></html>

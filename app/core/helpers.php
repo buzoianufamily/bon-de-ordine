@@ -21,7 +21,16 @@ function base_url(): string {
     return $scheme . '://' . $host . $dir;
 }
 function url(string $path = ''): string { return base_url() . '/' . ltrim($path, '/'); }
-function asset(string $path): string { return url('assets/' . ltrim($path, '/')); }
+function asset(string $path): string {
+    // Versionare automata anti-cache: ?v= data modificarii fisierului.
+    $rel = ltrim($path, '/');
+    static $vcache = [];
+    if (!array_key_exists($rel, $vcache)) {
+        $file = (defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2)) . '/assets/' . $rel;
+        $vcache[$rel] = is_file($file) ? (string)@filemtime($file) : '';
+    }
+    return url('assets/' . $rel) . ($vcache[$rel] !== '' ? '?v=' . $vcache[$rel] : '');
+}
 
 function redirect(string $path): void {
     $loc = preg_match('#^https?://#', $path) ? $path : url($path);

@@ -122,7 +122,7 @@ if ($fids) {
 <!-- screensaver -->
 <div class="kiosk-overlay" id="saver" style="background:#000"><img id="saverLogo" src="<?= e($logo) ?>" style="max-width:60%;max-height:60%;opacity:.85"></div>
 
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>window.DISPENSER={
   key:<?= json_encode($dev['connection_key']) ?>, printerMode:<?= json_encode($printerMode) ?>,
   accent:<?= json_encode(setting('accent_color','#2563eb')) ?>, brand:<?= json_encode(setting('brand_name','')) ?>,
@@ -135,5 +135,5 @@ if ($fids) {
   texts:{popup_title:<?= json_encode($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= json_encode($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= json_encode($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= json_encode($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= json_encode($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>},
   popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= json_encode($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= json_encode($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= json_encode($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= json_encode($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= json_encode($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= json_encode($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= json_encode($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
-<script src="<?= e(asset('js/dispenser.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/dispenser.js')) ?>"></script>
 </body></html>

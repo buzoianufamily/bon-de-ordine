@@ -25,7 +25,7 @@
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 window.CONCIERGE = {
   branch: <?= (int)$branch['id'] ?>,

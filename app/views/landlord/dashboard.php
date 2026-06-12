@@ -7,7 +7,7 @@ foreach ($rows as $r) { if (!$r['active']) { $suspCnt++; continue; } if (!empty(
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Landlord · Instante</title>
 <meta name="csrf" content="<?= e(csrf_token()) ?>"><meta name="base" content="<?= e(base_url()) ?>">
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20">
+<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 <style>:root{--accent:#2563eb}
 body{background:#0a0b0d;color:#e8eaef}
 .llwrap{max-width:1180px;margin:0 auto;padding:1.4rem}
@@ -122,5 +122,5 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 </body></html>

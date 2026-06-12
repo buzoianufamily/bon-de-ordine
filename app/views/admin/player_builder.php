@@ -82,7 +82,7 @@ hr{border:none;border-top:1px solid #1c2029;margin:1rem 0}
   </div>
   <div class="pb-pane pb-right" id="inspector"></div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 window.PLAYER = {
   deviceId: <?= (int)$dev['id'] ?>,
@@ -91,5 +91,5 @@ window.PLAYER = {
   config: <?= $cfg ? json_encode($cfg, JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>
-<script src="<?= e(asset('js/player_builder.js')) ?>?v=5"></script>
+<script src="<?= e(asset('js/player_builder.js')) ?>"></script>
 </body></html>

@@ -7,7 +7,7 @@
   <div id="cdNum" style="font-family:var(--display);font-weight:800;font-size:34vh;line-height:1;margin-top:1vh">—</div>
   <div id="cdHint" class="muted" style="font-size:2.6vh;color:#7d8696">Asteptam urmatorul bon…</div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 (function(){
   var branch = <?= (int)$counter['branch_id'] ?>, counterId = <?= (int)$counter['id'] ?>;
