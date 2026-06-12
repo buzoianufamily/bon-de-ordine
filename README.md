@@ -19,6 +19,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Bilet digital** | Clientul urmărește pe telefon: status, poziție, **timp estimat**, ghișeu, alerte configurabile, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
 | **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. | `…/feedback` |
+| **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
 | **Administrare** | Dashboard live (sparkline, operatori, filiale), statistici (heatmap, KPI, comparație perioade, Excel cu grafice), bilete cu filtre, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup. Căutare globală **Ctrl+K**. | `…/admin` |
 | **Landlord** | Panoul TĂU multi‑tenant: instanțele tuturor clienților, cu **health‑check** (funcționează / eroare / suspendată), adăugare/suspendare clienți. | `…/landlord` |
 
@@ -31,7 +32,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Dispenser multilingv** (RO/EN/DE/FR/HU/IT/ES) cu bară de steaguri; revine la limba implicită după fiecare bon; efecte de atingere.
 - **Module activabile**: bilet digital QR, programări, feedback, concierge — pornite/oprite din Setări.
 - **Printare ESC/POS** (Bixolon și orice imprimantă termică): rețea (port 9100), **Android USB** (aplicația din `android/`), sau browser (test). Conținutul bonului e configurabil, cu **preview live** în Setări.
-- **Email integrat** (SMTP propriu sau `mail()` de pe cPanel): confirmări + remindere programări, raport zilnic; **cron** inclus (și curățare automată a biletelor vechi).
+- **Email integrat** (SMTP propriu sau `mail()` de pe cPanel): confirmări + remindere programări, raport zilnic, **alerte SLA** (când cozile depășesc ținta, cu prag + pauză anti‑spam); **cron** inclus (și curățare automată a biletelor vechi).
 - **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set; pagina **Bilete** are **export CSV** al listei filtrate.
 - **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit** (cu filtrare + export CSV), **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
 - **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, statistici) — documentate în Admin → API & Webhooks. Endpoint **`/health`** (JSON) pentru monitorizare uptime.

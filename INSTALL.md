@@ -128,6 +128,8 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 
 ## Monitorizare & parole
 - **Monitorizare uptime:** configurează serviciul de monitorizare (UptimeRobot, BetterStack etc.) pe `https://coada.firma-ta.ro/health`. Răspunde cu JSON `{"ok":true,"db":"up",…}` și cod **200** când totul e funcțional, sau **503** dacă baza de date e picată.
+- **Alerte SLA pe email:** Admin → Setări → tab **Module/Automatizări** → bifează „alertă SLA". Când există bilete care așteaptă peste ținta serviciului (Servicii → „timp așteptare"), managerii primesc un email (cu prag minim și pauză configurabilă între alerte). Necesită cron + email configurat.
+- **Status public al cozii:** Admin → Setări → **Module** → activează „Status public coadă". Apoi pune linkul `…/status?branch=ID` pe site‑ul clientului — vizitatorii văd live ce se servește la ghișee și câți sunt la rând, fără cont.
 - **Schimbarea parolei:** orice utilizator backoffice își poate schimba parola din **Securitate → Schimbă parola**; operatorii (care nu intră în backoffice) o schimbă din **Terminal → Cont** (`…/account`).
 - **„Am uitat parola":** linkul de pe pagina de autentificare trimite un email cu un link de resetare (valabil 60 de minute). **Necesită modulul Email configurat** (Admin → Setări → Email — SMTP propriu sau `mail()` de pe cPanel). Fără email configurat, linkul nu poate fi trimis; un alt administrator poate reseta parola din **Utilizatori**.
 
