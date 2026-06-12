@@ -135,6 +135,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'audit':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($a === 'export') { admin_audit_export(); return; }
             admin_audit_list(); return;
 
         case 'backup':
@@ -682,11 +683,47 @@ function admin_db_backup(): void {
 }
 
 /* ----------------------- AUDIT LOG ----------------------- */
+/** Construieste filtrul (WHERE + args) pentru jurnalul de audit din parametrii GET. */
+function admin_audit_filter(): array {
+    $action = trim((string)($_GET['action'] ?? ''));
+    $qstr   = trim((string)($_GET['q'] ?? ''));
+    $from   = trim((string)($_GET['from'] ?? ''));
+    $to     = trim((string)($_GET['to'] ?? ''));
+    $where = '1=1'; $args = [];
+    if ($action !== '' && preg_match('/^[a-z0-9_]+$/i', $action)) { $where .= ' AND action=?'; $args[] = $action; }
+    if ($qstr !== '') { $where .= ' AND (user_name LIKE ? OR details LIKE ? OR entity LIKE ?)'; $like='%'.$qstr.'%'; array_push($args,$like,$like,$like); }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $where .= ' AND created_at >= ?'; $args[] = $from.' 00:00:00'; }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to))   { $where .= ' AND created_at <= ?'; $args[] = $to.' 23:59:59'; }
+    return [$where, $args, compact('action','qstr','from','to')];
+}
+
 function admin_audit_list(): void {
+    [$where, $args, $f] = admin_audit_filter();
     $page = max(1, (int)($_GET['p'] ?? 1)); $per = 80; $off = ($page-1)*$per;
-    $total = (int) val('SELECT COUNT(*) FROM audit_log');
-    $rows  = all("SELECT * FROM audit_log ORDER BY id DESC LIMIT $per OFFSET $off");
-    view('admin/audit', compact('rows','page','per','total'));
+    $total = (int) val("SELECT COUNT(*) FROM audit_log WHERE $where", $args);
+    $rows  = all("SELECT * FROM audit_log WHERE $where ORDER BY id DESC LIMIT $per OFFSET $off", $args);
+    $actions = array_column(all("SELECT DISTINCT action FROM audit_log ORDER BY action"), 'action');
+    $action=$f['action']; $qstr=$f['qstr']; $from=$f['from']; $to=$f['to'];
+    view('admin/audit', compact('rows','page','per','total','actions','action','qstr','from','to'));
+}
+
+/** Export CSV al jurnalului de audit filtrat (BOM UTF-8, separator ;). */
+function admin_audit_export(): void {
+    [$where, $args, $f] = admin_audit_filter();
+    audit('export', 'audit_log');
+    $rows = all("SELECT created_at, user_name, action, entity, entity_id, details, ip
+                 FROM audit_log WHERE $where ORDER BY id DESC LIMIT 50000", $args);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="audit_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Data/ora','Utilizator','Actiune','Obiect','ID','Detalii','IP'], ';');
+    foreach ($rows as $r) {
+        fputcsv($out, [$r['created_at'], $r['user_name'] ?? '', $r['action'], $r['entity'] ?? '',
+                       $r['entity_id'] ?? '', $r['details'] ?? '', $r['ip'] ?? ''], ';');
+    }
+    fclose($out);
+    exit;
 }
 
 /* ----------------------- API & WEBHOOKS ----------------------- */
