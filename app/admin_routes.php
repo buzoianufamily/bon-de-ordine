@@ -90,6 +90,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'tickets':
             if ($method === 'POST' && $a === 'reset') { admin_tickets_reset(); return; }
+            if ($a === 'export') { admin_tickets_export(); return; }
             admin_tickets(); return;
 
         case 'feedback':
@@ -445,7 +446,8 @@ function admin_device_save(): void {
 }
 
 /* ----------------------- TICKETS ----------------------- */
-function admin_tickets(): void {
+/** Construieste filtrul (WHERE + args) pentru lista de bilete din parametrii GET. */
+function admin_tickets_filter(): array {
     $date    = $_GET['date'] ?? date('Y-m-d');
     $status  = (string)($_GET['status'] ?? '');
     $service = (int)($_GET['service'] ?? 0);
@@ -458,14 +460,59 @@ function admin_tickets(): void {
     if ($service) { $where .= ' AND t.service_id=?'; $args[] = $service; }
     if ($fbranch) { $where .= ' AND t.branch_id=?'; $args[] = $fbranch; }
     if ($qstr !== '') { $where .= ' AND t.label LIKE ?'; $args[] = '%'.$qstr.'%'; }
+    return [$where, $args, compact('date','status','service','fbranch','qstr')];
+}
 
+function admin_tickets(): void {
+    [$where, $args, $f] = admin_tickets_filter();
     $rows = all("SELECT t.*, s.name service_name, s.color, c.code counter_code
                  FROM tickets t JOIN services s ON s.id=t.service_id
                  LEFT JOIN counters c ON c.id=t.counter_id
                  WHERE $where ORDER BY t.issued_at DESC LIMIT 500", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     $services = all('SELECT id,prefix,name FROM services ORDER BY sort_order, name');
+    $date=$f['date']; $status=$f['status']; $service=$f['service']; $fbranch=$f['fbranch']; $qstr=$f['qstr'];
     view('admin/tickets', compact('rows','date','branches','services','status','service','fbranch','qstr'));
+}
+
+/** Export CSV al biletelor filtrate (Excel-friendly: BOM UTF-8 + separator ;). */
+function admin_tickets_export(): void {
+    [$where, $args, $f] = admin_tickets_filter();
+    audit('export', 'tickets', $f['date']);
+    $rows = all("SELECT t.label, t.status, s.name service_name, c.code counter_code, b.name branch_name,
+                        t.priority, t.issued_at, t.called_at, t.served_at
+                 FROM tickets t JOIN services s ON s.id=t.service_id
+                 LEFT JOIN counters c ON c.id=t.counter_id
+                 LEFT JOIN branches b ON b.id=t.branch_id
+                 WHERE $where ORDER BY t.issued_at ASC LIMIT 20000", $args);
+    $statusRo = ['waiting'=>'In asteptare','called'=>'Chemat','serving'=>'In servire','served'=>'Finalizat',
+                 'no_show'=>'Neprezentat','cancelled'=>'Anulat','transferred'=>'Transferat'];
+    $secs = fn($a,$b) => ($a && $b) ? max(0, strtotime($b) - strtotime($a)) : null;
+    $mmss = function($s){ if ($s === null) return ''; return sprintf('%d:%02d', intdiv($s,60), $s%60); };
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="bilete_' . $f['date'] . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF"); // BOM pentru diacritice corecte in Excel
+    $head = ['Bon','Serviciu','Filiala','Ghiseu','Status','Prioritar','Emis','Chemat','Finalizat','Asteptare','Servire'];
+    fputcsv($out, $head, ';');
+    foreach ($rows as $r) {
+        fputcsv($out, [
+            $r['label'],
+            $r['service_name'],
+            $r['branch_name'] ?? '',
+            $r['counter_code'] ?? '',
+            $statusRo[$r['status']] ?? $r['status'],
+            !empty($r['priority']) ? 'da' : '',
+            $r['issued_at'],
+            $r['called_at'] ?? '',
+            $r['served_at'] ?? '',
+            $mmss($secs($r['issued_at'], $r['called_at'])),
+            $mmss($secs($r['called_at'], $r['served_at'])),
+        ], ';');
+    }
+    fclose($out);
+    exit;
 }
 
 /** Reset bonuri: STERGE complet biletele (coada + istoric/statistici) si reincepe numerotarea de la 0. */

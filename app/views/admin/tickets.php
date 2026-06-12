@@ -26,6 +26,7 @@ $st=['waiting'=>['La rand','#fef3c7','#92400e'],'called'=>['Apelat','#dbeafe','#
   <?php endif; ?>
   <div class="field" style="margin:0;flex:1;min-width:160px"><label>Cauta bon</label><input type="text" name="q" value="<?= e($qstr??'') ?>" placeholder="ex: A012"></div>
   <button class="btn btn-primary">Aplica</button>
+  <button class="btn" formaction="<?= e(url('admin/tickets/export')) ?>" formnovalidate>⤓ Export CSV</button>
   <a class="btn btn-ghost" href="<?= e(url('admin/tickets')) ?>" id="tkClear">Reset filtre</a>
 </form>
 <div class="card pad">

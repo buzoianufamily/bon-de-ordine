@@ -103,6 +103,22 @@ function gen_token(int $len = 20): string { return bin2hex(random_bytes($len)); 
 
 function now(): string { return date('Y-m-d H:i:s'); }
 
+/**
+ * Limitator generic (anti-spam) bazat pe tabela api_rate, pe ferestre de timp.
+ * Returneaza true daca actiunea e PERMISA (sub limita) si o contorizeaza.
+ * La eroare de DB (ex: pre-migrare) returneaza true, ca sa nu blocheze functionalitatea.
+ */
+function rate_limit_ok(string $bucket, int $max, int $windowSeconds = 60): bool {
+    try {
+        $rk = substr(sha1($bucket), 0, 64);
+        $win = (int) floor(time() / max(1, $windowSeconds));
+        q("INSERT INTO api_rate (rk, minute, cnt) VALUES (?, ?, 1)
+           ON DUPLICATE KEY UPDATE cnt = IF(minute = VALUES(minute), cnt + 1, 1), minute = VALUES(minute)",
+          [$rk, $win]);
+        return (int) val("SELECT cnt FROM api_rate WHERE rk = ?", [$rk]) <= $max;
+    } catch (Throwable $e) { return true; }
+}
+
 /** Inregistreaza o schimbare de status operator (inchide intervalul anterior, deschide unul nou). */
 function log_user_status(int $userId, string $status): void {
     try {

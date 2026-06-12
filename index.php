@@ -43,6 +43,25 @@ try {
         json_out(run_cron_jobs());
     }
 
+    // ===================== HEALTH (monitorizare uptime) =====================
+    if ($seg[0] === 'health') {
+        // conexiune proprie cu timeout scurt — nu folosim db() (care ar opri procesul daca DB e picata)
+        $ok = false; $err = null;
+        try {
+            $c = $GLOBALS['__config']['db'];
+            $pdo = new PDO("mysql:host={$c['host']};dbname={$c['name']};charset={$c['charset']}",
+                $c['user'], $c['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 3]);
+            $ok = ((int) $pdo->query('SELECT 1')->fetchColumn() === 1);
+        } catch (Throwable $e) { $err = 'db'; }
+        json_out([
+            'ok'      => $ok,
+            'service' => 'bon-de-ordine',
+            'db'      => $ok ? 'up' : 'down',
+            'time'    => date('c'),
+            'error'   => $err,
+        ], $ok ? 200 : 503);
+    }
+
     // ===================== PWA (manifest + service worker) =====================
     if ($route === '/manifest.webmanifest') {
         header('Content-Type: application/manifest+json; charset=utf-8');
@@ -321,6 +340,12 @@ SWJS;
         if (setting('mod_feedback', '1') !== '1') { http_response_code(404); echo 'Modulul de feedback este dezactivat.'; return; }
         $branch = (int)($_GET['branch'] ?? 1);
         if ($method === 'POST') {
+            // anti-spam: max 3 evaluari / IP / 10 minute
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            if (!rate_limit_ok('fb:' . $ip, 3, 600)) {
+                view('public/feedback', ['done' => true, 'branch' => $branch]);
+                return;
+            }
             $rating  = (int) input('rating', 0);
             $comment = trim((string) input('comment', ''));
             if ($rating >= 1 && $rating <= 5) {
