@@ -7,6 +7,9 @@
   <div id="cdNum" style="font-family:var(--display);font-weight:800;font-size:34vh;line-height:1;margin-top:1vh">—</div>
   <div id="cdHint" class="muted" style="font-size:2.6vh;color:#7d8696">Asteptam urmatorul bon…</div>
 </div>
+<?php if(($notice = active_notice()) !== ''): ?>
+<div style="position:fixed;left:0;right:0;bottom:0;background:#3a2f12;color:#f5d98a;padding:1.4vh 2vw;text-align:center;font-size:2.4vh;font-weight:700">📢 <?= e($notice) ?></div>
+<?php endif; ?>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 (function(){

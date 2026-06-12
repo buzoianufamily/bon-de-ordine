@@ -85,6 +85,12 @@
   <div class="settab dv-hidden" data-pane="digital">
     <div class="card pad" style="max-width:640px">
       <p class="muted" style="font-size:.82rem;margin-top:0">Biletul digital se activeaza/dezactiveaza din tabul <strong>Module</strong>.</p>
+      <h3 style="margin-top:0">Anunț general (banner public)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Mesaj informativ afișat pe dispenser, pe pagina de status și pe afișajele de ghișeu (ex: „Azi program redus până la 14:00"). Lasă textul gol ca să-l ascunzi.</p>
+      <div class="field"><label>Text anunț (max 200)</label><input name="notice_text" maxlength="200" value="<?= $s('notice_text') ?>" placeholder="ex: Astăzi casieria se închide la ora 14:00"></div>
+      <div class="field"><label>Activ până la (opțional)</label><input type="date" name="notice_until" value="<?= $s('notice_until') ?>">
+        <p class="muted" style="font-size:.82rem;margin-top:.3rem">După această dată anunțul dispare automat. Gol = rămâne cât timp există text.</p></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Alerte client</h3>
       <div class="field"><label>Mesaj cand este apelat (max 250)</label><textarea name="alert_called" rows="2" maxlength="250"><?= $s('alert_called','Este randul dumneavoastra! Va rugam prezentati-va la ghiseu.') ?></textarea></div>
       <div class="field"><label>Mesaj la transfer (max 250)</label><textarea name="alert_transfer" rows="2" maxlength="250"><?= $s('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.') ?></textarea></div>

@@ -35,6 +35,9 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
     <span class="stbranch"><?= e($branch['name']) ?></span>
     <span style="margin-left:auto;font-size:.8rem;color:#9aa3b2"><span class="stdot"></span>live</span>
   </div>
+  <?php if(($notice = active_notice()) !== ''): ?>
+    <div style="background:#3a2f12;color:#f5d98a;border:1px solid #5a4a1a;border-radius:12px;padding:.7rem 1.1rem;margin-bottom:1rem;font-weight:600">📢 <?= e($notice) ?></div>
+  <?php endif; ?>
   <div class="stgrid">
     <div class="stcard">
       <h2>La ghisee acum</h2>

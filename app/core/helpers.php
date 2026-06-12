@@ -104,6 +104,21 @@ function gen_token(int $len = 20): string { return bin2hex(random_bytes($len)); 
 function now(): string { return date('Y-m-d H:i:s'); }
 
 /**
+ * Anuntul global activ (banner informativ pe paginile publice), sau '' daca niciunul.
+ * Se opreste automat dupa data 'notice_until' (gol = activ cat timp exista text).
+ */
+function active_notice(): string {
+    $txt = trim((string) setting('notice_text', ''));
+    if ($txt === '') return '';
+    $until = trim((string) setting('notice_until', ''));
+    if ($until !== '') {
+        $ts = strtotime(strlen($until) <= 10 ? $until . ' 23:59:59' : $until);
+        if ($ts !== false && time() > $ts) return '';     // expirat
+    }
+    return $txt;
+}
+
+/**
  * Limitator generic (anti-spam) bazat pe tabela api_rate, pe ferestre de timp.
  * Returneaza true daca actiunea e PERMISA (sub limita) si o contorizeaza.
  * La eroare de DB (ex: pre-migrare) returneaza true, ca sa nu blocheze functionalitatea.

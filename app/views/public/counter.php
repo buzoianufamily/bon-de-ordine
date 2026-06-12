@@ -17,6 +17,9 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <?php endif; ?>
       <a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('account')) ?>">Cont</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
   </div>
+  <?php if(($notice = active_notice()) !== ''): ?>
+  <div class="card pad" style="background:#fef3c7;color:#92400e;font-weight:700;margin-bottom:1rem">📢 <?= e($notice) ?></div>
+  <?php endif; ?>
   <div class="row">
     <div class="card pad" style="flex:1.1">
       <div class="muted">Bilet in lucru</div>
