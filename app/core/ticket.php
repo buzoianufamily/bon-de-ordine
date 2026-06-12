@@ -305,7 +305,9 @@ function counter_view(array $counter): array {
         $args = array_merge($args, $svcIds);
     }
     $waiting = all(
-        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id, s.name AS service_name, s.color
+        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id,
+                s.name AS service_name, s.color, s.kpi_wait_sec,
+                TIMESTAMPDIFF(SECOND, t.issued_at, NOW()) AS waited
          FROM tickets t JOIN services s ON s.id = t.service_id
          WHERE t.status = 'waiting' AND ($cond)
          ORDER BY (t.target_counter_id = ?) DESC, t.priority DESC, t.issued_at ASC LIMIT 50",
