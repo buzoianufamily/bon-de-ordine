@@ -53,6 +53,18 @@ $qr = $uri ? 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&
   <?php endif; ?>
 </div>
 
+<form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="max-width:620px;margin-top:1.2rem">
+  <?= csrf_field() ?><input type="hidden" name="act" value="password">
+  <h3 style="margin-top:0">Schimba parola</h3>
+  <p class="muted" style="margin-top:0;font-size:.88rem">Schimba parola contului tau (<?= e($u['email'] ?? '') ?>). Minim 6 caractere.</p>
+  <div class="field"><label>Parola curenta</label><input type="password" name="cur_pass" required autocomplete="current-password"></div>
+  <div class="row">
+    <div class="field"><label>Parola noua</label><input type="password" name="new_pass" required minlength="6" autocomplete="new-password"></div>
+    <div class="field"><label>Confirma parola noua</label><input type="password" name="new_pass2" required minlength="6" autocomplete="new-password"></div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:.4rem">Schimba parola</button>
+</form>
+
 <?php if(($u['role'] ?? '') === 'admin'): ?>
 <form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="max-width:620px;margin-top:1.2rem">
   <?= csrf_field() ?><input type="hidden" name="act" value="policy">

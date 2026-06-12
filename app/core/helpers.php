@@ -357,6 +357,14 @@ function run_migrations(): void {
     // v18: pauza de ghiseu cu mesaj afisat clientilor
     if (!$hasCol('counters','pause_note')) $ddl("ALTER TABLE counters ADD COLUMN pause_note VARCHAR(120) NULL");
 
+    // v19: resetare parola prin email (token cu hash + expirare, de unica folosinta)
+    if (!$hasTable('password_resets')) $ddl("CREATE TABLE password_resets (
+        id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL,
+        token_hash CHAR(64) NOT NULL, expires_at DATETIME NOT NULL, used_at DATETIME NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_pr_token (token_hash), INDEX idx_pr_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -367,7 +375,8 @@ function run_migrations(): void {
             && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')
             && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')
             && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
-            && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')) {
+            && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
+            && $hasTable('password_resets')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

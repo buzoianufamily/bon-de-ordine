@@ -580,6 +580,11 @@ function admin_security_save(): void {
             audit('2fa_codes_regen', 'user', $u['id']);
             flash('Coduri de recuperare noi generate. Cele vechi nu mai sunt valabile.');
         }
+    } elseif ($act === 'password') {
+        $res = change_own_password((int)$u['id'], (string)($_POST['cur_pass'] ?? ''),
+            (string)($_POST['new_pass'] ?? ''), (string)($_POST['new_pass2'] ?? ''));
+        if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
+        else { flash($res['error'], 'error'); }
     } elseif ($act === 'policy' && $u['role'] === 'admin') {
         set_setting('force_2fa_admin', isset($_POST['force_2fa_admin']) ? '1' : '0');
         audit('update', 'security_policy');

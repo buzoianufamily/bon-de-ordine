@@ -13,6 +13,7 @@
       <div class="field"><label>Parola</label><input type="password" name="password" required autocomplete="current-password"></div>
       <button class="btn btn-primary btn-lg" style="width:100%">Intra in cont</button>
     </form>
+    <p style="text-align:center;margin:.9rem 0 0;font-size:.85rem"><a href="<?= e(url('login/forgot')) ?>" class="muted">Ai uitat parola?</a></p>
   </div>
   <p class="muted" style="text-align:center;margin-top:1rem;font-size:.85rem"><a href="<?= e(url('/')) ?>">← Portal</a></p>
 </div></div></body></html>

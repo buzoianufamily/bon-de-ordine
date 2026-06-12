@@ -237,6 +237,42 @@ SWJS;
             view('public/login_2fa');
             return;
         }
+        // ---- am uitat parola: cere link pe email ----
+        if (($seg[1] ?? '') === 'forgot') {
+            if ($method === 'POST') {
+                csrf_check();
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                $tries = 0;
+                try { $tries = (int) val("SELECT COUNT(*) FROM audit_log WHERE action='pwreset_request' AND ip=? AND created_at > NOW() - INTERVAL 15 MINUTE", [$ip]); } catch (Throwable $e) {}
+                if ($tries < 5) {
+                    $email = trim((string) input('email', ''));
+                    password_reset_request($email);                 // best-effort, fara a divulga existenta contului
+                    audit('pwreset_request', 'auth', null, substr($email, 0, 120));
+                }
+                view('public/forgot', ['sent' => true]);
+                return;
+            }
+            view('public/forgot', ['sent' => false]);
+            return;
+        }
+        // ---- resetare parola din link (token) ----
+        if (($seg[1] ?? '') === 'reset') {
+            $token = (string) ($_GET['token'] ?? input('token', ''));
+            if ($method === 'POST') {
+                csrf_check();
+                $res = password_reset_apply($token, (string) input('password', ''), (string) input('password2', ''));
+                if ($res['ok']) {
+                    audit('pwreset_done', 'auth', $res['uid']);
+                    flash('Parola a fost schimbata. Te poti autentifica acum.');
+                    redirect('login');
+                }
+                view('public/reset', ['token' => $token, 'valid' => true, 'error' => $res['error']]);
+                return;
+            }
+            $valid = password_reset_lookup($token) !== null;
+            view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '']);
+            return;
+        }
         if ($method === 'POST') {
             csrf_check();
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
