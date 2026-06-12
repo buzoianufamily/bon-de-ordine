@@ -21,7 +21,16 @@ function base_url(): string {
     return $scheme . '://' . $host . $dir;
 }
 function url(string $path = ''): string { return base_url() . '/' . ltrim($path, '/'); }
-function asset(string $path): string { return url('assets/' . ltrim($path, '/')); }
+function asset(string $path): string {
+    // Versionare automata anti-cache: ?v= data modificarii fisierului.
+    $rel = ltrim($path, '/');
+    static $vcache = [];
+    if (!array_key_exists($rel, $vcache)) {
+        $file = (defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2)) . '/assets/' . $rel;
+        $vcache[$rel] = is_file($file) ? (string)@filemtime($file) : '';
+    }
+    return url('assets/' . $rel) . ($vcache[$rel] !== '' ? '?v=' . $vcache[$rel] : '');
+}
 
 function redirect(string $path): void {
     $loc = preg_match('#^https?://#', $path) ? $path : url($path);
@@ -93,6 +102,37 @@ function gen_key(int $len = 6): string {
 function gen_token(int $len = 20): string { return bin2hex(random_bytes($len)); }
 
 function now(): string { return date('Y-m-d H:i:s'); }
+
+/**
+ * Anuntul global activ (banner informativ pe paginile publice), sau '' daca niciunul.
+ * Se opreste automat dupa data 'notice_until' (gol = activ cat timp exista text).
+ */
+function active_notice(): string {
+    $txt = trim((string) setting('notice_text', ''));
+    if ($txt === '') return '';
+    $until = trim((string) setting('notice_until', ''));
+    if ($until !== '') {
+        $ts = strtotime(strlen($until) <= 10 ? $until . ' 23:59:59' : $until);
+        if ($ts !== false && time() > $ts) return '';     // expirat
+    }
+    return $txt;
+}
+
+/**
+ * Limitator generic (anti-spam) bazat pe tabela api_rate, pe ferestre de timp.
+ * Returneaza true daca actiunea e PERMISA (sub limita) si o contorizeaza.
+ * La eroare de DB (ex: pre-migrare) returneaza true, ca sa nu blocheze functionalitatea.
+ */
+function rate_limit_ok(string $bucket, int $max, int $windowSeconds = 60): bool {
+    try {
+        $rk = substr(sha1($bucket), 0, 64);
+        $win = (int) floor(time() / max(1, $windowSeconds));
+        q("INSERT INTO api_rate (rk, minute, cnt) VALUES (?, ?, 1)
+           ON DUPLICATE KEY UPDATE cnt = IF(minute = VALUES(minute), cnt + 1, 1), minute = VALUES(minute)",
+          [$rk, $win]);
+        return (int) val("SELECT cnt FROM api_rate WHERE rk = ?", [$rk]) <= $max;
+    } catch (Throwable $e) { return true; }
+}
 
 /** Inregistreaza o schimbare de status operator (inchide intervalul anterior, deschide unul nou). */
 function log_user_status(int $userId, string $status): void {
@@ -348,6 +388,22 @@ function run_migrations(): void {
     // v18: pauza de ghiseu cu mesaj afisat clientilor
     if (!$hasCol('counters','pause_note')) $ddl("ALTER TABLE counters ADD COLUMN pause_note VARCHAR(120) NULL");
 
+    // v19: resetare parola prin email (token cu hash + expirare, de unica folosinta)
+    if (!$hasTable('password_resets')) $ddl("CREATE TABLE password_resets (
+        id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL,
+        token_hash CHAR(64) NOT NULL, expires_at DATETIME NOT NULL, used_at DATETIME NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_pr_token (token_hash), INDEX idx_pr_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // v20: zile inchise / sarbatori (per filiala sau globale = branch_id NULL)
+    if (!$hasTable('branch_closures')) $ddl("CREATE TABLE branch_closures (
+        id INT AUTO_INCREMENT PRIMARY KEY, branch_id INT NULL,
+        closed_date DATE NOT NULL, reason VARCHAR(120) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_closure (branch_id, closed_date), INDEX idx_closure_date (closed_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -358,7 +414,8 @@ function run_migrations(): void {
             && $hasTable('service_groups') && $hasCol('services','group_id') && $hasCol('tickets','target_counter_id')
             && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')
             && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
-            && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')) {
+            && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
+            && $hasTable('password_resets') && $hasTable('branch_closures')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

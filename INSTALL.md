@@ -75,6 +75,7 @@ La prima accesare, aplicația **își creează singură** baza de date (schema +
 ## Pasul 6 — Personalizează pentru client
 - Admin → **Setări** (pe taburi): **General** (nume brand, culoare accent, logo, **limbi dispenser**), **Bilet** (antet/subsol + conținut bon tipărit), **Afișaj & voce** (voce TTS, anunț la terminal), **Digital & alerte** (bilet digital + mesaje de alertă client).
 - Admin → **Servicii** (prefix/culoare/interval, program de funcționare, formular, programări, **traduceri**, **grup**), **Grupuri** (categorii pe dispenser), **Ghișee**, **Dispozitive**, **Utilizatori** (cu notificări browser per operator).
+- Admin → **Filiale → 📅 Zile închise:** marchează sărbătorile/zilele de inventar (per filială sau „toate filialele"). În acele zile dispenserul afișează „Închis astăzi" și nu se emit bonuri — programul săptămânal normal rămâne pe fiecare serviciu.
 - Admin → **Dispozitive**: pentru afișajele TV folosește **Configurează** (editor de widget‑uri: grilă bilete, listă, ceas, QR, vreme, playlist, iframe, ticker, formular feedback etc.); pentru dispensere, **Configurează** (Logic/Aspect/Texte/Popup).
 - **Temă deschisă/închisă:** comutatorul 🌙/☀️ din bara de sus a backoffice‑ului.
 - **Feedback client:** adaugă widget‑ul „Formular feedback" pe afișaj (QR către `…/feedback`); răspunsurile apar în **Feedback** și în **Statistici**.
@@ -123,6 +124,15 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 - Tabelul din `/landlord` arată pentru fiecare instanță: **Funcționează / EROARE** (cu mesajul erorii), versiunea schemei (marcată „veche" dacă instanța n‑a fost accesată după un update — se actualizează singură la prima accesare), bilete azi, ultimul bon, dispozitive online, utilizatori.
 - **Suspendă** un client (neplată etc.) dintr‑un click — subdomeniul lui afișează „instanță suspendată"; **Activează** îl repune instant. **Șterge** doar scoate instanța din registru (baza de date rămâne neatinsă).
 - Un singur upload de fișiere actualizează **toți** clienții (migrările de schemă rulează automat per instanță).
+
+---
+
+## Monitorizare & parole
+- **Monitorizare uptime:** configurează serviciul de monitorizare (UptimeRobot, BetterStack etc.) pe `https://coada.firma-ta.ro/health`. Răspunde cu JSON `{"ok":true,"db":"up",…}` și cod **200** când totul e funcțional, sau **503** dacă baza de date e picată.
+- **Alerte SLA pe email:** Admin → Setări → tab **Module/Automatizări** → bifează „alertă SLA". Când există bilete care așteaptă peste ținta serviciului (Servicii → „timp așteptare"), managerii primesc un email (cu prag minim și pauză configurabilă între alerte). Necesită cron + email configurat.
+- **Status public al cozii:** Admin → Setări → **Module** → activează „Status public coadă". Apoi pune linkul `…/status?branch=ID` pe site‑ul clientului — vizitatorii văd live ce se servește la ghișee și câți sunt la rând, fără cont.
+- **Schimbarea parolei:** orice utilizator backoffice își poate schimba parola din **Securitate → Schimbă parola**; operatorii (care nu intră în backoffice) o schimbă din **Terminal → Cont** (`…/account`).
+- **„Am uitat parola":** linkul de pe pagina de autentificare trimite un email cu un link de resetare (valabil 60 de minute). **Necesită modulul Email configurat** (Admin → Setări → Email — SMTP propriu sau `mail()` de pe cPanel). Fără email configurat, linkul nu poate fi trimis; un alt administrator poate reseta parola din **Utilizatori**.
 
 ---
 

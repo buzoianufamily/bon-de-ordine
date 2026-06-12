@@ -43,6 +43,25 @@ try {
         json_out(run_cron_jobs());
     }
 
+    // ===================== HEALTH (monitorizare uptime) =====================
+    if ($seg[0] === 'health') {
+        // conexiune proprie cu timeout scurt — nu folosim db() (care ar opri procesul daca DB e picata)
+        $ok = false; $err = null;
+        try {
+            $c = $GLOBALS['__config']['db'];
+            $pdo = new PDO("mysql:host={$c['host']};dbname={$c['name']};charset={$c['charset']}",
+                $c['user'], $c['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 3]);
+            $ok = ((int) $pdo->query('SELECT 1')->fetchColumn() === 1);
+        } catch (Throwable $e) { $err = 'db'; }
+        json_out([
+            'ok'      => $ok,
+            'service' => 'bon-de-ordine',
+            'db'      => $ok ? 'up' : 'down',
+            'time'    => date('c'),
+            'error'   => $err,
+        ], $ok ? 200 : 503);
+    }
+
     // ===================== PWA (manifest + service worker) =====================
     if ($route === '/manifest.webmanifest') {
         header('Content-Type: application/manifest+json; charset=utf-8');
@@ -237,6 +256,43 @@ SWJS;
             view('public/login_2fa');
             return;
         }
+        // ---- am uitat parola: cere link pe email ----
+        if (($seg[1] ?? '') === 'forgot') {
+            if ($method === 'POST') {
+                csrf_check();
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                $tries = 0;
+                try { $tries = (int) val("SELECT COUNT(*) FROM audit_log WHERE action='pwreset_request' AND ip=? AND created_at > NOW() - INTERVAL 15 MINUTE", [$ip]); } catch (Throwable $e) {}
+                if ($tries < 5) {
+                    $email = trim((string) input('email', ''));
+                    password_reset_request($email);                 // best-effort, fara a divulga existenta contului
+                    audit('pwreset_request', 'auth', null, substr($email, 0, 120));
+                }
+                view('public/forgot', ['sent' => true]);
+                return;
+            }
+            view('public/forgot', ['sent' => false]);
+            return;
+        }
+        // ---- resetare parola din link (token) ----
+        if (($seg[1] ?? '') === 'reset') {
+            $token = (string) ($_GET['token'] ?? input('token', ''));
+            if ($method === 'POST') {
+                csrf_check();
+                $res = password_reset_apply($token, (string) input('password', ''), (string) input('password2', ''));
+                if ($res['ok']) {
+                    audit('pwreset_done', 'auth', $res['uid']);
+                    flash('Parola a fost schimbata. Te poti autentifica acum.');
+                    redirect('login');
+                }
+                // daca tokenul a expirat/devenit invalid intre afisare si trimitere, arata panoul „link invalid"
+                view('public/reset', ['token' => $token, 'valid' => password_reset_lookup($token) !== null, 'error' => $res['error']]);
+                return;
+            }
+            $valid = password_reset_lookup($token) !== null;
+            view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '']);
+            return;
+        }
         if ($method === 'POST') {
             csrf_check();
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -263,6 +319,21 @@ SWJS;
     }
     if ($seg[0] === 'logout') { if ($cu = current_user()) { log_user_status((int)$cu['id'],'offline'); q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); } logout(); redirect('login'); }
 
+    // contul propriu (orice utilizator autentificat — util mai ales operatorilor care nu intra in backoffice)
+    if ($seg[0] === 'account') {
+        $u = require_login();
+        if ($method === 'POST') {
+            csrf_check();
+            $res = change_own_password((int)$u['id'], (string) input('cur_pass', ''),
+                (string) input('new_pass', ''), (string) input('new_pass2', ''));
+            if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
+            else { flash($res['error'], 'error'); }
+            redirect('account');
+        }
+        view('public/account', compact('u'));
+        return;
+    }
+
     // dispozitiv prin connection key:  /launcher?key=XXX  sau  /d/XXX  /screen/XXX
     if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen') {
         $key = $_GET['key'] ?? $_GET['connection_key'] ?? ($seg[1] ?? '');
@@ -285,6 +356,12 @@ SWJS;
         if (setting('mod_feedback', '1') !== '1') { http_response_code(404); echo 'Modulul de feedback este dezactivat.'; return; }
         $branch = (int)($_GET['branch'] ?? 1);
         if ($method === 'POST') {
+            // anti-spam: max 3 evaluari / IP / 10 minute
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            if (!rate_limit_ok('fb:' . $ip, 3, 600)) {
+                view('public/feedback', ['done' => true, 'branch' => $branch]);
+                return;
+            }
             $rating  = (int) input('rating', 0);
             $comment = trim((string) input('comment', ''));
             if ($rating >= 1 && $rating <= 5) {
@@ -296,6 +373,16 @@ SWJS;
             flash('Alege o nota de la 1 la 5.', 'error');
         }
         view('public/feedback', ['done' => false, 'branch' => $branch]);
+        return;
+    }
+
+    // status public al cozii (fara cheie de dispozitiv) — pentru site-ul clientului:  /status?branch=ID
+    if ($seg[0] === 'status') {
+        if (setting('mod_public_status', '0') !== '1') { http_response_code(404); echo 'Pagina de status public este dezactivata.'; return; }
+        $branchId = (int)($seg[1] ?? $_GET['branch'] ?? 1);
+        $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: one('SELECT * FROM branches ORDER BY id LIMIT 1');
+        if (!$branch) { http_response_code(404); echo 'Filiala inexistenta.'; return; }
+        view('public/status', ['branch' => $branch] + queue_state((int)$branch['id']));
         return;
     }
 
@@ -324,7 +411,8 @@ SWJS;
             }
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
             $slots = appt_slots($svc, $date);
-            view('public/book_slots', compact('svc','date','slots'));
+            $closed = branch_closure_reason((int)$svc['branch_id'], strtotime($date.' 12:00:00'));
+            view('public/book_slots', compact('svc','date','slots','closed'));
             return;
         }
         $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id

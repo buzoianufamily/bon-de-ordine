@@ -3,7 +3,7 @@
 </div><!-- .shell -->
 <!-- fundal drawer mobil: in afara grilei + ascuns inline => nu poate strica layout-ul indiferent de CSS -->
 <div id="navbk" style="display:none;position:fixed;inset:0;background:rgba(8,10,14,.55);z-index:94"></div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 /* cautare + comutator grila/lista pentru paginile de liste (no-op daca lipsesc) */
 document.addEventListener('input',function(e){

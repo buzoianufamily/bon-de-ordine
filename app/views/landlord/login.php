@@ -2,7 +2,7 @@
 <!doctype html><html lang="ro"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Landlord · Administrare instante</title>
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20">
+<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 <style>:root{--accent:#2563eb}</style>
 </head>
 <body class="authpage"><div class="center"><div class="auth">

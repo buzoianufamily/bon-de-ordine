@@ -18,6 +18,20 @@ function run_cron_jobs(): array {
         } catch (Throwable $e) {}
     }
 
+    /* 0b) Inchidere automata a biletelor uitate (nu necesita email). */
+    $acMin = (int) setting('auto_close_min', '0');
+    if ($acMin > 0) {
+        try {
+            // in servire de prea mult timp -> finalizat (operatorul a uitat sa apese „finalizat")
+            $r1 = q("UPDATE tickets SET status='served', finished_at=NOW()
+                     WHERE status='serving' AND served_at < NOW() - INTERVAL $acMin MINUTE")->rowCount();
+            // chemat dar neprezentat de prea mult timp -> neprezentat
+            $r2 = q("UPDATE tickets SET status='no_show', finished_at=NOW()
+                     WHERE status='called' AND called_at < NOW() - INTERVAL $acMin MINUTE")->rowCount();
+            $out['auto_closed'] = $r1 + $r2;
+        } catch (Throwable $e) {}
+    }
+
     if (!function_exists('mail_enabled') || !mail_enabled()) { $out['note'] = 'Email dezactivat'; return $out; }
 
     /* 1) Remindere pentru programarile din urmatoarele 24h, inca neremindate. */
@@ -80,6 +94,43 @@ function run_cron_jobs(): array {
                     $sent = send_mail($addr, 'Raport zilnic ' . date('d.m.Y', strtotime($day)) . ' — ' . setting('brand_name', 'Bon de ordine'),
                         mail_template('Raport zilnic', $body, 'Deschide statistici', url('admin/statistics'))) || $sent;
                 if ($sent) { set_setting('last_daily_report', $today); $out['daily_report'] = true; }
+            }
+        }
+    }
+
+    /* 3) Alerta SLA — daca exista bilete care asteapta peste tinta, anunta managerii (cu cooldown). */
+    $out['sla_alert'] = false;
+    if (setting('sla_alert_enabled', '0') === '1') {
+        $cooldown = max(5, (int) setting('sla_alert_cooldown_min', '30')) * 60;   // implicit 30 min
+        if (time() - (int) setting('sla_alert_last', '0') >= $cooldown) {
+            $minBreaches = max(1, (int) setting('sla_alert_min', '1'));
+            $rows = all("SELECT b.name branch_name, s.name, s.prefix, s.kpi_wait_sec,
+                                COUNT(t.id) breaching, MAX(TIMESTAMPDIFF(SECOND,t.issued_at,NOW())) worst
+                         FROM tickets t JOIN services s ON s.id=t.service_id JOIN branches b ON b.id=t.branch_id
+                         WHERE t.status='waiting' AND s.kpi_wait_sec>0
+                           AND TIMESTAMPDIFF(SECOND,t.issued_at,NOW()) > s.kpi_wait_sec
+                         GROUP BY s.id ORDER BY worst DESC LIMIT 50");
+            $totalBreaches = array_sum(array_map(fn($r) => (int)$r['breaching'], $rows));
+            if ($totalBreaches >= $minBreaches) {
+                $to = trim((string) setting('sla_alert_to', '')) ?: trim((string) setting('daily_report_to', ''));
+                if ($to === '') $to = implode(',', array_column(all("SELECT email FROM users WHERE role='admin' AND active=1"), 'email'));
+                $recipients = array_filter(array_map('trim', explode(',', $to)));
+                if ($recipients) {
+                    $mmss = fn($s) => sprintf('%d:%02d', intdiv((int)$s, 60), (int)$s % 60);
+                    $rowsHtml = '';
+                    foreach ($rows as $r)
+                        $rowsHtml .= '<tr><td style="padding:4px 8px 4px 0">' . e($r['branch_name']) . ' · <strong>' . e($r['name']) . '</strong></td>'
+                                   . '<td style="padding:4px 8px;text-align:right">' . (int)$r['breaching'] . ' bilete</td>'
+                                   . '<td style="padding:4px 0;text-align:right">cel mai vechi <strong>' . e($mmss($r['worst'])) . '</strong> (tinta ' . e($mmss($r['kpi_wait_sec'])) . ')</td></tr>';
+                    $body = '<p>În acest moment <strong>' . (int)$totalBreaches . '</strong> bilete așteaptă peste ținta serviciului:</p>'
+                          . '<table style="width:100%;border-collapse:collapse;font-size:14px">' . $rowsHtml . '</table>'
+                          . '<p style="color:#6b7280;font-size:13px">Verifică încărcarea ghișeelor sau deschide ghișee suplimentare.</p>';
+                    $sent = false;
+                    foreach ($recipients as $addr)
+                        $sent = send_mail($addr, '⚠ Alertă SLA — cozi peste țintă · ' . setting('brand_name', 'Bon de ordine'),
+                            mail_template('Alertă SLA — timp de așteptare', $body, 'Deschide dashboard', url('admin'))) || $sent;
+                    if ($sent) { set_setting('sla_alert_last', (string) time()); $out['sla_alert'] = $totalBreaches; }
+                }
             }
         }
     }

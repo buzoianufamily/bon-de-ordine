@@ -26,13 +26,14 @@ $st=['waiting'=>['La rand','#fef3c7','#92400e'],'called'=>['Apelat','#dbeafe','#
   <?php endif; ?>
   <div class="field" style="margin:0;flex:1;min-width:160px"><label>Cauta bon</label><input type="text" name="q" value="<?= e($qstr??'') ?>" placeholder="ex: A012"></div>
   <button class="btn btn-primary">Aplica</button>
+  <button class="btn" formaction="<?= e(url('admin/tickets/export')) ?>" formnovalidate>⤓ Export CSV</button>
   <a class="btn btn-ghost" href="<?= e(url('admin/tickets')) ?>" id="tkClear">Reset filtre</a>
 </form>
 <div class="card pad">
   <div class="muted" style="font-size:.85rem;margin-bottom:.6rem"><?= count($rows) ?> bilete<?= count($rows)>=500?' (primele 500)':'' ?></div>
   <table><thead><tr><th>Bon</th><th>Serviciu</th><th>Status</th><th>Ghiseu</th><th>Emis</th><th>Apelat</th><th>Canal</th></tr></thead><tbody>
   <?php foreach($rows as $t): $s=$st[$t['status']]??['?','#eee','#555']; ?>
-    <tr><td><span class="tag" style="background:<?= e($t['color']) ?>"><?= e($t['label'][0]) ?></span> <strong><?= e($t['label']) ?></strong><?= $t['priority']?' ★':'' ?><?php if(!empty($t['form_data']) && ($fd=json_decode($t['form_data'],true)) && is_array($fd)): ?> <span title="<?= e(implode(' · ', array_map(fn($x)=>($x['label']??'').': '.($x['value']??''), $fd))) ?>" style="cursor:help">📋</span><?php endif; ?></td>
+    <tr><td><span class="tag" style="background:<?= e($t['color']) ?>"><?= e($t['label'][0]) ?></span> <a href="<?= e(url('admin/tickets/'.$t['id'])) ?>" style="font-weight:800;color:var(--ink)"><?= e($t['label']) ?></a><?= $t['priority']?' ★':'' ?><?php if(!empty($t['form_data']) && ($fd=json_decode($t['form_data'],true)) && is_array($fd)): ?> <span title="<?= e(implode(' · ', array_map(fn($x)=>($x['label']??'').': '.($x['value']??''), $fd))) ?>" style="cursor:help">📋</span><?php endif; ?></td>
       <td><?= e($t['service_name']) ?></td>
       <td><span class="pill" style="background:<?= $s[1] ?>;color:<?= $s[2] ?>"><?= $s[0] ?></span></td>
       <td><?= e($t['counter_code']??'—') ?></td>

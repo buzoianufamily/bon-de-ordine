@@ -18,6 +18,9 @@ function appt_open_window(array $svc, string $date): ?array {
 
 /** Sloturi pentru un serviciu intr-o zi. */
 function appt_slots(array $svc, string $date): array {
+    // zi inchisa (sarbatoare) -> niciun slot
+    if (isset($svc['branch_id']) && function_exists('branch_closure_reason')
+        && branch_closure_reason((int)$svc['branch_id'], strtotime($date . ' 12:00:00')) !== null) return [];
     $win = appt_open_window($svc, $date);
     if (!$win) return [];
     $len = max(5, (int)($svc['appt_slot_min'] ?? 15));
@@ -46,6 +49,8 @@ function appt_book(int $service_id, string $slot_start, ?string $name, ?string $
     $ts = strtotime($slot_start);
     if (!$ts) throw new RuntimeException('Interval invalid');
     if ($ts < time() - 60) throw new RuntimeException('Nu se poate programa in trecut');
+    if (function_exists('branch_closure_reason') && ($cl = branch_closure_reason((int)$svc['branch_id'], $ts)) !== null)
+        throw new RuntimeException('Ziua aleasa este inchisa' . ($cl !== '' ? ' (' . $cl . ')' : '') . '. Alege alta zi.');
     $key = date('Y-m-d H:i:00', $ts);
     $cap = max(1, (int)$svc['appt_capacity']);
     $used = (int) val("SELECT COUNT(*) FROM appointments WHERE service_id=? AND slot_start=? AND status IN ('booked','checked_in')", [$service_id, $key]);

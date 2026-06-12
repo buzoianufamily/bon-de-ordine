@@ -87,6 +87,16 @@ if ($fids) {
     <h1><?= e($title_txt) ?></h1>
     <?php if($gd($T,'subtitle','')): ?><p class="muted"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
   </div>
+  <?php $closedToday = branch_closure_reason((int)$branch['id']); if($closedToday !== null): ?>
+    <div style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fee2e2;color:#b91c1c;border-radius:14px;padding:1rem 1.3rem;text-align:center;font-weight:800;font-size:1.15rem">
+      🚫 <?= e($tr('closed_today', $gd($T,'closed_today','Închis astăzi'))) ?><?= $closedToday !== '' ? ' · '.e($closedToday) : '' ?>
+    </div>
+  <?php endif; ?>
+  <?php if(($notice = active_notice()) !== ''): ?>
+    <div style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fef3c7;color:#92400e;border-radius:14px;padding:.8rem 1.2rem;text-align:center;font-weight:700">
+      📢 <?= e($notice) ?>
+    </div>
+  <?php endif; ?>
   <?php if(!$services): ?>
     <div class="svc-grid"><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
   <?php elseif($hasGroups): ?>
@@ -122,7 +132,7 @@ if ($fids) {
 <!-- screensaver -->
 <div class="kiosk-overlay" id="saver" style="background:#000"><img id="saverLogo" src="<?= e($logo) ?>" style="max-width:60%;max-height:60%;opacity:.85"></div>
 
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>window.DISPENSER={
   key:<?= json_encode($dev['connection_key']) ?>, printerMode:<?= json_encode($printerMode) ?>,
   accent:<?= json_encode(setting('accent_color','#2563eb')) ?>, brand:<?= json_encode(setting('brand_name','')) ?>,
@@ -135,5 +145,5 @@ if ($fids) {
   texts:{popup_title:<?= json_encode($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= json_encode($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= json_encode($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= json_encode($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= json_encode($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>},
   popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= json_encode($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= json_encode($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= json_encode($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= json_encode($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= json_encode($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= json_encode($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= json_encode($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
-<script src="<?= e(asset('js/dispenser.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/dispenser.js')) ?>"></script>
 </body></html>

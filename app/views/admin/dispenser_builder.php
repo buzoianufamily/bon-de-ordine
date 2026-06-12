@@ -159,7 +159,7 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
     </div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 window.DBUILD = {
   saveUrl: <?= json_encode('admin/devices/'.$dev['id'].'/dispenser') ?>,

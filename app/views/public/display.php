@@ -28,7 +28,7 @@ $sound = $hasLayout && !empty($layout['sound']) ? $layout['sound'] : [
     </div>
   </div>
 <?php endif; ?>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 window.DISPLAY = {
   branch: <?= (int)$branch['id'] ?>,
@@ -41,5 +41,5 @@ window.DISPLAY = {
   layout: <?= $hasLayout ? json_encode($layout, JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>
-<script src="<?= e(asset('js/display.js')) ?>?v=5"></script>
+<script src="<?= e(asset('js/display.js')) ?>"></script>
 </body></html>

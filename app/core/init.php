@@ -8,7 +8,7 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__, 2));
 define('APP_START', microtime(true));
 
-define('APP_SCHEMA_VERSION', 18);   // versiunea curenta a schemei (folosita de migrari si landlord)
+define('APP_SCHEMA_VERSION', 20);   // versiunea curenta a schemei (folosita de migrari si landlord)
 
 $config = require APP_ROOT . '/config/config.php';
 $GLOBALS['__config'] = $config;
@@ -90,8 +90,11 @@ require __DIR__ . '/xlsx.php';
 // panoul landlord nu depinde de nicio baza de date (functioneaza si cand una e picata)
 $__lpath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
 $__lsdir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-define('IS_LANDLORD_REQ', str_starts_with('/' . ltrim(substr($__lpath, strlen($__lsdir)), '/'), '/landlord'));
-unset($__lpath, $__lsdir);
+$__lroute = '/' . ltrim(substr($__lpath, strlen($__lsdir)), '/');
+define('IS_LANDLORD_REQ', str_starts_with($__lroute, '/landlord'));
+// /health = sonda de uptime: nu rula migrari (verifica singura conexiunea, fara a muri)
+define('IS_HEALTH_REQ', rtrim($__lroute, '/') === '/health');
+unset($__lpath, $__lsdir, $__lroute);
 
 // migrare automata a schemei (idempotent)
-if (!IS_LANDLORD_REQ) run_migrations();
+if (!IS_LANDLORD_REQ && !IS_HEALTH_REQ) run_migrations();

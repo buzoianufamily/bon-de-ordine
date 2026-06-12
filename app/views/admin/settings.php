@@ -85,6 +85,12 @@
   <div class="settab dv-hidden" data-pane="digital">
     <div class="card pad" style="max-width:640px">
       <p class="muted" style="font-size:.82rem;margin-top:0">Biletul digital se activeaza/dezactiveaza din tabul <strong>Module</strong>.</p>
+      <h3 style="margin-top:0">Anunț general (banner public)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Mesaj informativ afișat pe dispenser, pe pagina de status și pe afișajele de ghișeu (ex: „Azi program redus până la 14:00"). Lasă textul gol ca să-l ascunzi.</p>
+      <div class="field"><label>Text anunț (max 200)</label><input name="notice_text" maxlength="200" value="<?= $s('notice_text') ?>" placeholder="ex: Astăzi casieria se închide la ora 14:00"></div>
+      <div class="field"><label>Activ până la (opțional)</label><input type="date" name="notice_until" value="<?= $s('notice_until') ?>">
+        <p class="muted" style="font-size:.82rem;margin-top:.3rem">După această dată anunțul dispare automat. Gol = rămâne cât timp există text.</p></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Alerte client</h3>
       <div class="field"><label>Mesaj cand este apelat (max 250)</label><textarea name="alert_called" rows="2" maxlength="250"><?= $s('alert_called','Este randul dumneavoastra! Va rugam prezentati-va la ghiseu.') ?></textarea></div>
       <div class="field"><label>Mesaj la transfer (max 250)</label><textarea name="alert_transfer" rows="2" maxlength="250"><?= $s('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.') ?></textarea></div>
@@ -127,8 +133,17 @@
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="reminder_enabled" <?= setting('reminder_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>reminder</strong> pe email cu ~24h inainte de programare</label>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="daily_report_enabled" <?= setting('daily_report_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>raport zilnic</strong> pe email (despre ziua precedenta)</label>
       <div class="field"><label>Destinatari raport zilnic (gol = toti adminii)</label><input name="daily_report_to" value="<?= $s('daily_report_to') ?>" placeholder="a@x.ro, b@y.ro"></div>
+      <label style="margin:.4rem 0;display:block"><input type="checkbox" name="sla_alert_enabled" <?= setting('sla_alert_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>alerta SLA</strong> pe email cand sunt cozi peste tinta de asteptare</label>
+      <div class="row">
+        <div class="field" style="margin:0"><label>Destinatari alerta SLA (gol = raport zilnic / adminii)</label><input name="sla_alert_to" value="<?= $s('sla_alert_to') ?>" placeholder="manager@x.ro"></div>
+        <div class="field" style="margin:0"><label>Prag (min. bilete peste tinta)</label><input type="number" name="sla_alert_min" min="1" max="999" value="<?= $s('sla_alert_min','1') ?>"></div>
+        <div class="field" style="margin:0"><label>Pauza intre alerte (min)</label><input type="number" name="sla_alert_cooldown_min" min="5" max="1440" value="<?= $s('sla_alert_cooldown_min','30') ?>"></div>
+      </div>
+      <p class="muted" style="font-size:.78rem;margin-top:.3rem">Alerta se trimite cel mult o data la „pauza" minute, doar daca numarul de bilete peste tinta atinge pragul. Tinta per serviciu = „timp asteptare" din editarea serviciului.</p>
       <div class="field"><label>Sterge automat biletele mai vechi de … luni (0 = pastreaza tot)</label><input type="number" name="retention_months" min="0" max="120" value="<?= $s('retention_months','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Curatarea ruleaza prin cron (nu necesita email activ). Statisticile pentru perioadele sterse dispar — fa un backup inainte.</p></div>
+      <div class="field"><label>Închide automat biletele uitate după … minute (0 = oprit)</label><input type="number" name="auto_close_min" min="0" max="1440" value="<?= $s('auto_close_min','0') ?>">
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Prin cron: biletele rămase „în servire" devin <strong>finalizate</strong>, iar cele „chemate" neprezentate devin <strong>neprezentate</strong>. Pune o valoare generoasă (ex: 30–60) ca să nu închizi servirile lungi.</p></div>
     </div>
   </div>
 
@@ -140,6 +155,7 @@
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_booking" <?= setting('mod_booking','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Programari online</strong> — pagina publica <code><?= e(url('book')) ?></code></label>
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_feedback" <?= setting('mod_feedback','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Feedback clienti</strong> — pagina publica <code><?= e(url('feedback')) ?></code> + sondaj pe biletul digital</label>
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_concierge" <?= setting('mod_concierge','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Concierge</strong> — receptia cheama orice bilet la orice ghiseu</label>
+      <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_public_status" <?= setting('mod_public_status','0')==='1'?'checked':'' ?> style="width:auto"> <strong>Status public coada</strong> — pagina <code><?= e(url('status')) ?></code> (fara cheie), de pus pe site-ul clientului</label>
       <p class="muted" style="font-size:.8rem;margin-bottom:0">Module care necesita conturi externe (SMS / WhatsApp / Telegram) nu sunt incluse; pot fi integrate prin <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>.</p>
     </div>
   </div>

@@ -61,6 +61,22 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   <div class="statcard"><div class="t">Abandon</div><div class="s">neprez. + anulate · 7 zile</div><div class="v" id="sv-abandon" style="color:var(--danger)"><?= $stats['abandon'] ?>%</div><?= spark($trend['abandon'] ?? [], 'var(--danger)') ?></div>
   <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · 7 zile</div><div class="v" id="sv-avg"><?= mmss($stats['avg_wait']) ?></div><?= spark($trend['wait'] ?? []) ?></div>
   <div class="statcard"><div class="t">Varf de zi</div><div class="s">ora cu cele mai multe</div><div class="v" id="sv-peak"><?= e($stats['peak']) ?></div></div>
+  <div class="statcard"><div class="t">Depasiri SLA</div><div class="s">asteapta peste tinta</div><div class="v" id="sv-sla" style="color:<?= !empty($stats['sla_breaches'])?'var(--danger)':'var(--ink)' ?>"><?= (int)$stats['sla_breaches'] ?></div></div>
+</div>
+
+<div class="panel" id="slaPanel" style="margin-bottom:1.3rem;border-left:3px solid var(--danger)<?= empty($sla)?';display:none':'' ?>">
+  <h4 style="color:var(--danger)">⚠ Atentie — depasiri SLA (timp de asteptare peste tinta)</h4>
+  <table><thead><tr><th>Serviciu</th><th>Bilete peste tinta</th><th>Cel mai vechi</th><th>Tinta</th></tr></thead>
+  <tbody id="slaRows">
+  <?php foreach($sla as $r): ?>
+    <tr>
+      <td><span class="tag" style="background:<?= e($r['color']) ?>"><?= e($r['prefix']) ?></span> <strong><?= e($r['name']) ?></strong></td>
+      <td><span class="pill" style="background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)"><?= (int)$r['breaching'] ?></span></td>
+      <td class="muted"><?= mmss((int)$r['worst']) ?></td>
+      <td class="muted"><?= mmss((int)$r['kpi_wait_sec']) ?></td>
+    </tr>
+  <?php endforeach; ?>
+  </tbody></table>
 </div>
 
 <?php if(!empty($branch_cmp)): ?>
@@ -188,6 +204,15 @@ window.addEventListener('load', function(){
     set('sv-today',r.stats.today); set('sv-waiting',r.stats.waiting); set('sv-serving',r.stats.serving);
     set('sv-served',r.stats.served); set('sv-avg',mmss(r.stats.avg_wait));
     set('sv-abandon',(r.stats.abandon||0)+'%'); set('sv-peak',r.stats.peak||'—');
+    set('sv-sla',r.stats.sla_breaches||0);
+    var svSla=document.getElementById('sv-sla'); if(svSla) svSla.style.color=(r.stats.sla_breaches>0)?'var(--danger)':'var(--ink)';
+    var slaP=document.getElementById('slaPanel'), slaR=document.getElementById('slaRows');
+    if(slaP&&slaR){ var sla=r.sla||[];
+      if(sla.length){ slaP.style.display=''; slaR.innerHTML=sla.map(function(s){
+        return '<tr><td><span class="tag" style="background:'+esc(s.color)+'">'+esc(s.prefix)+'</span> <strong>'+esc(s.name)+'</strong></td>'
+          +'<td><span class="pill" style="background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)">'+(s.breaching|0)+'</span></td>'
+          +'<td class="muted">'+mmss(s.worst)+'</td><td class="muted">'+mmss(s.target)+'</td></tr>';
+      }).join(''); } else { slaP.style.display='none'; } }
     var op=document.getElementById('opRows');
     if(op){ op.innerHTML=(r.operators||[]).map(function(o){var m=stMeta[o.status]||stMeta.offline;
       return '<tr><td style="width:1%"><span class="pill" style="background:color-mix(in srgb,'+m[1]+' 22%,transparent);color:'+m[1]+';white-space:nowrap">'+esc(m[0])+'</span></td><td><strong>'+esc(o.name)+'</strong><br><span class="muted" style="font-size:.8rem">'+esc(o.role)+'</span></td><td style="text-align:right" class="muted">'+esc(o.last_seen)+'</td></tr>';

@@ -10,6 +10,8 @@
  * Gol / dezactivat => mereu deschis.
  */
 function service_is_open(array $svc, ?int $ts = null): bool {
+    // zi inchisa (sarbatoare / inchidere) pe filiala sau globala -> inchis, indiferent de orar
+    if (isset($svc['branch_id']) && branch_closure_reason((int)$svc['branch_id'], $ts) !== null) return false;
     $raw = trim((string)($svc['active_hours'] ?? ''));
     if ($raw === '') return true;
     $cfg = json_decode($raw, true);
@@ -20,6 +22,26 @@ function service_is_open(array $svc, ?int $ts = null): bool {
     if (!is_array($day) || count($day) < 2 || !$day[0] || !$day[1]) return false;
     $now = date('H:i', $ts);
     return $now >= $day[0] && $now < $day[1];
+}
+
+/**
+ * Motivul inchiderii (sarbatoare) pentru o filiala la o data, sau null daca e zi lucratoare.
+ * O inchidere globala (branch_id NULL) acopera toate filialele. Sirul gol = inchis fara motiv.
+ */
+function branch_closure_reason(int $branchId, ?int $ts = null): ?string {
+    $date = date('Y-m-d', $ts ?? time());
+    static $cache = [];
+    if (!array_key_exists($date, $cache)) {
+        $cache[$date] = [];
+        try {
+            foreach (all("SELECT branch_id, reason FROM branch_closures WHERE closed_date=?", [$date]) as $r)
+                $cache[$date][(int)$r['branch_id']] = (string)($r['reason'] ?? ''); // 0 = global (branch_id NULL)
+        } catch (Throwable $e) { $cache[$date] = []; }
+    }
+    $map = $cache[$date];
+    if (array_key_exists(0, $map)) return $map[0];              // inchidere globala
+    if (array_key_exists($branchId, $map)) return $map[$branchId];
+    return null;
 }
 
 /** Formateaza eticheta biletului (ex: C001 / C1). */
@@ -57,6 +79,8 @@ function next_number(array $service): int {
 function issue_ticket(int $service_id, bool $priority = false, string $channel = 'paper', ?string $phone = null, ?string $form_data = null): array {
     $svc = one('SELECT * FROM services WHERE id = ? AND status = "active"', [$service_id]);
     if (!$svc) throw new RuntimeException('Serviciu indisponibil');
+    $closure = branch_closure_reason((int)$svc['branch_id']);
+    if ($closure !== null) throw new RuntimeException('Inchis astazi' . ($closure !== '' ? ' · ' . $closure : ''));
     if (!service_is_open($svc)) throw new RuntimeException('Serviciul este inchis in acest moment');
 
     if ((int)$svc['max_queued'] > 0) {
@@ -305,7 +329,9 @@ function counter_view(array $counter): array {
         $args = array_merge($args, $svcIds);
     }
     $waiting = all(
-        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id, s.name AS service_name, s.color
+        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id,
+                s.name AS service_name, s.color, s.kpi_wait_sec,
+                TIMESTAMPDIFF(SECOND, t.issued_at, NOW()) AS waited
          FROM tickets t JOIN services s ON s.id = t.service_id
          WHERE t.status = 'waiting' AND ($cond)
          ORDER BY (t.target_counter_id = ?) DESC, t.priority DESC, t.issued_at ASC LIMIT 50",

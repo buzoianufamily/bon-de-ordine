@@ -50,7 +50,7 @@ label{display:block;font-size:.8rem;font-weight:700;color:#aab1bd;margin-bottom:
       <button class="btn primary" style="width:100%;justify-content:center;margin-top:.5rem" disabled>Continua</button></div>
   </div>
 </div>
-<script src="<?= e(asset('js/app.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 window.FORM = { id:<?= $row ? (int)$row['id'] : 'null' ?>, saveUrl:'admin/forms', fields:<?= $fields ?> };
 </script>

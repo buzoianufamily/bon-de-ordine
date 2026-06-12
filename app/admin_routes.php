@@ -44,6 +44,12 @@ function admin_dispatch(array $seg, string $method): void {
             if (ctype_digit((string)$a)) { admin_branch_detail((int)$a); return; }
             admin_branches_list(); return;
 
+        case 'closures':
+            if (!can('branches')) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
+            if ($method === 'POST' && $a === null) { admin_closure_save(); return; }
+            if ($method === 'POST' && $b === 'delete') { admin_closure_delete((int)$a); return; }
+            admin_closures_page(); return;
+
         case 'services':
             if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
             if ($method === 'POST' && $a === null) { admin_service_save(); return; }
@@ -53,6 +59,7 @@ function admin_dispatch(array $seg, string $method): void {
             admin_services_list(); return;
 
         case 'groups':
+            if ($method === 'POST' && $a === 'reorder') { admin_groups_reorder(); return; }
             if ($method === 'POST' && $a === null) { admin_group_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 q('UPDATE services SET group_id=NULL WHERE group_id=?', [(int)$a]);
@@ -90,6 +97,8 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'tickets':
             if ($method === 'POST' && $a === 'reset') { admin_tickets_reset(); return; }
+            if ($a === 'export') { admin_tickets_export(); return; }
+            if (ctype_digit((string)$a)) { admin_ticket_detail((int)$a); return; }
             admin_tickets(); return;
 
         case 'feedback':
@@ -134,6 +143,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'audit':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($a === 'export') { admin_audit_export(); return; }
             admin_audit_list(); return;
 
         case 'backup':
@@ -181,6 +191,17 @@ function admin_dashboard(): void {
     foreach ($per_hour as $h => $v) if ($v > $peakVal) { $peakVal = $v; $peakH = $h; }
     $stats['peak'] = $peakH >= 0 ? sprintf('%02d:00', $peakH) : '—';
     $stats['peak_val'] = $peakVal;
+
+    // depasiri SLA live: bilete care asteapta ACUM peste tinta serviciului (kpi_wait_sec)
+    $sla = all("SELECT s.id, s.name, s.color, s.prefix, s.kpi_wait_sec,
+                    COUNT(t.id) breaching,
+                    MAX(TIMESTAMPDIFF(SECOND, t.issued_at, NOW())) worst
+                FROM tickets t JOIN services s ON s.id=t.service_id
+                WHERE t.status='waiting' AND s.kpi_wait_sec > 0
+                  AND TIMESTAMPDIFF(SECOND, t.issued_at, NOW()) > s.kpi_wait_sec"
+                . ($branch ? ' AND t.branch_id=?' : '') . "
+                GROUP BY s.id ORDER BY worst DESC", $nb());
+    $stats['sla_breaches'] = array_sum(array_map(fn($r) => (int)$r['breaching'], $sla));
 
     $devices = all("SELECT name, type, connection_key, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices" .
@@ -235,12 +256,14 @@ function admin_dashboard(): void {
     // actualizare live a panourilor (poll JSON)
     if (($_GET['format'] ?? '') === 'json' || want_json()) {
         json_out(['ok'=>true, 'stats'=>$stats,
+          'sla'=>array_map(fn($r)=>['name'=>$r['name'],'color'=>$r['color'],'prefix'=>$r['prefix'],
+              'breaching'=>(int)$r['breaching'],'worst'=>(int)$r['worst'],'target'=>(int)$r['kpi_wait_sec']], $sla),
           'devices'=>array_map(fn($d)=>['name'=>$d['name'],'type'=>$d['type'],'key'=>$d['connection_key'],'online'=>(bool)$d['online']], $devices),
           'operators'=>array_map(fn($o)=>['name'=>$o['name'],'role'=>$o['role'],
               'status'=>$o['online']?$o['work_status']:'offline','online'=>(bool)$o['online'],
               'last_seen'=>$o['last_seen']?date('H:i',strtotime($o['last_seen'])):'—'], $operators)]);
     }
-    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp','onboarding','trend'));
+    view('admin/dashboard', compact('stats','per_service','per_hour','devices','operators','branches','branch','branch_cmp','onboarding','trend','sla'));
 }
 
 /* ----------------------- SERVICES ----------------------- */
@@ -320,6 +343,15 @@ function admin_groups_list(): void {
                  FROM service_groups g JOIN branches b ON b.id=g.branch_id ORDER BY b.name, g.sort_order, g.name');
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     view('admin/groups', compact('rows','branches'));
+}
+function admin_groups_reorder(): void {
+    csrf_check();
+    $ids = input('ids', []);
+    if (!is_array($ids) || !$ids) json_out(['ok' => false, 'error' => 'Lista goala'], 422);
+    $pos = 0;
+    foreach ($ids as $id) { $id = (int)$id; if ($id > 0) q('UPDATE service_groups SET sort_order = ? WHERE id = ?', [$pos++, $id]); }
+    audit('reorder', 'groups');
+    json_out(['ok' => true]);
 }
 function admin_group_save(): void {
     csrf_check();
@@ -445,7 +477,8 @@ function admin_device_save(): void {
 }
 
 /* ----------------------- TICKETS ----------------------- */
-function admin_tickets(): void {
+/** Construieste filtrul (WHERE + args) pentru lista de bilete din parametrii GET. */
+function admin_tickets_filter(): array {
     $date    = $_GET['date'] ?? date('Y-m-d');
     $status  = (string)($_GET['status'] ?? '');
     $service = (int)($_GET['service'] ?? 0);
@@ -458,14 +491,74 @@ function admin_tickets(): void {
     if ($service) { $where .= ' AND t.service_id=?'; $args[] = $service; }
     if ($fbranch) { $where .= ' AND t.branch_id=?'; $args[] = $fbranch; }
     if ($qstr !== '') { $where .= ' AND t.label LIKE ?'; $args[] = '%'.$qstr.'%'; }
+    return [$where, $args, compact('date','status','service','fbranch','qstr')];
+}
 
+function admin_tickets(): void {
+    [$where, $args, $f] = admin_tickets_filter();
     $rows = all("SELECT t.*, s.name service_name, s.color, c.code counter_code
                  FROM tickets t JOIN services s ON s.id=t.service_id
                  LEFT JOIN counters c ON c.id=t.counter_id
                  WHERE $where ORDER BY t.issued_at DESC LIMIT 500", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     $services = all('SELECT id,prefix,name FROM services ORDER BY sort_order, name');
+    $date=$f['date']; $status=$f['status']; $service=$f['service']; $fbranch=$f['fbranch']; $qstr=$f['qstr'];
     view('admin/tickets', compact('rows','date','branches','services','status','service','fbranch','qstr'));
+}
+
+/** Export CSV al biletelor filtrate (Excel-friendly: BOM UTF-8 + separator ;). */
+function admin_tickets_export(): void {
+    [$where, $args, $f] = admin_tickets_filter();
+    audit('export', 'tickets', $f['date']);
+    $rows = all("SELECT t.label, t.status, s.name service_name, c.code counter_code, b.name branch_name,
+                        t.priority, t.issued_at, t.called_at, t.served_at
+                 FROM tickets t JOIN services s ON s.id=t.service_id
+                 LEFT JOIN counters c ON c.id=t.counter_id
+                 LEFT JOIN branches b ON b.id=t.branch_id
+                 WHERE $where ORDER BY t.issued_at ASC LIMIT 20000", $args);
+    $statusRo = ['waiting'=>'In asteptare','called'=>'Chemat','serving'=>'In servire','served'=>'Finalizat',
+                 'no_show'=>'Neprezentat','cancelled'=>'Anulat','transferred'=>'Transferat'];
+    $secs = fn($a,$b) => ($a && $b) ? max(0, strtotime($b) - strtotime($a)) : null;
+    $mmss = function($s){ if ($s === null) return ''; return sprintf('%d:%02d', intdiv($s,60), $s%60); };
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="bilete_' . $f['date'] . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF"); // BOM pentru diacritice corecte in Excel
+    $head = ['Bon','Serviciu','Filiala','Ghiseu','Status','Prioritar','Emis','Chemat','Finalizat','Asteptare','Servire'];
+    fputcsv($out, $head, ';');
+    foreach ($rows as $r) {
+        fputcsv($out, [
+            $r['label'],
+            $r['service_name'],
+            $r['branch_name'] ?? '',
+            $r['counter_code'] ?? '',
+            $statusRo[$r['status']] ?? $r['status'],
+            !empty($r['priority']) ? 'da' : '',
+            $r['issued_at'],
+            $r['called_at'] ?? '',
+            $r['served_at'] ?? '',
+            $mmss($secs($r['issued_at'], $r['called_at'])),
+            $mmss($secs($r['called_at'], $r['served_at'])),
+        ], ';');
+    }
+    fclose($out);
+    exit;
+}
+
+/** Detaliu bilet: ciclul de viata complet (emis → chemat → servit), ghiseu, operator, formular. */
+function admin_ticket_detail(int $id): void {
+    $t = one("SELECT t.*, s.name service_name, s.prefix, s.color, s.kpi_wait_sec, s.kpi_service_sec,
+                     b.name branch_name, c.code counter_code, c.name counter_name,
+                     tc.code target_code, u.name agent_name
+              FROM tickets t JOIN services s ON s.id=t.service_id
+              LEFT JOIN branches b ON b.id=t.branch_id
+              LEFT JOIN counters c ON c.id=t.counter_id
+              LEFT JOIN counters tc ON tc.id=t.target_counter_id
+              LEFT JOIN users u ON u.id=t.agent_id
+              WHERE t.id=?", [$id]);
+    if (!$t) { http_response_code(404); echo 'Bilet inexistent.'; return; }
+    view('admin/ticket_detail', ['t' => $t]);
 }
 
 /** Reset bonuri: STERGE complet biletele (coada + istoric/statistici) si reincepe numerotarea de la 0. */
@@ -580,6 +673,11 @@ function admin_security_save(): void {
             audit('2fa_codes_regen', 'user', $u['id']);
             flash('Coduri de recuperare noi generate. Cele vechi nu mai sunt valabile.');
         }
+    } elseif ($act === 'password') {
+        $res = change_own_password((int)$u['id'], (string)($_POST['cur_pass'] ?? ''),
+            (string)($_POST['new_pass'] ?? ''), (string)($_POST['new_pass2'] ?? ''));
+        if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
+        else { flash($res['error'], 'error'); }
     } elseif ($act === 'policy' && $u['role'] === 'admin') {
         set_setting('force_2fa_admin', isset($_POST['force_2fa_admin']) ? '1' : '0');
         audit('update', 'security_policy');
@@ -617,11 +715,47 @@ function admin_db_backup(): void {
 }
 
 /* ----------------------- AUDIT LOG ----------------------- */
+/** Construieste filtrul (WHERE + args) pentru jurnalul de audit din parametrii GET. */
+function admin_audit_filter(): array {
+    $action = trim((string)($_GET['action'] ?? ''));
+    $qstr   = trim((string)($_GET['q'] ?? ''));
+    $from   = trim((string)($_GET['from'] ?? ''));
+    $to     = trim((string)($_GET['to'] ?? ''));
+    $where = '1=1'; $args = [];
+    if ($action !== '' && preg_match('/^[a-z0-9_]+$/i', $action)) { $where .= ' AND action=?'; $args[] = $action; }
+    if ($qstr !== '') { $where .= ' AND (user_name LIKE ? OR details LIKE ? OR entity LIKE ?)'; $like='%'.$qstr.'%'; array_push($args,$like,$like,$like); }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $where .= ' AND created_at >= ?'; $args[] = $from.' 00:00:00'; }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to))   { $where .= ' AND created_at <= ?'; $args[] = $to.' 23:59:59'; }
+    return [$where, $args, compact('action','qstr','from','to')];
+}
+
 function admin_audit_list(): void {
+    [$where, $args, $f] = admin_audit_filter();
     $page = max(1, (int)($_GET['p'] ?? 1)); $per = 80; $off = ($page-1)*$per;
-    $total = (int) val('SELECT COUNT(*) FROM audit_log');
-    $rows  = all("SELECT * FROM audit_log ORDER BY id DESC LIMIT $per OFFSET $off");
-    view('admin/audit', compact('rows','page','per','total'));
+    $total = (int) val("SELECT COUNT(*) FROM audit_log WHERE $where", $args);
+    $rows  = all("SELECT * FROM audit_log WHERE $where ORDER BY id DESC LIMIT $per OFFSET $off", $args);
+    $actions = array_column(all("SELECT DISTINCT action FROM audit_log ORDER BY action"), 'action');
+    $action=$f['action']; $qstr=$f['qstr']; $from=$f['from']; $to=$f['to'];
+    view('admin/audit', compact('rows','page','per','total','actions','action','qstr','from','to'));
+}
+
+/** Export CSV al jurnalului de audit filtrat (BOM UTF-8, separator ;). */
+function admin_audit_export(): void {
+    [$where, $args, $f] = admin_audit_filter();
+    audit('export', 'audit_log');
+    $rows = all("SELECT created_at, user_name, action, entity, entity_id, details, ip
+                 FROM audit_log WHERE $where ORDER BY id DESC LIMIT 50000", $args);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="audit_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Data/ora','Utilizator','Actiune','Obiect','ID','Detalii','IP'], ';');
+    foreach ($rows as $r) {
+        fputcsv($out, [$r['created_at'], $r['user_name'] ?? '', $r['action'], $r['entity'] ?? '',
+                       $r['entity_id'] ?? '', $r['details'] ?? '', $r['ip'] ?? ''], ';');
+    }
+    fclose($out);
+    exit;
 }
 
 /* ----------------------- API & WEBHOOKS ----------------------- */
@@ -648,13 +782,15 @@ function admin_settings_save(): void {
     csrf_check();
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size',
-             'alert_called','alert_transfer','alert_delay',
-             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months'];
+             'alert_called','alert_transfer','alert_delay','notice_text','notice_until',
+             'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
+             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
     set_setting('reminder_enabled', isset($_POST['reminder_enabled']) ? '1' : '0');
     set_setting('daily_report_enabled', isset($_POST['daily_report_enabled']) ? '1' : '0');
+    set_setting('sla_alert_enabled', isset($_POST['sla_alert_enabled']) ? '1' : '0');
     set_setting('display_say_number', isset($_POST['display_say_number']) ? '1' : '0');
     set_setting('display_say_counter', isset($_POST['display_say_counter']) ? '1' : '0');
     set_setting('counter_voice', isset($_POST['counter_voice']) ? '1' : '0');
@@ -662,6 +798,7 @@ function admin_settings_save(): void {
     set_setting('mod_booking', isset($_POST['mod_booking']) ? '1' : '0');
     set_setting('mod_feedback', isset($_POST['mod_feedback']) ? '1' : '0');
     set_setting('mod_concierge', isset($_POST['mod_concierge']) ? '1' : '0');
+    set_setting('mod_public_status', isset($_POST['mod_public_status']) ? '1' : '0');
     set_setting('ticket_show_position', isset($_POST['ticket_show_position']) ? '1' : '0');
     set_setting('ticket_show_datetime', isset($_POST['ticket_show_datetime']) ? '1' : '0');
     set_setting('ticket_show_qr', isset($_POST['ticket_show_qr']) ? '1' : '0');
@@ -713,6 +850,36 @@ function admin_branches_list(): void {
 function admin_branch_form(?int $id): void {
     $row = $id ? one('SELECT * FROM branches WHERE id=?', [$id]) : null;
     view('admin/branch_edit', ['row' => $row]);
+}
+
+/* ----------------------- ZILE INCHISE / SARBATORI ----------------------- */
+function admin_closures_page(): void {
+    $branches = all('SELECT id, name FROM branches ORDER BY name');
+    $rows = all("SELECT cl.*, b.name AS branch_name FROM branch_closures cl
+                 LEFT JOIN branches b ON b.id=cl.branch_id
+                 WHERE cl.closed_date >= CURDATE() - INTERVAL 7 DAY
+                 ORDER BY cl.closed_date ASC, b.name");
+    view('admin/closures', compact('branches', 'rows'));
+}
+function admin_closure_save(): void {
+    csrf_check();
+    $date   = trim((string)($_POST['closed_date'] ?? ''));
+    $bid    = (int)($_POST['branch_id'] ?? 0);            // 0 = toate filialele (global)
+    $reason = mb_substr(trim((string)($_POST['reason'] ?? '')), 0, 120);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { flash('Alege o data valida.', 'error'); redirect('admin/closures'); }
+    // evita dubluri (UNIQUE nu prinde branch_id NULL in MySQL) — sterge apoi insereaza
+    if ($bid) q("DELETE FROM branch_closures WHERE branch_id=? AND closed_date=?", [$bid, $date]);
+    else      q("DELETE FROM branch_closures WHERE branch_id IS NULL AND closed_date=?", [$date]);
+    q("INSERT INTO branch_closures (branch_id, closed_date, reason) VALUES (?,?,?)",
+      [$bid ?: null, $date, $reason !== '' ? $reason : null]);
+    audit('create', 'closure', $bid ?: 'all', $date);
+    flash('Zi inchisa adaugata.'); redirect('admin/closures');
+}
+function admin_closure_delete(int $id): void {
+    csrf_check();
+    q("DELETE FROM branch_closures WHERE id=?", [$id]);
+    audit('delete', 'closure', $id);
+    flash('Zi inchisa stearsa.'); redirect('admin/closures');
 }
 function admin_branch_save(): void {
     csrf_check();
