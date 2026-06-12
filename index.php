@@ -285,7 +285,8 @@ SWJS;
                     flash('Parola a fost schimbata. Te poti autentifica acum.');
                     redirect('login');
                 }
-                view('public/reset', ['token' => $token, 'valid' => true, 'error' => $res['error']]);
+                // daca tokenul a expirat/devenit invalid intre afisare si trimitere, arata panoul „link invalid"
+                view('public/reset', ['token' => $token, 'valid' => password_reset_lookup($token) !== null, 'error' => $res['error']]);
                 return;
             }
             $valid = password_reset_lookup($token) !== null;
