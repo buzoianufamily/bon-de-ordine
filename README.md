@@ -25,7 +25,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 ### Funcționalități cheie
 - **Servicii** cu prefix + culoare, interval de numere, reset zilnic automat, bilete prioritare, KPI, **program de funcționare** (orar pe zile, cu mesaj „închis" configurabil), **formular** la emitere, **programări online**, **traduceri** nume/descriere, **grupuri**, ordonare prin **drag & drop**.
 - **Apelare inteligentă**: prioritate apoi vechime; un operator per ghișeu; recall, transfer la serviciu sau la **alt birou**, no‑show; operatori **atribuiți pe ghișee**.
-- **Real‑time**: SSE cu fallback pe polling; **dashboard live** cu sparkline 7 zile, abandon %, vârf de zi, comparație filiale, prezență operatori și dispozitive online.
+- **Real‑time**: SSE cu fallback pe polling; **dashboard live** cu sparkline 7 zile, abandon %, vârf de zi, comparație filiale, prezență operatori și dispozitive online, plus **monitorizare SLA** (servicii/bilete care depășesc ținta de așteptare, acum). Operatorul vede în terminal biletele „⏱ peste timp".
 - **Anunț vocal RO** pe afișaj (Web Speech) + opțional la terminalul operatorului; texte multilingve alternante pe TV (`Text RO | Text EN`).
 - **Status operator** (Disponibil/Ocupat/Pauză/Offline) cu prezență live și **istoric (timp pe status)** în Statistici și în Excel.
 - **Dispenser multilingv** (RO/EN/DE/FR/HU/IT/ES) cu bară de steaguri; revine la limba implicită după fiecare bon; efecte de atingere.
@@ -33,7 +33,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Printare ESC/POS** (Bixolon și orice imprimantă termică): rețea (port 9100), **Android USB** (aplicația din `android/`), sau browser (test). Conținutul bonului e configurabil, cu **preview live** în Setări.
 - **Email integrat** (SMTP propriu sau `mail()` de pe cPanel): confirmări + remindere programări, raport zilnic; **cron** inclus (și curățare automată a biletelor vechi).
 - **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set; pagina **Bilete** are **export CSV** al listei filtrate.
-- **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit**, **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
+- **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit** (cu filtrare + export CSV), **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
 - **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, statistici) — documentate în Admin → API & Webhooks. Endpoint **`/health`** (JSON) pentru monitorizare uptime.
 - **Multi‑tenant**: subdomeniu + bază de date per client, panou **landlord** cu health‑check și suspendare instanțe.
 - **Temă deschisă/închisă** (cu auto după sistemul de operare), admin **responsive pe mobil**, căutare globală **Ctrl+K**, checklist de onboarding.
