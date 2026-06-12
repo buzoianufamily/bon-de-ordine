@@ -319,6 +319,21 @@ SWJS;
     }
     if ($seg[0] === 'logout') { if ($cu = current_user()) { log_user_status((int)$cu['id'],'offline'); q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); } logout(); redirect('login'); }
 
+    // contul propriu (orice utilizator autentificat — util mai ales operatorilor care nu intra in backoffice)
+    if ($seg[0] === 'account') {
+        $u = require_login();
+        if ($method === 'POST') {
+            csrf_check();
+            $res = change_own_password((int)$u['id'], (string) input('cur_pass', ''),
+                (string) input('new_pass', ''), (string) input('new_pass2', ''));
+            if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
+            else { flash($res['error'], 'error'); }
+            redirect('account');
+        }
+        view('public/account', compact('u'));
+        return;
+    }
+
     // dispozitiv prin connection key:  /launcher?key=XXX  sau  /d/XXX  /screen/XXX
     if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen') {
         $key = $_GET['key'] ?? $_GET['connection_key'] ?? ($seg[1] ?? '');

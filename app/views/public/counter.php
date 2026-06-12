@@ -15,7 +15,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <?php else: ?>
         <button class="btn" id="btnPauseC">⏸ Pauza ghiseu</button>
       <?php endif; ?>
-      <a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
+      <a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('account')) ?>">Cont</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
   </div>
   <div class="row">
     <div class="card pad" style="flex:1.1">
