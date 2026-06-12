@@ -147,6 +147,7 @@
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_booking" <?= setting('mod_booking','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Programari online</strong> — pagina publica <code><?= e(url('book')) ?></code></label>
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_feedback" <?= setting('mod_feedback','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Feedback clienti</strong> — pagina publica <code><?= e(url('feedback')) ?></code> + sondaj pe biletul digital</label>
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_concierge" <?= setting('mod_concierge','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Concierge</strong> — receptia cheama orice bilet la orice ghiseu</label>
+      <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_public_status" <?= setting('mod_public_status','0')==='1'?'checked':'' ?> style="width:auto"> <strong>Status public coada</strong> — pagina <code><?= e(url('status')) ?></code> (fara cheie), de pus pe site-ul clientului</label>
       <p class="muted" style="font-size:.8rem;margin-bottom:0">Module care necesita conturi externe (SMS / WhatsApp / Telegram) nu sunt incluse; pot fi integrate prin <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>.</p>
     </div>
   </div>
