@@ -95,6 +95,7 @@ function admin_dispatch(array $seg, string $method): void {
                 if ($method === 'POST') { admin_dispenser_save((int)$a); return; }
                 admin_dispenser_builder((int)$a); return;
             }
+            if ($a === 'qr') { admin_devices_qr(); return; }
             if ($a === 'new') { admin_device_form(null); return; }
             if (ctype_digit((string)$a)) { admin_device_form((int)$a); return; }
             admin_devices_list(); return;
@@ -450,6 +451,11 @@ function admin_user_save(): void {
 function admin_devices_list(): void {
     $rows = all('SELECT d.*, b.name AS branch_name, (d.last_seen IS NOT NULL AND d.last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices d JOIN branches b ON b.id=d.branch_id ORDER BY b.name, d.type, d.name');
     view('admin/devices', ['rows' => $rows]);
+}
+/** Foaie printabila cu codurile QR + linkurile dispozitivelor (pentru instalare rapida). */
+function admin_devices_qr(): void {
+    $rows = all('SELECT d.*, b.name AS branch_name FROM devices d JOIN branches b ON b.id=d.branch_id ORDER BY b.name, d.type, d.name');
+    view('admin/devices_qr', ['rows' => $rows]);
 }
 function admin_device_form(?int $id): void {
     $row = $id ? one('SELECT * FROM devices WHERE id=?', [$id]) : null;
