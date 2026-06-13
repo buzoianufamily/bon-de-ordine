@@ -123,7 +123,7 @@ SWJS;
         // ---- endpoint-uri publice (folosite de dispozitive) ----
         if ($action === 'state') { // polling afisaj
             $branch = (int)($_GET['branch'] ?? 1);
-            json_out(['ok' => true] + queue_state($branch));
+            json_out(['ok' => true] + queue_state($branch, !empty($_GET['est'])));
         }
         if ($action === 'sse') { // server-sent events pentru afisaj
             sse_stream((int)($_GET['branch'] ?? 1));
@@ -392,7 +392,7 @@ SWJS;
         $branchId = (int)($seg[1] ?? $_GET['branch'] ?? 1);
         $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: one('SELECT * FROM branches ORDER BY id LIMIT 1');
         if (!$branch) { http_response_code(404); echo 'Filiala inexistenta.'; return; }
-        view('public/status', ['branch' => $branch] + queue_state((int)$branch['id']));
+        view('public/status', ['branch' => $branch] + queue_state((int)$branch['id'], true));
         return;
     }
 

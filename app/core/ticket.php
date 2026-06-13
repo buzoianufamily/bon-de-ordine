@@ -288,7 +288,7 @@ function branch_queue(int $branch_id): array {
  * Starea curenta a cozii pentru o filiala.
  * Folosita de afisaj (player) si terminal (polling/SSE).
  */
-function queue_state(int $branch_id): array {
+function queue_state(int $branch_id, bool $withEstimates = false): array {
     // ultimele bilete chemate (pt lista pe TV)
     $called = all(
         "SELECT t.id, t.label, t.status, t.priority, t.called_at, t.recall_count,
@@ -308,6 +308,22 @@ function queue_state(int $branch_id): array {
          LEFT JOIN tickets t ON t.service_id = s.id AND t.status = 'waiting'
          WHERE s.branch_id = ? AND s.status = 'active'
          GROUP BY s.id ORDER BY s.sort_order", [$branch_id]);
+
+    // (optional) timp estimat de asteptare per serviciu — calculat doar la cerere (nu pe fiecare tick SSE)
+    if ($withEstimates) {
+        $open = max(1, (int) val("SELECT COUNT(*) FROM counters WHERE branch_id=? AND status='open'", [$branch_id]));
+        $avgBySvc = [];
+        foreach (all("SELECT service_id, AVG(TIMESTAMPDIFF(SECOND, called_at, finished_at)) a
+                      FROM tickets WHERE branch_id=? AND status='served' AND called_at IS NOT NULL
+                        AND finished_at >= NOW() - INTERVAL 7 DAY GROUP BY service_id", [$branch_id]) as $r)
+            $avgBySvc[(int)$r['service_id']] = (float)$r['a'];
+        foreach ($waiting as &$w) {
+            $cnt = (int)$w['cnt'];
+            $avg = $avgBySvc[(int)$w['id']] ?? 0; if ($avg <= 0) $avg = 300; // fallback 5 min
+            $w['est'] = $cnt > 0 ? (int) round($cnt * $avg / $open) : 0;
+        }
+        unset($w);
+    }
 
     // ghisee si biletul curent
     $counters = all(

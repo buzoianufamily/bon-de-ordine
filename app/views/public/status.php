@@ -60,10 +60,11 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
     <div class="stcard">
       <h2>La rand</h2>
       <div id="waitList">
+        <?php $estMin = fn($s) => ($s>0 ? '~'.max(1,(int)round($s/60)).' min' : ''); ?>
         <?php foreach($waiting as $w): if((int)$w['cnt']<=0) continue; ?>
           <div class="wait-row">
             <span class="wait-tag" style="background:<?= e($w['color']) ?>"><?= e($w['prefix']) ?></span>
-            <span><?= e($w['name']) ?></span>
+            <span style="flex:1"><?= e($w['name']) ?><?php if(!empty($w['est'])): ?><br><span class="muted" style="font-size:.78rem;color:#9aa3b2"><?= e($estMin($w['est'])) ?> așteptare</span><?php endif; ?></span>
             <span class="wait-cnt"><?= (int)$w['cnt'] ?></span>
           </div>
         <?php endforeach; ?>
@@ -80,7 +81,7 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
   function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
   async function refresh(){
     if(!window.QMS) return;
-    var r; try{ r=await QMS.api('api/state?branch='+branch,null,'GET'); }catch(e){ return; }
+    var r; try{ r=await QMS.api('api/state?est=1&branch='+branch,null,'GET'); }catch(e){ return; }
     if(!r||!r.ok) return;
     var nb=document.getElementById('stNotice');
     if(nb){ var nt=(typeof r.notice==='string')?r.notice.trim():'';
@@ -94,8 +95,11 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
     }).join('')||'<div style="color:#6b7280">Niciun ghiseu.</div>'; }
     var wl=document.getElementById('waitList');
     if(wl){ var rows=(r.waiting||[]).filter(function(w){return (+w.cnt)>0;});
-      wl.innerHTML=rows.map(function(w){
-        return '<div class="wait-row"><span class="wait-tag" style="background:'+esc(w.color)+'">'+esc(w.prefix)+'</span><span>'+esc(w.name)+'</span><span class="wait-cnt">'+(+w.cnt)+'</span></div>';
+      var em=function(s){ return (+s>0)?('~'+Math.max(1,Math.round(+s/60))+' min'):''; };
+      wl.innerHTML=rows.map(function(w){ var e2=em(w.est);
+        return '<div class="wait-row"><span class="wait-tag" style="background:'+esc(w.color)+'">'+esc(w.prefix)+'</span>'
+          +'<span style="flex:1">'+esc(w.name)+(e2?'<br><span class="muted" style="font-size:.78rem;color:#9aa3b2">'+e2+' așteptare</span>':'')+'</span>'
+          +'<span class="wait-cnt">'+(+w.cnt)+'</span></div>';
       }).join('')||'<div style="color:#6b7280">Nicio coada de asteptare.</div>'; }
   }
   setInterval(refresh, 5000);
