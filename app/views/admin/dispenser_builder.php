@@ -125,6 +125,7 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
       <div class="field"><label>Titlu fereastra bilet</label><input id="f__texts__popup_title" value="<?= e($gd($T,'popup_title','Biletul dumneavoastra')) ?>"></div>
       <div class="field"><label>Text „X inainte" (foloseste {n})</label><input id="f__texts__ahead_text" value="<?= e($gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra')) ?>"></div>
       <div class="field"><label>Text cand e primul la rand</label><input id="f__texts__ahead_first" value="<?= e($gd($T,'ahead_first','Sunteti urmatorul la rand')) ?>"></div>
+      <div class="field"><label>Text timp estimat (foloseste {m} = minute)</label><input id="f__texts__wait_est_text" value="<?= e($gd($T,'wait_est_text','Timp estimat ~{m} min')) ?>"></div>
       <div class="field"><label>Text langa codul QR</label><input id="f__texts__qr_hint" value="<?= e($gd($T,'qr_hint','Urmariti pe telefon')) ?>"></div>
       <div class="row2">
         <div class="field"><label>Buton inchidere</label><input id="f__texts__done_btn" value="<?= e($gd($T,'done_btn','Gata')) ?>"></div>

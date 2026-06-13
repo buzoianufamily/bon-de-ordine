@@ -99,6 +99,8 @@
     $('tkSvc').textContent=btn.dataset.name;
     const big=$('tkNum'); big.textContent=t.label; big.style.color=color;
     $('tkPos').textContent = res.position>0 ? (cfg.texts.ahead||'Sunt {n} inainte').replace('{n}',res.position) : (cfg.texts.ahead_first||'Sunteti urmatorul');
+    const tw=$('tkWait'); if(tw){ const m=Math.round((+res.wait_est||0)/60);
+      if(m>0){ tw.style.display=''; tw.textContent=(cfg.texts.wait_est||'Timp estimat ~{m} min').replace('{m}',m); } else tw.style.display='none'; }
     $('tkDone').textContent = cfg.texts.done||'Gata';
     const qr=$('tkQr');
     if(cfg.virtual && res.virtual_url){ qr.style.display=''; qr.src='https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(res.virtual_url); } else qr.style.display='none';

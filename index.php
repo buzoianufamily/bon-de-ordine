@@ -157,6 +157,7 @@ SWJS;
             }
             $svcRow = one('SELECT * FROM services WHERE id = ?', [$svc]);
             $resp = ['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
+                     'wait_est' => est_wait_seconds($t),
                      'virtual_url' => url('t/' . $t['public_token'])];
             // daca dispozitivul printeaza in retea, trimite acum
             if ($dev && $dev['printer_mode'] === 'network' && $dev['printer_ip']) {

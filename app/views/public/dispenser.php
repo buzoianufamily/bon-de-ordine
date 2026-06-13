@@ -127,6 +127,7 @@ if ($fids) {
     <div class="big" id="tkNum">—</div>
     <img class="qr" id="tkQr" alt="" style="display:none">
     <div class="muted" id="tkPos"></div>
+    <div class="muted" id="tkWait" style="display:none;margin-top:.2rem;font-weight:700"></div>
     <div class="countdown">Se inchide in <span id="cd">7</span>s</div>
     <button class="btn" style="margin-top:1rem" onclick="qmsCloseTicket()" id="tkDone">Gata</button>
   </div>
@@ -149,7 +150,7 @@ if ($fids) {
   lang:<?= json_encode($lang) ?>, revertUrl:<?= json_encode($revertUrl) ?>,
   autoReturn:<?= (int)$gd($L,'auto_return_sec',7) ?>, screensaver:<?= (int)$gd($L,'screensaver_sec',0) ?>,
   print:{logo:<?= $gb($L,'print_logo',true)?1:0 ?>,service:<?= $gb($L,'print_service',true)?1:0 ?>,position:<?= $gb($L,'print_position',true)?1:0 ?>,datetime:<?= $gb($L,'print_datetime',true)?1:0 ?>,qr:<?= $gb($L,'print_qr',true)?1:0 ?>},
-  texts:{popup_title:<?= json_encode($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= json_encode($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= json_encode($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= json_encode($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= json_encode($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>},
+  texts:{popup_title:<?= json_encode($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= json_encode($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= json_encode($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= json_encode($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= json_encode($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= json_encode($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>},
   popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= json_encode($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= json_encode($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= json_encode($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= json_encode($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= json_encode($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= json_encode($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= json_encode($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
 <script src="<?= e(asset('js/dispenser.js')) ?>"></script>
