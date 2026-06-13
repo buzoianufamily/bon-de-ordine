@@ -10,6 +10,7 @@
   <?php if (setting('mod_feedback','1')==='1'): ?>
   <a id="vRate" href="<?= e(url('feedback')) ?>?branch=<?= (int)$t['branch_id'] ?>" class="btn btn-primary" style="display:none;margin-top:1rem">⭐ Evalueaza experienta</a>
   <?php endif; ?>
+  <button id="vCancel" class="btn btn-ghost" style="display:none;margin-top:1rem">Renunț la rând</button>
   <p class="muted" style="font-size:.78rem;margin-top:1.4rem">Pagina se actualizeaza automat. Pastrati-o deschisa.</p>
 </div></div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
@@ -32,6 +33,7 @@ async function tick(){
   else if(t.status==='transferred' && ALERTS.transfer) txt = ALERTS.transfer;
   const s=document.getElementById('vStatus'); s.textContent=txt; s.style.background=st[1]; s.style.color='#06210f';
   const rate=document.getElementById('vRate'); if(rate) rate.style.display = (t.status==='served') ? 'inline-flex' : 'none';
+  const cb=document.getElementById('vCancel'); if(cb) cb.style.display = (t.status==='waiting'||t.status==='called') ? 'inline-flex' : 'none';
   document.getElementById('vPos').textContent = t.status==='waiting' ? ('Sunt '+t.position+' persoane inaintea dvs.') : '';
   var estEl=document.getElementById('vEst');
   if(t.status==='waiting' && t.wait_est>0){ var mn=Math.round(t.wait_est/60); estEl.textContent='Timp estimat: '+(mn<1?'sub 1 minut':('~ '+mn+' min')); }
@@ -44,4 +46,9 @@ async function tick(){
   prevStatus=t.status;
 }
 tick(); setInterval(tick, 3000);
+document.getElementById('vCancel').addEventListener('click', async function(){
+  if(!await QMS.confirm('Renunți la locul în coadă? Biletul va fi anulat.', {ok:'Renunț', cancel:'Înapoi'})) return;
+  const r = await QMS.api('api/virtual-cancel', {token:token});
+  if(r.ok){ QMS.toast('Bilet anulat','ok'); tick(); } else { QMS.toast(r.error||'Eroare','error'); }
+});
 </script></body></html>

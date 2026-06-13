@@ -171,6 +171,14 @@ SWJS;
             }
             json_out($resp);
         }
+        if ($action === 'virtual-cancel' && $method === 'POST') { // clientul renunta la rand de pe telefon
+            $tok = (string) input('token', '');
+            $row = $tok !== '' ? one("SELECT id, status FROM tickets WHERE public_token = ?", [$tok]) : null;
+            if (!$row) json_out(['ok' => false, 'error' => 'Bilet inexistent'], 404);
+            if (!in_array($row['status'], ['waiting','called'], true)) json_out(['ok' => false, 'error' => 'Biletul nu mai poate fi anulat']);
+            cancel_ticket((int)$row['id']);
+            json_out(['ok' => true]);
+        }
         if ($action === 'heartbeat' && $method === 'POST') {
             $dev = device_by_key((string)input('device_key', ''));
             if ($dev) q('UPDATE devices SET last_seen = NOW() WHERE id = ?', [$dev['id']]);
