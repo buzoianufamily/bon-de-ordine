@@ -191,6 +191,14 @@ SWJS;
                 q('UPDATE users SET work_status = ?, last_seen = NOW() WHERE id = ?', [$stt, (int)$u['id']]);
                 json_out(['ok' => true, 'status' => $stt]);
             }
+            case 'issue-manual': {   // emitere bon walk-in de la receptie/operator
+                $svcId = (int) input('service_id', 0);
+                $priority = (bool) input('priority', false);
+                try { $t = issue_ticket($svcId, $priority, 'web'); }
+                catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+                json_out(['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
+                          'virtual_url' => url('t/' . $t['public_token'])]);
+            }
             case 'call-next':
                 $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);
@@ -462,7 +470,8 @@ SWJS;
         $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));
         $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: ($branches[0] ?? ['id'=>0,'name'=>'—']);
         $counters = all('SELECT id,code,name,status FROM counters WHERE branch_id=? ORDER BY code', [$branch['id']]);
-        view('public/concierge', compact('u','branches','branch','counters'));
+        $services = all('SELECT id,prefix,name,color,allow_priority FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order', [$branch['id']]);
+        view('public/concierge', compact('u','branches','branch','counters','services'));
         return;
     }
 
