@@ -22,6 +22,10 @@
     <div class="card pad" style="flex:1">
       <strong>Ghisee</strong>
       <div id="ctrList" style="margin-top:.6rem"></div>
+      <div id="nsBox" style="display:none;margin-top:1rem;border-top:1px solid var(--line,#e6e8ec);padding-top:.7rem">
+        <div class="muted" style="font-size:.8rem;margin-bottom:.4rem">Neprezentați azi — repune la rând:</div>
+        <div id="nsList" style="display:flex;flex-wrap:wrap;gap:.4rem"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -66,7 +70,16 @@ window.CONCIERGE = {
       ${c.status==='paused'?'<span class="pill" style="background:#fef3c7;color:#92400e" title="'+esc(c.pause_note||'')+'">⏸ pauza</span>':''}
       <span style="margin-left:auto;font-family:var(--display);font-weight:800;color:${cfg.accent}">${c.current_label?esc(c.current_label):'—'}</span>
     </div>`).join('') || '<div class="muted" style="padding:1rem">Niciun ghiseu.</div>';
+    const nsBox=document.getElementById('nsBox'), nsList=document.getElementById('nsList'), ns=res.no_show||[];
+    if(nsBox&&nsList){ if(!ns.length){ nsBox.style.display='none'; nsList.innerHTML=''; }
+      else { nsBox.style.display='';
+        nsList.innerHTML=ns.map(t=>`<button class="btn btn-ghost" data-requeue="${t.id}" style="font-size:.85rem">↩ <strong style="color:${esc(t.color||cfg.accent)}">${esc(t.label)}</strong> <span class="muted">${esc(t.at||'')}</span></button>`).join(''); } }
   }
+  document.getElementById('nsList').addEventListener('click', async e=>{
+    const b=e.target.closest('[data-requeue]'); if(!b) return; b.disabled=true;
+    const r=await QMS.api('api/requeue',{ticket_id:+b.dataset.requeue});
+    if(r.ok){ QMS.toast('Bilet repus la rand','ok'); refresh(); } else { QMS.toast(r.error||'Eroare','error'); b.disabled=false; }
+  });
   refresh(); setInterval(refresh, 2000);
 })();
 </script>

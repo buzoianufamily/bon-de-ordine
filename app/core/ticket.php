@@ -281,7 +281,13 @@ function branch_queue(int $branch_id): array {
                 (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
                  ORDER BY t.called_at DESC LIMIT 1) AS current_label
          FROM counters c WHERE c.branch_id = ? ORDER BY c.code", [$branch_id]);
-    return ['waiting' => $waiting, 'waiting_count' => count($waiting), 'counters' => $counters];
+    // neprezentati azi (pentru repunere la rand din receptie)
+    $no_show = all(
+        "SELECT t.id, t.label, s.name AS service_name, s.color, TIME_FORMAT(t.finished_at,'%H:%i') AS at
+         FROM tickets t JOIN services s ON s.id = t.service_id
+         WHERE t.branch_id = ? AND t.status='no_show' AND DATE(t.finished_at)=CURDATE()
+         ORDER BY t.finished_at DESC LIMIT 12", [$branch_id]);
+    return ['waiting' => $waiting, 'waiting_count' => count($waiting), 'counters' => $counters, 'no_show' => $no_show];
 }
 
 /**
