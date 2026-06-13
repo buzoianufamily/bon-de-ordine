@@ -10,6 +10,8 @@
  * Gol / dezactivat => mereu deschis.
  */
 function service_is_open(array $svc, ?int $ts = null): bool {
+    // pauza temporara pe serviciu -> inchis, indiferent de orar
+    if (!empty($svc['paused'])) return false;
     // zi inchisa (sarbatoare / inchidere) pe filiala sau globala -> inchis, indiferent de orar
     if (isset($svc['branch_id']) && branch_closure_reason((int)$svc['branch_id'], $ts) !== null) return false;
     $raw = trim((string)($svc['active_hours'] ?? ''));
@@ -79,6 +81,7 @@ function next_number(array $service): int {
 function issue_ticket(int $service_id, bool $priority = false, string $channel = 'paper', ?string $phone = null, ?string $form_data = null): array {
     $svc = one('SELECT * FROM services WHERE id = ? AND status = "active"', [$service_id]);
     if (!$svc) throw new RuntimeException('Serviciu indisponibil');
+    if (!empty($svc['paused'])) throw new RuntimeException('Serviciul este oprit temporar');
     $closure = branch_closure_reason((int)$svc['branch_id']);
     if ($closure !== null) throw new RuntimeException('Inchis astazi' . ($closure !== '' ? ' · ' . $closure : ''));
     if (!service_is_open($svc)) throw new RuntimeException('Serviciul este inchis in acest moment');

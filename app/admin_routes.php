@@ -52,6 +52,10 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'services':
             if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
+            if ($method === 'POST' && $b === 'pause') { csrf_check();
+                $p = (int)!val('SELECT paused FROM services WHERE id=?', [(int)$a]);
+                q('UPDATE services SET paused=? WHERE id=?', [$p, (int)$a]); audit('update','service',(int)$a, $p?'pauza':'reluat');
+                flash($p ? 'Serviciu oprit temporar.' : 'Serviciu reluat.'); redirect('admin/services'); }
             if ($method === 'POST' && $a === null) { admin_service_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM services WHERE id=?', [(int)$a]); audit('delete','service',(int)$a); flash('Serviciu sters.'); redirect('admin/services'); }
             if ($a === 'new') { admin_service_form(null); return; }

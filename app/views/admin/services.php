@@ -14,11 +14,12 @@
       </div>
       <span class="grip" title="Trage pentru a rearanja">⠿</span>
     </div>
-    <div class="mbody grow"><?= $r['description']? e($r['description']) : '' ?></div>
+    <div class="mbody grow"><?= $r['description']? e($r['description']) : '' ?><?php if(!empty($r['paused'])): ?> <span class="pill" style="background:#fef3c7;color:#92400e">⏸ oprit temporar</span><?php endif; ?></div>
     <div class="card-foot">
       <span class="st <?= $r['status']==='active'?'on':'' ?>"><span class="d"></span><?= $r['status']==='active'?'Activ':'Inactiv' ?><?php if($open!==null): ?> · <?= $open?'deschis acum':'inchis acum' ?><?php endif; ?></span>
       <span>
-        <a class="lnk" href="<?= e(url('admin/services/'.$r['id'])) ?>">Editeaza</a>
+        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/pause')) ?>" style="display:inline"><?= csrf_field() ?><button class="lnk" style="background:none;border:none;cursor:pointer;color:#d97706;font-weight:700;font:inherit"><?= !empty($r['paused']) ? '▶ Reia' : '⏸ Pauza' ?></button></form>
+        <a class="lnk" href="<?= e(url('admin/services/'.$r['id'])) ?>" style="margin-left:.7rem">Editeaza</a>
         <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi serviciul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
