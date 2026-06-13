@@ -7,6 +7,7 @@ $tiles = [
 ];
 if (setting('mod_concierge','1')==='1') $tiles[] = ['Concierge', 'Receptie: cheama orice bilet la orice ghiseu.', url('concierge'), '🛎'];
 if ($hasAppt && setting('mod_booking','1')==='1') $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu.', url('book'), '📅'];
+if (setting('mod_public_status','0')==='1') $tiles[] = ['Status coada', 'Vezi live ce se serveste si cati sunt la rand.', url('status'), '📊'];
 ?>
 <body class="portalpage"><div class="center"><div class="portal">
   <div style="text-align:center;margin-bottom:1.6rem">
