@@ -162,6 +162,19 @@
 
   <button class="btn btn-primary btn-lg" style="margin-top:1.2rem">Salveaza setarile</button>
 </form>
+
+<div class="card pad" style="max-width:640px;margin-top:1.4rem">
+  <h3 style="margin-top:0">Backup / clonare configurație</h3>
+  <p class="muted" style="font-size:.82rem;margin-top:0">Descarcă toate setările (branding, texte, alerte, module, automatizări) ca fișier JSON — pentru backup sau pentru a configura rapid o altă instanță. Cheile sensibile (chei API, token cron) <strong>nu</strong> se exportă.</p>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+    <a class="btn" href="<?= e(url('admin/settings/export')) ?>">⬇ Exportă configurația</a>
+  </div>
+  <form method="post" action="<?= e(url('admin/settings/import')) ?>" enctype="multipart/form-data" style="margin-top:1rem" data-confirm="Imporți configurația? Setările curente vor fi suprascrise (fără chei API/cron).">
+    <?= csrf_field() ?>
+    <div class="field"><label>Importă dintr-un fișier .json</label><input type="file" name="file" accept="application/json,.json"></div>
+    <button class="btn btn-danger">⬆ Importă configurația</button>
+  </form>
+</div>
 <script>
 /* tab-uri setari */
 (function(){
