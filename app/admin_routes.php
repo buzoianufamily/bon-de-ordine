@@ -214,6 +214,13 @@ function admin_dashboard(): void {
                 GROUP BY s.id ORDER BY worst DESC", $nb());
     $stats['sla_breaches'] = array_sum(array_map(fn($r) => (int)$r['breaching'], $sla));
 
+    // programari azi (doar daca modulul e activ)
+    $stats['appt_today'] = 0; $stats['appt_checkin'] = 0;
+    if (setting('mod_booking', '1') === '1') {
+        $stats['appt_today']   = (int) val("SELECT COUNT(*) FROM appointments WHERE DATE(slot_start)=?" . ($branch?' AND branch_id=?':''), $td());
+        $stats['appt_checkin'] = (int) val("SELECT COUNT(*) FROM appointments WHERE DATE(slot_start)=? AND status='checked_in'" . ($branch?' AND branch_id=?':''), $td());
+    }
+
     $devices = all("SELECT name, type, connection_key, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices" .
         ($branch ? ' WHERE branch_id=?' : '') . " ORDER BY type", $nb());
