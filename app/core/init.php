@@ -8,7 +8,7 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__, 2));
 define('APP_START', microtime(true));
 
-define('APP_SCHEMA_VERSION', 21);   // versiunea curenta a schemei (folosita de migrari si landlord)
+define('APP_SCHEMA_VERSION', 22);   // versiunea curenta a schemei (folosita de migrari si landlord)
 
 $config = require APP_ROOT . '/config/config.php';
 $GLOBALS['__config'] = $config;

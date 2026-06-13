@@ -49,7 +49,7 @@ $renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc,$showW
         <?php if($showWait && $open): ?><span class="wbadge" data-wc="<?= (int)$s['id'] ?>" style="<?= empty($waitCnt[(int)$s['id']])?'display:none':'' ?>">👥 <b><?= (int)($waitCnt[(int)$s['id']] ?? 0) ?></b></span><?php endif; ?>
         <span class="pfx"><?= e($s['prefix']) ?></span>
         <span class="nm"><?= e($snm) ?></span>
-        <span class="ds"><?= $open ? e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet'))) : e($tr('closed_hint',$gd($T,'closed_hint','Inchis acum'))) ?></span>
+        <span class="ds"><?= $open ? e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet'))) : e((!empty($s['paused']) && !empty($s['pause_note'])) ? $s['pause_note'] : $tr('closed_hint',$gd($T,'closed_hint','Inchis acum'))) ?></span>
         <?php if(!$open): ?>
           <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('closed_label',$gd($T,'closed_label','🔒 Inchis'))) ?></span>
         <?php elseif($s['allow_priority'] && !$gb($PU,'ask_type',false)): ?>

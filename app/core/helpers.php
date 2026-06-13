@@ -407,6 +407,9 @@ function run_migrations(): void {
     // v21: pauza temporara per serviciu (opreste emiterea fara a schimba programul)
     if (!$hasCol('services','paused')) $ddl("ALTER TABLE services ADD COLUMN paused TINYINT(1) NOT NULL DEFAULT 0");
 
+    // v22: mesaj afisat clientilor cand serviciul e in pauza
+    if (!$hasCol('services','pause_note')) $ddl("ALTER TABLE services ADD COLUMN pause_note VARCHAR(120) NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -418,7 +421,8 @@ function run_migrations(): void {
             && $hasTable('audit_log') && $hasTable('api_rate') && $hasCol('appointments','reminded_at')
             && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
             && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
-            && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')) {
+            && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
+            && $hasCol('services','pause_note')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}
