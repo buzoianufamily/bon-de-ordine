@@ -7,9 +7,8 @@
   <div id="cdNum" style="font-family:var(--display);font-weight:800;font-size:34vh;line-height:1;margin-top:1vh">—</div>
   <div id="cdHint" class="muted" style="font-size:2.6vh;color:#7d8696">Asteptam urmatorul bon…</div>
 </div>
-<?php if(($notice = active_notice()) !== ''): ?>
-<div style="position:fixed;left:0;right:0;bottom:0;background:#3a2f12;color:#f5d98a;padding:1.4vh 2vw;text-align:center;font-size:2.4vh;font-weight:700">📢 <?= e($notice) ?></div>
-<?php endif; ?>
+<?php $notice = active_notice(); ?>
+<div id="cdNotice" style="position:fixed;left:0;right:0;bottom:0;background:#3a2f12;color:#f5d98a;padding:1.4vh 2vw;text-align:center;font-size:2.4vh;font-weight:700;<?= $notice===''?'display:none':'' ?>"><?= $notice!=='' ? '📢 '.e($notice) : '' ?></div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 (function(){
@@ -22,6 +21,12 @@
   function flash(){ document.body.style.transition='none'; document.body.style.background='var(--accent)';
     setTimeout(function(){ document.body.style.transition='background 1s'; document.body.style.background='#0b0d12'; },140); }
   function render(state){
+    // anuntul general — apare/dispare live
+    var nb = document.getElementById('cdNotice');
+    if(nb){ var nt = (typeof state.notice==='string') ? state.notice.trim() : '';
+      nb.style.display = nt ? '' : 'none';
+      var want = nt ? ('📢 ' + nt) : '';
+      if(nb.textContent !== want) nb.textContent = want; }
     var c = (state.counters||[]).find(function(x){ return +x.id === counterId; });
     if(c && c.status === 'paused'){
       elNum.textContent = '⏸';

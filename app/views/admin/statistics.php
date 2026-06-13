@@ -26,15 +26,32 @@ $delta = function($cur, $prev, bool $invert=false): string {
     return '<span class="kdelta" style="color:'.$col.'">'.$arrow.' '.($pct>0?'+':'').$pct.'%</span>';
 };
 ?>
+<style>
+@media print{
+  .side,.adminbar,.noprint,.dvtoggle,.toast{display:none!important}
+  .shell,.main,.content{display:block!important;margin:0!important;padding:0!important;background:#fff!important}
+  body.admin{background:#fff!important;color:#000!important}
+  .card,.panel{break-inside:avoid;border:1px solid #ccc!important;box-shadow:none!important}
+  .dv-chart.dv-hidden{display:block!important}   /* la print aratam graficul chiar daca era pe tabel */
+  a[href]:after{content:""}
+  .printhead{display:block!important}
+}
+.printhead{display:none}
+</style>
+<div class="printhead" style="margin-bottom:1rem">
+  <h2 style="margin:0"><?= e(setting('brand_name','Bon de ordine')) ?> — Raport statistici</h2>
+  <div style="color:#555"><?= e(date('d.m.Y', strtotime($from))) ?> – <?= e(date('d.m.Y', strtotime($to))) ?><?= $branch ? ' · '.e(array_column($branches,'name','id')[$branch] ?? '') : ' · toate filialele' ?> · generat <?= e(date('d.m.Y H:i')) ?></div>
+</div>
 <div class="topbar">
   <h1>Statistici</h1>
-  <div style="display:flex;gap:.5rem">
+  <div style="display:flex;gap:.5rem" class="noprint">
     <a class="btn btn-primary" href="<?= $qs(['export'=>'xlsx']) ?>">⬇ Export Excel (grafice)</a>
     <a class="btn" href="<?= $qs(['export'=>'csv']) ?>">⬇ Export CSV</a>
+    <button class="btn" onclick="window.print()">🖨 Printează</button>
   </div>
 </div>
 
-<form method="get" action="<?= e(url('admin/statistics')) ?>" class="card pad" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.2rem">
+<form method="get" action="<?= e(url('admin/statistics')) ?>" class="card pad noprint" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.2rem">
   <div class="field" style="margin:0"><label>De la</label><input type="date" name="from" value="<?= e($from) ?>"></div>
   <div class="field" style="margin:0"><label>Pana la</label><input type="date" name="to" value="<?= e($to) ?>"></div>
   <div class="field" style="margin:0"><label>Filiala</label><select name="branch">

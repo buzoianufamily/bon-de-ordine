@@ -10,6 +10,8 @@
  * Gol / dezactivat => mereu deschis.
  */
 function service_is_open(array $svc, ?int $ts = null): bool {
+    // pauza temporara pe serviciu -> inchis, indiferent de orar
+    if (!empty($svc['paused'])) return false;
     // zi inchisa (sarbatoare / inchidere) pe filiala sau globala -> inchis, indiferent de orar
     if (isset($svc['branch_id']) && branch_closure_reason((int)$svc['branch_id'], $ts) !== null) return false;
     $raw = trim((string)($svc['active_hours'] ?? ''));
@@ -79,6 +81,7 @@ function next_number(array $service): int {
 function issue_ticket(int $service_id, bool $priority = false, string $channel = 'paper', ?string $phone = null, ?string $form_data = null): array {
     $svc = one('SELECT * FROM services WHERE id = ? AND status = "active"', [$service_id]);
     if (!$svc) throw new RuntimeException('Serviciu indisponibil');
+    if (!empty($svc['paused'])) throw new RuntimeException('Serviciul este oprit temporar');
     $closure = branch_closure_reason((int)$svc['branch_id']);
     if ($closure !== null) throw new RuntimeException('Inchis astazi' . ($closure !== '' ? ' · ' . $closure : ''));
     if (!service_is_open($svc)) throw new RuntimeException('Serviciul este inchis in acest moment');
@@ -260,6 +263,15 @@ function transfer_ticket(int $ticket_id, int $service_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
+/** Repune un bilet neprezentat inapoi la rand (clientul a ajuns tarziu). Merge la coada, cu ora curenta. */
+function requeue_ticket(int $ticket_id): bool {
+    $st = q("UPDATE tickets SET status='waiting', counter_id=NULL, called_at=NULL, served_at=NULL, finished_at=NULL,
+                    issued_at=NOW(), recall_count=0
+             WHERE id=? AND status='no_show'", [$ticket_id]);
+    if ($st->rowCount() > 0) { ticket_event($ticket_id, 'ticket.created'); return true; }
+    return false;
+}
+
 /** Coada unei filiale pentru modul Concierge: bilete individuale la rand + ghisee. */
 function branch_queue(int $branch_id): array {
     $waiting = all(
@@ -272,14 +284,20 @@ function branch_queue(int $branch_id): array {
                 (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
                  ORDER BY t.called_at DESC LIMIT 1) AS current_label
          FROM counters c WHERE c.branch_id = ? ORDER BY c.code", [$branch_id]);
-    return ['waiting' => $waiting, 'waiting_count' => count($waiting), 'counters' => $counters];
+    // neprezentati azi (pentru repunere la rand din receptie)
+    $no_show = all(
+        "SELECT t.id, t.label, s.name AS service_name, s.color, TIME_FORMAT(t.finished_at,'%H:%i') AS at
+         FROM tickets t JOIN services s ON s.id = t.service_id
+         WHERE t.branch_id = ? AND t.status='no_show' AND DATE(t.finished_at)=CURDATE()
+         ORDER BY t.finished_at DESC LIMIT 12", [$branch_id]);
+    return ['waiting' => $waiting, 'waiting_count' => count($waiting), 'counters' => $counters, 'no_show' => $no_show];
 }
 
 /**
  * Starea curenta a cozii pentru o filiala.
  * Folosita de afisaj (player) si terminal (polling/SSE).
  */
-function queue_state(int $branch_id): array {
+function queue_state(int $branch_id, bool $withEstimates = false): array {
     // ultimele bilete chemate (pt lista pe TV)
     $called = all(
         "SELECT t.id, t.label, t.status, t.priority, t.called_at, t.recall_count,
@@ -300,6 +318,22 @@ function queue_state(int $branch_id): array {
          WHERE s.branch_id = ? AND s.status = 'active'
          GROUP BY s.id ORDER BY s.sort_order", [$branch_id]);
 
+    // (optional) timp estimat de asteptare per serviciu — calculat doar la cerere (nu pe fiecare tick SSE)
+    if ($withEstimates) {
+        $open = max(1, (int) val("SELECT COUNT(*) FROM counters WHERE branch_id=? AND status='open'", [$branch_id]));
+        $avgBySvc = [];
+        foreach (all("SELECT service_id, AVG(TIMESTAMPDIFF(SECOND, called_at, finished_at)) a
+                      FROM tickets WHERE branch_id=? AND status='served' AND called_at IS NOT NULL
+                        AND finished_at >= NOW() - INTERVAL 7 DAY GROUP BY service_id", [$branch_id]) as $r)
+            $avgBySvc[(int)$r['service_id']] = (float)$r['a'];
+        foreach ($waiting as &$w) {
+            $cnt = (int)$w['cnt'];
+            $avg = $avgBySvc[(int)$w['id']] ?? 0; if ($avg <= 0) $avg = 300; // fallback 5 min
+            $w['est'] = $cnt > 0 ? (int) round($cnt * $avg / $open) : 0;
+        }
+        unset($w);
+    }
+
     // ghisee si biletul curent
     $counters = all(
         "SELECT c.id, c.code, c.name, c.status, c.pause_note,
@@ -314,6 +348,7 @@ function queue_state(int $branch_id): array {
         'called'   => $called,
         'waiting'  => $waiting,
         'counters' => $counters,
+        'notice'   => active_notice(),   // anunt general (banner) — live pe toate afisajele
     ];
 }
 
@@ -341,5 +376,16 @@ function counter_view(array $counter): array {
          JOIN services s ON s.id = t.service_id
          WHERE t.counter_id = ? AND t.status IN ('called','serving')
          ORDER BY t.called_at DESC LIMIT 1", [$counter['id']]);
-    return ['current' => $current, 'waiting' => $waiting, 'waiting_count' => count($waiting)];
+    // neprezentati recent (azi) pe serviciile ghiseului — pot fi repusi la rand daca ajung tarziu
+    $no_show = [];
+    if ($svcIds) {
+        $in = implode(',', array_fill(0, count($svcIds), '?'));
+        $no_show = all(
+            "SELECT t.id, t.label, s.name AS service_name, s.color,
+                    TIME_FORMAT(t.finished_at, '%H:%i') AS at
+             FROM tickets t JOIN services s ON s.id = t.service_id
+             WHERE t.status='no_show' AND DATE(t.finished_at)=CURDATE() AND t.service_id IN ($in)
+             ORDER BY t.finished_at DESC LIMIT 8", $svcIds);
+    }
+    return ['current' => $current, 'waiting' => $waiting, 'waiting_count' => count($waiting), 'no_show' => $no_show];
 }

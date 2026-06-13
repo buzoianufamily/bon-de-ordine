@@ -14,11 +14,12 @@
       </div>
       <span class="grip" title="Trage pentru a rearanja">⠿</span>
     </div>
-    <div class="mbody grow"><?= $r['description']? e($r['description']) : '' ?></div>
+    <div class="mbody grow"><?= $r['description']? e($r['description']) : '' ?><?php if(!empty($r['paused'])): ?> <span class="pill" style="background:#fef3c7;color:#92400e">⏸ oprit temporar<?= !empty($r['pause_note']) ? ' · '.e($r['pause_note']) : '' ?></span><?php endif; ?></div>
     <div class="card-foot">
       <span class="st <?= $r['status']==='active'?'on':'' ?>"><span class="d"></span><?= $r['status']==='active'?'Activ':'Inactiv' ?><?php if($open!==null): ?> · <?= $open?'deschis acum':'inchis acum' ?><?php endif; ?></span>
       <span>
-        <a class="lnk" href="<?= e(url('admin/services/'.$r['id'])) ?>">Editeaza</a>
+        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/pause')) ?>" style="display:inline" data-pause="<?= empty($r['paused'])?'1':'0' ?>"><?= csrf_field() ?><input type="hidden" name="note" value=""><button class="lnk" style="background:none;border:none;cursor:pointer;color:#d97706;font-weight:700;font:inherit"><?= !empty($r['paused']) ? '▶ Reia' : '⏸ Pauza' ?></button></form>
+        <a class="lnk" href="<?= e(url('admin/services/'.$r['id'])) ?>" style="margin-left:.7rem">Editeaza</a>
         <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi serviciul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
@@ -52,6 +53,18 @@ window.addEventListener('load', function(){
     if(!t || !dragEl || t === dragEl) return;
     var cards = Array.prototype.slice.call(grid.querySelectorAll('.mcard'));
     if(cards.indexOf(dragEl) < cards.indexOf(t)) t.after(dragEl); else t.before(dragEl);
+  });
+  /* la oprirea unui serviciu, intreaba (optional) un mesaj pentru clienti */
+  document.querySelectorAll('form[data-pause="1"]').forEach(function(f){
+    f.addEventListener('submit', function(e){
+      if(f.dataset.asked==='1') return;            // a doua oara (dupa prompt) lasam sa treaca
+      e.preventDefault();
+      QMS.prompt('Mesaj afișat clienților (opțional):', {placeholder:'ex: Revenim la 14:00', ok:'Oprește'}).then(function(v){
+        if(v===null) return;                        // anulat
+        f.querySelector('input[name="note"]').value = v || '';
+        f.dataset.asked='1'; f.submit();
+      });
+    });
   });
 });
 </script>

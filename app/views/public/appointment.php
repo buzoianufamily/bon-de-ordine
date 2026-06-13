@@ -22,5 +22,10 @@ $st=$statusMap[$a['status']]??['—','#888']; ?>
   <?php elseif($a['status']==='booked'): ?>
     <p class="muted" style="margin-top:1rem;font-size:.85rem">Check-in-ul devine disponibil cu 30 de minute inainte de ora programata.</p>
   <?php endif; ?>
+  <?php if($a['status']==='booked'): ?>
+    <form method="post" action="<?= e(url('a/'.$a['public_token'].'/cancel')) ?>" style="margin-top:.6rem" data-confirm="Anulezi programarea? Locul se eliberează pentru alți clienți.">
+      <button class="btn btn-ghost" style="width:100%">Anulează programarea</button>
+    </form>
+  <?php endif; ?>
   <p class="muted" style="font-size:.76rem;margin-top:1.2rem">Pastreaza acest link — il poti redeschide oricand pentru status.</p>
 </div></div></body></html>

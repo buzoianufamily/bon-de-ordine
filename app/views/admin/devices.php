@@ -2,7 +2,7 @@
 $labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj TV (widget)','digital_ticket'=>'Bilet digital QR','launcher'=>'Launcher'];
 $badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>'QR','launcher'=>'L'];
 function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
-<div class="topbar"><h1>Dispozitive</h1><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Dispozitiv nou</a></div>
+<div class="topbar"><h1>Dispozitive</h1><div style="display:flex;gap:.5rem"><a class="btn btn-ghost" href="<?= e(url('admin/devices/qr')) ?>">🔳 Coduri QR</a><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Dispozitiv nou</a></div></div>
 <?= list_toolbar('Cauta dispozitiv...') ?>
 <div class="cardgrid">
 <?php foreach($rows as $d): $u=dev_url($d); ?>

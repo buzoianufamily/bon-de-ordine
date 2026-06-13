@@ -75,6 +75,7 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
         <div class="field"><label>Inchidere automata bilet (sec)</label><input type="number" id="f__logic__auto_return_sec" value="<?= e($gd($L,'auto_return_sec',7)) ?>"></div>
         <div class="field"><label>Screensaver dupa (sec, 0=oprit)</label><input type="number" id="f__logic__screensaver_sec" value="<?= e($gd($L,'screensaver_sec',0)) ?>"></div>
       </div>
+      <label class="chk"><input type="checkbox" id="f__logic__show_waiting" <?= $cb($gb($L,'show_waiting',false)) ?>> Arata pe butoane cati asteapta la fiecare serviciu (👥, live)</label>
       <div class="field"><label>Ce se tipareste pe bon</label>
         <label class="chk"><input type="checkbox" id="f__logic__print_logo" <?= $cb($gb($L,'print_logo',true)) ?>> Logo</label>
         <label class="chk"><input type="checkbox" id="f__logic__print_service" <?= $cb($gb($L,'print_service',true)) ?>> Numele serviciului</label>
@@ -124,6 +125,7 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
       <div class="field"><label>Titlu fereastra bilet</label><input id="f__texts__popup_title" value="<?= e($gd($T,'popup_title','Biletul dumneavoastra')) ?>"></div>
       <div class="field"><label>Text „X inainte" (foloseste {n})</label><input id="f__texts__ahead_text" value="<?= e($gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra')) ?>"></div>
       <div class="field"><label>Text cand e primul la rand</label><input id="f__texts__ahead_first" value="<?= e($gd($T,'ahead_first','Sunteti urmatorul la rand')) ?>"></div>
+      <div class="field"><label>Text timp estimat (foloseste {m} = minute)</label><input id="f__texts__wait_est_text" value="<?= e($gd($T,'wait_est_text','Timp estimat ~{m} min')) ?>"></div>
       <div class="field"><label>Text langa codul QR</label><input id="f__texts__qr_hint" value="<?= e($gd($T,'qr_hint','Urmariti pe telefon')) ?>"></div>
       <div class="row2">
         <div class="field"><label>Buton inchidere</label><input id="f__texts__done_btn" value="<?= e($gd($T,'done_btn','Gata')) ?>"></div>

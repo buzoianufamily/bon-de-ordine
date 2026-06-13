@@ -62,6 +62,9 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   <div class="statcard"><div class="t">Timp mediu asteptare</div><div class="s">mm:ss · 7 zile</div><div class="v" id="sv-avg"><?= mmss($stats['avg_wait']) ?></div><?= spark($trend['wait'] ?? []) ?></div>
   <div class="statcard"><div class="t">Varf de zi</div><div class="s">ora cu cele mai multe</div><div class="v" id="sv-peak"><?= e($stats['peak']) ?></div></div>
   <div class="statcard"><div class="t">Depasiri SLA</div><div class="s">asteapta peste tinta</div><div class="v" id="sv-sla" style="color:<?= !empty($stats['sla_breaches'])?'var(--danger)':'var(--ink)' ?>"><?= (int)$stats['sla_breaches'] ?></div></div>
+  <?php if(setting('mod_booking','1')==='1'): ?>
+  <div class="statcard"><div class="t">Programari azi</div><div class="s"><span id="sv-appt-ci"><?= (int)$stats['appt_checkin'] ?></span> check-in</div><div class="v" id="sv-appt"><?= (int)$stats['appt_today'] ?></div></div>
+  <?php endif; ?>
 </div>
 
 <div class="panel" id="slaPanel" style="margin-bottom:1.3rem;border-left:3px solid var(--danger)<?= empty($sla)?';display:none':'' ?>">
@@ -205,6 +208,7 @@ window.addEventListener('load', function(){
     set('sv-served',r.stats.served); set('sv-avg',mmss(r.stats.avg_wait));
     set('sv-abandon',(r.stats.abandon||0)+'%'); set('sv-peak',r.stats.peak||'—');
     set('sv-sla',r.stats.sla_breaches||0);
+    set('sv-appt',r.stats.appt_today||0); set('sv-appt-ci',(r.stats.appt_checkin||0)+' check-in');
     var svSla=document.getElementById('sv-sla'); if(svSla) svSla.style.color=(r.stats.sla_breaches>0)?'var(--danger)':'var(--ink)';
     var slaP=document.getElementById('slaPanel'), slaR=document.getElementById('slaRows');
     if(slaP&&slaR){ var sla=r.sla||[];

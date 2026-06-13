@@ -2,7 +2,7 @@
 $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order',[$counter['branch_id']]); ?>
 <body><div class="counter-wrap">
   <div class="topbar">
-    <div><div class="muted">Operator: <?= e($u['name']) ?></div>
+    <div><div class="muted">Operator: <?= e($u['name']) ?> <span id="myStats" class="pill" style="background:#eef2ff;color:#3730a3;display:none;margin-left:.4rem"></span></div>
       <h1 style="margin:0"><?= e($counter['name']) ?> <span class="muted" style="font-weight:600">(<?= e($counter['code']) ?>)</span></h1></div>
     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
       <?php $myStatus = (string)(val('SELECT work_status FROM users WHERE id=?', [$u['id']]) ?: 'offline');
@@ -44,6 +44,10 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <div class="muted" style="font-size:.8rem;margin-top:.3rem">Selecteaza un bilet (un singur bilet) ca sa apara optiunile: chemare / recheamare / in servire / finalizat / neprezentat.</div>
       <div id="selBar" class="selbar" style="display:none"></div>
       <div class="qlist" id="qList" style="margin-top:.6rem"></div>
+      <div id="nsBox" style="display:none;margin-top:1rem;border-top:1px solid var(--line,#e6e8ec);padding-top:.7rem">
+        <div class="muted" style="font-size:.8rem;margin-bottom:.4rem">Neprezentați azi — repune-i la rând dacă au ajuns:</div>
+        <div id="nsList" style="display:flex;flex-wrap:wrap;gap:.4rem"></div>
+      </div>
     </div>
   </div>
 </div>

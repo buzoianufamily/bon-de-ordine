@@ -35,9 +35,8 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
     <span class="stbranch"><?= e($branch['name']) ?></span>
     <span style="margin-left:auto;font-size:.8rem;color:#9aa3b2"><span class="stdot"></span>live</span>
   </div>
-  <?php if(($notice = active_notice()) !== ''): ?>
-    <div style="background:#3a2f12;color:#f5d98a;border:1px solid #5a4a1a;border-radius:12px;padding:.7rem 1.1rem;margin-bottom:1rem;font-weight:600">📢 <?= e($notice) ?></div>
-  <?php endif; ?>
+  <?php $notice = active_notice(); ?>
+  <div id="stNotice" style="background:#3a2f12;color:#f5d98a;border:1px solid #5a4a1a;border-radius:12px;padding:.7rem 1.1rem;margin-bottom:1rem;font-weight:600;<?= $notice===''?'display:none':'' ?>"><?= $notice!=='' ? '📢 '.e($notice) : '' ?></div>
   <div class="stgrid">
     <div class="stcard">
       <h2>La ghisee acum</h2>
@@ -61,10 +60,11 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
     <div class="stcard">
       <h2>La rand</h2>
       <div id="waitList">
+        <?php $estMin = fn($s) => ($s>0 ? '~'.max(1,(int)round($s/60)).' min' : ''); ?>
         <?php foreach($waiting as $w): if((int)$w['cnt']<=0) continue; ?>
           <div class="wait-row">
             <span class="wait-tag" style="background:<?= e($w['color']) ?>"><?= e($w['prefix']) ?></span>
-            <span><?= e($w['name']) ?></span>
+            <span style="flex:1"><?= e($w['name']) ?><?php if(!empty($w['est'])): ?><br><span class="muted" style="font-size:.78rem;color:#9aa3b2"><?= e($estMin($w['est'])) ?> așteptare</span><?php endif; ?></span>
             <span class="wait-cnt"><?= (int)$w['cnt'] ?></span>
           </div>
         <?php endforeach; ?>
@@ -81,8 +81,12 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
   function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
   async function refresh(){
     if(!window.QMS) return;
-    var r; try{ r=await QMS.api('api/state?branch='+branch,null,'GET'); }catch(e){ return; }
+    var r; try{ r=await QMS.api('api/state?est=1&branch='+branch,null,'GET'); }catch(e){ return; }
     if(!r||!r.ok) return;
+    var nb=document.getElementById('stNotice');
+    if(nb){ var nt=(typeof r.notice==='string')?r.notice.trim():'';
+      nb.style.display=nt?'':'none';
+      var want=nt?('📢 '+nt):''; if(nb.textContent!==want) nb.textContent=want; }
     var cl=document.getElementById('ctrList');
     if(cl){ cl.innerHTML=(r.counters||[]).map(function(c){
       var right = c.status==='paused' ? '<span class="ctr-pause">⏸ pauza</span>'
@@ -91,8 +95,11 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
     }).join('')||'<div style="color:#6b7280">Niciun ghiseu.</div>'; }
     var wl=document.getElementById('waitList');
     if(wl){ var rows=(r.waiting||[]).filter(function(w){return (+w.cnt)>0;});
-      wl.innerHTML=rows.map(function(w){
-        return '<div class="wait-row"><span class="wait-tag" style="background:'+esc(w.color)+'">'+esc(w.prefix)+'</span><span>'+esc(w.name)+'</span><span class="wait-cnt">'+(+w.cnt)+'</span></div>';
+      var em=function(s){ return (+s>0)?('~'+Math.max(1,Math.round(+s/60))+' min'):''; };
+      wl.innerHTML=rows.map(function(w){ var e2=em(w.est);
+        return '<div class="wait-row"><span class="wait-tag" style="background:'+esc(w.color)+'">'+esc(w.prefix)+'</span>'
+          +'<span style="flex:1">'+esc(w.name)+(e2?'<br><span class="muted" style="font-size:.78rem;color:#9aa3b2">'+e2+' așteptare</span>':'')+'</span>'
+          +'<span class="wait-cnt">'+(+w.cnt)+'</span></div>';
       }).join('')||'<div style="color:#6b7280">Nicio coada de asteptare.</div>'; }
   }
   setInterval(refresh, 5000);

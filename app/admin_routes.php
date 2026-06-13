@@ -52,6 +52,11 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'services':
             if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
+            if ($method === 'POST' && $b === 'pause') { csrf_check();
+                $p = (int)!val('SELECT paused FROM services WHERE id=?', [(int)$a]);
+                $note = $p ? (mb_substr(trim((string)($_POST['note'] ?? '')), 0, 120) ?: null) : null;
+                q('UPDATE services SET paused=?, pause_note=? WHERE id=?', [$p, $note, (int)$a]); audit('update','service',(int)$a, $p?'pauza':'reluat');
+                flash($p ? 'Serviciu oprit temporar.' : 'Serviciu reluat.'); redirect('admin/services'); }
             if ($method === 'POST' && $a === null) { admin_service_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM services WHERE id=?', [(int)$a]); audit('delete','service',(int)$a); flash('Serviciu sters.'); redirect('admin/services'); }
             if ($a === 'new') { admin_service_form(null); return; }
@@ -91,6 +96,7 @@ function admin_dispatch(array $seg, string $method): void {
                 if ($method === 'POST') { admin_dispenser_save((int)$a); return; }
                 admin_dispenser_builder((int)$a); return;
             }
+            if ($a === 'qr') { admin_devices_qr(); return; }
             if ($a === 'new') { admin_device_form(null); return; }
             if (ctype_digit((string)$a)) { admin_device_form((int)$a); return; }
             admin_devices_list(); return;
@@ -126,6 +132,8 @@ function admin_dispatch(array $seg, string $method): void {
             admin_forms_list(); return;
 
         case 'settings':
+            if ($a === 'export') { admin_settings_export(); return; }
+            if ($method === 'POST' && $a === 'import') { admin_settings_import(); return; }
             if ($method === 'POST') { admin_settings_save(); return; }
             admin_settings_form(); return;
 
@@ -154,6 +162,9 @@ function admin_dispatch(array $seg, string $method): void {
         case 'security':
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
+
+        case 'help':
+            view('admin/help', []); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
 }
@@ -202,6 +213,13 @@ function admin_dashboard(): void {
                 . ($branch ? ' AND t.branch_id=?' : '') . "
                 GROUP BY s.id ORDER BY worst DESC", $nb());
     $stats['sla_breaches'] = array_sum(array_map(fn($r) => (int)$r['breaching'], $sla));
+
+    // programari azi (doar daca modulul e activ)
+    $stats['appt_today'] = 0; $stats['appt_checkin'] = 0;
+    if (setting('mod_booking', '1') === '1') {
+        $stats['appt_today']   = (int) val("SELECT COUNT(*) FROM appointments WHERE DATE(slot_start)=?" . ($branch?' AND branch_id=?':''), $td());
+        $stats['appt_checkin'] = (int) val("SELECT COUNT(*) FROM appointments WHERE DATE(slot_start)=? AND status='checked_in'" . ($branch?' AND branch_id=?':''), $td());
+    }
 
     $devices = all("SELECT name, type, connection_key, last_seen,
         (last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices" .
@@ -446,6 +464,11 @@ function admin_user_save(): void {
 function admin_devices_list(): void {
     $rows = all('SELECT d.*, b.name AS branch_name, (d.last_seen IS NOT NULL AND d.last_seen > (NOW() - INTERVAL 2 MINUTE)) AS online FROM devices d JOIN branches b ON b.id=d.branch_id ORDER BY b.name, d.type, d.name');
     view('admin/devices', ['rows' => $rows]);
+}
+/** Foaie printabila cu codurile QR + linkurile dispozitivelor (pentru instalare rapida). */
+function admin_devices_qr(): void {
+    $rows = all('SELECT d.*, b.name AS branch_name FROM devices d JOIN branches b ON b.id=d.branch_id ORDER BY b.name, d.type, d.name');
+    view('admin/devices_qr', ['rows' => $rows]);
 }
 function admin_device_form(?int $id): void {
     $row = $id ? one('SELECT * FROM devices WHERE id=?', [$id]) : null;
@@ -778,6 +801,47 @@ function admin_api_save(): void {
 
 /* ----------------------- SETTINGS ----------------------- */
 function admin_settings_form(): void { view('admin/settings'); }
+/** Chei excluse la export/import config (specifice instantei / sensibile / runtime). */
+function settings_export_denylist(): array {
+    return ['schema_version','api_key','cron_token','webhook_secret','onboarding_dismissed',
+            'last_daily_report','sla_alert_last'];
+}
+/** Export config (settings) ca JSON — pentru backup sau clonare pe alta instanta. */
+function admin_settings_export(): void {
+    $deny = settings_export_denylist();
+    $out = [];
+    foreach (all('SELECT k, v FROM settings ORDER BY k') as $r)
+        if (!in_array($r['k'], $deny, true)) $out[$r['k']] = $r['v'];
+    audit('export', 'settings');
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="config_' . date('Ymd_His') . '.json"');
+    echo json_encode(['brand' => setting('brand_name',''), 'exported_at' => date('c'), 'settings' => $out],
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+/** Import config dintr-un JSON exportat (fisier sau text). Suprascrie cheile (mai putin cele excluse). */
+function admin_settings_import(): void {
+    csrf_check();
+    $raw = '';
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $raw = (string) file_get_contents($_FILES['file']['tmp_name']);
+    elseif (trim((string)($_POST['json'] ?? '')) !== '')
+        $raw = (string) $_POST['json'];
+    if ($raw === '') { flash('Adauga un fisier .json sau lipeste continutul.', 'error'); redirect('admin/settings'); }
+    $data = json_decode($raw, true);
+    $kv = is_array($data['settings'] ?? null) ? $data['settings'] : (is_array($data) ? $data : null);
+    if (!is_array($kv)) { flash('Fisier invalid: nu contine setari.', 'error'); redirect('admin/settings'); }
+    $deny = settings_export_denylist();
+    $n = 0;
+    foreach ($kv as $k => $v) {
+        $k = (string)$k;
+        if ($k === '' || in_array($k, $deny, true) || !is_scalar($v)) continue;
+        set_setting($k, (string)$v); $n++;
+    }
+    audit('import', 'settings', null, $n.' chei');
+    flash($n > 0 ? ("Configuratie importata ($n setari). Verifica branding/texte.") : 'Nicio setare valida de importat.', $n>0?'info':'error');
+    redirect('admin/settings');
+}
 function admin_settings_save(): void {
     csrf_check();
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',

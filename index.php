@@ -123,7 +123,7 @@ SWJS;
         // ---- endpoint-uri publice (folosite de dispozitive) ----
         if ($action === 'state') { // polling afisaj
             $branch = (int)($_GET['branch'] ?? 1);
-            json_out(['ok' => true] + queue_state($branch));
+            json_out(['ok' => true] + queue_state($branch, !empty($_GET['est'])));
         }
         if ($action === 'sse') { // server-sent events pentru afisaj
             sse_stream((int)($_GET['branch'] ?? 1));
@@ -157,6 +157,7 @@ SWJS;
             }
             $svcRow = one('SELECT * FROM services WHERE id = ?', [$svc]);
             $resp = ['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
+                     'wait_est' => est_wait_seconds($t),
                      'virtual_url' => url('t/' . $t['public_token'])];
             // daca dispozitivul printeaza in retea, trimite acum
             if ($dev && $dev['printer_mode'] === 'network' && $dev['printer_ip']) {
@@ -169,6 +170,14 @@ SWJS;
                 $resp['escpos_b64'] = base64_encode($bytes);
             }
             json_out($resp);
+        }
+        if ($action === 'virtual-cancel' && $method === 'POST') { // clientul renunta la rand de pe telefon
+            $tok = (string) input('token', '');
+            $row = $tok !== '' ? one("SELECT id, status FROM tickets WHERE public_token = ?", [$tok]) : null;
+            if (!$row) json_out(['ok' => false, 'error' => 'Bilet inexistent'], 404);
+            if (!in_array($row['status'], ['waiting','called'], true)) json_out(['ok' => false, 'error' => 'Biletul nu mai poate fi anulat']);
+            cancel_ticket((int)$row['id']);
+            json_out(['ok' => true]);
         }
         if ($action === 'heartbeat' && $method === 'POST') {
             $dev = device_by_key((string)input('device_key', ''));
@@ -190,6 +199,14 @@ SWJS;
                 q('UPDATE users SET work_status = ?, last_seen = NOW() WHERE id = ?', [$stt, (int)$u['id']]);
                 json_out(['ok' => true, 'status' => $stt]);
             }
+            case 'issue-manual': {   // emitere bon walk-in de la receptie/operator
+                $svcId = (int) input('service_id', 0);
+                $priority = (bool) input('priority', false);
+                try { $t = issue_ticket($svcId, $priority, 'web'); }
+                catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+                json_out(['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
+                          'virtual_url' => url('t/' . $t['public_token'])]);
+            }
             case 'call-next':
                 $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);
@@ -200,6 +217,7 @@ SWJS;
             case 'serving':   start_serving((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'finish':    finish_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'no-show':   no_show_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
+            case 'requeue':   $rq = requeue_ticket((int)input('ticket_id', 0)); json_out(['ok' => $rq] + ($rq ? [] : ['error' => 'Biletul nu mai poate fi repus']));
             case 'cancel':    cancel_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'transfer':  transfer_ticket((int)input('ticket_id', 0), (int)input('service_id', 0)); json_out(['ok' => true]);
             case 'transfer-counter': transfer_to_counter((int)input('ticket_id', 0), (int)input('target_counter', 0)); json_out(['ok' => true]);
@@ -215,7 +233,15 @@ SWJS;
             case 'counter-state':
                 $c = one('SELECT * FROM counters WHERE id = ?', [(int)($_GET['counter_id'] ?? 0)]);
                 if (!$c) json_out(['ok' => false], 404);
-                json_out(['ok' => true] + counter_view($c));
+                $myStats = one("SELECT COUNT(*) served,
+                                  AVG(CASE WHEN finished_at IS NOT NULL AND called_at IS NOT NULL
+                                      THEN TIMESTAMPDIFF(SECOND, called_at, finished_at) END) avg_handle
+                                FROM tickets WHERE agent_id=? AND status='served' AND DATE(finished_at)=CURDATE()",
+                                [(int)$u['id']]) ?: ['served'=>0,'avg_handle'=>null];
+                json_out(['ok' => true, 'me' => [
+                    'served' => (int)$myStats['served'],
+                    'avg_handle' => (int)round((float)($myStats['avg_handle'] ?? 0)),
+                ]] + counter_view($c));
             case 'branch-state':
                 json_out(['ok' => true] + branch_queue((int)($_GET['branch'] ?? 1)));
         }
@@ -382,7 +408,7 @@ SWJS;
         $branchId = (int)($seg[1] ?? $_GET['branch'] ?? 1);
         $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: one('SELECT * FROM branches ORDER BY id LIMIT 1');
         if (!$branch) { http_response_code(404); echo 'Filiala inexistenta.'; return; }
-        view('public/status', ['branch' => $branch] + queue_state((int)$branch['id']));
+        view('public/status', ['branch' => $branch] + queue_state((int)$branch['id'], true));
         return;
     }
 
@@ -431,6 +457,13 @@ SWJS;
             try { $tk = appt_checkin($appt); redirect('t/'.$tk['public_token']); }
             catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }
         }
+        if (($seg[2] ?? '') === 'cancel' && $method === 'POST') {
+            if ($appt['status'] === 'booked') {
+                q("UPDATE appointments SET status='cancelled' WHERE id=?", [$appt['id']]);
+                flash('Programarea a fost anulată.');
+            } else flash('Programarea nu mai poate fi anulată.', 'error');
+            redirect('a/'.$seg[1]);
+        }
         view('public/appointment', ['a' => $appt]);
         return;
     }
@@ -452,7 +485,8 @@ SWJS;
         $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));
         $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: ($branches[0] ?? ['id'=>0,'name'=>'—']);
         $counters = all('SELECT id,code,name,status FROM counters WHERE branch_id=? ORDER BY code', [$branch['id']]);
-        view('public/concierge', compact('u','branches','branch','counters'));
+        $services = all('SELECT id,prefix,name,color,allow_priority FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order', [$branch['id']]);
+        view('public/concierge', compact('u','branches','branch','counters','services'));
         return;
     }
 
@@ -528,7 +562,9 @@ function sse_stream(int $branch): void {
     $start = time();
     while (true) {
         $state = queue_state($branch);
-        $hash = md5(json_encode($state['called']) . json_encode($state['counters']));
+        // include si 'waiting' + 'notice' in hash: altfel TV-ul nu afla de bilete noi emise / anunt schimbat
+        $hash = md5(json_encode($state['called']) . json_encode($state['counters'])
+                  . json_encode($state['waiting']) . (string)($state['notice'] ?? ''));
         if ($hash !== $lastHash) {
             echo 'data: ' . json_encode($state, JSON_UNESCAPED_UNICODE) . "\n\n";
             $lastHash = $hash;

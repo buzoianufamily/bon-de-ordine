@@ -35,13 +35,21 @@ $grouped = []; $ungrouped = [];
 foreach ($services as $s) { $gid=(int)($s['group_id']??0); if ($gid && isset($groupsById[$gid])) $grouped[$gid][]=$s; else $ungrouped[]=$s; }
 $hasGroups = !empty($grouped);
 // randeaza un buton de serviciu (folosit si in mod plat, si grupat)
-$renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc) {
+// (optional) cati asteapta acum la fiecare serviciu — afisat pe butoane si actualizat live
+$showWait = $gb($L,'show_waiting',false);
+$waitCnt = [];
+if ($showWait) {
+    try { foreach (all("SELECT service_id, COUNT(*) c FROM tickets WHERE status='waiting' AND branch_id=? GROUP BY service_id", [$branch['id']]) as $r)
+        $waitCnt[(int)$r['service_id']] = (int)$r['c']; } catch (Throwable $e) {}
+}
+$renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc,$showWait,$waitCnt) {
   $open=service_is_open($s); $snm=$svcName($s); $sds=$svcDesc($s); ?>
       <button class="svc-btn<?= $open?'':' closed' ?>" <?= $open?'':'disabled' ?> data-id="<?= (int)$s['id'] ?>" data-color="<?= e($s['color']) ?>" data-priority="<?= $s['allow_priority']?'1':'0' ?>" data-name="<?= e($snm) ?>"
               style="background:linear-gradient(135deg,<?= e($s['color']) ?>,<?= e($s['color']) ?>cc)">
+        <?php if($showWait && $open): ?><span class="wbadge" data-wc="<?= (int)$s['id'] ?>" style="<?= empty($waitCnt[(int)$s['id']])?'display:none':'' ?>">👥 <b><?= (int)($waitCnt[(int)$s['id']] ?? 0) ?></b></span><?php endif; ?>
         <span class="pfx"><?= e($s['prefix']) ?></span>
         <span class="nm"><?= e($snm) ?></span>
-        <span class="ds"><?= $open ? e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet'))) : e($tr('closed_hint',$gd($T,'closed_hint','Inchis acum'))) ?></span>
+        <span class="ds"><?= $open ? e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet'))) : e((!empty($s['paused']) && !empty($s['pause_note'])) ? $s['pause_note'] : $tr('closed_hint',$gd($T,'closed_hint','Inchis acum'))) ?></span>
         <?php if(!$open): ?>
           <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('closed_label',$gd($T,'closed_label','🔒 Inchis'))) ?></span>
         <?php elseif($s['allow_priority'] && !$gb($PU,'ask_type',false)): ?>
@@ -73,6 +81,7 @@ if ($fids) {
 .lang-pill.on{background:#1a1d23;color:#fff}
 .grp-head{font-weight:800;font-size:1.3rem;color:#1a1d23;margin:1.4rem auto .2rem;max-width:1100px;width:100%;padding:.3rem .8rem;background:rgba(0,0,0,.04);border-radius:8px}
 .grp-head:first-of-type{margin-top:.4rem}
+.wbadge{position:absolute;top:.7rem;right:.8rem;background:rgba(0,0,0,.35);color:#fff;border-radius:999px;padding:.25rem .7rem;font-weight:700;font-size:.95rem;line-height:1.2}
 </style>
 <body><div class="kiosk">
   <?php if(count($enabledLangs)>1): ?>
@@ -92,11 +101,8 @@ if ($fids) {
       🚫 <?= e($tr('closed_today', $gd($T,'closed_today','Închis astăzi'))) ?><?= $closedToday !== '' ? ' · '.e($closedToday) : '' ?>
     </div>
   <?php endif; ?>
-  <?php if(($notice = active_notice()) !== ''): ?>
-    <div style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fef3c7;color:#92400e;border-radius:14px;padding:.8rem 1.2rem;text-align:center;font-weight:700">
-      📢 <?= e($notice) ?>
-    </div>
-  <?php endif; ?>
+  <?php $notice = active_notice(); ?>
+  <div id="dspNotice" style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fef3c7;color:#92400e;border-radius:14px;padding:.8rem 1.2rem;text-align:center;font-weight:700;<?= $notice===''?'display:none':'' ?>"><?= $notice!=='' ? '📢 '.e($notice) : '' ?></div>
   <?php if(!$services): ?>
     <div class="svc-grid"><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
   <?php elseif($hasGroups): ?>
@@ -121,6 +127,7 @@ if ($fids) {
     <div class="big" id="tkNum">—</div>
     <img class="qr" id="tkQr" alt="" style="display:none">
     <div class="muted" id="tkPos"></div>
+    <div class="muted" id="tkWait" style="display:none;margin-top:.2rem;font-weight:700"></div>
     <div class="countdown">Se inchide in <span id="cd">7</span>s</div>
     <button class="btn" style="margin-top:1rem" onclick="qmsCloseTicket()" id="tkDone">Gata</button>
   </div>
@@ -138,11 +145,12 @@ if ($fids) {
   accent:<?= json_encode(setting('accent_color','#2563eb')) ?>, brand:<?= json_encode(setting('brand_name','')) ?>,
   branch:<?= json_encode($branch['name']) ?>, footer:<?= json_encode($footer) ?>,
   virtual:<?= setting('virtual_enabled','1')==='1'?'true':'false' ?>, logo:<?= json_encode($logo) ?>,
+  branchId:<?= (int)$branch['id'] ?>, showWaiting:<?= $showWait?'true':'false' ?>,
   forms:<?= json_encode($svcForms, JSON_UNESCAPED_UNICODE) ?>,
   lang:<?= json_encode($lang) ?>, revertUrl:<?= json_encode($revertUrl) ?>,
   autoReturn:<?= (int)$gd($L,'auto_return_sec',7) ?>, screensaver:<?= (int)$gd($L,'screensaver_sec',0) ?>,
   print:{logo:<?= $gb($L,'print_logo',true)?1:0 ?>,service:<?= $gb($L,'print_service',true)?1:0 ?>,position:<?= $gb($L,'print_position',true)?1:0 ?>,datetime:<?= $gb($L,'print_datetime',true)?1:0 ?>,qr:<?= $gb($L,'print_qr',true)?1:0 ?>},
-  texts:{popup_title:<?= json_encode($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= json_encode($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= json_encode($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= json_encode($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= json_encode($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>},
+  texts:{popup_title:<?= json_encode($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= json_encode($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= json_encode($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= json_encode($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= json_encode($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= json_encode($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>},
   popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= json_encode($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= json_encode($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= json_encode($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= json_encode($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= json_encode($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= json_encode($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= json_encode($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
 <script src="<?= e(asset('js/dispenser.js')) ?>"></script>
