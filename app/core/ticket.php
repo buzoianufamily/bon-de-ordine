@@ -260,6 +260,15 @@ function transfer_ticket(int $ticket_id, int $service_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
+/** Repune un bilet neprezentat inapoi la rand (clientul a ajuns tarziu). Merge la coada, cu ora curenta. */
+function requeue_ticket(int $ticket_id): bool {
+    $st = q("UPDATE tickets SET status='waiting', counter_id=NULL, called_at=NULL, served_at=NULL, finished_at=NULL,
+                    issued_at=NOW(), recall_count=0
+             WHERE id=? AND status='no_show'", [$ticket_id]);
+    if ($st->rowCount() > 0) { ticket_event($ticket_id, 'ticket.created'); return true; }
+    return false;
+}
+
 /** Coada unei filiale pentru modul Concierge: bilete individuale la rand + ghisee. */
 function branch_queue(int $branch_id): array {
     $waiting = all(
@@ -342,5 +351,16 @@ function counter_view(array $counter): array {
          JOIN services s ON s.id = t.service_id
          WHERE t.counter_id = ? AND t.status IN ('called','serving')
          ORDER BY t.called_at DESC LIMIT 1", [$counter['id']]);
-    return ['current' => $current, 'waiting' => $waiting, 'waiting_count' => count($waiting)];
+    // neprezentati recent (azi) pe serviciile ghiseului — pot fi repusi la rand daca ajung tarziu
+    $no_show = [];
+    if ($svcIds) {
+        $in = implode(',', array_fill(0, count($svcIds), '?'));
+        $no_show = all(
+            "SELECT t.id, t.label, s.name AS service_name, s.color,
+                    TIME_FORMAT(t.finished_at, '%H:%i') AS at
+             FROM tickets t JOIN services s ON s.id = t.service_id
+             WHERE t.status='no_show' AND DATE(t.finished_at)=CURDATE() AND t.service_id IN ($in)
+             ORDER BY t.finished_at DESC LIMIT 8", $svcIds);
+    }
+    return ['current' => $current, 'waiting' => $waiting, 'waiting_count' => count($waiting), 'no_show' => $no_show];
 }

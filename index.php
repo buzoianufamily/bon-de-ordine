@@ -200,6 +200,7 @@ SWJS;
             case 'serving':   start_serving((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'finish':    finish_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'no-show':   no_show_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
+            case 'requeue':   $rq = requeue_ticket((int)input('ticket_id', 0)); json_out(['ok' => $rq] + ($rq ? [] : ['error' => 'Biletul nu mai poate fi repus']));
             case 'cancel':    cancel_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'transfer':  transfer_ticket((int)input('ticket_id', 0), (int)input('service_id', 0)); json_out(['ok' => true]);
             case 'transfer-counter': transfer_to_counter((int)input('ticket_id', 0), (int)input('target_counter', 0)); json_out(['ok' => true]);

@@ -224,6 +224,22 @@
     if(force || barKey!==lastBarKey){ renderBar(); lastBarKey=barKey; }
   }
 
+  function renderNoShow(list){
+    const box=document.getElementById('nsBox'), wrap=document.getElementById('nsList');
+    if(!box||!wrap) return;
+    if(!list.length){ box.style.display='none'; wrap.innerHTML=''; return; }
+    box.style.display='';
+    wrap.innerHTML=list.map(t=>`<button class="btn btn-ghost" data-requeue="${t.id}" title="Repune ${esc(t.label)} la rand" style="font-size:.85rem">
+      ↩ <strong style="color:${esc(t.color||cfg.accent)}">${esc(t.label)}</strong> <span class="muted">${esc(t.at||'')}</span></button>`).join('');
+  }
+  document.getElementById('nsList') && document.getElementById('nsList').addEventListener('click', async e=>{
+    const b=e.target.closest('[data-requeue]'); if(!b) return;
+    const id=+b.dataset.requeue; b.disabled=true;
+    const r=await QMS.api('api/requeue',{ticket_id:id});
+    if(r.ok){ QMS.toast('Bilet repus la rand','ok'); refresh(true); }
+    else { QMS.toast(r.error||'Eroare','error'); b.disabled=false; }
+  });
+
   async function refresh(force){
     const res = await QMS.api('api/counter-state?counter_id='+cfg.counterId, null, 'GET');
     if(!res.ok) return;
@@ -240,6 +256,7 @@
     elWait.textContent = res.waiting_count;
     if(res.me){ const ms=document.getElementById('myStats');
       if(ms){ ms.style.display=''; ms.textContent='✔ '+res.me.served+' azi'+(res.me.avg_handle>0?' · '+mmss(res.me.avg_handle)+'/bon':''); } }
+    renderNoShow(res.no_show||[]);
     notifyNew(res.waiting||[]);
     items = ni;
     if(selId && !items.find(x=>x.id===selId)) selId=null;
