@@ -162,6 +162,9 @@ function admin_dispatch(array $seg, string $method): void {
         case 'security':
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
+
+        case 'help':
+            view('admin/help', []); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
 }
