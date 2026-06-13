@@ -215,7 +215,15 @@ SWJS;
             case 'counter-state':
                 $c = one('SELECT * FROM counters WHERE id = ?', [(int)($_GET['counter_id'] ?? 0)]);
                 if (!$c) json_out(['ok' => false], 404);
-                json_out(['ok' => true] + counter_view($c));
+                $myStats = one("SELECT COUNT(*) served,
+                                  AVG(CASE WHEN finished_at IS NOT NULL AND called_at IS NOT NULL
+                                      THEN TIMESTAMPDIFF(SECOND, called_at, finished_at) END) avg_handle
+                                FROM tickets WHERE agent_id=? AND status='served' AND DATE(finished_at)=CURDATE()",
+                                [(int)$u['id']]) ?: ['served'=>0,'avg_handle'=>null];
+                json_out(['ok' => true, 'me' => [
+                    'served' => (int)$myStats['served'],
+                    'avg_handle' => (int)round((float)($myStats['avg_handle'] ?? 0)),
+                ]] + counter_view($c));
             case 'branch-state':
                 json_out(['ok' => true] + branch_queue((int)($_GET['branch'] ?? 1)));
         }

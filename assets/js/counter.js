@@ -238,6 +238,8 @@
     (res.waiting||[]).forEach(w=> ni.push({id:w.id,label:w.label,service_name:w.service_name,color:w.color,status:'waiting',priority:w.priority,form_data:w.form_data,targeted:!!w.target_counter_id,
       waited:+w.waited||0,target:+w.kpi_wait_sec||0,over:((+w.kpi_wait_sec||0)>0 && (+w.waited||0)>(+w.kpi_wait_sec||0))}));
     elWait.textContent = res.waiting_count;
+    if(res.me){ const ms=document.getElementById('myStats');
+      if(ms){ ms.style.display=''; ms.textContent='✔ '+res.me.served+' azi'+(res.me.avg_handle>0?' · '+mmss(res.me.avg_handle)+'/bon':''); } }
     notifyNew(res.waiting||[]);
     items = ni;
     if(selId && !items.find(x=>x.id===selId)) selId=null;
