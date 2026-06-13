@@ -148,4 +148,24 @@
 
   setInterval(()=> QMS.api('api/heartbeat',{device_key:cfg.key}).catch(()=>{}), 45000);
   QMS.api('api/heartbeat',{device_key:cfg.key}).catch(()=>{});
+
+  /* poll usor (12s): actualizeaza live anuntul general si insignele 👥 "cati asteapta" */
+  async function pollState(){
+    let r; try{ r = await QMS.api('api/state?branch='+(cfg.branchId||1), null, 'GET'); }catch(e){ return; }
+    if(!r || !r.ok) return;
+    const nb = $('dspNotice');
+    if(nb){ const nt = (typeof r.notice==='string') ? r.notice.trim() : '';
+      nb.style.display = nt ? '' : 'none';
+      const want = nt ? ('📢 ' + nt) : '';
+      if(nb.textContent !== want) nb.textContent = want; }
+    if(cfg.showWaiting){
+      const byId = {}; (r.waiting||[]).forEach(w=>{ byId[+w.id] = +w.cnt || 0; });
+      document.querySelectorAll('.wbadge[data-wc]').forEach(b=>{
+        const n = byId[+b.dataset.wc] || 0;
+        b.style.display = n > 0 ? '' : 'none';
+        const bold = b.querySelector('b'); if(bold && bold.textContent !== String(n)) bold.textContent = n;
+      });
+    }
+  }
+  pollState(); setInterval(pollState, 12000);
 })();

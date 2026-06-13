@@ -314,6 +314,7 @@ function queue_state(int $branch_id): array {
         'called'   => $called,
         'waiting'  => $waiting,
         'counters' => $counters,
+        'notice'   => active_notice(),   // anunt general (banner) — live pe toate afisajele
     ];
 }
 

@@ -528,7 +528,9 @@ function sse_stream(int $branch): void {
     $start = time();
     while (true) {
         $state = queue_state($branch);
-        $hash = md5(json_encode($state['called']) . json_encode($state['counters']));
+        // include si 'waiting' + 'notice' in hash: altfel TV-ul nu afla de bilete noi emise / anunt schimbat
+        $hash = md5(json_encode($state['called']) . json_encode($state['counters'])
+                  . json_encode($state['waiting']) . (string)($state['notice'] ?? ''));
         if ($hash !== $lastHash) {
             echo 'data: ' . json_encode($state, JSON_UNESCAPED_UNICODE) . "\n\n";
             $lastHash = $hash;

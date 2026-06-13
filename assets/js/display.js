@@ -205,7 +205,23 @@
   }
 
   const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-  function render(state){ if(hasLayout)renderLayout(state); else renderLegacy(state); announceIfNew(state); }
+
+  /* anunt general (banner 📢 in josul ecranului) — apare/dispare live odata cu setarea */
+  function renderNotice(state){
+    const txt = (state && typeof state.notice === 'string') ? state.notice.trim() : '';
+    let bar = document.getElementById('tvNotice');
+    if(!txt){ if(bar) bar.remove(); return; }
+    if(!bar){
+      bar = document.createElement('div'); bar.id = 'tvNotice';
+      bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:50;background:#3a2f12;color:#f5d98a;'
+        + 'padding:1.2vh 2vw;text-align:center;font-weight:700;font-size:2.4vh;border-top:1px solid #5a4a1a';
+      document.body.appendChild(bar);
+    }
+    const want = '📢 ' + txt;
+    if(bar.textContent !== want) bar.textContent = want;
+  }
+
+  function render(state){ if(hasLayout)renderLayout(state); else renderLegacy(state); renderNotice(state); announceIfNew(state); }
 
   /* clock tick */
   setInterval(()=>{ if(hasLayout){ stage.querySelectorAll('.lw-clock').forEach(el=>paintWidget(el,el.__w,lastState)); }
