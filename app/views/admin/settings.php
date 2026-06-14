@@ -101,6 +101,8 @@
       <div class="field"><label>Mesaj la transfer (max 250)</label><textarea name="alert_transfer" rows="2" maxlength="250"><?= $s('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.') ?></textarea></div>
       <div class="field"><label>Intarziere alerta pe telefon (secunde)</label><input type="number" name="alert_delay" value="<?= $s('alert_delay','0') ?>" min="0" max="120">
         <p class="muted" style="font-size:.82rem;margin-top:.3rem">Dupa apelare, telefonul vibreaza/atentioneaza dupa acest numar de secunde (0 = imediat).</p></div>
+      <div class="field"><label>Alertă „aproape la rând" când mai sunt … înaintea clientului (0 = oprit)</label><input type="number" name="near_turn_alert" value="<?= $s('near_turn_alert','2') ?>" min="0" max="20">
+        <p class="muted" style="font-size:.82rem;margin-top:.3rem">Pe biletul digital, telefonul vibrează și evidențiază poziția când coada scade sub acest prag — un preaviz înainte de apelare.</p></div>
     </div>
   </div>
 

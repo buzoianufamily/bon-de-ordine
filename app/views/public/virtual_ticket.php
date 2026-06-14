@@ -19,11 +19,12 @@ const token = <?= json_encode($token) ?>;
 const ALERTS = {
   called: <?= json_encode(setting('alert_called','Este randul dumneavoastra! Va rugam prezentati-va la ghiseu.')) ?>,
   transfer: <?= json_encode(setting('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.')) ?>,
-  delay: <?= (int) setting('alert_delay','0') ?>
+  delay: <?= (int) setting('alert_delay','0') ?>,
+  nearTurn: <?= (int) setting('near_turn_alert','2') ?>
 };
 const labels = {waiting:['La rand','#FFAA00'],called:['Este randul dvs!','#17E58F'],serving:['In curs de servire','#17E58F'],
   served:['Finalizat','#A5A5A5'],no_show:['Neprezentat','#A5A5A5'],cancelled:['Anulat','#FF3A33'],transferred:['Transferat','#0055FF']};
-let prevStatus=null;
+let prevStatus=null, prevPos=null, nearAlerted=false;
 async function tick(){
   const r = await QMS.api('api/virtual?token='+encodeURIComponent(token), null, 'GET');
   if(!r.ok) return;
@@ -43,7 +44,16 @@ async function tick(){
   if(t.status==='called' && prevStatus!=='called'){
     setTimeout(function(){ if(navigator.vibrate) navigator.vibrate([200,100,200]); }, Math.max(0,ALERTS.delay)*1000);
   }
-  prevStatus=t.status;
+  // alerta "aproape la rand": cand pozitia scade sub prag (o singura data), vibreaza + evidentiaza
+  if(t.status==='waiting' && ALERTS.nearTurn>0 && t.position>0 && t.position<=ALERTS.nearTurn && !nearAlerted){
+    nearAlerted=true;
+    if(navigator.vibrate) navigator.vibrate([120,80,120]);
+    var pe=document.getElementById('vPos');
+    if(pe){ pe.style.transition='none'; pe.style.color='#FFAA00'; pe.style.fontWeight='800';
+      setTimeout(function(){ pe.style.transition='color 1.2s'; pe.style.color=''; }, 200); }
+  }
+  if(t.status!=='waiting') nearAlerted=false;   // reset daca iese din asteptare (ex: transfer)
+  prevStatus=t.status; prevPos=t.position;
 }
 tick(); setInterval(tick, 3000);
 document.getElementById('vCancel').addEventListener('click', async function(){
