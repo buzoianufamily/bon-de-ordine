@@ -115,6 +115,7 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $a === null) { admin_appointment_create(); return; }
             if ($method === 'POST' && $b === 'checkin') { admin_appointment_action((int)$a, 'checkin'); return; }
             if ($method === 'POST' && $b === 'cancel')  { admin_appointment_action((int)$a, 'cancel'); return; }
+            if ($a === 'export') { admin_appointments_export(); return; }
             admin_appointments_list(); return;
 
         case 'media':
@@ -845,7 +846,7 @@ function admin_settings_import(): void {
 function admin_settings_save(): void {
     csrf_check();
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
-             'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size',
+             'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size','priority_escalate_min',
              'alert_called','alert_transfer','alert_delay','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
              'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min'];
@@ -1395,13 +1396,12 @@ function admin_form_save(): void {
 }
 
 /* ----------------------- APPOINTMENTS (programari) ----------------------- */
-function admin_appointments_list(): void {
+/** Construieste filtrul (WHERE + args + meta) pentru lista de programari din parametrii GET. */
+function admin_appointments_filter(): array {
     $date   = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
     $branch = (int)($_GET['branch'] ?? 0);
     $viewMode = (($_GET['view'] ?? 'day') === 'week') ? 'week' : 'day';
-
     if ($viewMode === 'week') {
-        // saptamana (luni-duminica) care contine $date
         $weekStart = date('Y-m-d', strtotime($date . ' -' . ((((int)date('N', strtotime($date))) - 1)) . ' days'));
         $weekEnd   = date('Y-m-d', strtotime($weekStart . ' +6 days'));
         $w = 'DATE(a.slot_start) BETWEEN ? AND ?'; $args = [$weekStart, $weekEnd];
@@ -1410,13 +1410,40 @@ function admin_appointments_list(): void {
         $w = 'DATE(a.slot_start)=?'; $args = [$date];
     }
     if ($branch) { $w .= ' AND a.branch_id=?'; $args[] = $branch; }
+    return [$w, $args, compact('date','branch','viewMode','weekStart','weekEnd')];
+}
+function admin_appointments_list(): void {
+    [$w, $args, $f] = admin_appointments_filter();
     $rows = all("SELECT a.*, s.name service_name, s.color, s.prefix, b.name branch_name,
                     t.label ticket_label, t.public_token ticket_token
                  FROM appointments a JOIN services s ON s.id=a.service_id JOIN branches b ON b.id=a.branch_id
                  LEFT JOIN tickets t ON t.id=a.ticket_id WHERE $w ORDER BY a.slot_start", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     $services = all('SELECT id,prefix,name,branch_id FROM services WHERE appt_enabled=1 AND status="active" ORDER BY name');
+    $date=$f['date']; $branch=$f['branch']; $viewMode=$f['viewMode']; $weekStart=$f['weekStart']; $weekEnd=$f['weekEnd'];
     view('admin/appointments', compact('rows','date','branch','branches','services','viewMode','weekStart','weekEnd'));
+}
+/** Export CSV al programarilor filtrate (BOM UTF-8, separator ;). */
+function admin_appointments_export(): void {
+    [$w, $args, $f] = admin_appointments_filter();
+    audit('export', 'appointments', $f['date']);
+    $rows = all("SELECT a.slot_start, a.status, s.name service_name, b.name branch_name,
+                        a.customer_name, a.customer_phone, a.customer_email, a.note, t.label ticket_label
+                 FROM appointments a JOIN services s ON s.id=a.service_id JOIN branches b ON b.id=a.branch_id
+                 LEFT JOIN tickets t ON t.id=a.ticket_id WHERE $w ORDER BY a.slot_start", $args);
+    $statusRo = ['booked'=>'Confirmata','checked_in'=>'Check-in','cancelled'=>'Anulata','no_show'=>'Neprezentat'];
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="programari_' . $f['date'] . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Data/ora','Status','Serviciu','Filiala','Client','Telefon','Email','Nota','Bon'], ';');
+    foreach ($rows as $r) {
+        fputcsv($out, [$r['slot_start'], $statusRo[$r['status']] ?? $r['status'], $r['service_name'], $r['branch_name'] ?? '',
+                       $r['customer_name'] ?? '', $r['customer_phone'] ?? '', $r['customer_email'] ?? '',
+                       $r['note'] ?? '', $r['ticket_label'] ?? ''], ';');
+    }
+    fclose($out);
+    exit;
 }
 function admin_appointment_create(): void {
     csrf_check();

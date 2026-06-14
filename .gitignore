@@ -1,0 +1,4 @@
+# Date specifice instantei — NU se urca in git (contin secrete / fisiere incarcate)
+/config/tenants.json
+/assets/uploads/*
+!/assets/uploads/.gitkeep

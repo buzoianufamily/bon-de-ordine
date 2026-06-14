@@ -6,7 +6,10 @@ $qs = fn($d, $v) => e(url('admin/appointments').'?'.http_build_query(['date'=>$d
 $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check-in','#172033','#7da2ff'],'cancelled'=>['Anulata','#3a1d1d','#fca5a5'],'no_show'=>['Neprezentat','#1c2029','#9aa3b2']]; ?>
 <div class="topbar">
   <h1>Programari</h1>
-  <a class="btn" target="_blank" href="<?= e(url('book')) ?>">🔗 Pagina publica de programare</a>
+  <div style="display:flex;gap:.5rem">
+    <a class="btn" href="<?= e(url('admin/appointments/export').'?'.http_build_query(array_filter(['date'=>$date,'branch'=>$branch,'view'=>$viewMode]))) ?>">⤓ Export CSV</a>
+    <a class="btn" target="_blank" href="<?= e(url('book')) ?>">🔗 Pagina publica de programare</a>
+  </div>
 </div>
 
 <form method="get" action="<?= e(url('admin/appointments')) ?>" class="card pad" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.2rem">

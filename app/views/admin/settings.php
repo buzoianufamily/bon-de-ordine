@@ -37,6 +37,10 @@
   <div class="settab dv-hidden" data-pane="ticket">
     <div class="row" style="align-items:flex-start">
     <div class="card pad" style="flex:1;min-width:300px;max-width:640px">
+      <h3 style="margin-top:0">Comportament coada</h3>
+      <div class="field"><label>Escaladare prioritate după … minute de așteptare (0 = oprit)</label><input type="number" name="priority_escalate_min" min="0" max="600" value="<?= $s('priority_escalate_min','0') ?>">
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Anti-„înfometare": biletele normale care așteaptă peste acest prag sunt chemate înaintea celor noi (ca biletele prioritare), în ordinea vechimii.</p></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Bilet tiparit &amp; dispenser</h3>
       <div class="field"><label>Titlu dispenser</label><input name="dispenser_title" value="<?= $s('dispenser_title','ALEGE SERVICIUL') ?>"></div>
       <div class="field"><label>Text antet bon (sub numele filialei)</label><input name="ticket_header" value="<?= $s('ticket_header') ?>" placeholder="ex: Va uram bun venit!"></div>

@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS services (
   appt_enabled    TINYINT(1) NOT NULL DEFAULT 0,      -- permite programari
   appt_slot_min   INT NOT NULL DEFAULT 15,            -- durata slot (min)
   appt_capacity   INT NOT NULL DEFAULT 1,             -- locuri per slot
+  paused          TINYINT(1) NOT NULL DEFAULT 0,      -- pauza temporara (opreste emiterea)
+  pause_note      VARCHAR(120) NULL,                  -- mesaj afisat clientilor in pauza
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_services_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
   INDEX idx_services_branch (branch_id)
@@ -278,4 +280,27 @@ CREATE TABLE IF NOT EXISTS appointments (
   INDEX idx_appt_slot (service_id, slot_start),
   INDEX idx_appt_token (public_token),
   INDEX idx_appt_day (branch_id, slot_start)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Resetare parola (token cu hash + expirare, de unica folosinta) ----------
+CREATE TABLE IF NOT EXISTS password_resets (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT NOT NULL,
+  token_hash  CHAR(64) NOT NULL,
+  expires_at  DATETIME NOT NULL,
+  used_at     DATETIME NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pr_token (token_hash),
+  INDEX idx_pr_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Zile inchise / sarbatori (per filiala sau globale = branch_id NULL) ----------
+CREATE TABLE IF NOT EXISTS branch_closures (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  branch_id   INT NULL,
+  closed_date DATE NOT NULL,
+  reason      VARCHAR(120) NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_closure (branch_id, closed_date),
+  INDEX idx_closure_date (closed_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

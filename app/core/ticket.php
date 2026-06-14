@@ -159,12 +159,15 @@ function call_next(int $counter_id, int $user_id, int $service_id = 0): ?array {
             $args = array_merge($args, $svcIds);
         }
     }
+    // anti-starvation: biletele care asteapta peste N minute capata prioritate efectiva (0 = oprit)
+    $esc = (int) setting('priority_escalate_min', '0');
+    $escExpr = $esc > 0 ? "IF(TIMESTAMPDIFF(MINUTE, t.issued_at, NOW()) >= $esc, 1, 0)" : "0";
     db()->beginTransaction();
     try {
-        // urmatorul bilet: intai cele transferate la acest ghiseu, apoi dupa prioritate/vechime
+        // urmatorul bilet: intai cele transferate la acest ghiseu, apoi dupa prioritate (efectiva)/vechime
         $row = one("SELECT t.* FROM tickets t
                     WHERE t.status = 'waiting' AND ($cond)
-                    ORDER BY (t.target_counter_id = ?) DESC, t.priority DESC, t.issued_at ASC, t.id ASC
+                    ORDER BY (t.target_counter_id = ?) DESC, GREATEST(t.priority, $escExpr) DESC, t.issued_at ASC, t.id ASC
                     LIMIT 1 FOR UPDATE", array_merge($args, [$counter_id]));
         if (!$row) { db()->commit(); return null; }
 
