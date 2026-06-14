@@ -1211,8 +1211,14 @@ function admin_statistics(): void {
       GROUP BY u.id, l.status", [$fromDt, $toDt, $toDt, $fromDt]);
 
     // export CSV per set de date (fiecare grafic are buton propriu de download)
-    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user'], true)) {
+    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity'], true)) {
         $ds = $_GET['dataset'];
+        // activitate operatori pivotata: o linie/operator cu minute pe fiecare status
+        $opPivot = [];
+        foreach ($op_activity as $r) {
+            $n = $r['name']; $opPivot[$n] ??= ['available'=>0,'busy'=>0,'paused'=>0,'offline'=>0];
+            if (isset($opPivot[$n][$r['status']])) $opPivot[$n][$r['status']] += (int)$r['secs'];
+        }
         $sets = [
           'day'     => ['bilete_pe_zi', ['Data','Bilete','Timp mediu asteptare (s)'],
                         array_map(fn($r)=>[$r['d'],(int)$r['c'],round((float)$r['w'])], $per_day)],
@@ -1224,6 +1230,8 @@ function admin_statistics(): void {
                         array_map(fn($r)=>[((int)$r['h']).':00',(int)$r['c']], $per_hour)],
           'user'    => ['bilete_pe_utilizator', ['Utilizator','Total','Servite','Timp mediu asteptare (s)','Timp mediu servire (s)'],
                         array_map(fn($r)=>[$r['name'],(int)$r['c'],(int)$r['served'],round((float)$r['w']),round((float)$r['sv'])], $per_user)],
+          'op_activity' => ['activitate_operatori', ['Operator','Disponibil (min)','Ocupat (min)','Pauza (min)','Indisponibil (min)'],
+                        array_map(fn($n)=>[$n, round($opPivot[$n]['available']/60), round($opPivot[$n]['busy']/60), round($opPivot[$n]['paused']/60), round($opPivot[$n]['offline']/60)], array_keys($opPivot))],
         ];
         [$fname,$head,$data] = $sets[$ds];
         header('Content-Type: text/csv; charset=utf-8');

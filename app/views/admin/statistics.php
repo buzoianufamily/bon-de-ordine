@@ -244,7 +244,7 @@ $delta = function($cur, $prev, bool $invert=false): string {
 
 <?php $act=[]; foreach(($op_activity??[]) as $r){ $act[$r['name']][$r['status']]=(int)$r['secs']; } ?>
 <div class="card pad" style="margin-top:1.2rem">
-  <h3 style="margin:0 0 .6rem">Activitate operatori (timp pe status)</h3>
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Activitate operatori (timp pe status)</h3><?= $dlcsv('op_activity') ?></div>
   <?php if(!$act): ?>
     <p class="muted">Niciun istoric de status in interval.</p>
   <?php else: ?>
