@@ -17,7 +17,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Concierge** | Recepția vede toată coada, cheamă orice bilet la orice ghișeu, **emite bonuri walk-in** și repune neprezentații la rând. | `…/concierge` |
 | **Afișaj de ghișeu** | Tabletă la birou: codul ghișeului + bonul curent, live (sau mesajul de pauză). | `…/cd/{id}` |
 | **Bilet digital** | Clientul urmărește pe telefon: status, poziție, **timp estimat**, ghișeu, alerte configurabile, **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
-| **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat. | `…/book` |
+| **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. | `…/feedback` |
 | **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
 | **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
@@ -25,7 +25,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 
 ### Funcționalități cheie
 - **Servicii** cu prefix + culoare, interval de numere, reset zilnic automat, bilete prioritare, KPI, **program de funcționare** (orar pe zile, cu mesaj „închis" configurabil), **zile închise / sărbători** (per filială sau globale), **pauză temporară** per serviciu (oprește emiterea fără a schimba programul), **formular** la emitere, **programări online**, **traduceri** nume/descriere, **grupuri**, ordonare prin **drag & drop**.
-- **Apelare inteligentă**: prioritate apoi vechime; un operator per ghișeu; recall, transfer la serviciu sau la **alt birou**, no‑show; operatori **atribuiți pe ghișee**.
+- **Apelare inteligentă**: prioritate apoi vechime; **escaladare anti‑„înfometare"** (biletele care așteaptă peste un prag configurabil sunt chemate ca prioritare); un operator per ghișeu; recall, transfer la serviciu sau la **alt birou**, no‑show; operatori **atribuiți pe ghișee**.
 - **Real‑time**: SSE cu fallback pe polling; **dashboard live** cu sparkline 7 zile, abandon %, vârf de zi, comparație filiale, prezență operatori și dispozitive online, plus **monitorizare SLA** (servicii/bilete care depășesc ținta de așteptare, acum). Operatorul vede în terminal biletele „⏱ peste timp".
 - **Anunț vocal RO** pe afișaj (Web Speech) + opțional la terminalul operatorului; texte multilingve alternante pe TV (`Text RO | Text EN`).
 - **Status operator** (Disponibil/Ocupat/Pauză/Offline) cu prezență live și **istoric (timp pe status)** în Statistici și în Excel.
