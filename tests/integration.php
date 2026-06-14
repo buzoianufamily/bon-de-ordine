@@ -162,6 +162,14 @@ q("UPDATE users SET pin='9999' WHERE id=$adminId");           // adminul nu treb
 chk(pin_switch('9999') === null, 'pin: admin not switchable (no escalation)');
 q("UPDATE users SET pin=NULL WHERE id=$adminId");
 
+/* ---- 17. Eliberare bilete directionate la pauza ghiseu ---- */
+q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
+$tt = issue_ticket($svc, false, 'paper');
+transfer_to_counter((int)$tt['id'], $ctr);
+chk((int)val("SELECT target_counter_id FROM tickets WHERE id=".(int)$tt['id']) === $ctr, 'release: ticket targeted to counter');
+$rel = release_targeted_tickets($ctr);
+chk($rel >= 1 && val("SELECT target_counter_id FROM tickets WHERE id=".(int)$tt['id']) === null, 'release: targeted ticket freed to general queue');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

@@ -266,9 +266,13 @@ function transfer_ticket(int $ticket_id, int $service_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
+/** Elibereaza biletele directionate catre un ghiseu (in asteptare) inapoi in coada generala a serviciului. */
+function release_targeted_tickets(int $counter_id): int {
+    return q("UPDATE tickets SET target_counter_id = NULL WHERE target_counter_id = ? AND status = 'waiting'", [$counter_id])->rowCount();
+}
+
 /** Repune un bilet neprezentat inapoi la rand (clientul a ajuns tarziu). Merge la coada, cu ora curenta. */
-function requeue_ticket(int $ticket_id): bool {
-    $st = q("UPDATE tickets SET status='waiting', counter_id=NULL, called_at=NULL, served_at=NULL, finished_at=NULL,
+function requeue_ticket(int $ticket_id): bool {    $st = q("UPDATE tickets SET status='waiting', counter_id=NULL, called_at=NULL, served_at=NULL, finished_at=NULL,
                     issued_at=NOW(), recall_count=0
              WHERE id=? AND status='no_show'", [$ticket_id]);
     if ($st->rowCount() > 0) { ticket_event($ticket_id, 'ticket.created'); return true; }

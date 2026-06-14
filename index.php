@@ -231,7 +231,9 @@ SWJS;
                 $cid = (int) input('counter_id', 0);
                 $note = mb_substr(trim((string) input('note', '')), 0, 120);
                 q("UPDATE counters SET status='paused', pause_note=? WHERE id=?", [$note !== '' ? $note : null, $cid]);
-                json_out(['ok' => true]);
+                // elibereaza biletele directionate catre acest ghiseu, ca sa nu ramana blocate (optional)
+                $released = setting('release_on_pause', '1') === '1' ? release_targeted_tickets($cid) : 0;
+                json_out(['ok' => true, 'released' => $released]);
             }
             case 'counter-open':
                 q("UPDATE counters SET status='open', pause_note=NULL WHERE id=?", [(int) input('counter_id', 0)]);

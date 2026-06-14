@@ -885,6 +885,7 @@ function admin_settings_save(): void {
     set_setting('mod_feedback', isset($_POST['mod_feedback']) ? '1' : '0');
     set_setting('mod_concierge', isset($_POST['mod_concierge']) ? '1' : '0');
     set_setting('mod_public_status', isset($_POST['mod_public_status']) ? '1' : '0');
+    set_setting('release_on_pause', isset($_POST['release_on_pause']) ? '1' : '0');
     set_setting('ticket_show_position', isset($_POST['ticket_show_position']) ? '1' : '0');
     set_setting('ticket_show_datetime', isset($_POST['ticket_show_datetime']) ? '1' : '0');
     set_setting('ticket_show_qr', isset($_POST['ticket_show_qr']) ? '1' : '0');

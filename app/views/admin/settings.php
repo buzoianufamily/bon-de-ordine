@@ -40,6 +40,7 @@
       <h3 style="margin-top:0">Comportament coada</h3>
       <div class="field"><label>Escaladare prioritate după … minute de așteptare (0 = oprit)</label><input type="number" name="priority_escalate_min" min="0" max="600" value="<?= $s('priority_escalate_min','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Anti-„înfometare": biletele normale care așteaptă peste acest prag sunt chemate înaintea celor noi (ca biletele prioritare), în ordinea vechimii.</p></div>
+      <label style="margin:.4rem 0;display:block"><input type="checkbox" name="release_on_pause" <?= setting('release_on_pause','1')==='1'?'checked':'' ?> style="width:auto"> Când un ghișeu intră în pauză, eliberează biletele direcționate către el înapoi în coada generală (evită biletele blocate)</label>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Bilet tiparit &amp; dispenser</h3>
       <div class="field"><label>Titlu dispenser</label><input name="dispenser_title" value="<?= $s('dispenser_title','ALEGE SERVICIUL') ?>"></div>
