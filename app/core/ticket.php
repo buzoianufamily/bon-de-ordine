@@ -240,11 +240,22 @@ function transfer_to_counter(int $ticket_id, int $target_counter_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
-function recall_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET called_at = NOW(), recall_count = recall_count + 1,
+/** Recheamă un bilet. După 'max_recalls' rechemări (>0), îl marchează automat neprezentat. Returneaza statusul rezultat. */
+function recall_ticket(int $ticket_id): string {
+    $row = one("SELECT recall_count, status FROM tickets WHERE id=?", [$ticket_id]);
+    if (!$row) return '';
+    $new = (int)$row['recall_count'] + 1;
+    $max = (int) setting('max_recalls', '0');
+    if ($max > 0 && $new > $max && $row['status'] === 'called') {
+        q("UPDATE tickets SET status='no_show', finished_at=NOW(), recall_count=? WHERE id=?", [$new, $ticket_id]);
+        ticket_event($ticket_id, 'ticket.no_show');
+        return 'no_show';
+    }
+    q("UPDATE tickets SET called_at = NOW(), recall_count = ?,
         status = CASE WHEN status IN ('served','no_show','cancelled') THEN 'called' ELSE status END
-       WHERE id = ?", [$ticket_id]);
+       WHERE id = ?", [$new, $ticket_id]);
     ticket_event($ticket_id, 'ticket.recalled');
+    return 'called';
 }
 function start_serving(int $ticket_id): void {
     $st = q("UPDATE tickets SET status = 'serving', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND status = 'called'", [$ticket_id]);

@@ -187,6 +187,16 @@ chk(strpos(vt_i18n('ro')['ahead'], '{n}') !== false, 'i18n: ro placeholder {n}')
 chk(vt_i18n('xx')['rate'] === vt_i18n('ro')['rate'], 'i18n: unknown lang -> ro fallback');
 chk(vt_i18n('es')['cancel'] === 'Abandonar la cola', 'i18n: es cancel');
 
+/* ---- 20. Auto-neprezentat dupa max_recalls rechemari ---- */
+q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
+set_setting('max_recalls','2');
+$rc = issue_ticket($svc, false, 'paper'); call_next($ctr, $adminId, 0);   // -> called
+chk(recall_ticket((int)$rc['id']) === 'called', 'recall 1 -> called');
+chk(recall_ticket((int)$rc['id']) === 'called', 'recall 2 -> called');
+chk(recall_ticket((int)$rc['id']) === 'no_show', 'recall 3 (>max) -> auto no_show');
+chk(val("SELECT status FROM tickets WHERE id=".(int)$rc['id']) === 'no_show', 'recall: ticket marked no_show');
+set_setting('max_recalls','0');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

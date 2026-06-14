@@ -219,7 +219,7 @@ SWJS;
             case 'call-specific':
                 $t = call_specific((int)input('ticket_id', 0), (int)input('counter_id', 0), (int)$u['id']);
                 json_out(['ok' => (bool)$t, 'ticket' => $t] + ($t ? [] : ['error' => 'Biletul nu mai este la rand']));
-            case 'recall':    recall_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
+            case 'recall':    json_out(['ok' => true, 'status' => recall_ticket((int)input('ticket_id', 0))]);
             case 'serving':   start_serving((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'finish':    finish_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'no-show':   no_show_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
