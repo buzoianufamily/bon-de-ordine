@@ -16,7 +16,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Terminal operator** | Selectezi un bilet → meniu de acțiuni (cheamă/recheamă/servire/finalizat/neprezentat/transfer la serviciu sau **alt birou**); „cheamă următorul" (global sau pe serviciu); scurtături tastatură; status operator; **pauză ghișeu cu mesaj**; **schimbare rapidă operator prin PIN**; statistici proprii live. | `…/counter` |
 | **Concierge** | Recepția vede toată coada, cheamă orice bilet la orice ghișeu, **emite bonuri walk-in** și repune neprezentații la rând. | `…/concierge` |
 | **Afișaj de ghișeu** | Tabletă la birou: codul ghișeului + bonul curent, live (sau mesajul de pauză). | `…/cd/{id}` |
-| **Bilet digital** | Clientul urmărește pe telefon: status, poziție, **timp estimat**, ghișeu, alerte configurabile, **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
+| **Bilet digital** | Clientul urmărește pe telefon (**multilingv** RO/EN/DE/FR/HU/IT/ES): status, poziție, **timp estimat**, ghișeu, alerte configurabile, **alertă „aproape la rând"**, **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
 | **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. | `…/feedback` |
 | **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
