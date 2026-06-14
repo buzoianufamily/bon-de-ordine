@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint (PHP + JS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, mbstring
+          coverage: none
+      - name: PHP lint (php -l, toate fisierele)
+        run: |
+          set -e
+          err=0
+          while IFS= read -r f; do php -l "$f" >/dev/null || err=1; done < <(find . -name '*.php' -not -path './vendor/*')
+          [ "$err" = "0" ] && echo "PHP: all clean"
+          exit $err
+      - name: JS check (node --check)
+        run: |
+          set -e
+          err=0
+          while IFS= read -r f; do node --check "$f" || err=1; done < <(find assets/js -name '*.js')
+          [ "$err" = "0" ] && echo "JS: all clean"
+          exit $err
+
+  integration:
+    name: Integration (MariaDB)
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: bon
+          MARIADB_USER: bon
+          MARIADB_PASSWORD: bon
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      BDO_DB_HOST: 127.0.0.1
+      BDO_DB_PORT: 3306
+      BDO_DB_NAME: bon
+      BDO_DB_USER: bon
+      BDO_DB_PASS: bon
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, mbstring
+          coverage: none
+      - name: Asteapta MariaDB
+        run: |
+          for i in $(seq 1 30); do
+            php -r '$c=@new mysqli("127.0.0.1","bon","bon","bon",3306); exit($c->connect_errno?1:0);' && break
+            echo "waiting for db ($i)"; sleep 2
+          done
+      - name: Test de integrare (instalare la zero + fluxuri)
+        run: php tests/integration.php
+      - name: Test izolat — inchidere blocheaza emiterea
+        run: php tests/closure_block_test.php

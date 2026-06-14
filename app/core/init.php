@@ -10,7 +10,8 @@ define('APP_START', microtime(true));
 
 define('APP_SCHEMA_VERSION', 22);   // versiunea curenta a schemei (folosita de migrari si landlord)
 
-$config = require APP_ROOT . '/config/config.php';
+// Config: din config/config.php; testele de integrare pot injecta prin $GLOBALS['__config_override'].
+$config = $GLOBALS['__config_override'] ?? (require APP_ROOT . '/config/config.php');
 $GLOBALS['__config'] = $config;
 
 // ---- Multi-tenant: alege baza de date dupa host (registru in config/tenants.json) ----
