@@ -123,3 +123,20 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 3. Asigură‑te că `assets/uploads/` e scriibil (pentru Multimedia) — vezi `INSTALL.md`.
 
 > CSS/JS sunt **versionate automat** (după data modificării fișierului), deci după un update clienții primesc imediat versiunea nouă — fără să golească memoria cache.
+
+---
+
+## Dezvoltare & teste
+Există un **test de integrare** care rulează logica reală pe o bază de date MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit — 50+ aserțiuni).
+
+Rulare locală (cu o bază de test):
+```bash
+BDO_DB_HOST=127.0.0.1 BDO_DB_PORT=3306 BDO_DB_NAME=bon BDO_DB_USER=bon BDO_DB_PASS=bon \
+  php tests/integration.php && php tests/closure_block_test.php
+```
+
+La fiecare `push`/PR, **GitHub Actions** (`.github/workflows/ci.yml`) rulează automat:
+- **lint**: `php -l` pe tot codul PHP + `node --check` pe JS;
+- **integration**: pornește un serviciu MariaDB și rulează testele de mai sus.
+
+Astfel, regresii precum bug‑urile de instalare nu mai pot ajunge nedetectate în producție.
