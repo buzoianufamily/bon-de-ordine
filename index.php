@@ -425,7 +425,9 @@ SWJS;
         $t = one('SELECT t.*, s.name AS service_name, s.color FROM tickets t
                   JOIN services s ON s.id=t.service_id WHERE t.public_token = ?', [$seg[1]]);
         if (!$t) { http_response_code(404); echo 'Bilet inexistent.'; return; }
-        view('public/virtual_ticket', ['t' => $t, 'token' => $seg[1]]);
+        $lang = strtolower((string)($_GET['lang'] ?? 'ro'));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        view('public/virtual_ticket', ['t' => $t, 'token' => $seg[1], 'lang' => $lang]);
         return;
     }
 

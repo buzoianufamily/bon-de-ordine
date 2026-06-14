@@ -180,6 +180,13 @@ chk($capped, 'daily cap: blocks issuance over max_per_day');
 q("UPDATE services SET max_per_day=0 WHERE id=$svc");
 chk(!empty(issue_ticket($svc, false, 'paper')['id']), 'daily cap: 0 = unlimited again');
 
+/* ---- 19. Traduceri bilet digital (multi-limba) ---- */
+chk(vt_i18n('en')['st_called'] === "It's your turn!", 'i18n: en status');
+chk(vt_i18n('de')['st_waiting'] === 'Warten', 'i18n: de status');
+chk(strpos(vt_i18n('ro')['ahead'], '{n}') !== false, 'i18n: ro placeholder {n}');
+chk(vt_i18n('xx')['rate'] === vt_i18n('ro')['rate'], 'i18n: unknown lang -> ro fallback');
+chk(vt_i18n('es')['cancel'] === 'Abandonar la cola', 'i18n: es cancel');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

@@ -194,6 +194,31 @@ function fire_webhook(string $event, array $data): void {
     } catch (Throwable $e) {}
 }
 
+/**
+ * Traduceri pentru pagina biletului digital (telefon). Returneaza setul pentru limba data,
+ * cu fallback pe romana pentru cheile lipsa. Limbi: ro/en/de/fr/hu/it/es.
+ */
+function vt_i18n(string $lang): array {
+    $ro = [
+        'st_waiting'=>'La rand', 'st_called'=>'Este randul dvs!', 'st_serving'=>'In curs de servire',
+        'st_served'=>'Finalizat', 'st_no_show'=>'Neprezentat', 'st_cancelled'=>'Anulat', 'st_transferred'=>'Transferat',
+        'ahead'=>'Sunt {n} persoane inaintea dvs.', 'est_label'=>'Timp estimat:', 'est_under1'=>'sub 1 minut', 'est_min'=>'~ {m} min',
+        'goto'=>'Mergeti la: {c}', 'rate'=>'Evalueaza experienta', 'cancel'=>'Renunt la rand',
+        'cancel_confirm'=>'Renunti la locul in coada? Biletul va fi anulat.',
+        'auto'=>'Pagina se actualizeaza automat. Pastrati-o deschisa.', 'loading'=>'Se incarca…',
+    ];
+    $tr = [
+        'en'=>['st_waiting'=>'Waiting','st_called'=>"It's your turn!",'st_serving'=>'Now serving','st_served'=>'Done','st_no_show'=>'No-show','st_cancelled'=>'Cancelled','st_transferred'=>'Transferred','ahead'=>'{n} people ahead of you','est_label'=>'Estimated wait:','est_under1'=>'under 1 minute','est_min'=>'~ {m} min','goto'=>'Go to: {c}','rate'=>'Rate your experience','cancel'=>'Leave the queue','cancel_confirm'=>'Give up your place in the queue? The ticket will be cancelled.','auto'=>'This page updates automatically. Keep it open.','loading'=>'Loading…'],
+        'de'=>['st_waiting'=>'Warten','st_called'=>'Sie sind dran!','st_serving'=>'Wird bedient','st_served'=>'Erledigt','st_no_show'=>'Nicht erschienen','st_cancelled'=>'Storniert','st_transferred'=>'Weitergeleitet','ahead'=>'{n} Personen vor Ihnen','est_label'=>'Geschätzte Wartezeit:','est_under1'=>'unter 1 Minute','est_min'=>'~ {m} Min','goto'=>'Gehen Sie zu: {c}','rate'=>'Bewerten Sie Ihre Erfahrung','cancel'=>'Warteschlange verlassen','cancel_confirm'=>'Ihren Platz aufgeben? Das Ticket wird storniert.','auto'=>'Diese Seite wird automatisch aktualisiert. Lassen Sie sie geöffnet.','loading'=>'Laden…'],
+        'fr'=>['st_waiting'=>'En attente','st_called'=>'C\'est votre tour !','st_serving'=>'En cours','st_served'=>'Terminé','st_no_show'=>'Absent','st_cancelled'=>'Annulé','st_transferred'=>'Transféré','ahead'=>'{n} personnes avant vous','est_label'=>'Temps d\'attente estimé :','est_under1'=>'moins d\'une minute','est_min'=>'~ {m} min','goto'=>'Allez au : {c}','rate'=>'Évaluez votre expérience','cancel'=>'Quitter la file','cancel_confirm'=>'Abandonner votre place dans la file ? Le ticket sera annulé.','auto'=>'Cette page se met à jour automatiquement. Gardez-la ouverte.','loading'=>'Chargement…'],
+        'hu'=>['st_waiting'=>'Várakozás','st_called'=>'Ön következik!','st_serving'=>'Kiszolgálás alatt','st_served'=>'Kész','st_no_show'=>'Nem jelent meg','st_cancelled'=>'Törölve','st_transferred'=>'Átirányítva','ahead'=>'{n} ember van Ön előtt','est_label'=>'Becsült várakozás:','est_under1'=>'kevesebb mint 1 perc','est_min'=>'~ {m} perc','goto'=>'Menjen ide: {c}','rate'=>'Értékelje élményét','cancel'=>'Kilépés a sorból','cancel_confirm'=>'Lemond a helyéről a sorban? A jegy törlődik.','auto'=>'Az oldal automatikusan frissül. Hagyja nyitva.','loading'=>'Betöltés…'],
+        'it'=>['st_waiting'=>'In attesa','st_called'=>'È il suo turno!','st_serving'=>'In servizio','st_served'=>'Completato','st_no_show'=>'Assente','st_cancelled'=>'Annullato','st_transferred'=>'Trasferito','ahead'=>'{n} persone prima di lei','est_label'=>'Attesa stimata:','est_under1'=>'meno di 1 minuto','est_min'=>'~ {m} min','goto'=>'Vada allo: {c}','rate'=>'Valuta la tua esperienza','cancel'=>'Lascia la coda','cancel_confirm'=>'Rinunciare al posto in coda? Il biglietto sarà annullato.','auto'=>'Questa pagina si aggiorna automaticamente. Tienila aperta.','loading'=>'Caricamento…'],
+        'es'=>['st_waiting'=>'En espera','st_called'=>'¡Es su turno!','st_serving'=>'En atención','st_served'=>'Finalizado','st_no_show'=>'No presentado','st_cancelled'=>'Cancelado','st_transferred'=>'Transferido','ahead'=>'{n} personas delante de usted','est_label'=>'Espera estimada:','est_under1'=>'menos de 1 minuto','est_min'=>'~ {m} min','goto'=>'Diríjase a: {c}','rate'=>'Valore su experiencia','cancel'=>'Abandonar la cola','cancel_confirm'=>'¿Renunciar a su lugar en la cola? El ticket se cancelará.','auto'=>'Esta página se actualiza automáticamente. Manténgala abierta.','loading'=>'Cargando…'],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
 function disp_lang_meta(): array {
     return [
