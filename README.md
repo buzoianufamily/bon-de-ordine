@@ -28,7 +28,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Apelare inteligentă**: prioritate apoi vechime; **escaladare anti‑„înfometare"** (biletele care așteaptă peste un prag configurabil sunt chemate ca prioritare); un operator per ghișeu; recall, transfer la serviciu sau la **alt birou**, no‑show; operatori **atribuiți pe ghișee**.
 - **Real‑time**: SSE cu fallback pe polling; **dashboard live** cu sparkline 7 zile, abandon %, vârf de zi, comparație filiale, prezență operatori și dispozitive online, plus **monitorizare SLA** (servicii/bilete care depășesc ținta de așteptare, acum). Operatorul vede în terminal biletele „⏱ peste timp".
 - **Anunț vocal RO** pe afișaj (Web Speech) + opțional la terminalul operatorului; texte multilingve alternante pe TV (`Text RO | Text EN`).
-- **Status operator** (Disponibil/Ocupat/Pauză/Offline) cu prezență live și **istoric (timp pe status)** în Statistici și în Excel.
+- **Status operator** (Disponibil/Ocupat/Pauză/Offline) cu prezență live și **istoric (timp pe status)** în Statistici, Excel și **export CSV**. La punerea în pauză a unui ghișeu, biletele direcționate spre el pot fi **eliberate automat** în coada generală (anti‑blocaj, configurabil).
 - **Dispenser multilingv** (RO/EN/DE/FR/HU/IT/ES) cu bară de steaguri; revine la limba implicită după fiecare bon; efecte de atingere; opțional **insigne „👥 câți așteaptă"** live pe fiecare buton.
 - **Anunț general live** (📢): mesaj ad‑hoc cu expirare, afișat și actualizat **în timp real** (fără reîncărcare) pe dispenser, afișaje TV, afișaje de ghișeu, pagina de status și terminalul operatorului.
 - **Statistici operator live** chiar în terminal (bilete servite azi + timp mediu pe bon).
