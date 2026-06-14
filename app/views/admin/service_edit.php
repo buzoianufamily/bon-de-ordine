@@ -34,6 +34,7 @@ if ($row && !empty($row['i18n'])) { $ti=json_decode($row['i18n'],true);
     </div>
     <div class="row">
       <div class="field"><label>Max. la rand (0=nelimitat)</label><input type="number" name="max_queued" value="<?= $v('max_queued','0') ?>"></div>
+      <div class="field"><label>Max. bonuri / zi (0=nelimitat)</label><input type="number" name="max_per_day" value="<?= $v('max_per_day','0') ?>"></div>
       <div class="field"><label>Ordine afisare</label><input type="number" name="sort_order" value="<?= $v('sort_order','0') ?>"></div>
       <div class="field"><label>Tinta asteptare (sec)</label><input type="number" name="kpi_wait_sec" value="<?= $v('kpi_wait_sec','600') ?>"></div>
       <div class="field"><label>Tinta servire (sec)</label><input type="number" name="kpi_service_sec" value="<?= $v('kpi_service_sec','300') ?>"></div>

@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS services (
   appt_capacity   INT NOT NULL DEFAULT 1,             -- locuri per slot
   paused          TINYINT(1) NOT NULL DEFAULT 0,      -- pauza temporara (opreste emiterea)
   pause_note      VARCHAR(120) NULL,                  -- mesaj afisat clientilor in pauza
+  max_per_day     INT NOT NULL DEFAULT 0,             -- plafon zilnic de bonuri (0 = nelimitat)
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_services_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
   INDEX idx_services_branch (branch_id)

@@ -90,6 +90,10 @@ function issue_ticket(int $service_id, bool $priority = false, string $channel =
         $waiting = (int) val('SELECT COUNT(*) FROM tickets WHERE service_id = ? AND status = "waiting"', [$service_id]);
         if ($waiting >= (int)$svc['max_queued']) throw new RuntimeException('Coada este plina pentru acest serviciu');
     }
+    if ((int)($svc['max_per_day'] ?? 0) > 0) {
+        $today = (int) val('SELECT COUNT(*) FROM tickets WHERE service_id = ? AND DATE(issued_at) = CURDATE()', [$service_id]);
+        if ($today >= (int)$svc['max_per_day']) throw new RuntimeException('Limita zilnica de bonuri a fost atinsa pentru acest serviciu');
+    }
     if (!$svc['allow_priority']) $priority = false;
 
     $number = next_number($svc);

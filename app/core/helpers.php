@@ -434,6 +434,9 @@ function run_migrations(): void {
     // v22: mesaj afisat clientilor cand serviciul e in pauza
     if (!$hasCol('services','pause_note')) $ddl("ALTER TABLE services ADD COLUMN pause_note VARCHAR(120) NULL");
 
+    // v23: plafon zilnic de bonuri per serviciu (0 = nelimitat)
+    if (!$hasCol('services','max_per_day')) $ddl("ALTER TABLE services ADD COLUMN max_per_day INT NOT NULL DEFAULT 0");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -446,7 +449,7 @@ function run_migrations(): void {
             && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
             && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
-            && $hasCol('services','pause_note')) {
+            && $hasCol('services','pause_note') && $hasCol('services','max_per_day')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

@@ -170,6 +170,16 @@ chk((int)val("SELECT target_counter_id FROM tickets WHERE id=".(int)$tt['id']) =
 $rel = release_targeted_tickets($ctr);
 chk($rel >= 1 && val("SELECT target_counter_id FROM tickets WHERE id=".(int)$tt['id']) === null, 'release: targeted ticket freed to general queue');
 
+/* ---- 18. Plafon zilnic de bonuri per serviciu ---- */
+q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
+$cntToday = (int) val("SELECT COUNT(*) FROM tickets WHERE service_id=$svc AND DATE(issued_at)=CURDATE()");
+q("UPDATE services SET max_per_day=? WHERE id=$svc", [$cntToday + 1]);   // mai permite exact un bon azi
+issue_ticket($svc, false, 'paper');                                      // al (cntToday+1)-lea: ok
+$capped = false; try { issue_ticket($svc, false, 'paper'); } catch (Throwable $e) { $capped = str_contains($e->getMessage(), 'Limita zilnica'); }
+chk($capped, 'daily cap: blocks issuance over max_per_day');
+q("UPDATE services SET max_per_day=0 WHERE id=$svc");
+chk(!empty(issue_ticket($svc, false, 'paper')['id']), 'daily cap: 0 = unlimited again');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

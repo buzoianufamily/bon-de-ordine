@@ -335,7 +335,7 @@ function admin_service_save(): void {
         'include_zeros'=>isset($_POST['include_zeros'])?1:0, 'allow_priority'=>isset($_POST['allow_priority'])?1:0,
         'terminate_on_call'=>isset($_POST['terminate_on_call'])?1:0,
         'kpi_wait_sec'=>(int)($_POST['kpi_wait_sec'] ?? 600), 'kpi_service_sec'=>(int)($_POST['kpi_service_sec'] ?? 300),
-        'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
+        'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'max_per_day'=>(int)($_POST['max_per_day'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
         'active_hours'=>$ah, 'i18n'=>$i18n,
         'group_id'=>((int)($_POST['group_id'] ?? 0)) ?: null,
         'form_id'=>((int)($_POST['form_id'] ?? 0)) ?: null,
