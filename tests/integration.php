@@ -132,6 +132,25 @@ chk(hash_equals('ci-key-123456','ci-key-123456'), 'api: key set');
 audit('ci_action','thing',7,'detail');
 chk((int)val("SELECT COUNT(*) FROM audit_log WHERE action='ci_action'") === 1, 'audit: recorded');
 
+/* ---- 15. Escaladare prioritate (anti-starvation) ---- */
+q("UPDATE services SET allow_priority=1 WHERE id=$svc");
+$setup = function() use ($svc) {
+    q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
+    $old = issue_ticket($svc, false, 'paper');                  // normal, vechi
+    q("UPDATE tickets SET issued_at = NOW() - INTERVAL 20 MINUTE WHERE id=".(int)$old['id']);
+    $new = issue_ticket($svc, true, 'paper');                   // prioritar, nou
+    return [(int)$old['id'], (int)$new['id']];
+};
+// escaladare OPRITA: biletul prioritar nou e chemat primul
+set_setting('priority_escalate_min','0');
+[$oldA,$newA] = $setup(); $pickA = call_next($ctr, $adminId, 0);
+chk($pickA && (int)$pickA['id'] === $newA, 'escalate off: priority ticket called first');
+// escaladare PORNITA (5 min): biletul normal vechi (peste prag) bate prioritarul nou
+set_setting('priority_escalate_min','5');
+[$oldB,$newB] = $setup(); $pickB = call_next($ctr, $adminId, 0);
+chk($pickB && (int)$pickB['id'] === $oldB, 'escalate on: old normal ticket called before newer priority');
+set_setting('priority_escalate_min','0');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
