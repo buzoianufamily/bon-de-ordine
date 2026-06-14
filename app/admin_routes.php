@@ -446,16 +446,17 @@ function admin_user_save(): void {
     $name=trim($_POST['name']??''); $email=trim($_POST['email']??''); $role=$_POST['role']??'agent';
     $active=isset($_POST['active'])?1:0; $pass=(string)($_POST['password']??'');
     $notify=isset($_POST['notify_browser'])?1:0;
+    $pin = preg_replace('/\D/', '', (string)($_POST['pin'] ?? '')); $pin = $pin !== '' ? substr($pin, 0, 12) : null;
     $allowed = implode(',', array_filter(array_map('intval', (array)($_POST['allowed_counters'] ?? [])))) ?: null;
     if ($name==='' || $email==='') { flash('Nume si email obligatorii.', 'error'); redirect('admin/users'); }
     if ($id) {
-        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,password_hash=? WHERE id=?',
-            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT),$id]);
-        else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$id]);
+        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=?,password_hash=? WHERE id=?',
+            [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT),$id]);
+        else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$pin,$id]);
     } else {
         if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
-        try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,password_hash) VALUES (?,?,?,?,?,?,?)',
-            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT)]); }
+        try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,pin,password_hash) VALUES (?,?,?,?,?,?,?,?)',
+            [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
     if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }

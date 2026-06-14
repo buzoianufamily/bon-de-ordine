@@ -62,6 +62,19 @@ function require_role(array $roles): array {
     return $u;
 }
 
+/**
+ * Schimbare rapida a operatorului la terminal printr-un PIN (dispozitive de incredere).
+ * Doar conturi de tip 'agent' active — nu permite escaladare la manager/admin.
+ */
+function pin_switch(string $pin): ?array {
+    $pin = preg_replace('/\D/', '', $pin);
+    if ($pin === '') return null;
+    $u = one("SELECT id, name, role FROM users WHERE pin = ? AND active = 1 AND role = 'agent' LIMIT 1", [$pin]);
+    if (!$u) return null;
+    complete_login((int)$u['id']);
+    return $u;
+}
+
 /* ----------------------- Parola: schimbare / resetare ----------------------- */
 
 /** Cerinte minime pentru o parola noua. Returneaza mesaj de eroare sau '' daca e ok. */

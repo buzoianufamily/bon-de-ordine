@@ -207,6 +207,12 @@ SWJS;
                 json_out(['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
                           'virtual_url' => url('t/' . $t['public_token'])]);
             }
+            case 'pin-switch': {
+                $nu = pin_switch((string) input('pin', ''));
+                if (!$nu) json_out(['ok' => false, 'error' => 'PIN invalid']);
+                audit('pin_switch', 'auth', $nu['id']);
+                json_out(['ok' => true, 'name' => $nu['name']]);
+            }
             case 'call-next':
                 $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);

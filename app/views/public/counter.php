@@ -15,6 +15,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
       <?php else: ?>
         <button class="btn" id="btnPauseC">⏸ Pauza ghiseu</button>
       <?php endif; ?>
+      <button class="btn btn-ghost" id="btnPinSwitch" type="button">👤 Schimba operator</button>
       <a class="btn btn-ghost" href="<?= e(url('counter')) ?>">Schimba ghiseu</a> <a class="btn btn-ghost" href="<?= e(url('account')) ?>">Cont</a> <a class="btn btn-ghost" href="<?= e(url('logout')) ?>">Iesire</a></div>
   </div>
   <?php if(($notice = active_notice()) !== ''): ?>
@@ -68,5 +69,17 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   counters:<?php $otherCounters = all('SELECT id, code, name FROM counters WHERE branch_id=? AND id<>? ORDER BY code', [$counter['branch_id'], $counter['id']]);
     echo json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $otherCounters), JSON_UNESCAPED_UNICODE); ?>
 };</script>
+<script>
+/* schimbare rapida operator prin PIN */
+(function(){ var b=document.getElementById('btnPinSwitch'); if(!b||!window.QMS) return;
+  b.addEventListener('click', async function(){
+    var pin = await QMS.prompt('PIN operator:', {placeholder:'introdu PIN-ul', ok:'Schimbă'});
+    if(pin===null || !pin.trim()) return;
+    var r = await QMS.api('api/pin-switch', {pin:pin.trim()});
+    if(r && r.ok){ QMS.toast('Operator: '+r.name, 'ok'); setTimeout(function(){ location.reload(); }, 600); }
+    else { QMS.toast((r&&r.error)||'PIN invalid', 'error'); }
+  });
+})();
+</script>
 <script src="<?= e(asset('js/counter.js')) ?>"></script>
 </body></html>
