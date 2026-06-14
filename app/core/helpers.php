@@ -235,17 +235,39 @@ function view(string $view, array $data = []): void {
  * Permite actualizarea instalarilor existente doar prin urcarea fisierelor noi.
  */
 /** Ruleaza un fisier .sql instructiune cu instructiune (erori individuale ignorate). */
+/**
+ * Imparte un script SQL in instructiuni, respectand sirurile si comentariile.
+ * Ignora ';' din interiorul sirurilor ('...') si comentariilor (-- ..., # ..., comment-line),
+ * astfel incat un comentariu care contine ';' nu mai rupe instructiunea (bug istoric).
+ */
+function sql_split(string $sql): array {
+    $stmts = []; $buf = ''; $n = strlen($sql); $inS = false;
+    for ($i = 0; $i < $n; $i++) {
+        $c = $sql[$i];
+        if ($inS) {                                   // in interiorul unui sir '...'
+            $buf .= $c;
+            if ($c === '\\' && $i + 1 < $n) { $buf .= $sql[$i + 1]; $i++; continue; }
+            if ($c === "'") {
+                if ($i + 1 < $n && $sql[$i + 1] === "'") { $buf .= $sql[$i + 1]; $i++; continue; } // '' escapat
+                $inS = false;
+            }
+            continue;
+        }
+        if ($c === "'") { $inS = true; $buf .= $c; continue; }
+        // comentariu de linie: "-- " (MySQL cere spatiu/EOL dupa --) sau "#"
+        if ($c === '-' && $i + 1 < $n && $sql[$i + 1] === '-' && ($i + 2 >= $n || ctype_space($sql[$i + 2]))) {
+            while ($i < $n && $sql[$i] !== "\n") $i++; continue;
+        }
+        if ($c === '#') { while ($i < $n && $sql[$i] !== "\n") $i++; continue; }
+        if ($c === ';') { $s = trim($buf); if ($s !== '') $stmts[] = $s; $buf = ''; continue; }
+        $buf .= $c;
+    }
+    $s = trim($buf); if ($s !== '') $stmts[] = $s;
+    return $stmts;
+}
 function run_sql_file(string $file): void {
     if (!is_file($file)) return;
-    $sql = file_get_contents($file);
-    // 1) elimina liniile de comentariu (-- ...) ca sa nu "inghita" instructiunea de sub ele
-    $lines = preg_split('/\r?\n/', $sql);
-    $kept = [];
-    foreach ($lines as $ln) { if (preg_match('/^\s*--/', $ln)) continue; $kept[] = $ln; }
-    $sql = implode("\n", $kept);
-    // 2) imparte pe ';' (schema/seed nu au ';' in interiorul instructiunilor) si executa
-    foreach (array_map('trim', explode(';', $sql)) as $stmt) {
-        if ($stmt === '') continue;
+    foreach (sql_split((string) file_get_contents($file)) as $stmt) {
         try { db()->exec($stmt); } catch (Throwable $e) {}
     }
 }
@@ -276,9 +298,11 @@ function auto_install(): void {
         }
     } catch (Throwable $e) {}
 
-    // schema.sql contine deja toate coloanele recente -> marcheaza versiunea la zi
-    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)",
-            [(string)(defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 18)]); } catch (Throwable $e) {}
+    // Stampam o versiune de baza (1), NU cea curenta: lasam run_migrations() sa ruleze
+    // migrarile idempotente si dupa schema.sql, ca sa cream si tabelele/coloanele aparute
+    // ulterior prin migrari (ex: password_resets, branch_closures) si sa corectam orice drift.
+    try { q("INSERT INTO settings (k, v) VALUES ('schema_version', '1') ON DUPLICATE KEY UPDATE v = VALUES(v)"); }
+    catch (Throwable $e) {}
 }
 
 function run_migrations(): void {
