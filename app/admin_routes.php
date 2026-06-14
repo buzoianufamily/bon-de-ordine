@@ -109,6 +109,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'feedback':
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM feedback WHERE id=?', [(int)$a]); audit('delete','feedback',(int)$a); flash('Feedback sters.'); redirect('admin/feedback'); }
+            if ($a === 'export') { admin_feedback_export(); return; }
             admin_feedback_list(); return;
 
         case 'appointments':
@@ -621,6 +622,25 @@ function admin_feedback_list(): void {
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
+}
+/** Export CSV al evaluarilor (respecta filtrul de rating). */
+function admin_feedback_export(): void {
+    $rating = (int)($_GET['rating'] ?? 0);
+    $where = '1=1'; $args = [];
+    if ($rating >= 1 && $rating <= 5) { $where .= ' AND f.rating=?'; $args[] = $rating; }
+    audit('export', 'feedback');
+    $rows = all("SELECT f.created_at, f.rating, f.comment, b.name branch_name, t.label ticket_label
+                 FROM feedback f LEFT JOIN branches b ON b.id=f.branch_id LEFT JOIN tickets t ON t.id=f.ticket_id
+                 WHERE $where ORDER BY f.created_at DESC LIMIT 50000", $args);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="feedback_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Data/ora','Nota','Comentariu','Filiala','Bon'], ';');
+    foreach ($rows as $r)
+        fputcsv($out, [$r['created_at'], $r['rating'], $r['comment'] ?? '', $r['branch_name'] ?? '', $r['ticket_label'] ?? ''], ';');
+    fclose($out);
+    exit;
 }
 
 /* ----------------------- CAUTARE GLOBALA (Ctrl+K) ----------------------- */
