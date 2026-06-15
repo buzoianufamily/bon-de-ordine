@@ -31,6 +31,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 <style>:root{--accent:<?= e($accent) ?>}</style>
 </head><body class="admin">
+<a href="#main-content" class="skip-link">Sari la conținut</a>
 <script>(function(){try{
   var t=localStorage.getItem('admin_theme');
   /* fara preferinta salvata -> urmeaza tema sistemului de operare */
@@ -75,7 +76,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
         <span class="uchip"><span class="av"><?= e(mb_strtoupper(mb_substr($u['name'] ?? '?',0,1))) ?></span><?= e($u['name'] ?? '') ?></span>
       </div>
     </div>
-    <div class="content">
+    <div class="content" id="main-content">
     <?php foreach (get_flashes() as $f): ?>
       <div class="toast <?= $f['type']==='error'?'error':'ok' ?>" style="position:static;margin-bottom:1rem;display:inline-block"><?= e($f['msg']) ?></div>
     <?php endforeach; ?>

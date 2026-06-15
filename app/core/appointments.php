@@ -99,5 +99,9 @@ function appt_checkin(array $appt): array {
     if ($appt['status'] === 'cancelled') throw new RuntimeException('Programare anulata');
     $t = issue_ticket((int)$appt['service_id'], false, 'appointment', $appt['customer_phone']);
     q("UPDATE appointments SET status='checked_in', ticket_id=? WHERE id=?", [$t['id'], $appt['id']]);
+    if (function_exists('fire_webhook')) {
+        $appt['status'] = 'checked_in'; $appt['ticket_id'] = $t['id'];
+        fire_webhook('appointment.checked_in', webhook_appointment($appt) + ['ticket_label' => $t['label']]);
+    }
     return $t;
 }

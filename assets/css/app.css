@@ -355,3 +355,6 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible){outline:none}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
+/* skip-to-content (vizibil doar la focus, pentru navigare cu tastatura) */
+.skip-link{position:absolute;left:-999px;top:0;z-index:200;background:var(--accent);color:#fff;padding:.6rem 1rem;border-radius:0 0 8px 0;font-weight:700}
+.skip-link:focus{left:0}
