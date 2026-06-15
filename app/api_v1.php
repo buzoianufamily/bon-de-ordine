@@ -92,6 +92,47 @@ function api_v1(array $seg, string $method): void {
         ]]);
     }
 
+    // ---- Programari online (respecta modulul) ----
+    $apptOn = setting('mod_booking', '1') === '1';
+
+    // GET /api/v1/slots?service_id=&date= — sloturi disponibile
+    if ($res === 'slots' && $method === 'GET') {
+        if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
+        $svc = one('SELECT * FROM services WHERE id=? AND status="active" AND appt_enabled=1', [(int)($_GET['service_id'] ?? 0)]);
+        if (!$svc) json_out(['ok' => false, 'error' => 'Serviciu indisponibil pentru programari'], 404);
+        $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
+        json_out(['ok' => true, 'date' => $date, 'slots' => array_map(fn($s) => [
+            'start' => $s['start'], 'time' => $s['time'], 'available' => (int)$s['available'],
+            'full' => (bool)$s['full'], 'past' => (bool)$s['past'],
+        ], appt_slots($svc, $date))]);
+    }
+
+    // POST /api/v1/appointments {service_id, slot_start, name?, phone?, email?} — rezerva
+    if ($res === 'appointments' && $arg === null && $method === 'POST') {
+        if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
+        try {
+            $a = appt_book((int) input('service_id', 0), (string) input('slot_start', ''),
+                (trim((string) input('name', '')) ?: null), (trim((string) input('phone', '')) ?: null),
+                (trim((string) input('email', '')) ?: null));
+        } catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+        json_out(['ok' => true, 'appointment' => [
+            'id' => (int)$a['id'], 'public_token' => $a['public_token'], 'slot_start' => $a['slot_start'],
+            'status' => $a['status'], 'follow_url' => url('a/' . $a['public_token']),
+        ]]);
+    }
+
+    // GET /api/v1/appointments/{token} — starea unei programari
+    if ($res === 'appointments' && $arg !== null && $method === 'GET') {
+        $a = one('SELECT a.*, s.name service_name, t.label ticket_label FROM appointments a
+                  JOIN services s ON s.id=a.service_id LEFT JOIN tickets t ON t.id=a.ticket_id
+                  WHERE a.public_token = ?', [$arg]);
+        if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+        json_out(['ok' => true, 'appointment' => [
+            'service' => $a['service_name'], 'slot_start' => $a['slot_start'],
+            'status' => $a['status'], 'ticket_label' => $a['ticket_label'],
+        ]]);
+    }
+
     // GET /api/v1/stats?from&to&branch — rezumat KPI
     if ($res === 'stats' && $method === 'GET') {
         $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from'] ?? '') ? $_GET['from'] : date('Y-m-d');

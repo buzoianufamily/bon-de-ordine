@@ -1,7 +1,8 @@
 <?php
 /**
- * Helper pentru testul HTTP: ruleaza init (instaleaza schema la zero), apoi tipareste
- * pe o linie:  <dispenser_key> <service_id> <counter_id> <branch_id>
+ * Helper pentru testul HTTP: ruleaza init (instaleaza schema la zero), pregateste datele
+ * de test (cheie API, programari activate pe serviciu) si tipareste pe o linie:
+ *   <dispenser_key> <service_id> <counter_id> <branch_id> <api_key>
  * Config DB din env (acelasi ca tests/integration.php).
  */
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_WARNING & ~E_NOTICE);
@@ -18,4 +19,8 @@ $dkey = (string) val("SELECT connection_key FROM devices WHERE type='dispenser' 
 $svc  = (int) val("SELECT id FROM services WHERE status='active' ORDER BY sort_order LIMIT 1");
 $ctr  = (int) val("SELECT id FROM counters LIMIT 1");
 $br   = (int) val("SELECT branch_id FROM services WHERE id=$svc");
-echo "$dkey $svc $ctr $br\n";
+// pregateste API + programari pentru testele HTTP
+$akey = 'ci-api-key-123456';
+set_setting('api_key', $akey);
+q("UPDATE services SET appt_enabled=1, appt_slot_min=15, appt_capacity=3 WHERE id=$svc");
+echo "$dkey $svc $ctr $br $akey\n";

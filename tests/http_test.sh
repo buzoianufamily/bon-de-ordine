@@ -23,7 +23,7 @@ trap cleanup EXIT
 
 # instaleaza schema + ia id-uri necesare (foloseste env, nu config.php)
 IDS="$(BDO_DB_HOST=$DBH BDO_DB_PORT=$DBP BDO_DB_NAME=$DBN BDO_DB_USER=$DBU BDO_DB_PASS=$DBW php tests/_ids.php 2>/dev/null | tail -1)"
-read -r DKEY SVC CTR BR <<< "$IDS"
+read -r DKEY SVC CTR BR AKEY <<< "$IDS"
 [ -n "${DKEY:-}" ] || { echo "FATAL: nu am putut instala/citi id-uri (IDS='$IDS')"; exit 1; }
 
 php -S "$HOST:$PORT" index.php >"$SRVLOG" 2>&1 &
@@ -77,6 +77,26 @@ tcontains "export activitate operatori CSV" 'text/csv' "$CT_OPA"
 
 # --- CSRF lipsa pe POST autentificat => respins (419) ---
 t "POST fara CSRF -> 419" 419 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/api/call-next -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
+
+# --- API v1 (cheie) ---
+t "GET /api/v1/state no key -> 401" 401 "$(code "$B/api/v1/state?branch=$BR")"
+ST_API="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/state?branch=$BR")"
+tcontains "GET /api/v1/state with key" '"ok":true' "$ST_API"
+ISS_API="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC}" "$B/api/v1/tickets")"
+tcontains "POST /api/v1/tickets issues" '"label"' "$ISS_API"
+# programari via API: sloturi -> rezervare -> status
+TOMORROW="$(date -d '+1 day' +%F 2>/dev/null || date -v+1d +%F)"
+SLOTS_API="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$TOMORROW")"
+tcontains "GET /api/v1/slots" '"slots"' "$SLOTS_API"
+SLOT="$(printf '%s' "$SLOTS_API" | python3 -c "import sys,json; d=json.load(sys.stdin); s=[x for x in d.get('slots',[]) if not x['full'] and not x['past']]; print(s[0]['start'] if s else '')" 2>/dev/null)"
+if [ -n "$SLOT" ]; then
+  APPT_API="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"slot_start\":\"$SLOT\",\"name\":\"CI\"}" "$B/api/v1/appointments")"
+  tcontains "POST /api/v1/appointments books" '"public_token"' "$APPT_API"
+  ATOK="$(printf '%s' "$APPT_API" | python3 -c "import sys,json; print(json.load(sys.stdin).get('appointment',{}).get('public_token',''))" 2>/dev/null)"
+  [ -n "$ATOK" ] && tcontains "GET /api/v1/appointments/{token}" '"status"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")" || { FAIL=$((FAIL+1)); echo "FAIL: appointment token missing"; }
+else
+  echo "WARN: niciun slot liber maine (skip booking via API)"
+fi
 
 # --- logout ---
 t "GET /logout -> 302"   302 "$(code -b "$JAR" $B/logout)"

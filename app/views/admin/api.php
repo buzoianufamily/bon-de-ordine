@@ -64,6 +64,9 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/counters?branch=1</code></td><td>Ghiseele</td></tr>
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/tickets</code></td><td>Emite bon: <code>{service_id, priority?, channel?}</code></td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/tickets/{token}</code></td><td>Starea unui bon (pozitie, timp estimat)</td></tr>
+      <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/slots?service_id=&date=</code></td><td>Sloturi disponibile pentru programare</td></tr>
+      <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments</code></td><td>Rezerva: <code>{service_id, slot_start, name?, phone?, email?}</code></td></tr>
+      <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Starea unei programari</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/stats?from=&to=&branch=</code></td><td>Rezumat KPI pe interval</td></tr>
     </tbody>
   </table>
