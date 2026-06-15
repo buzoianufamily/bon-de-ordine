@@ -12,6 +12,8 @@
       <div class="field" style="display:flex;align-items:flex-end"><label style="margin:0"><input type="checkbox" name="active" <?= ($row['active']??1)?'checked':'' ?> style="width:auto"> Activ</label></div>
     </div>
     <div class="field"><label>Parola <?= $row?'(lasa gol = nu schimba)':'' ?></label><input type="password" name="password" <?= $row?'':'required' ?>></div>
+    <div class="field"><label>PIN terminal (opțional, doar cifre)</label><input type="text" name="pin" inputmode="numeric" pattern="[0-9]*" maxlength="12" value="<?= e($row['pin']??'') ?>" placeholder="ex: 1234">
+      <p class="muted" style="font-size:.78rem;margin-top:.3rem">Permite schimbarea rapidă a operatorului la terminal („Schimbă operator"). Recomandat doar pentru operatori, pe dispozitive de încredere.</p></div>
     <div class="field"><label style="margin:0"><input type="checkbox" name="notify_browser" <?= ($row['notify_browser']??0)?'checked':'' ?> style="width:auto"> Notificari in browser la terminalul operatorului (anunta biletele noi / transferate)</label></div>
     <?php if(!empty($counters)): $allowed = array_filter(array_map('intval', explode(',', (string)($row['allowed_counters'] ?? '')))); ?>
     <div class="field"><label>Ghisee permise <span class="muted" style="font-weight:400">(nimic bifat = poate deschide orice ghiseu)</span></label>

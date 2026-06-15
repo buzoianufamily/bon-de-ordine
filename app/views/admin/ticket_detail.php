@@ -31,6 +31,7 @@ $form = $t['form_data'] ? json_decode($t['form_data'], true) : null;
       <tr><td class="muted">Operator</td><td><?= e($t['agent_name'] ?? '—') ?></td></tr>
       <tr><td class="muted">Canal</td><td><?= e($t['channel']) ?></td></tr>
       <tr><td class="muted">Rechemari</td><td><?= (int)$t['recall_count'] ?></td></tr>
+      <?php if(!empty($t['note'])): ?><tr><td class="muted">Notă</td><td><?= e($t['note']) ?></td></tr><?php endif; ?>
       <tr><td class="muted">Timp asteptare</td><td><?= $mmss($waitSec) ?> <?php if($waitSec!==null && (int)$t['kpi_wait_sec']>0 && $waitSec>(int)$t['kpi_wait_sec']): ?><span class="pill" style="background:#fee2e2;color:#b91c1c">peste tinta (<?= $mmss((int)$t['kpi_wait_sec']) ?>)</span><?php endif; ?></td></tr>
       <tr><td class="muted">Timp servire</td><td><?= $mmss($serveSec) ?></td></tr>
     </table>

@@ -4,7 +4,7 @@ $base = rtrim(base_url(),'/').'/api/v1';
 $wurl = setting('webhook_url','');
 $wsec = setting('webhook_secret','');
 $wev  = array_filter(array_map('trim', explode(',', setting('webhook_events',''))));
-$allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.serving'=>'In servire','ticket.served'=>'Finalizat','ticket.no_show'=>'Neprezentat','ticket.cancelled'=>'Anulat','ticket.transferred'=>'Transferat','ticket.recalled'=>'Rechemat','sla.breach'=>'Alerta SLA (cozi peste tinta)'];
+$allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.serving'=>'In servire','ticket.served'=>'Finalizat','ticket.no_show'=>'Neprezentat','ticket.cancelled'=>'Anulat','ticket.transferred'=>'Transferat','ticket.recalled'=>'Rechemat','appointment.created'=>'Programare creata','appointment.cancelled'=>'Programare anulata','appointment.checked_in'=>'Check-in programare','appointment.rescheduled'=>'Programare mutata','sla.breach'=>'Alerta SLA (cozi peste tinta)'];
 $cron = setting('cron_token','');
 $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
 ?>
@@ -60,10 +60,18 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
     <thead><tr><th>Metoda</th><th>Cale</th><th>Descriere</th></tr></thead>
     <tbody style="font-size:.9rem">
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/state?branch=1</code></td><td>Starea cozii (apelate, la rand, ghisee)</td></tr>
+      <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/branches</code></td><td>Filialele active</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/services?branch=1</code></td><td>Serviciile active</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/counters?branch=1</code></td><td>Ghiseele</td></tr>
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/tickets</code></td><td>Emite bon: <code>{service_id, priority?, channel?}</code></td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/tickets/{token}</code></td><td>Starea unui bon (pozitie, timp estimat)</td></tr>
+      <tr><td><span class="pill" style="background:#fee2e2;color:#b91c1c">DELETE</span></td><td><code>/api/v1/tickets/{token}</code></td><td>Anuleaza un bon (in asteptare/chemat)</td></tr>
+      <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/slots?service_id=&date=</code></td><td>Sloturi disponibile pentru programare</td></tr>
+      <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments</code></td><td>Rezerva: <code>{service_id, slot_start, name?, phone?, email?}</code></td></tr>
+      <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Starea unei programari</td></tr>
+      <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments/{token}/checkin</code></td><td>Check-in: genereaza bonul</td></tr>
+      <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments/{token}/reschedule</code></td><td>Muta in alt slot: <code>{slot_start}</code></td></tr>
+      <tr><td><span class="pill" style="background:#fee2e2;color:#b91c1c">DELETE</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Anuleaza o programare (rezervata)</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/stats?from=&to=&branch=</code></td><td>Rezumat KPI pe interval</td></tr>
     </tbody>
   </table>

@@ -1,5 +1,5 @@
 <?php
-$title=setting('brand_name','Bon').' · Dispenser'; require __DIR__.'/_head.php';
+$title=setting('brand_name','Bon').' · Dispenser'; $kiosk=true; require __DIR__.'/_head.php';
 $cfg = $dev['config'] ? json_decode($dev['config'], true) : [];
 $L=$cfg['logic']??[]; $A=$cfg['appearance']??[]; $T=$cfg['texts']??[]; $PU=$cfg['popup']??[];
 $gd=fn($a,$k,$d)=>(isset($a[$k]) && $a[$k]!=='') ? $a[$k] : $d;

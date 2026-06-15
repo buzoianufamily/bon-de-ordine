@@ -90,6 +90,10 @@ function issue_ticket(int $service_id, bool $priority = false, string $channel =
         $waiting = (int) val('SELECT COUNT(*) FROM tickets WHERE service_id = ? AND status = "waiting"', [$service_id]);
         if ($waiting >= (int)$svc['max_queued']) throw new RuntimeException('Coada este plina pentru acest serviciu');
     }
+    if ((int)($svc['max_per_day'] ?? 0) > 0) {
+        $today = (int) val('SELECT COUNT(*) FROM tickets WHERE service_id = ? AND DATE(issued_at) = CURDATE()', [$service_id]);
+        if ($today >= (int)$svc['max_per_day']) throw new RuntimeException('Limita zilnica de bonuri a fost atinsa pentru acest serviciu');
+    }
     if (!$svc['allow_priority']) $priority = false;
 
     $number = next_number($svc);
@@ -236,11 +240,28 @@ function transfer_to_counter(int $ticket_id, int $target_counter_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
-function recall_ticket(int $ticket_id): void {
-    q("UPDATE tickets SET called_at = NOW(), recall_count = recall_count + 1,
+/** Salveaza o nota interna pe bilet (operator). Gol = sterge nota. */
+function set_ticket_note(int $ticket_id, string $note): void {
+    $note = trim($note);
+    q("UPDATE tickets SET note=? WHERE id=?", [$note !== '' ? mb_substr($note, 0, 255) : null, $ticket_id]);
+}
+
+/** Recheamă un bilet. După 'max_recalls' rechemări (>0), îl marchează automat neprezentat. Returneaza statusul rezultat. */
+function recall_ticket(int $ticket_id): string {
+    $row = one("SELECT recall_count, status FROM tickets WHERE id=?", [$ticket_id]);
+    if (!$row) return '';
+    $new = (int)$row['recall_count'] + 1;
+    $max = (int) setting('max_recalls', '0');
+    if ($max > 0 && $new > $max && $row['status'] === 'called') {
+        q("UPDATE tickets SET status='no_show', finished_at=NOW(), recall_count=? WHERE id=?", [$new, $ticket_id]);
+        ticket_event($ticket_id, 'ticket.no_show');
+        return 'no_show';
+    }
+    q("UPDATE tickets SET called_at = NOW(), recall_count = ?,
         status = CASE WHEN status IN ('served','no_show','cancelled') THEN 'called' ELSE status END
-       WHERE id = ?", [$ticket_id]);
+       WHERE id = ?", [$new, $ticket_id]);
     ticket_event($ticket_id, 'ticket.recalled');
+    return 'called';
 }
 function start_serving(int $ticket_id): void {
     $st = q("UPDATE tickets SET status = 'serving', served_at = COALESCE(served_at, NOW()) WHERE id = ? AND status = 'called'", [$ticket_id]);
@@ -266,9 +287,13 @@ function transfer_ticket(int $ticket_id, int $service_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
+/** Elibereaza biletele directionate catre un ghiseu (in asteptare) inapoi in coada generala a serviciului. */
+function release_targeted_tickets(int $counter_id): int {
+    return q("UPDATE tickets SET target_counter_id = NULL WHERE target_counter_id = ? AND status = 'waiting'", [$counter_id])->rowCount();
+}
+
 /** Repune un bilet neprezentat inapoi la rand (clientul a ajuns tarziu). Merge la coada, cu ora curenta. */
-function requeue_ticket(int $ticket_id): bool {
-    $st = q("UPDATE tickets SET status='waiting', counter_id=NULL, called_at=NULL, served_at=NULL, finished_at=NULL,
+function requeue_ticket(int $ticket_id): bool {    $st = q("UPDATE tickets SET status='waiting', counter_id=NULL, called_at=NULL, served_at=NULL, finished_at=NULL,
                     issued_at=NOW(), recall_count=0
              WHERE id=? AND status='no_show'", [$ticket_id]);
     if ($st->rowCount() > 0) { ticket_event($ticket_id, 'ticket.created'); return true; }
@@ -367,7 +392,7 @@ function counter_view(array $counter): array {
         $args = array_merge($args, $svcIds);
     }
     $waiting = all(
-        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id,
+        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id, t.note,
                 s.name AS service_name, s.color, s.kpi_wait_sec,
                 TIMESTAMPDIFF(SECOND, t.issued_at, NOW()) AS waited
          FROM tickets t JOIN services s ON s.id = t.service_id

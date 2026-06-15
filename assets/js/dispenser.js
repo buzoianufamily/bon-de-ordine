@@ -5,6 +5,8 @@
   const $ = id => document.getElementById(id);
   const overlay=$('overlay'), modal=$('modal'), modalBox=$('modalBox');
   const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  // pastreaza limba aleasa la dispenser pe pagina biletului digital (telefon)
+  const vurl=u=>(cfg.lang && cfg.lang!=='ro' && u) ? (u+(u.indexOf('?')>-1?'&':'?')+'lang='+encodeURIComponent(cfg.lang)) : u;
   let timer=null;
 
   document.querySelectorAll('.svc-btn').forEach(btn=>{
@@ -103,7 +105,7 @@
       if(m>0){ tw.style.display=''; tw.textContent=(cfg.texts.wait_est||'Timp estimat ~{m} min').replace('{m}',m); } else tw.style.display='none'; }
     $('tkDone').textContent = cfg.texts.done||'Gata';
     const qr=$('tkQr');
-    if(cfg.virtual && res.virtual_url){ qr.style.display=''; qr.src='https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(res.virtual_url); } else qr.style.display='none';
+    if(cfg.virtual && res.virtual_url){ qr.style.display=''; qr.src='https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(vurl(res.virtual_url)); } else qr.style.display='none';
     // reporneste animatia bifei la fiecare bon
     const chk=overlay.querySelector('.tk-check'); if(chk){ const c2=chk.cloneNode(true); chk.replaceWith(c2); }
     overlay.classList.add('show');
@@ -128,7 +130,7 @@
       <div class="num">${esc(t.label)}</div>
       ${P.position!==0?`<div>${$('tkPos').textContent}</div>`:''}
       ${P.datetime!==0?`<div class="s">${new Date().toLocaleString('ro-RO')}</div>`:''}
-      ${P.qr!==0&&cfg.virtual&&res.virtual_url?`<div>${esc(cfg.texts.qr_hint||'')}</div><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(res.virtual_url)}">`:''}
+      ${P.qr!==0&&cfg.virtual&&res.virtual_url?`<div>${esc(cfg.texts.qr_hint||'')}</div><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(vurl(res.virtual_url))}">`:''}
       <hr><div class="s">${esc(cfg.footer||'')}</div></body></html>`);
     doc.close();
     setTimeout(()=>{ f.contentWindow.focus(); f.contentWindow.print(); },250);

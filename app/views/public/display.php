@@ -1,5 +1,5 @@
 <?php
-$title=setting('brand_name','Bon').' · Afisaj'; require __DIR__.'/_head.php';
+$title=setting('brand_name','Bon').' · Afisaj'; $kiosk=true; require __DIR__.'/_head.php';
 $logo  = setting('brand_logo');
 $layout = $dev['config'] ? json_decode($dev['config'], true) : null;
 $hasLayout = $layout && !empty($layout['screens']);

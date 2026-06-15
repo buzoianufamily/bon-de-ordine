@@ -23,7 +23,7 @@ trap cleanup EXIT
 
 # instaleaza schema + ia id-uri necesare (foloseste env, nu config.php)
 IDS="$(BDO_DB_HOST=$DBH BDO_DB_PORT=$DBP BDO_DB_NAME=$DBN BDO_DB_USER=$DBU BDO_DB_PASS=$DBW php tests/_ids.php 2>/dev/null | tail -1)"
-read -r DKEY SVC CTR BR <<< "$IDS"
+read -r DKEY SVC CTR BR AKEY <<< "$IDS"
 [ -n "${DKEY:-}" ] || { echo "FATAL: nu am putut instala/citi id-uri (IDS='$IDS')"; exit 1; }
 
 php -S "$HOST:$PORT" index.php >"$SRVLOG" 2>&1 &
@@ -68,11 +68,65 @@ CFG_JSON="$(curl -s -b "$JAR" "$B/admin/settings/export")"
 tcontains "export config JSON" '"settings"' "$CFG_JSON"
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
+CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
+tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
 XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
 [ "$XLSX_SIG" = "PK" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: stats xlsx not a zip (got '$XLSX_SIG')"; }
+CT_OPA="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=op_activity" | grep -i 'content-type')"
+tcontains "export activitate operatori CSV" 'text/csv' "$CT_OPA"
+
+# --- export/import servicii din CSV (autentificat) ---
+CT_SVC="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/services/export" | grep -i 'content-type')"
+tcontains "export servicii CSV content-type" 'text/csv' "$CT_SVC"
+ICSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+t "POST /admin/services/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Serviciu Importat CI,#16a34a')"
+tcontains "serviciul importat apare in lista" 'Serviciu Importat CI' "$(curl -s -b "$JAR" "$B/admin/services")"
+# re-import acelasi prefix -> nu se dubleaza
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Duplicat,#000000'
+ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
+[ "$ZZ_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat la re-import (count=$ZZ_COUNT)"; }
 
 # --- CSRF lipsa pe POST autentificat => respins (419) ---
 t "POST fara CSRF -> 419" 419 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/api/call-next -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
+
+# --- API v1 (cheie) ---
+t "GET /api/v1/state no key -> 401" 401 "$(code "$B/api/v1/state?branch=$BR")"
+ST_API="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/state?branch=$BR")"
+tcontains "GET /api/v1/state with key" '"ok":true' "$ST_API"
+tcontains "GET /api/v1/branches" '"branches"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/branches")"
+ISS_API="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC}" "$B/api/v1/tickets")"
+tcontains "POST /api/v1/tickets issues" '"label"' "$ISS_API"
+# anuleaza biletul emis prin API
+TTOK="$(printf '%s' "$ISS_API" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ticket',{}).get('public_token',''))" 2>/dev/null)"
+if [ -n "$TTOK" ]; then
+  t "DELETE /api/v1/tickets/{token}" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "X-Api-Key: $AKEY" "$B/api/v1/tickets/$TTOK")"
+  tcontains "ticket cancelled via API" 'cancelled' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/tickets/$TTOK")"
+fi
+# programari via API: sloturi -> rezervare -> status
+TOMORROW="$(date -d '+1 day' +%F 2>/dev/null || date -v+1d +%F)"
+SLOTS_API="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$TOMORROW")"
+tcontains "GET /api/v1/slots" '"slots"' "$SLOTS_API"
+# trei sloturi libere distincte (separator TAB: slot_start contine spatiu!)
+IFS=$'\t' read -r SLOT SLOT2 SLOT3 <<< "$(printf '%s' "$SLOTS_API" | python3 -c "import sys,json; d=json.load(sys.stdin); s=[x['start'] for x in d.get('slots',[]) if not x['full'] and not x['past']]; print((s[0] if s else '')+chr(9)+(s[1] if len(s)>1 else '')+chr(9)+(s[2] if len(s)>2 else ''))" 2>/dev/null)"
+if [ -n "$SLOT" ]; then
+  APPT_API="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"slot_start\":\"$SLOT\",\"name\":\"CI\"}" "$B/api/v1/appointments")"
+  tcontains "POST /api/v1/appointments books" '"public_token"' "$APPT_API"
+  ATOK="$(printf '%s' "$APPT_API" | python3 -c "import sys,json; print(json.load(sys.stdin).get('appointment',{}).get('public_token',''))" 2>/dev/null)"
+  if [ -n "$ATOK" ]; then
+    tcontains "GET /api/v1/appointments/{token}" '"status"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
+    # reprogrameaza in al doilea slot, apoi anuleaza
+    [ -n "$SLOT2" ] && tcontains "POST /api/v1/appointments/{token}/reschedule" '"ok":true' "$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"slot_start\":\"$SLOT2\"}" "$B/api/v1/appointments/$ATOK/reschedule")"
+    t "DELETE /api/v1/appointments/{token}" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
+  else { FAIL=$((FAIL+1)); echo "FAIL: appointment token missing"; }; fi
+  # check-in via API pe al treilea slot -> genereaza bon
+  if [ -n "$SLOT3" ]; then
+    APPT2="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"slot_start\":\"$SLOT3\",\"name\":\"CI2\"}" "$B/api/v1/appointments")"
+    ATOK2="$(printf '%s' "$APPT2" | python3 -c "import sys,json; print(json.load(sys.stdin).get('appointment',{}).get('public_token',''))" 2>/dev/null)"
+    [ -n "$ATOK2" ] && tcontains "POST /api/v1/appointments/{token}/checkin -> bon" '"label"' "$(curl -s -X POST -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK2/checkin")"
+  fi
+else
+  echo "WARN: niciun slot liber maine (skip booking via API)"
+fi
 
 # --- logout ---
 t "GET /logout -> 302"   302 "$(code -b "$JAR" $B/logout)"

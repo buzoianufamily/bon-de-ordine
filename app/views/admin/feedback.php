@@ -3,13 +3,16 @@ $pages = max(1, (int)ceil($total / $per));
 $avg = $stat['avg']!==null ? round((float)$stat['avg'],2) : null;
 $qs = fn($p)=>e(url('admin/feedback').'?'.http_build_query(['rating'=>$rating,'p'=>$p])); ?>
 <div class="topbar"><h1>Feedback client</h1>
-  <form method="get" action="<?= e(url('admin/feedback')) ?>" style="display:flex;gap:.5rem;align-items:center">
-    <label style="margin:0">Nota</label>
-    <select name="rating" onchange="this.form.submit()" style="width:auto">
-      <option value="0">Toate</option>
-      <?php for($i=5;$i>=1;$i--): ?><option value="<?= $i ?>" <?= $rating===$i?'selected':'' ?>><?= $i ?> stele</option><?php endfor; ?>
-    </select>
-  </form>
+  <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+    <form method="get" action="<?= e(url('admin/feedback')) ?>" style="display:flex;gap:.5rem;align-items:center">
+      <label style="margin:0">Nota</label>
+      <select name="rating" onchange="this.form.submit()" style="width:auto">
+        <option value="0">Toate</option>
+        <?php for($i=5;$i>=1;$i--): ?><option value="<?= $i ?>" <?= $rating===$i?'selected':'' ?>><?= $i ?> stele</option><?php endfor; ?>
+      </select>
+    </form>
+    <a class="btn" href="<?= e(url('admin/feedback/export').($rating?('?rating='.$rating):'')) ?>">⤓ Export CSV</a>
+  </div>
 </div>
 
 <div class="statcards">

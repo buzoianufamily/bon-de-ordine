@@ -52,6 +52,8 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'services':
             if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
+            if ($method === 'POST' && $a === 'import') { admin_services_import(); return; }
+            if ($a === 'export') { admin_services_export(); return; }
             if ($method === 'POST' && $b === 'pause') { csrf_check();
                 $p = (int)!val('SELECT paused FROM services WHERE id=?', [(int)$a]);
                 $note = $p ? (mb_substr(trim((string)($_POST['note'] ?? '')), 0, 120) ?: null) : null;
@@ -109,6 +111,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'feedback':
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM feedback WHERE id=?', [(int)$a]); audit('delete','feedback',(int)$a); flash('Feedback sters.'); redirect('admin/feedback'); }
+            if ($a === 'export') { admin_feedback_export(); return; }
             admin_feedback_list(); return;
 
         case 'appointments':
@@ -288,7 +291,49 @@ function admin_dashboard(): void {
 /* ----------------------- SERVICES ----------------------- */
 function admin_services_list(): void {
     $rows = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id ORDER BY b.name, s.sort_order, s.id');
-    view('admin/services', ['rows' => $rows]);
+    $branches = all('SELECT id, name FROM branches ORDER BY name');
+    view('admin/services', ['rows' => $rows, 'branches' => $branches]);
+}
+/** Export servicii in CSV (prefix,nume,culoare) — round-trip cu importul. */
+function admin_services_export(): void {
+    $branch = (int)($_GET['branch'] ?? 0);
+    $where = '1=1'; $args = [];
+    if ($branch) { $where .= ' AND branch_id=?'; $args[] = $branch; }
+    $rows = all("SELECT prefix, name, color FROM services WHERE $where ORDER BY branch_id, sort_order, id", $args);
+    audit('export', 'services');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="servicii_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['prefix', 'nume', 'culoare']);
+    foreach ($rows as $r) fputcsv($out, [$r['prefix'], $r['name'], $r['color']]);
+    fclose($out);
+    exit;
+}
+/** Import servicii din CSV (prefix,nume,culoare) pentru o filiala. */
+function admin_services_import(): void {
+    csrf_check();
+    $branch = (int)($_POST['branch_id'] ?? 0) ?: (int) val('SELECT id FROM branches ORDER BY id LIMIT 1');
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_services_csv($csv);
+    // prefixele deja existente in filiala (re-import sigur, fara dubluri)
+    $existing = array_map('strtoupper', array_column(all('SELECT prefix FROM services WHERE branch_id=?', [$branch]), 'prefix'));
+    $existing = array_flip($existing);
+    $pos = (int) val('SELECT COALESCE(MAX(sort_order),0) FROM services WHERE branch_id=?', [$branch]);
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[$r['prefix']])) { $skipped++; continue; }
+        q("INSERT INTO services (branch_id,prefix,name,color,status,num_from,num_to,pad_length,include_zeros,kpi_wait_sec,kpi_service_sec,sort_order)
+           VALUES (?,?,?,?,'active',1,999,3,1,600,300,?)", [$branch, $r['prefix'], $r['name'], $r['color'], ++$pos]);
+        $existing[$r['prefix']] = 1; $n++;
+    }
+    audit('import', 'services', $branch, $n . ' servicii');
+    $msg = $n > 0 ? "$n servicii importate." : 'Niciun serviciu nou de importat.';
+    if ($skipped) $msg .= " $skipped sarite (prefix existent).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/services');
 }
 function admin_service_form(?int $id): void {
     $row = $id ? one('SELECT * FROM services WHERE id=?', [$id]) : null;
@@ -334,7 +379,7 @@ function admin_service_save(): void {
         'include_zeros'=>isset($_POST['include_zeros'])?1:0, 'allow_priority'=>isset($_POST['allow_priority'])?1:0,
         'terminate_on_call'=>isset($_POST['terminate_on_call'])?1:0,
         'kpi_wait_sec'=>(int)($_POST['kpi_wait_sec'] ?? 600), 'kpi_service_sec'=>(int)($_POST['kpi_service_sec'] ?? 300),
-        'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
+        'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'max_per_day'=>(int)($_POST['max_per_day'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
         'active_hours'=>$ah, 'i18n'=>$i18n,
         'group_id'=>((int)($_POST['group_id'] ?? 0)) ?: null,
         'form_id'=>((int)($_POST['form_id'] ?? 0)) ?: null,
@@ -445,16 +490,17 @@ function admin_user_save(): void {
     $name=trim($_POST['name']??''); $email=trim($_POST['email']??''); $role=$_POST['role']??'agent';
     $active=isset($_POST['active'])?1:0; $pass=(string)($_POST['password']??'');
     $notify=isset($_POST['notify_browser'])?1:0;
+    $pin = preg_replace('/\D/', '', (string)($_POST['pin'] ?? '')); $pin = $pin !== '' ? substr($pin, 0, 12) : null;
     $allowed = implode(',', array_filter(array_map('intval', (array)($_POST['allowed_counters'] ?? [])))) ?: null;
     if ($name==='' || $email==='') { flash('Nume si email obligatorii.', 'error'); redirect('admin/users'); }
     if ($id) {
-        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,password_hash=? WHERE id=?',
-            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT),$id]);
-        else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$id]);
+        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=?,password_hash=? WHERE id=?',
+            [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT),$id]);
+        else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$pin,$id]);
     } else {
         if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
-        try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,password_hash) VALUES (?,?,?,?,?,?,?)',
-            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT)]); }
+        try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,pin,password_hash) VALUES (?,?,?,?,?,?,?,?)',
+            [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
     if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
@@ -621,6 +667,25 @@ function admin_feedback_list(): void {
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
+}
+/** Export CSV al evaluarilor (respecta filtrul de rating). */
+function admin_feedback_export(): void {
+    $rating = (int)($_GET['rating'] ?? 0);
+    $where = '1=1'; $args = [];
+    if ($rating >= 1 && $rating <= 5) { $where .= ' AND f.rating=?'; $args[] = $rating; }
+    audit('export', 'feedback');
+    $rows = all("SELECT f.created_at, f.rating, f.comment, b.name branch_name, t.label ticket_label
+                 FROM feedback f LEFT JOIN branches b ON b.id=f.branch_id LEFT JOIN tickets t ON t.id=f.ticket_id
+                 WHERE $where ORDER BY f.created_at DESC LIMIT 50000", $args);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="feedback_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Data/ora','Nota','Comentariu','Filiala','Bon'], ';');
+    foreach ($rows as $r)
+        fputcsv($out, [$r['created_at'], $r['rating'], $r['comment'] ?? '', $r['branch_name'] ?? '', $r['ticket_label'] ?? ''], ';');
+    fclose($out);
+    exit;
 }
 
 /* ----------------------- CAUTARE GLOBALA (Ctrl+K) ----------------------- */
@@ -846,8 +911,8 @@ function admin_settings_import(): void {
 function admin_settings_save(): void {
     csrf_check();
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
-             'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size','priority_escalate_min',
-             'alert_called','alert_transfer','alert_delay','notice_text','notice_until',
+             'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size','priority_escalate_min','max_recalls',
+             'alert_called','alert_transfer','alert_delay','near_turn_alert','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
              'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
@@ -864,6 +929,7 @@ function admin_settings_save(): void {
     set_setting('mod_feedback', isset($_POST['mod_feedback']) ? '1' : '0');
     set_setting('mod_concierge', isset($_POST['mod_concierge']) ? '1' : '0');
     set_setting('mod_public_status', isset($_POST['mod_public_status']) ? '1' : '0');
+    set_setting('release_on_pause', isset($_POST['release_on_pause']) ? '1' : '0');
     set_setting('ticket_show_position', isset($_POST['ticket_show_position']) ? '1' : '0');
     set_setting('ticket_show_datetime', isset($_POST['ticket_show_datetime']) ? '1' : '0');
     set_setting('ticket_show_qr', isset($_POST['ticket_show_qr']) ? '1' : '0');
@@ -1189,8 +1255,14 @@ function admin_statistics(): void {
       GROUP BY u.id, l.status", [$fromDt, $toDt, $toDt, $fromDt]);
 
     // export CSV per set de date (fiecare grafic are buton propriu de download)
-    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user'], true)) {
+    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity'], true)) {
         $ds = $_GET['dataset'];
+        // activitate operatori pivotata: o linie/operator cu minute pe fiecare status
+        $opPivot = [];
+        foreach ($op_activity as $r) {
+            $n = $r['name']; $opPivot[$n] ??= ['available'=>0,'busy'=>0,'paused'=>0,'offline'=>0];
+            if (isset($opPivot[$n][$r['status']])) $opPivot[$n][$r['status']] += (int)$r['secs'];
+        }
         $sets = [
           'day'     => ['bilete_pe_zi', ['Data','Bilete','Timp mediu asteptare (s)'],
                         array_map(fn($r)=>[$r['d'],(int)$r['c'],round((float)$r['w'])], $per_day)],
@@ -1202,6 +1274,8 @@ function admin_statistics(): void {
                         array_map(fn($r)=>[((int)$r['h']).':00',(int)$r['c']], $per_hour)],
           'user'    => ['bilete_pe_utilizator', ['Utilizator','Total','Servite','Timp mediu asteptare (s)','Timp mediu servire (s)'],
                         array_map(fn($r)=>[$r['name'],(int)$r['c'],(int)$r['served'],round((float)$r['w']),round((float)$r['sv'])], $per_user)],
+          'op_activity' => ['activitate_operatori', ['Operator','Disponibil (min)','Ocupat (min)','Pauza (min)','Indisponibil (min)'],
+                        array_map(fn($n)=>[$n, round($opPivot[$n]['available']/60), round($opPivot[$n]['busy']/60), round($opPivot[$n]['paused']/60), round($opPivot[$n]['offline']/60)], array_keys($opPivot))],
         ];
         [$fname,$head,$data] = $sets[$ds];
         header('Content-Type: text/csv; charset=utf-8');
@@ -1461,7 +1535,7 @@ function admin_appointment_action(int $id, string $act): void {
     if (!$a) redirect('admin/appointments');
     if ($act === 'checkin') { try { appt_checkin($a); flash('Check-in efectuat, bilet generat.'); } catch (Throwable $e) { flash($e->getMessage(), 'error'); } }
     elseif ($act === 'cancel') {
-        q("UPDATE appointments SET status='cancelled' WHERE id=?", [$id]);
+        appt_cancel($id);   // status -> cancelled + webhook
         // anunta clientul pe email (best-effort)
         if (!empty($a['customer_email']) && mail_enabled()) {
             $svcName = (string) (val('SELECT name FROM services WHERE id=?', [$a['service_id']]) ?? '');

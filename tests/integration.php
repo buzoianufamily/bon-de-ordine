@@ -151,6 +151,89 @@ set_setting('priority_escalate_min','5');
 chk($pickB && (int)$pickB['id'] === $oldB, 'escalate on: old normal ticket called before newer priority');
 set_setting('priority_escalate_min','0');
 
+/* ---- 16. Schimbare operator prin PIN ---- */
+q("DELETE FROM users WHERE email='agentpin@ci.ro'");
+q("INSERT INTO users (name,email,role,active,pin,password_hash) VALUES ('Agent PIN','agentpin@ci.ro','agent',1,'4321',?)", [password_hash('x', PASSWORD_DEFAULT)]);
+$agId = (int) val("SELECT id FROM users WHERE email='agentpin@ci.ro'");
+$sw = pin_switch('4321'); chk($sw && (int)$sw['id'] === $agId, 'pin: switch to agent by pin');
+chk(pin_switch('0000') === null, 'pin: wrong pin rejected');
+chk(pin_switch('') === null, 'pin: empty pin rejected');
+q("UPDATE users SET pin='9999' WHERE id=$adminId");           // adminul nu trebuie sa fie comutabil prin PIN
+chk(pin_switch('9999') === null, 'pin: admin not switchable (no escalation)');
+q("UPDATE users SET pin=NULL WHERE id=$adminId");
+
+/* ---- 17. Eliberare bilete directionate la pauza ghiseu ---- */
+q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
+$tt = issue_ticket($svc, false, 'paper');
+transfer_to_counter((int)$tt['id'], $ctr);
+chk((int)val("SELECT target_counter_id FROM tickets WHERE id=".(int)$tt['id']) === $ctr, 'release: ticket targeted to counter');
+$rel = release_targeted_tickets($ctr);
+chk($rel >= 1 && val("SELECT target_counter_id FROM tickets WHERE id=".(int)$tt['id']) === null, 'release: targeted ticket freed to general queue');
+
+/* ---- 18. Plafon zilnic de bonuri per serviciu ---- */
+q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
+$cntToday = (int) val("SELECT COUNT(*) FROM tickets WHERE service_id=$svc AND DATE(issued_at)=CURDATE()");
+q("UPDATE services SET max_per_day=? WHERE id=$svc", [$cntToday + 1]);   // mai permite exact un bon azi
+issue_ticket($svc, false, 'paper');                                      // al (cntToday+1)-lea: ok
+$capped = false; try { issue_ticket($svc, false, 'paper'); } catch (Throwable $e) { $capped = str_contains($e->getMessage(), 'Limita zilnica'); }
+chk($capped, 'daily cap: blocks issuance over max_per_day');
+q("UPDATE services SET max_per_day=0 WHERE id=$svc");
+chk(!empty(issue_ticket($svc, false, 'paper')['id']), 'daily cap: 0 = unlimited again');
+
+/* ---- 19. Traduceri bilet digital (multi-limba) ---- */
+chk(vt_i18n('en')['st_called'] === "It's your turn!", 'i18n: en status');
+chk(vt_i18n('de')['st_waiting'] === 'Warten', 'i18n: de status');
+chk(strpos(vt_i18n('ro')['ahead'], '{n}') !== false, 'i18n: ro placeholder {n}');
+chk(vt_i18n('xx')['rate'] === vt_i18n('ro')['rate'], 'i18n: unknown lang -> ro fallback');
+chk(vt_i18n('es')['cancel'] === 'Abandonar la cola', 'i18n: es cancel');
+
+/* ---- 20. Auto-neprezentat dupa max_recalls rechemari ---- */
+q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
+set_setting('max_recalls','2');
+$rc = issue_ticket($svc, false, 'paper'); call_next($ctr, $adminId, 0);   // -> called
+chk(recall_ticket((int)$rc['id']) === 'called', 'recall 1 -> called');
+chk(recall_ticket((int)$rc['id']) === 'called', 'recall 2 -> called');
+chk(recall_ticket((int)$rc['id']) === 'no_show', 'recall 3 (>max) -> auto no_show');
+chk(val("SELECT status FROM tickets WHERE id=".(int)$rc['id']) === 'no_show', 'recall: ticket marked no_show');
+set_setting('max_recalls','0');
+
+/* ---- 21. Nota pe bilet (operator) ---- */
+$tn = issue_ticket($svc, false, 'paper');
+set_ticket_note((int)$tn['id'], 'revine cu acte');
+chk(val("SELECT note FROM tickets WHERE id=".(int)$tn['id']) === 'revine cu acte', 'note: saved');
+set_ticket_note((int)$tn['id'], '');
+chk(val("SELECT note FROM tickets WHERE id=".(int)$tn['id']) === null, 'note: cleared (empty -> null)');
+
+/* ---- 22. Anulare programare centralizata + payload webhook ---- */
+q("UPDATE services SET appt_enabled=1, appt_slot_min=15, appt_capacity=3 WHERE id=$svc");
+$svcRow2 = one("SELECT * FROM services WHERE id=$svc"); $day2 = date('Y-m-d', strtotime('+2 days'));
+$sl = appt_slots($svcRow2, $day2);
+$ap = appt_book($svc, $sl[0]['start'], 'Test', '07', '');
+$cc = appt_cancel((int)$ap['id']);
+chk($cc && $cc['status'] === 'cancelled' && val("SELECT status FROM appointments WHERE id=".(int)$ap['id']) === 'cancelled', 'appt_cancel: booked -> cancelled');
+chk(appt_cancel((int)$ap['id']) === null, 'appt_cancel: already cancelled -> null');
+$wp = webhook_appointment($cc);
+chk(($wp['id'] ?? 0) === (int)$ap['id'] && ($wp['status'] ?? '') === 'cancelled' && array_key_exists('slot_start',$wp), 'webhook_appointment: payload shape');
+
+/* ---- 23. Reprogramare programare ---- */
+q("UPDATE services SET appt_enabled=1, appt_slot_min=15, appt_capacity=3 WHERE id=$svc");
+$svcRow3 = one("SELECT * FROM services WHERE id=$svc"); $day3 = date('Y-m-d', strtotime('+3 days'));
+$sl3 = appt_slots($svcRow3, $day3);
+$ap3 = appt_book($svc, $sl3[0]['start'], 'R', '07', '');
+$na = appt_reschedule((int)$ap3['id'], $sl3[1]['start']);
+chk($na && $na['slot_start'] === date('Y-m-d H:i:00', strtotime($sl3[1]['start'])), 'reschedule: slot updated');
+$threw = false; try { appt_reschedule((int)$ap3['id'], '2000-01-01 09:00:00'); } catch (Throwable $e) { $threw = str_contains($e->getMessage(),'trecut'); }
+chk($threw, 'reschedule: past slot rejected');
+appt_cancel((int)$ap3['id']);
+chk(appt_reschedule((int)$ap3['id'], $sl3[2]['start']) === null, 'reschedule: cancelled appt -> null');
+
+/* ---- 24. Parser CSV servicii ---- */
+$pcsv = parse_services_csv("prefix,nume,culoare\nA,Casierie,#2563eb\nB,Informatii\n , ,\nC,Acte,bad-color");
+chk(count($pcsv) === 3, 'csv: 3 randuri valide (sare antet + linie goala)');
+chk($pcsv[0]['prefix'] === 'A' && $pcsv[0]['color'] === '#2563eb', 'csv: rand cu culoare');
+chk($pcsv[1]['color'] === '#2563eb', 'csv: culoare lipsa -> default');
+chk($pcsv[2]['color'] === '#2563eb', 'csv: culoare invalida -> default');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

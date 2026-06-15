@@ -207,13 +207,20 @@ SWJS;
                 json_out(['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
                           'virtual_url' => url('t/' . $t['public_token'])]);
             }
+            case 'pin-switch': {
+                $nu = pin_switch((string) input('pin', ''));
+                if (!$nu) json_out(['ok' => false, 'error' => 'PIN invalid']);
+                audit('pin_switch', 'auth', $nu['id']);
+                json_out(['ok' => true, 'name' => $nu['name']]);
+            }
             case 'call-next':
                 $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);
             case 'call-specific':
                 $t = call_specific((int)input('ticket_id', 0), (int)input('counter_id', 0), (int)$u['id']);
                 json_out(['ok' => (bool)$t, 'ticket' => $t] + ($t ? [] : ['error' => 'Biletul nu mai este la rand']));
-            case 'recall':    recall_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
+            case 'recall':    json_out(['ok' => true, 'status' => recall_ticket((int)input('ticket_id', 0))]);
+            case 'ticket-note': set_ticket_note((int)input('ticket_id', 0), (string)input('note', '')); json_out(['ok' => true]);
             case 'serving':   start_serving((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'finish':    finish_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
             case 'no-show':   no_show_ticket((int)input('ticket_id', 0)); json_out(['ok' => true]);
@@ -225,7 +232,9 @@ SWJS;
                 $cid = (int) input('counter_id', 0);
                 $note = mb_substr(trim((string) input('note', '')), 0, 120);
                 q("UPDATE counters SET status='paused', pause_note=? WHERE id=?", [$note !== '' ? $note : null, $cid]);
-                json_out(['ok' => true]);
+                // elibereaza biletele directionate catre acest ghiseu, ca sa nu ramana blocate (optional)
+                $released = setting('release_on_pause', '1') === '1' ? release_targeted_tickets($cid) : 0;
+                json_out(['ok' => true, 'released' => $released]);
             }
             case 'counter-open':
                 q("UPDATE counters SET status='open', pause_note=NULL WHERE id=?", [(int) input('counter_id', 0)]);
@@ -417,7 +426,9 @@ SWJS;
         $t = one('SELECT t.*, s.name AS service_name, s.color FROM tickets t
                   JOIN services s ON s.id=t.service_id WHERE t.public_token = ?', [$seg[1]]);
         if (!$t) { http_response_code(404); echo 'Bilet inexistent.'; return; }
-        view('public/virtual_ticket', ['t' => $t, 'token' => $seg[1]]);
+        $lang = strtolower((string)($_GET['lang'] ?? 'ro'));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        view('public/virtual_ticket', ['t' => $t, 'token' => $seg[1], 'lang' => $lang]);
         return;
     }
 
@@ -458,10 +469,8 @@ SWJS;
             catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }
         }
         if (($seg[2] ?? '') === 'cancel' && $method === 'POST') {
-            if ($appt['status'] === 'booked') {
-                q("UPDATE appointments SET status='cancelled' WHERE id=?", [$appt['id']]);
-                flash('Programarea a fost anulată.');
-            } else flash('Programarea nu mai poate fi anulată.', 'error');
+            if (appt_cancel((int)$appt['id'])) flash('Programarea a fost anulată.');
+            else flash('Programarea nu mai poate fi anulată.', 'error');
             redirect('a/'.$seg[1]);
         }
         view('public/appointment', ['a' => $appt]);
