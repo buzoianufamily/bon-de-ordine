@@ -318,15 +318,21 @@ function admin_services_import(): void {
     if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
         $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
     $rows = parse_services_csv($csv);
+    // prefixele deja existente in filiala (re-import sigur, fara dubluri)
+    $existing = array_map('strtoupper', array_column(all('SELECT prefix FROM services WHERE branch_id=?', [$branch]), 'prefix'));
+    $existing = array_flip($existing);
     $pos = (int) val('SELECT COALESCE(MAX(sort_order),0) FROM services WHERE branch_id=?', [$branch]);
-    $n = 0;
+    $n = 0; $skipped = 0;
     foreach ($rows as $r) {
+        if (isset($existing[$r['prefix']])) { $skipped++; continue; }
         q("INSERT INTO services (branch_id,prefix,name,color,status,num_from,num_to,pad_length,include_zeros,kpi_wait_sec,kpi_service_sec,sort_order)
            VALUES (?,?,?,?,'active',1,999,3,1,600,300,?)", [$branch, $r['prefix'], $r['name'], $r['color'], ++$pos]);
-        $n++;
+        $existing[$r['prefix']] = 1; $n++;
     }
     audit('import', 'services', $branch, $n . ' servicii');
-    flash($n > 0 ? "$n servicii importate." : 'Niciun serviciu valid in CSV.', $n > 0 ? 'info' : 'error');
+    $msg = $n > 0 ? "$n servicii importate." : 'Niciun serviciu nou de importat.';
+    if ($skipped) $msg .= " $skipped sarite (prefix existent).";
+    flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/services');
 }
 function admin_service_form(?int $id): void {
