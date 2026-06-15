@@ -13,7 +13,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Portal** | Pagina de intrare: alegi Backoffice / Terminal / Concierge. | `…/` |
 | **Dispenser** | Clientul alege serviciul (grupate pe categorii, multilingv) și primește bon (cu QR). Tipărește pe imprimantă termică. | `…/launcher?key=CHEIE` |
 | **Afișaj TV** | Editor de widget‑uri pe canvas: grilă bilete, liste, ceas, QR, vreme, playlist, iframe, ticker, formular feedback; **anunț vocal RO**; șabloane gata făcute. | `…/launcher?key=CHEIE` |
-| **Terminal operator** | Selectezi un bilet → meniu de acțiuni (cheamă/recheamă/servire/finalizat/neprezentat/transfer la serviciu sau **alt birou**); „cheamă următorul" (global sau pe serviciu); scurtături tastatură; status operator; **pauză ghișeu cu mesaj**; **schimbare rapidă operator prin PIN**; statistici proprii live. | `…/counter` |
+| **Terminal operator** | Selectezi un bilet → meniu de acțiuni (cheamă/recheamă/servire/finalizat/neprezentat/transfer la serviciu sau **alt birou**, **notă pe bilet**); „cheamă următorul" (global sau pe serviciu); scurtături tastatură; status operator; **pauză ghișeu cu mesaj**; **schimbare rapidă operator prin PIN**; statistici proprii live. | `…/counter` |
 | **Concierge** | Recepția vede toată coada, cheamă orice bilet la orice ghișeu, **emite bonuri walk-in** și repune neprezentații la rând. | `…/concierge` |
 | **Afișaj de ghișeu** | Tabletă la birou: codul ghișeului + bonul curent, live (sau mesajul de pauză). | `…/cd/{id}` |
 | **Bilet digital** | Clientul urmărește pe telefon (**multilingv** RO/EN/DE/FR/HU/IT/ES): status, poziție, **timp estimat**, ghișeu, alerte configurabile, **alertă „aproape la rând"**, **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
