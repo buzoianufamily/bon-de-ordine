@@ -240,6 +240,12 @@ function transfer_to_counter(int $ticket_id, int $target_counter_id): void {
     ticket_event($ticket_id, 'ticket.transferred');
 }
 
+/** Salveaza o nota interna pe bilet (operator). Gol = sterge nota. */
+function set_ticket_note(int $ticket_id, string $note): void {
+    $note = trim($note);
+    q("UPDATE tickets SET note=? WHERE id=?", [$note !== '' ? mb_substr($note, 0, 255) : null, $ticket_id]);
+}
+
 /** Recheamă un bilet. După 'max_recalls' rechemări (>0), îl marchează automat neprezentat. Returneaza statusul rezultat. */
 function recall_ticket(int $ticket_id): string {
     $row = one("SELECT recall_count, status FROM tickets WHERE id=?", [$ticket_id]);
@@ -386,7 +392,7 @@ function counter_view(array $counter): array {
         $args = array_merge($args, $svcIds);
     }
     $waiting = all(
-        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id,
+        "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id, t.note,
                 s.name AS service_name, s.color, s.kpi_wait_sec,
                 TIMESTAMPDIFF(SECOND, t.issued_at, NOW()) AS waited
          FROM tickets t JOIN services s ON s.id = t.service_id

@@ -152,7 +152,13 @@
     QMS.toast('Bilet transferat la alt birou','ok'); selId = null; refresh(true);
   }
   elBar.addEventListener('click', e=>{ const b=e.target.closest('button[data-a]'); if(!b) return; const a=b.getAttribute('data-a');
-    if(a==='deselect'){ selId=null; syncUI(true); } else doMenu(a);
+    if(a==='deselect'){ selId=null; syncUI(true); }
+    else if(a==='save-note'){ if(selId==null) return; const inp=elBar.querySelector('[data-note]'); const note=inp?inp.value:'';
+      QMS.api('api/ticket-note',{ticket_id:selId, note:note}).then(r=>{
+        QMS.toast(r&&r.ok?'Notă salvată':'Eroare', r&&r.ok?'ok':'error');
+        const it=items.find(x=>x.id===selId); if(it) it.note=note;   // pastreaza local ca sa nu se piarda la refresh
+      }).catch(()=>QMS.toast('Eroare','error')); }
+    else doMenu(a);
   });
   elBar.addEventListener('change', e=>{
     const ts=e.target.closest('select[data-a="transfer"]');
@@ -203,6 +209,9 @@
     if(it.form_data){ try{ const d=JSON.parse(it.form_data);
       if(Array.isArray(d)&&d.length) h+='<div class="selform">'+d.map(x=>`<div><span class="muted">${esc(x.label||'')}</span> <strong>${esc(x.value||'—')}</strong></div>`).join('')+'</div>';
     }catch(e){} }
+    h += `<div class="field" style="margin:.6rem 0 0"><label>Notă pe bilet</label>`+
+      `<div style="display:flex;gap:.4rem"><input type="text" data-note maxlength="255" value="${esc(it.note||'')}" placeholder="ex: revine cu acte">`+
+      `<button class="btn" data-a="save-note" style="white-space:nowrap">💾 Salvează</button></div></div>`;
     elBar.innerHTML=h; elBar.style.display='';
   }
   function renderCurForm(c){
@@ -250,8 +259,8 @@
     renderCurForm(c);
 
     const ni = [];
-    if(c) ni.push({id:c.id,label:c.label,service_name:c.service_name,color:c.color,status:c.status,priority:c.priority,form_data:c.form_data});
-    (res.waiting||[]).forEach(w=> ni.push({id:w.id,label:w.label,service_name:w.service_name,color:w.color,status:'waiting',priority:w.priority,form_data:w.form_data,targeted:!!w.target_counter_id,
+    if(c) ni.push({id:c.id,label:c.label,service_name:c.service_name,color:c.color,status:c.status,priority:c.priority,form_data:c.form_data,note:c.note});
+    (res.waiting||[]).forEach(w=> ni.push({id:w.id,label:w.label,service_name:w.service_name,color:w.color,status:'waiting',priority:w.priority,form_data:w.form_data,note:w.note,targeted:!!w.target_counter_id,
       waited:+w.waited||0,target:+w.kpi_wait_sec||0,over:((+w.kpi_wait_sec||0)>0 && (+w.waited||0)>(+w.kpi_wait_sec||0))}));
     elWait.textContent = res.waiting_count;
     if(res.me){ const ms=document.getElementById('myStats');

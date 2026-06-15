@@ -197,6 +197,13 @@ chk(recall_ticket((int)$rc['id']) === 'no_show', 'recall 3 (>max) -> auto no_sho
 chk(val("SELECT status FROM tickets WHERE id=".(int)$rc['id']) === 'no_show', 'recall: ticket marked no_show');
 set_setting('max_recalls','0');
 
+/* ---- 21. Nota pe bilet (operator) ---- */
+$tn = issue_ticket($svc, false, 'paper');
+set_ticket_note((int)$tn['id'], 'revine cu acte');
+chk(val("SELECT note FROM tickets WHERE id=".(int)$tn['id']) === 'revine cu acte', 'note: saved');
+set_ticket_note((int)$tn['id'], '');
+chk(val("SELECT note FROM tickets WHERE id=".(int)$tn['id']) === null, 'note: cleared (empty -> null)');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
