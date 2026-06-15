@@ -11,7 +11,7 @@ window.QMS = {
   },
   toast(msg, type = '') {
     let w = document.querySelector('.toast-wrap');
-    if (!w) { w = document.createElement('div'); w.className = 'toast-wrap'; document.body.appendChild(w); }
+    if (!w) { w = document.createElement('div'); w.className = 'toast-wrap'; w.setAttribute('role','status'); w.setAttribute('aria-live','polite'); document.body.appendChild(w); }
     const t = document.createElement('div'); t.className = 'toast ' + type; t.textContent = msg;
     w.appendChild(t); setTimeout(() => t.remove(), 3200);
   },

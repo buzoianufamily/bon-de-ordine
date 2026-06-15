@@ -4,8 +4,8 @@ require __DIR__.'/_head.php'; ?>
   <div class="muted"><?= e(setting('brand_name','')) ?></div>
   <div class="muted" id="vSvc"><?= e($t['service_name']) ?></div>
   <div class="vt-num" id="vNum" style="color:<?= e($t['color']) ?>"><?= e($t['label']) ?></div>
-  <div class="vt-status" id="vStatus"><?= e($L['loading']) ?></div>
-  <div class="vt-pos" id="vPos"></div>
+  <div class="vt-status" id="vStatus" role="status" aria-live="assertive"><?= e($L['loading']) ?></div>
+  <div class="vt-pos" id="vPos" aria-live="polite"></div>
   <div class="muted" id="vEst" style="margin-top:.3rem"></div>
   <div class="muted" id="vCtr" style="margin-top:.6rem;font-weight:700"></div>
   <?php if (setting('mod_feedback','1')==='1'): ?>
