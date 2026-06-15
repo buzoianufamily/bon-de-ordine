@@ -52,6 +52,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'services':
             if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
+            if ($method === 'POST' && $a === 'import') { admin_services_import(); return; }
             if ($method === 'POST' && $b === 'pause') { csrf_check();
                 $p = (int)!val('SELECT paused FROM services WHERE id=?', [(int)$a]);
                 $note = $p ? (mb_substr(trim((string)($_POST['note'] ?? '')), 0, 120) ?: null) : null;
@@ -289,7 +290,27 @@ function admin_dashboard(): void {
 /* ----------------------- SERVICES ----------------------- */
 function admin_services_list(): void {
     $rows = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id ORDER BY b.name, s.sort_order, s.id');
-    view('admin/services', ['rows' => $rows]);
+    $branches = all('SELECT id, name FROM branches ORDER BY name');
+    view('admin/services', ['rows' => $rows, 'branches' => $branches]);
+}
+/** Import servicii din CSV (prefix,nume,culoare) pentru o filiala. */
+function admin_services_import(): void {
+    csrf_check();
+    $branch = (int)($_POST['branch_id'] ?? 0) ?: (int) val('SELECT id FROM branches ORDER BY id LIMIT 1');
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_services_csv($csv);
+    $pos = (int) val('SELECT COALESCE(MAX(sort_order),0) FROM services WHERE branch_id=?', [$branch]);
+    $n = 0;
+    foreach ($rows as $r) {
+        q("INSERT INTO services (branch_id,prefix,name,color,status,num_from,num_to,pad_length,include_zeros,kpi_wait_sec,kpi_service_sec,sort_order)
+           VALUES (?,?,?,?,'active',1,999,3,1,600,300,?)", [$branch, $r['prefix'], $r['name'], $r['color'], ++$pos]);
+        $n++;
+    }
+    audit('import', 'services', $branch, $n . ' servicii');
+    flash($n > 0 ? "$n servicii importate." : 'Niciun serviciu valid in CSV.', $n > 0 ? 'info' : 'error');
+    redirect('admin/services');
 }
 function admin_service_form(?int $id): void {
     $row = $id ? one('SELECT * FROM services WHERE id=?', [$id]) : null;

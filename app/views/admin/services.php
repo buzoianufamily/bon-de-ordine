@@ -1,5 +1,19 @@
 <?php $title='Servicii'; $active='services'; require __DIR__.'/_header.php'; ?>
 <div class="topbar"><h1>Servicii</h1><a class="btn btn-primary" href="<?= e(url('admin/services/new')) ?>">+ Serviciu nou</a></div>
+<?php if(!empty($branches)): ?>
+<details class="card pad" style="margin-bottom:1rem">
+  <summary style="cursor:pointer;font-weight:700">⤓ Import servicii din CSV</summary>
+  <form method="post" action="<?= e(url('admin/services/import')) ?>" style="margin-top:.8rem">
+    <?= csrf_field() ?>
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="margin:0"><label>Filiala</label><select name="branch_id"><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select></div>
+    </div>
+    <div class="field" style="margin-top:.5rem"><label>Linii CSV: <code>prefix,nume,culoare</code> (culoarea e opțională)</label>
+      <textarea name="csv" rows="5" placeholder="A,Casierie,#2563eb&#10;B,Informații&#10;C,Acte,#16a34a"></textarea></div>
+    <button class="btn btn-primary">Importă</button>
+  </form>
+</details>
+<?php endif; ?>
 <?= list_toolbar('Cauta serviciu...') ?>
 <p class="muted" style="font-size:.8rem;margin:-.5rem 0 .8rem">Trage de <b>⠿</b> ca sa rearanjezi ordinea serviciilor (pe dispenser si in liste) — se salveaza automat.</p>
 <div class="cardgrid" id="svcGrid">

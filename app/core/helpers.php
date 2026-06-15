@@ -144,6 +144,27 @@ function log_user_status(int $userId, string $status): void {
     } catch (Throwable $e) {}
 }
 
+/**
+ * Parseaza un CSV de servicii (linii: prefix,nume,culoare?). Sare peste antet/linii goale.
+ * Returneaza randuri validate: [['prefix'=>..,'name'=>..,'color'=>..], ...].
+ */
+function parse_services_csv(string $csv): array {
+    $out = [];
+    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+        $ln = trim($ln);
+        if ($ln === '') continue;
+        $p = array_map('trim', explode(',', $ln));
+        if (strcasecmp((string)($p[0] ?? ''), 'prefix') === 0) continue;   // antet (inainte de trunchiere)
+        $prefix = strtoupper(substr($p[0] ?? '', 0, 3));
+        $name   = (string)($p[1] ?? '');
+        if ($prefix === '' || $name === '') continue;
+        $color = (string)($p[2] ?? '');
+        if (!preg_match('/^#[0-9a-fA-F]{6}$/', $color)) $color = '#2563eb';
+        $out[] = ['prefix' => $prefix, 'name' => mb_substr($name, 0, 120), 'color' => $color];
+    }
+    return $out;
+}
+
 /** Jurnalizeaza o actiune din admin (cine, ce, cand). Best-effort. */
 function audit(string $action, string $entity = '', $entity_id = null, string $details = ''): void {
     try {

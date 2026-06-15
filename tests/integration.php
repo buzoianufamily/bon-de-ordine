@@ -227,6 +227,13 @@ chk($threw, 'reschedule: past slot rejected');
 appt_cancel((int)$ap3['id']);
 chk(appt_reschedule((int)$ap3['id'], $sl3[2]['start']) === null, 'reschedule: cancelled appt -> null');
 
+/* ---- 24. Parser CSV servicii ---- */
+$pcsv = parse_services_csv("prefix,nume,culoare\nA,Casierie,#2563eb\nB,Informatii\n , ,\nC,Acte,bad-color");
+chk(count($pcsv) === 3, 'csv: 3 randuri valide (sare antet + linie goala)');
+chk($pcsv[0]['prefix'] === 'A' && $pcsv[0]['color'] === '#2563eb', 'csv: rand cu culoare');
+chk($pcsv[1]['color'] === '#2563eb', 'csv: culoare lipsa -> default');
+chk($pcsv[2]['color'] === '#2563eb', 'csv: culoare invalida -> default');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
