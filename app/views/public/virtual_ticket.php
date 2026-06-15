@@ -1,4 +1,4 @@
-<?php $title='Biletul meu · '.$t['label']; $lang = $lang ?? 'ro'; $L = vt_i18n($lang);
+<?php $title='Biletul meu · '.$t['label']; $lang = $lang ?? 'ro'; $L = vt_i18n($lang); $pageLang = $lang;
 require __DIR__.'/_head.php'; ?>
 <body><div class="vt"><div class="vt-card">
   <div class="muted"><?= e(setting('brand_name','')) ?></div>

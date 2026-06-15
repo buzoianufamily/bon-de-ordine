@@ -38,7 +38,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
 }catch(e){}})();</script>
 <div class="shell">
   <nav class="side">
-    <button class="side-top" id="side-toggle" title="Ascunde/Arata bara laterala"><span class="ic">☰</span></button>
+    <button class="side-top" id="side-toggle" type="button" title="Ascunde/Arata bara laterala" aria-label="Ascunde sau arată bara laterală"><span class="ic" aria-hidden="true">☰</span></button>
     <?php foreach ($navGroups as $grp => $items): ?>
       <?php if ($grp !== ''): ?><div class="grp"><?= e($grp) ?></div><?php endif; ?>
       <?php foreach ($items as $n): $is = ($active ?? '') === $n[0];

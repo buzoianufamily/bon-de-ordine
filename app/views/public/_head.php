@@ -1,6 +1,11 @@
-<?php /* $title asteptat */ $accent = setting('accent_color', '#2563eb'); ?>
-<!doctype html><html lang="ro"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<?php /* $title asteptat. $kiosk=true => blocheaza zoom (touch kiosk). $pageLang => limba paginii. */
+$accent = setting('accent_color', '#2563eb');
+$__vp = !empty($kiosk)
+    ? 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'   // dispenser pe ecran tactil
+    : 'width=device-width,initial-scale=1,viewport-fit=cover';                // restul: permite zoom (accesibilitate)
+?>
+<!doctype html><html lang="<?= e($pageLang ?? 'ro') ?>"><head>
+<meta charset="utf-8"><meta name="viewport" content="<?= $__vp ?>">
 <title><?= e($title ?? 'Bon de ordine') ?></title>
 <meta name="csrf" content="<?= e(csrf_token()) ?>">
 <meta name="base" content="<?= e(base_url()) ?>">

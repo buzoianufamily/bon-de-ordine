@@ -1,4 +1,4 @@
-<?php $title='Ghiseu '.$counter['code'].' · Afisaj'; require __DIR__.'/_head.php'; ?>
+<?php $title='Ghiseu '.$counter['code'].' · Afisaj'; $kiosk=true; require __DIR__.'/_head.php'; ?>
 <body style="margin:0;background:#0b0d12;color:#fff;overflow:hidden">
 <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1vh">
   <div style="font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9aa3b2;font-size:3.2vh"><?= e(setting('brand_name','')) ?></div>
