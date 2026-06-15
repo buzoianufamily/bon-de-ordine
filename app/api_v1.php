@@ -7,6 +7,7 @@ function api_v1(array $seg, string $method): void {
     header('Cache-Control: no-store');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Headers: Content-Type, X-Api-Key');
+    header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 
     if ($method === 'OPTIONS') { http_response_code(204); exit; }
 
@@ -81,6 +82,15 @@ function api_v1(array $seg, string $method): void {
         ]]);
     }
 
+    // DELETE /api/v1/tickets/{token} — anuleaza un bon (doar daca e in asteptare/chemat)
+    if ($res === 'tickets' && $arg !== null && $method === 'DELETE') {
+        $t = one('SELECT id, status FROM tickets WHERE public_token = ?', [$arg]);
+        if (!$t) json_out(['ok' => false, 'error' => 'Bilet inexistent'], 404);
+        if (!in_array($t['status'], ['waiting','called'], true)) json_out(['ok' => false, 'error' => 'Biletul nu mai poate fi anulat'], 409);
+        cancel_ticket((int)$t['id']);
+        json_out(['ok' => true]);
+    }
+
     // GET /api/v1/tickets/{token} — starea unui bon
     if ($res === 'tickets' && $arg !== null && $method === 'GET') {
         $t = one('SELECT t.*, s.name service_name FROM tickets t JOIN services s ON s.id=t.service_id WHERE t.public_token = ?', [$arg]);
@@ -119,6 +129,16 @@ function api_v1(array $seg, string $method): void {
             'id' => (int)$a['id'], 'public_token' => $a['public_token'], 'slot_start' => $a['slot_start'],
             'status' => $a['status'], 'follow_url' => url('a/' . $a['public_token']),
         ]]);
+    }
+
+    // DELETE /api/v1/appointments/{token} — anuleaza o programare (doar daca e rezervata)
+    if ($res === 'appointments' && $arg !== null && $method === 'DELETE') {
+        if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
+        $a = one('SELECT id, status FROM appointments WHERE public_token = ?', [$arg]);
+        if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+        if ($a['status'] !== 'booked') json_out(['ok' => false, 'error' => 'Programarea nu mai poate fi anulata'], 409);
+        q("UPDATE appointments SET status='cancelled' WHERE id=?", [(int)$a['id']]);
+        json_out(['ok' => true]);
     }
 
     // GET /api/v1/appointments/{token} — starea unei programari
