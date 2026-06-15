@@ -75,7 +75,9 @@ XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
 CT_OPA="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=op_activity" | grep -i 'content-type')"
 tcontains "export activitate operatori CSV" 'text/csv' "$CT_OPA"
 
-# --- import servicii din CSV (autentificat) ---
+# --- export/import servicii din CSV (autentificat) ---
+CT_SVC="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/services/export" | grep -i 'content-type')"
+tcontains "export servicii CSV content-type" 'text/csv' "$CT_SVC"
 ICSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
 t "POST /admin/services/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Serviciu Importat CI,#16a34a')"
 tcontains "serviciul importat apare in lista" 'Serviciu Importat CI' "$(curl -s -b "$JAR" "$B/admin/services")"

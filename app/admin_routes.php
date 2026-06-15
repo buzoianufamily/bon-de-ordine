@@ -53,6 +53,7 @@ function admin_dispatch(array $seg, string $method): void {
         case 'services':
             if ($method === 'POST' && $a === 'reorder') { admin_services_reorder(); return; }
             if ($method === 'POST' && $a === 'import') { admin_services_import(); return; }
+            if ($a === 'export') { admin_services_export(); return; }
             if ($method === 'POST' && $b === 'pause') { csrf_check();
                 $p = (int)!val('SELECT paused FROM services WHERE id=?', [(int)$a]);
                 $note = $p ? (mb_substr(trim((string)($_POST['note'] ?? '')), 0, 120) ?: null) : null;
@@ -292,6 +293,22 @@ function admin_services_list(): void {
     $rows = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id ORDER BY b.name, s.sort_order, s.id');
     $branches = all('SELECT id, name FROM branches ORDER BY name');
     view('admin/services', ['rows' => $rows, 'branches' => $branches]);
+}
+/** Export servicii in CSV (prefix,nume,culoare) — round-trip cu importul. */
+function admin_services_export(): void {
+    $branch = (int)($_GET['branch'] ?? 0);
+    $where = '1=1'; $args = [];
+    if ($branch) { $where .= ' AND branch_id=?'; $args[] = $branch; }
+    $rows = all("SELECT prefix, name, color FROM services WHERE $where ORDER BY branch_id, sort_order, id", $args);
+    audit('export', 'services');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="servicii_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['prefix', 'nume', 'culoare']);
+    foreach ($rows as $r) fputcsv($out, [$r['prefix'], $r['name'], $r['color']]);
+    fclose($out);
+    exit;
 }
 /** Import servicii din CSV (prefix,nume,culoare) pentru o filiala. */
 function admin_services_import(): void {
