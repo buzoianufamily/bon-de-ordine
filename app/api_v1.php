@@ -44,6 +44,15 @@ function api_v1(array $seg, string $method): void {
         json_out(['ok' => true] + queue_state($branch));
     }
 
+    // GET /api/v1/branches — filialele active
+    if ($res === 'branches' && $method === 'GET') {
+        $rows = all("SELECT id, name, city, country, address FROM branches WHERE active=1 ORDER BY name");
+        json_out(['ok' => true, 'branches' => array_map(fn($b) => [
+            'id' => (int)$b['id'], 'name' => $b['name'], 'city' => $b['city'],
+            'country' => $b['country'], 'address' => $b['address'],
+        ], $rows)]);
+    }
+
     // GET /api/v1/services?branch=ID — serviciile active
     if ($res === 'services' && $method === 'GET') {
         $branch = (int)($_GET['branch'] ?? 0);

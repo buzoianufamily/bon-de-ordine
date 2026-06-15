@@ -60,6 +60,7 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
     <thead><tr><th>Metoda</th><th>Cale</th><th>Descriere</th></tr></thead>
     <tbody style="font-size:.9rem">
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/state?branch=1</code></td><td>Starea cozii (apelate, la rand, ghisee)</td></tr>
+      <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/branches</code></td><td>Filialele active</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/services?branch=1</code></td><td>Serviciile active</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/counters?branch=1</code></td><td>Ghiseele</td></tr>
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/tickets</code></td><td>Emite bon: <code>{service_id, priority?, channel?}</code></td></tr>
