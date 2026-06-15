@@ -145,6 +145,19 @@ function api_v1(array $seg, string $method): void {
         ]]);
     }
 
+    // POST /api/v1/appointments/{token}/reschedule {slot_start} — muta in alt slot
+    if ($res === 'appointments' && $arg !== null && $sub === 'reschedule' && $method === 'POST') {
+        if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
+        $a = one('SELECT id FROM appointments WHERE public_token = ?', [$arg]);
+        if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+        try { $na = appt_reschedule((int)$a['id'], (string) input('slot_start', '')); }
+        catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+        if (!$na) json_out(['ok' => false, 'error' => 'Programarea nu mai poate fi reprogramata'], 409);
+        json_out(['ok' => true, 'appointment' => [
+            'public_token' => $na['public_token'], 'slot_start' => $na['slot_start'], 'status' => $na['status'],
+        ]]);
+    }
+
     // DELETE /api/v1/appointments/{token} — anuleaza o programare (doar daca e rezervata)
     if ($res === 'appointments' && $arg !== null && $method === 'DELETE') {
         if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);

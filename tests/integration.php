@@ -215,6 +215,18 @@ chk(appt_cancel((int)$ap['id']) === null, 'appt_cancel: already cancelled -> nul
 $wp = webhook_appointment($cc);
 chk(($wp['id'] ?? 0) === (int)$ap['id'] && ($wp['status'] ?? '') === 'cancelled' && array_key_exists('slot_start',$wp), 'webhook_appointment: payload shape');
 
+/* ---- 23. Reprogramare programare ---- */
+q("UPDATE services SET appt_enabled=1, appt_slot_min=15, appt_capacity=3 WHERE id=$svc");
+$svcRow3 = one("SELECT * FROM services WHERE id=$svc"); $day3 = date('Y-m-d', strtotime('+3 days'));
+$sl3 = appt_slots($svcRow3, $day3);
+$ap3 = appt_book($svc, $sl3[0]['start'], 'R', '07', '');
+$na = appt_reschedule((int)$ap3['id'], $sl3[1]['start']);
+chk($na && $na['slot_start'] === date('Y-m-d H:i:00', strtotime($sl3[1]['start'])), 'reschedule: slot updated');
+$threw = false; try { appt_reschedule((int)$ap3['id'], '2000-01-01 09:00:00'); } catch (Throwable $e) { $threw = str_contains($e->getMessage(),'trecut'); }
+chk($threw, 'reschedule: past slot rejected');
+appt_cancel((int)$ap3['id']);
+chk(appt_reschedule((int)$ap3['id'], $sl3[2]['start']) === null, 'reschedule: cancelled appt -> null');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

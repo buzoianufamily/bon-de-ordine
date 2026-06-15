@@ -4,7 +4,7 @@ $base = rtrim(base_url(),'/').'/api/v1';
 $wurl = setting('webhook_url','');
 $wsec = setting('webhook_secret','');
 $wev  = array_filter(array_map('trim', explode(',', setting('webhook_events',''))));
-$allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.serving'=>'In servire','ticket.served'=>'Finalizat','ticket.no_show'=>'Neprezentat','ticket.cancelled'=>'Anulat','ticket.transferred'=>'Transferat','ticket.recalled'=>'Rechemat','appointment.created'=>'Programare creata','appointment.cancelled'=>'Programare anulata','appointment.checked_in'=>'Check-in programare','sla.breach'=>'Alerta SLA (cozi peste tinta)'];
+$allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.serving'=>'In servire','ticket.served'=>'Finalizat','ticket.no_show'=>'Neprezentat','ticket.cancelled'=>'Anulat','ticket.transferred'=>'Transferat','ticket.recalled'=>'Rechemat','appointment.created'=>'Programare creata','appointment.cancelled'=>'Programare anulata','appointment.checked_in'=>'Check-in programare','appointment.rescheduled'=>'Programare mutata','sla.breach'=>'Alerta SLA (cozi peste tinta)'];
 $cron = setting('cron_token','');
 $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
 ?>
@@ -69,6 +69,7 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments</code></td><td>Rezerva: <code>{service_id, slot_start, name?, phone?, email?}</code></td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Starea unei programari</td></tr>
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments/{token}/checkin</code></td><td>Check-in: genereaza bonul</td></tr>
+      <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments/{token}/reschedule</code></td><td>Muta in alt slot: <code>{slot_start}</code></td></tr>
       <tr><td><span class="pill" style="background:#fee2e2;color:#b91c1c">DELETE</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Anuleaza o programare (rezervata)</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/stats?from=&to=&branch=</code></td><td>Rezumat KPI pe interval</td></tr>
     </tbody>

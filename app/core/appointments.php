@@ -90,6 +90,27 @@ function appt_cancel(int $id): ?array {
     return $a;
 }
 
+/** Reprogrameaza o programare 'booked' intr-un slot nou (acelasi serviciu). Returneaza randul nou sau null. */
+function appt_reschedule(int $id, string $newSlot): ?array {
+    $a = one('SELECT * FROM appointments WHERE id=?', [$id]);
+    if (!$a || $a['status'] !== 'booked') return null;
+    $svc = one('SELECT * FROM services WHERE id=? AND status="active"', [$a['service_id']]);
+    if (!$svc || empty($svc['appt_enabled'])) throw new RuntimeException('Programarile nu sunt disponibile pentru acest serviciu');
+    $ts = strtotime($newSlot);
+    if (!$ts) throw new RuntimeException('Interval invalid');
+    if ($ts < time() - 60) throw new RuntimeException('Nu se poate programa in trecut');
+    if (function_exists('branch_closure_reason') && ($cl = branch_closure_reason((int)$a['branch_id'], $ts)) !== null)
+        throw new RuntimeException('Ziua aleasa este inchisa' . ($cl !== '' ? ' (' . $cl . ')' : '') . '. Alege alta zi.');
+    $key = date('Y-m-d H:i:00', $ts); $cap = max(1, (int)$svc['appt_capacity']);
+    $used = (int) val("SELECT COUNT(*) FROM appointments WHERE service_id=? AND slot_start=? AND status IN ('booked','checked_in') AND id<>?", [$a['service_id'], $key, $id]);
+    if ($used >= $cap) throw new RuntimeException('Intervalul este ocupat. Alege altul.');
+    $len = max(5, (int)$svc['appt_slot_min']);
+    q("UPDATE appointments SET slot_start=?, slot_end=? WHERE id=?", [$key, date('Y-m-d H:i:00', $ts + $len*60), $id]);
+    $a['slot_start'] = $key;
+    if (function_exists('fire_webhook')) fire_webhook('appointment.rescheduled', webhook_appointment($a));
+    return one('SELECT * FROM appointments WHERE id=?', [$id]);
+}
+
 /** Check-in: genereaza biletul si leaga programarea. */
 function appt_checkin(array $appt): array {
     if ($appt['status'] === 'checked_in' && $appt['ticket_id']) {
