@@ -150,8 +150,7 @@ function api_v1(array $seg, string $method): void {
         if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
         $a = one('SELECT id, status FROM appointments WHERE public_token = ?', [$arg]);
         if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
-        if ($a['status'] !== 'booked') json_out(['ok' => false, 'error' => 'Programarea nu mai poate fi anulata'], 409);
-        q("UPDATE appointments SET status='cancelled' WHERE id=?", [(int)$a['id']]);
+        if (!appt_cancel((int)$a['id'])) json_out(['ok' => false, 'error' => 'Programarea nu mai poate fi anulata'], 409);
         json_out(['ok' => true]);
     }
 

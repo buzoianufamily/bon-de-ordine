@@ -61,6 +61,7 @@ function appt_book(int $service_id, string $slot_start, ?string $name, ?string $
        VALUES (?,?,?,?,?,?,?, 'booked', ?, ?)",
       [$svc['branch_id'], $service_id, $name, $phone, $email, $key, date('Y-m-d H:i:00', $ts+$len*60), $token, $note]);
     $appt = one('SELECT * FROM appointments WHERE id=?', [insert_id()]);
+    if (function_exists('fire_webhook')) fire_webhook('appointment.created', webhook_appointment($appt));
 
     // email de confirmare (best-effort, doar daca emailul e completat si modulul e activ)
     if ($email && function_exists('send_mail') && mail_enabled()) {
@@ -77,6 +78,16 @@ function appt_book(int $service_id, string $slot_start, ?string $name, ?string $
                   mail_template('Programare confirmata', $body, 'Vezi programarea', url('a/' . $token)));
     }
     return $appt;
+}
+
+/** Anuleaza o programare (doar daca e 'booked'). Returneaza randul anulat sau null. */
+function appt_cancel(int $id): ?array {
+    $a = one('SELECT * FROM appointments WHERE id=?', [$id]);
+    if (!$a || $a['status'] !== 'booked') return null;
+    q("UPDATE appointments SET status='cancelled' WHERE id=?", [$id]);
+    $a['status'] = 'cancelled';
+    if (function_exists('fire_webhook')) fire_webhook('appointment.cancelled', webhook_appointment($a));
+    return $a;
 }
 
 /** Check-in: genereaza biletul si leaga programarea. */

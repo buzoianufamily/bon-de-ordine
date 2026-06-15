@@ -173,6 +173,19 @@ function webhook_ticket(?array $t): array {
         'finished_at'  => $t['finished_at'] ?? null,
     ];
 }
+/** Construieste payload-ul compact pentru o programare (webhook). */
+function webhook_appointment(?array $a): array {
+    if (!$a) return [];
+    return [
+        'id'            => (int)$a['id'],
+        'public_token'  => $a['public_token'] ?? null,
+        'status'        => $a['status'] ?? null,
+        'branch_id'     => isset($a['branch_id']) ? (int)$a['branch_id'] : null,
+        'service_id'    => isset($a['service_id']) ? (int)$a['service_id'] : null,
+        'slot_start'    => $a['slot_start'] ?? null,
+        'customer_name' => $a['customer_name'] ?? null,
+    ];
+}
 /** Trimite un eveniment catre webhook-ul configurat (best-effort, timeout scurt, semnat HMAC). */
 function fire_webhook(string $event, array $data): void {
     try {

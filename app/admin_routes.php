@@ -1491,7 +1491,7 @@ function admin_appointment_action(int $id, string $act): void {
     if (!$a) redirect('admin/appointments');
     if ($act === 'checkin') { try { appt_checkin($a); flash('Check-in efectuat, bilet generat.'); } catch (Throwable $e) { flash($e->getMessage(), 'error'); } }
     elseif ($act === 'cancel') {
-        q("UPDATE appointments SET status='cancelled' WHERE id=?", [$id]);
+        appt_cancel($id);   // status -> cancelled + webhook
         // anunta clientul pe email (best-effort)
         if (!empty($a['customer_email']) && mail_enabled()) {
             $svcName = (string) (val('SELECT name FROM services WHERE id=?', [$a['service_id']]) ?? '');

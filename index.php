@@ -469,10 +469,8 @@ SWJS;
             catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }
         }
         if (($seg[2] ?? '') === 'cancel' && $method === 'POST') {
-            if ($appt['status'] === 'booked') {
-                q("UPDATE appointments SET status='cancelled' WHERE id=?", [$appt['id']]);
-                flash('Programarea a fost anulată.');
-            } else flash('Programarea nu mai poate fi anulată.', 'error');
+            if (appt_cancel((int)$appt['id'])) flash('Programarea a fost anulată.');
+            else flash('Programarea nu mai poate fi anulată.', 'error');
             redirect('a/'.$seg[1]);
         }
         view('public/appointment', ['a' => $appt]);

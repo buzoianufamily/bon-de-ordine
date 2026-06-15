@@ -204,6 +204,17 @@ chk(val("SELECT note FROM tickets WHERE id=".(int)$tn['id']) === 'revine cu acte
 set_ticket_note((int)$tn['id'], '');
 chk(val("SELECT note FROM tickets WHERE id=".(int)$tn['id']) === null, 'note: cleared (empty -> null)');
 
+/* ---- 22. Anulare programare centralizata + payload webhook ---- */
+q("UPDATE services SET appt_enabled=1, appt_slot_min=15, appt_capacity=3 WHERE id=$svc");
+$svcRow2 = one("SELECT * FROM services WHERE id=$svc"); $day2 = date('Y-m-d', strtotime('+2 days'));
+$sl = appt_slots($svcRow2, $day2);
+$ap = appt_book($svc, $sl[0]['start'], 'Test', '07', '');
+$cc = appt_cancel((int)$ap['id']);
+chk($cc && $cc['status'] === 'cancelled' && val("SELECT status FROM appointments WHERE id=".(int)$ap['id']) === 'cancelled', 'appt_cancel: booked -> cancelled');
+chk(appt_cancel((int)$ap['id']) === null, 'appt_cancel: already cancelled -> null');
+$wp = webhook_appointment($cc);
+chk(($wp['id'] ?? 0) === (int)$ap['id'] && ($wp['status'] ?? '') === 'cancelled' && array_key_exists('slot_start',$wp), 'webhook_appointment: payload shape');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
