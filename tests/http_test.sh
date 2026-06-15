@@ -94,7 +94,8 @@ fi
 TOMORROW="$(date -d '+1 day' +%F 2>/dev/null || date -v+1d +%F)"
 SLOTS_API="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$TOMORROW")"
 tcontains "GET /api/v1/slots" '"slots"' "$SLOTS_API"
-SLOT="$(printf '%s' "$SLOTS_API" | python3 -c "import sys,json; d=json.load(sys.stdin); s=[x for x in d.get('slots',[]) if not x['full'] and not x['past']]; print(s[0]['start'] if s else '')" 2>/dev/null)"
+# doua sloturi libere distincte (separator TAB: slot_start contine spatiu!)
+IFS=$'\t' read -r SLOT SLOT2 <<< "$(printf '%s' "$SLOTS_API" | python3 -c "import sys,json; d=json.load(sys.stdin); s=[x['start'] for x in d.get('slots',[]) if not x['full'] and not x['past']]; print((s[0] if s else '')+chr(9)+(s[1] if len(s)>1 else ''))" 2>/dev/null)"
 if [ -n "$SLOT" ]; then
   APPT_API="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"slot_start\":\"$SLOT\",\"name\":\"CI\"}" "$B/api/v1/appointments")"
   tcontains "POST /api/v1/appointments books" '"public_token"' "$APPT_API"
@@ -103,6 +104,12 @@ if [ -n "$SLOT" ]; then
     tcontains "GET /api/v1/appointments/{token}" '"status"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
     t "DELETE /api/v1/appointments/{token}" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
   else { FAIL=$((FAIL+1)); echo "FAIL: appointment token missing"; }; fi
+  # check-in via API pe un al doilea slot -> genereaza bon
+  if [ -n "$SLOT2" ]; then
+    APPT2="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"slot_start\":\"$SLOT2\",\"name\":\"CI2\"}" "$B/api/v1/appointments")"
+    ATOK2="$(printf '%s' "$APPT2" | python3 -c "import sys,json; print(json.load(sys.stdin).get('appointment',{}).get('public_token',''))" 2>/dev/null)"
+    [ -n "$ATOK2" ] && tcontains "POST /api/v1/appointments/{token}/checkin -> bon" '"label"' "$(curl -s -X POST -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK2/checkin")"
+  fi
 else
   echo "WARN: niciun slot liber maine (skip booking via API)"
 fi

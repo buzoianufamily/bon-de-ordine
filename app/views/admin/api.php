@@ -68,6 +68,7 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/slots?service_id=&date=</code></td><td>Sloturi disponibile pentru programare</td></tr>
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments</code></td><td>Rezerva: <code>{service_id, slot_start, name?, phone?, email?}</code></td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Starea unei programari</td></tr>
+      <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments/{token}/checkin</code></td><td>Check-in: genereaza bonul</td></tr>
       <tr><td><span class="pill" style="background:#fee2e2;color:#b91c1c">DELETE</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Anuleaza o programare (rezervata)</td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/stats?from=&to=&branch=</code></td><td>Rezumat KPI pe interval</td></tr>
     </tbody>

@@ -36,6 +36,7 @@ function api_v1(array $seg, string $method): void {
 
     $res = $seg[2] ?? '';
     $arg = $seg[3] ?? null;
+    $sub = $seg[4] ?? null;
 
     // GET /api/v1/state?branch=ID — starea cozii
     if ($res === 'state' && $method === 'GET') {
@@ -128,6 +129,19 @@ function api_v1(array $seg, string $method): void {
         json_out(['ok' => true, 'appointment' => [
             'id' => (int)$a['id'], 'public_token' => $a['public_token'], 'slot_start' => $a['slot_start'],
             'status' => $a['status'], 'follow_url' => url('a/' . $a['public_token']),
+        ]]);
+    }
+
+    // POST /api/v1/appointments/{token}/checkin — check-in (genereaza bonul)
+    if ($res === 'appointments' && $arg !== null && $sub === 'checkin' && $method === 'POST') {
+        if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
+        $a = one('SELECT * FROM appointments WHERE public_token = ?', [$arg]);
+        if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+        try { $t = appt_checkin($a); }
+        catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+        json_out(['ok' => true, 'ticket' => [
+            'label' => $t['label'], 'public_token' => $t['public_token'],
+            'position' => ticket_position($t), 'follow_url' => url('t/' . $t['public_token']),
         ]]);
     }
 
