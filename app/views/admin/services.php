@@ -3,7 +3,7 @@
 <?php if(!empty($branches)): ?>
 <details class="card pad" style="margin-bottom:1rem">
   <summary style="cursor:pointer;font-weight:700">⤓ Import / export servicii (CSV)</summary>
-  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/services/export')) ?>">⬆ Exportă serviciile (CSV)</a></p>
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/services/export')) ?>">⬆ Exportă serviciile (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/services/export?template=1')) ?>">⬇ Șablon gol</a></p>
   <form method="post" action="<?= e(url('admin/services/import')) ?>" enctype="multipart/form-data" style="margin-top:.8rem">
     <?= csrf_field() ?>
     <div class="row" style="align-items:flex-end">

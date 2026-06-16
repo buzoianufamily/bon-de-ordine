@@ -2,7 +2,7 @@
 <div class="topbar"><h1>Filiale</h1><div style="display:flex;gap:.5rem"><a class="btn btn-ghost" href="<?= e(url('admin/closures')) ?>">📅 Zile închise</a><a class="btn btn-primary" href="<?= e(url('admin/branches/new')) ?>">+ Filiala noua</a></div></div>
 <details class="card pad" style="margin-bottom:1rem">
   <summary style="cursor:pointer;font-weight:700">⤓ Import / export filiale (CSV)</summary>
-  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/branches/export')) ?>">⬆ Exportă filialele (CSV)</a></p>
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/branches/export')) ?>">⬆ Exportă filialele (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/branches/export?template=1')) ?>">⬇ Șablon gol</a></p>
   <form method="post" action="<?= e(url('admin/branches/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
     <?= csrf_field() ?>
     <div class="field" style="margin:0"><label>Linii CSV: <code>nume,oras,adresa</code></label>

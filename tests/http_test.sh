@@ -104,6 +104,14 @@ case "$USR_EXP" in *'$2y$'*) FAIL=$((FAIL+1)); echo "FAIL: export utilizatori co
 t "POST /admin/users/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/users/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Operator Importat CI,opci@firma.ro,agent,ParolaCI123')"
 tcontains "utilizatorul importat apare in lista" 'Operator Importat CI' "$(curl -s -b "$JAR" "$B/admin/users")"
 
+# --- sabloane CSV goale (doar antetul, fara date) ---
+BR_TMPL="$(curl -s -b "$JAR" "$B/admin/branches/export?template=1")"
+tcontains "sablon filiale are antetul" 'nume,oras,adresa' "$BR_TMPL"
+case "$BR_TMPL" in *'Filiala Importata CI'*) FAIL=$((FAIL+1)); echo "FAIL: sablonul filiale contine date";; *) PASS=$((PASS+1));; esac
+# sablonul utilizatori include coloana 'parola' (spre deosebire de exportul real)
+USR_TMPL="$(curl -s -b "$JAR" "$B/admin/users/export?template=1")"
+tcontains "sablon utilizatori include coloana parola" 'nume,email,rol,parola' "$USR_TMPL"
+
 # --- import prin INCARCARE FISIER .csv (multipart $_FILES) ---
 CSVUP="$(mktemp)"; printf 'nume,oras,adresa\nFiliala Fisier CI,Iasi,Bd. Upload 9\n' > "$CSVUP"
 t "POST /admin/branches/import (fisier) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/branches/import -F "_csrf=$ICSRF" -F "file=@$CSVUP;type=text/csv")"

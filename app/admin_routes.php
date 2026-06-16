@@ -305,10 +305,11 @@ function admin_services_export(): void {
     $branch = (int)($_GET['branch'] ?? 0);
     $where = '1=1'; $args = [];
     if ($branch) { $where .= ' AND branch_id=?'; $args[] = $branch; }
-    $rows = all("SELECT prefix, name, color FROM services WHERE $where ORDER BY branch_id, sort_order, id", $args);
-    audit('export', 'services');
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all("SELECT prefix, name, color FROM services WHERE $where ORDER BY branch_id, sort_order, id", $args);
+    if (!$tmpl) audit('export', 'services');
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="servicii_' . date('Ymd_His') . '.csv"');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_servicii.csv' : 'servicii_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
     fputcsv($out, ['prefix', 'nume', 'culoare']);
@@ -464,10 +465,11 @@ function admin_counters_export(): void {
     $branch = (int)($_GET['branch'] ?? 0);
     $where = '1=1'; $args = [];
     if ($branch) { $where .= ' AND branch_id=?'; $args[] = $branch; }
-    $rows = all("SELECT code, name FROM counters WHERE $where ORDER BY branch_id, code", $args);
-    audit('export', 'counters');
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all("SELECT code, name FROM counters WHERE $where ORDER BY branch_id, code", $args);
+    if (!$tmpl) audit('export', 'counters');
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="ghisee_' . date('Ymd_His') . '.csv"');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_ghisee.csv' : 'ghisee_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
     fputcsv($out, ['cod', 'nume']);
     foreach ($rows as $r) fputcsv($out, [$r['code'], $r['name']]);
@@ -550,12 +552,14 @@ function admin_user_save(): void {
 }
 /** Export operatori (CSV: nume,email,rol). NU exporta parole/hash-uri din motive de securitate. */
 function admin_users_export(): void {
-    $rows = all('SELECT name, email, role FROM users ORDER BY name');
-    audit('export', 'users');
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all('SELECT name, email, role FROM users ORDER BY name');
+    if (!$tmpl) audit('export', 'users');
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="utilizatori_' . date('Ymd_His') . '.csv"');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_utilizatori.csv' : 'utilizatori_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['nume', 'email', 'rol']);
+    // sablonul include coloana 'parola' (necesara la import); exportul real NU contine parole/hash-uri
+    fputcsv($out, $tmpl ? ['nume', 'email', 'rol', 'parola'] : ['nume', 'email', 'rol']);
     foreach ($rows as $r) fputcsv($out, [$r['name'], $r['email'], $r['role']]);
     fclose($out); exit;
 }
@@ -1060,10 +1064,11 @@ function admin_branch_form(?int $id): void {
 }
 /** Export filiale (CSV: nume,oras,adresa). */
 function admin_branches_export(): void {
-    $rows = all('SELECT name, city, address FROM branches ORDER BY name');
-    audit('export', 'branches');
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all('SELECT name, city, address FROM branches ORDER BY name');
+    if (!$tmpl) audit('export', 'branches');
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="filiale_' . date('Ymd_His') . '.csv"');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_filiale.csv' : 'filiale_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
     fputcsv($out, ['nume', 'oras', 'adresa']);
     foreach ($rows as $r) fputcsv($out, [$r['name'], $r['city'], $r['address']]);

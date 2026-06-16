@@ -3,7 +3,7 @@ $roleLabel=['admin'=>'Administrator','manager'=>'Manager','agent'=>'Operator']; 
 <div class="topbar"><h1>Utilizatori</h1><a class="btn btn-primary" href="<?= e(url('admin/users/new')) ?>">+ Utilizator nou</a></div>
 <details class="card pad" style="margin-bottom:1rem">
   <summary style="cursor:pointer;font-weight:700">⤓ Import / export utilizatori (CSV)</summary>
-  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/users/export')) ?>">⬆ Exportă utilizatorii (CSV)</a> <span class="muted" style="font-size:.78rem">— fără parole</span></p>
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/users/export')) ?>">⬆ Exportă utilizatorii (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/users/export?template=1')) ?>">⬇ Șablon gol</a> <span class="muted" style="font-size:.78rem">— exportul e fără parole</span></p>
   <form method="post" action="<?= e(url('admin/users/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
     <?= csrf_field() ?>
     <div class="field" style="margin:0"><label>Linii CSV: <code>nume,email,rol,parola</code> <span class="muted">(rol: admin / manager / agent — implicit agent)</span></label>
