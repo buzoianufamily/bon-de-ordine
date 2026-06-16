@@ -46,6 +46,19 @@ $ver = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : '—';
 </div>
 
 <div class="panel">
+  <h4>Import în masă (CSV)</h4>
+  <p class="muted" style="margin-top:0;font-size:.85rem">Fiecare pagină de mai jos are un panou „⤓ Import / export (CSV)": lipești liniile sau încarci un fișier <code>.csv</code> (UTF‑8). Poți descărca un <strong>șablon gol</strong>, îl completezi în Excel și îl reîncarci — rândurile deja existente sunt sărite automat.</p>
+  <table>
+    <thead><tr><th>Pagină</th><th>Coloane CSV</th></tr></thead>
+    <tr><td><a href="<?= e(url('admin/branches')) ?>">Filiale</a></td><td><code>nume,oras,adresa</code></td></tr>
+    <tr><td><a href="<?= e(url('admin/services')) ?>">Servicii</a></td><td><code>prefix,nume,culoare</code> <span class="muted">(culoarea opțională)</span></td></tr>
+    <tr><td><a href="<?= e(url('admin/counters')) ?>">Ghișee</a></td><td><code>cod,nume</code></td></tr>
+    <tr><td><a href="<?= e(url('admin/users')) ?>">Utilizatori</a></td><td><code>nume,email,rol,parola</code> <span class="muted">(rol: admin / manager / agent)</span></td></tr>
+    <tr><td><a href="<?= e(url('admin/closures')) ?>">Zile închise</a></td><td><code>data,motiv</code> <span class="muted">(data în format AAAA‑LL‑ZZ)</span></td></tr>
+  </table>
+</div>
+
+<div class="panel">
   <h4>Sfaturi</h4>
   <ul style="line-height:1.8;margin:0">
     <li><strong>Imprimantă termică:</strong> cel mai simplu = mini‑PC Android + imprimantă USB (vezi aplicația din <code>android/</code>). Pentru rețea, IP imprimantă + port 9100.</li>

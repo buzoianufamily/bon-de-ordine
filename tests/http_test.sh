@@ -59,6 +59,7 @@ tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$(curl 
 t "GET /admin/statistics"        200 "$(code -b "$JAR" $B/admin/statistics)"
 t "GET /admin/closures"          200 "$(code -b "$JAR" $B/admin/closures)"
 t "GET /admin/help"              200 "$(code -b "$JAR" $B/admin/help)"
+tcontains "help documenteaza formatele CSV" 'nume,email,rol,parola' "$(curl -s -b "$JAR" "$B/admin/help")"
 t "GET /admin/devices/qr"        200 "$(code -b "$JAR" $B/admin/devices/qr)"
 
 # --- exporturi (autentificat) ---
