@@ -55,9 +55,11 @@ CSRF="$(curl -s -c "$JAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | hea
 t "POST /login bad creds -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=GRESIT")"
 t "POST /login ok -> 302"        302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=123456")"
 t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/admin)"
+tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$(curl -s -b "$JAR" "$B/admin")"
 t "GET /admin/statistics"        200 "$(code -b "$JAR" $B/admin/statistics)"
 t "GET /admin/closures"          200 "$(code -b "$JAR" $B/admin/closures)"
 t "GET /admin/help"              200 "$(code -b "$JAR" $B/admin/help)"
+tcontains "help documenteaza formatele CSV" 'nume,email,rol,parola' "$(curl -s -b "$JAR" "$B/admin/help")"
 t "GET /admin/devices/qr"        200 "$(code -b "$JAR" $B/admin/devices/qr)"
 
 # --- exporturi (autentificat) ---
@@ -85,6 +87,43 @@ tcontains "serviciul importat apare in lista" 'Serviciu Importat CI' "$(curl -s 
 curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Duplicat,#000000'
 ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 [ "$ZZ_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat la re-import (count=$ZZ_COUNT)"; }
+
+# --- export/import ghisee din CSV (autentificat) ---
+tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/counters/export" | grep -i 'content-type')"
+t "POST /admin/counters/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/counters/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=GCI,Ghiseu Importat CI')"
+tcontains "ghiseul importat apare in lista" 'Ghiseu Importat CI' "$(curl -s -b "$JAR" "$B/admin/counters")"
+
+# --- export/import filiale din CSV (autentificat) ---
+tcontains "export filiale CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/branches/export" | grep -i 'content-type')"
+t "POST /admin/branches/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/branches/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Filiala Importata CI,Cluj,Str. Test 1')"
+tcontains "filiala importata apare in lista" 'Filiala Importata CI' "$(curl -s -b "$JAR" "$B/admin/branches")"
+
+# --- export/import utilizatori din CSV (autentificat) ---
+tcontains "export utilizatori CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/users/export" | grep -i 'content-type')"
+# exportul NU trebuie sa contina hash-uri de parola
+USR_EXP="$(curl -s -b "$JAR" "$B/admin/users/export")"
+case "$USR_EXP" in *'$2y$'*) FAIL=$((FAIL+1)); echo "FAIL: export utilizatori contine hash parola";; *) PASS=$((PASS+1));; esac
+t "POST /admin/users/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/users/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Operator Importat CI,opci@firma.ro,agent,ParolaCI123')"
+tcontains "utilizatorul importat apare in lista" 'Operator Importat CI' "$(curl -s -b "$JAR" "$B/admin/users")"
+
+# --- export/import zile inchise din CSV (autentificat) ---
+tcontains "export zile inchise CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/closures/export" | grep -i 'content-type')"
+t "POST /admin/closures/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/closures/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=0" --data-urlencode $'csv=2030-12-25,Craciun CI')"
+tcontains "ziua inchisa importata apare in lista" 'Craciun CI' "$(curl -s -b "$JAR" "$B/admin/closures")"
+
+# --- sabloane CSV goale (doar antetul, fara date) ---
+BR_TMPL="$(curl -s -b "$JAR" "$B/admin/branches/export?template=1")"
+tcontains "sablon filiale are antetul" 'nume,oras,adresa' "$BR_TMPL"
+case "$BR_TMPL" in *'Filiala Importata CI'*) FAIL=$((FAIL+1)); echo "FAIL: sablonul filiale contine date";; *) PASS=$((PASS+1));; esac
+# sablonul utilizatori include coloana 'parola' (spre deosebire de exportul real)
+USR_TMPL="$(curl -s -b "$JAR" "$B/admin/users/export?template=1")"
+tcontains "sablon utilizatori include coloana parola" 'nume,email,rol,parola' "$USR_TMPL"
+
+# --- import prin INCARCARE FISIER .csv (multipart $_FILES) ---
+CSVUP="$(mktemp)"; printf 'nume,oras,adresa\nFiliala Fisier CI,Iasi,Bd. Upload 9\n' > "$CSVUP"
+t "POST /admin/branches/import (fisier) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/branches/import -F "_csrf=$ICSRF" -F "file=@$CSVUP;type=text/csv")"
+tcontains "filiala din fisier apare in lista" 'Filiala Fisier CI' "$(curl -s -b "$JAR" "$B/admin/branches")"
+rm -f "$CSVUP"
 
 # --- CSRF lipsa pe POST autentificat => respins (419) ---
 t "POST fara CSRF -> 419" 419 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/api/call-next -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"

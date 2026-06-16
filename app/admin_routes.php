@@ -33,6 +33,8 @@ function admin_dispatch(array $seg, string $method): void {
         case 'statistics': admin_statistics(); return;
 
         case 'branches':
+            if ($method === 'POST' && $a === 'import') { admin_branches_import(); return; }
+            if ($a === 'export') { admin_branches_export(); return; }
             if ($method === 'POST' && $a === null) { admin_branch_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 if ((int)val('SELECT COUNT(*) FROM branches') > 1) { q('DELETE FROM branches WHERE id=?', [(int)$a]); audit('delete','branch',(int)$a); flash('Filiala stearsa.'); }
@@ -46,6 +48,8 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'closures':
             if (!can('branches')) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
+            if ($method === 'POST' && $a === 'import') { admin_closures_import(); return; }
+            if ($a === 'export') { admin_closures_export(); return; }
             if ($method === 'POST' && $a === null) { admin_closure_save(); return; }
             if ($method === 'POST' && $b === 'delete') { admin_closure_delete((int)$a); return; }
             admin_closures_page(); return;
@@ -74,6 +78,8 @@ function admin_dispatch(array $seg, string $method): void {
             admin_groups_list(); return;
 
         case 'counters':
+            if ($method === 'POST' && $a === 'import') { admin_counters_import(); return; }
+            if ($a === 'export') { admin_counters_export(); return; }
             if ($method === 'POST' && $a === null) { admin_counter_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); audit('delete','counter',(int)$a); flash('Ghiseu sters.'); redirect('admin/counters'); }
             if ($a === 'new') { admin_counter_form(null); return; }
@@ -81,6 +87,8 @@ function admin_dispatch(array $seg, string $method): void {
             admin_counters_list(); return;
 
         case 'users':
+            if ($method === 'POST' && $a === 'import') { admin_users_import(); return; }
+            if ($a === 'export') { admin_users_export(); return; }
             if ($method === 'POST' && $a === null) { admin_user_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); audit('delete','user',(int)$a); flash('Utilizator sters.'); redirect('admin/users'); }
             if ($a === 'new') { admin_user_form(null); return; }
@@ -259,6 +267,7 @@ function admin_dashboard(): void {
             ['done' => setting('brand_name', '') !== '' && setting('brand_name') !== 'Compania Mea', 'label' => 'Seteaza numele si culoarea brandului', 'url' => url('admin/settings')],
             ['done' => (int) val('SELECT COUNT(*) FROM services') > 0, 'label' => 'Creeaza serviciile tale', 'url' => url('admin/services')],
             ['done' => (int) val('SELECT COUNT(*) FROM counters') > 0, 'label' => 'Creeaza ghiseele', 'url' => url('admin/counters')],
+            ['done' => (int) val("SELECT COUNT(*) FROM users WHERE role IN ('agent','manager')") > 0, 'label' => 'Adauga operatori (deservesc ghiseele)', 'url' => url('admin/users')],
             ['done' => (int) val('SELECT COUNT(*) FROM devices') > 0, 'label' => 'Configureaza un dispozitiv (dispenser / afisaj)', 'url' => url('admin/devices')],
             ['done' => (int) val('SELECT COUNT(*) FROM tickets') > 0, 'label' => 'Emite primul bon de test', 'url' => url('admin/devices')],
         ];
@@ -299,10 +308,11 @@ function admin_services_export(): void {
     $branch = (int)($_GET['branch'] ?? 0);
     $where = '1=1'; $args = [];
     if ($branch) { $where .= ' AND branch_id=?'; $args[] = $branch; }
-    $rows = all("SELECT prefix, name, color FROM services WHERE $where ORDER BY branch_id, sort_order, id", $args);
-    audit('export', 'services');
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all("SELECT prefix, name, color FROM services WHERE $where ORDER BY branch_id, sort_order, id", $args);
+    if (!$tmpl) audit('export', 'services');
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="servicii_' . date('Ymd_His') . '.csv"');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_servicii.csv' : 'servicii_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
     fputcsv($out, ['prefix', 'nume', 'culoare']);
@@ -450,7 +460,44 @@ function admin_services_reorder(): void {
 /* ----------------------- COUNTERS ----------------------- */
 function admin_counters_list(): void {
     $rows = all('SELECT c.*, b.name AS branch_name, (SELECT COUNT(*) FROM counter_services cs WHERE cs.counter_id=c.id) svc_count FROM counters c JOIN branches b ON b.id=c.branch_id ORDER BY b.name, c.code');
-    view('admin/counters', ['rows' => $rows]);
+    $branches = all('SELECT id, name FROM branches ORDER BY name');
+    view('admin/counters', ['rows' => $rows, 'branches' => $branches]);
+}
+/** Export ghisee in CSV (cod,nume) — round-trip cu importul. */
+function admin_counters_export(): void {
+    $branch = (int)($_GET['branch'] ?? 0);
+    $where = '1=1'; $args = [];
+    if ($branch) { $where .= ' AND branch_id=?'; $args[] = $branch; }
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all("SELECT code, name FROM counters WHERE $where ORDER BY branch_id, code", $args);
+    if (!$tmpl) audit('export', 'counters');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_ghisee.csv' : 'ghisee_' . date('Ymd_His') . '.csv') . '"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['cod', 'nume']);
+    foreach ($rows as $r) fputcsv($out, [$r['code'], $r['name']]);
+    fclose($out); exit;
+}
+/** Import ghisee din CSV (cod,nume) pentru o filiala; sare peste codurile existente. */
+function admin_counters_import(): void {
+    csrf_check();
+    $branch = (int)($_POST['branch_id'] ?? 0) ?: (int) val('SELECT id FROM branches ORDER BY id LIMIT 1');
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_counters_csv($csv);
+    $existing = array_flip(array_map('strtoupper', array_column(all('SELECT code FROM counters WHERE branch_id=?', [$branch]), 'code')));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[strtoupper($r['code'])])) { $skipped++; continue; }
+        q("INSERT INTO counters (branch_id, code, name, status, all_services) VALUES (?,?,?,'closed',1)", [$branch, $r['code'], $r['name']]);
+        $existing[strtoupper($r['code'])] = 1; $n++;
+    }
+    audit('import', 'counters', $branch, $n . ' ghisee');
+    $msg = $n > 0 ? "$n ghisee importate." : 'Niciun ghiseu nou de importat.';
+    if ($skipped) $msg .= " $skipped sarite (cod existent).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/counters');
 }
 function admin_counter_form(?int $id): void {
     $row = $id ? one('SELECT * FROM counters WHERE id=?', [$id]) : null;
@@ -505,6 +552,42 @@ function admin_user_save(): void {
     }
     if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
     audit($id?'update':'create','user',$id); flash('Utilizator salvat.'); redirect('admin/users');
+}
+/** Export operatori (CSV: nume,email,rol). NU exporta parole/hash-uri din motive de securitate. */
+function admin_users_export(): void {
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all('SELECT name, email, role FROM users ORDER BY name');
+    if (!$tmpl) audit('export', 'users');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_utilizatori.csv' : 'utilizatori_' . date('Ymd_His') . '.csv') . '"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    // sablonul include coloana 'parola' (necesara la import); exportul real NU contine parole/hash-uri
+    fputcsv($out, $tmpl ? ['nume', 'email', 'rol', 'parola'] : ['nume', 'email', 'rol']);
+    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['email'], $r['role']]);
+    fclose($out); exit;
+}
+/** Import operatori din CSV (nume,email,rol,parola); sare peste emailurile deja existente. */
+function admin_users_import(): void {
+    csrf_check();
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_users_csv($csv);
+    $existing = array_flip(array_map('strtolower', array_column(all('SELECT email FROM users'), 'email')));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[$r['email']])) { $skipped++; continue; }
+        try {
+            q('INSERT INTO users (name,email,role,active,password_hash) VALUES (?,?,?,1,?)',
+                [$r['name'], $r['email'], $r['role'], password_hash($r['password'], PASSWORD_DEFAULT)]);
+            $existing[$r['email']] = 1; $n++;
+        } catch (Throwable $e) { $skipped++; }
+    }
+    audit('import', 'users', null, $n . ' utilizatori');
+    $msg = $n > 0 ? "$n utilizatori importati." : 'Niciun utilizator nou de importat.';
+    if ($skipped) $msg .= " $skipped sariti (email existent sau date invalide).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/users');
 }
 
 /* ----------------------- DEVICES ----------------------- */
@@ -982,6 +1065,39 @@ function admin_branch_form(?int $id): void {
     $row = $id ? one('SELECT * FROM branches WHERE id=?', [$id]) : null;
     view('admin/branch_edit', ['row' => $row]);
 }
+/** Export filiale (CSV: nume,oras,adresa). */
+function admin_branches_export(): void {
+    $tmpl = isset($_GET['template']);
+    $rows = $tmpl ? [] : all('SELECT name, city, address FROM branches ORDER BY name');
+    if (!$tmpl) audit('export', 'branches');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_filiale.csv' : 'filiale_' . date('Ymd_His') . '.csv') . '"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['nume', 'oras', 'adresa']);
+    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['city'], $r['address']]);
+    fclose($out); exit;
+}
+/** Import filiale din CSV (nume,oras,adresa); sare peste numele deja existente. */
+function admin_branches_import(): void {
+    csrf_check();
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_branches_csv($csv);
+    $existing = array_flip(array_map('mb_strtolower', array_column(all('SELECT name FROM branches'), 'name')));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[mb_strtolower($r['name'])])) { $skipped++; continue; }
+        q("INSERT INTO branches (name, city, country, address, timezone, active) VALUES (?,?,'Romania',?,'Europe/Bucharest',1)",
+            [$r['name'], $r['city'], $r['address']]);
+        $existing[mb_strtolower($r['name'])] = 1; $n++;
+    }
+    audit('import', 'branches', null, $n . ' filiale');
+    $msg = $n > 0 ? "$n filiale importate." : 'Nicio filiala noua de importat.';
+    if ($skipped) $msg .= " $skipped sarite (nume existent).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/branches');
+}
 
 /* ----------------------- ZILE INCHISE / SARBATORI ----------------------- */
 function admin_closures_page(): void {
@@ -1011,6 +1127,45 @@ function admin_closure_delete(int $id): void {
     q("DELETE FROM branch_closures WHERE id=?", [$id]);
     audit('delete', 'closure', $id);
     flash('Zi inchisa stearsa.'); redirect('admin/closures');
+}
+/** Export zile inchise (CSV: data,motiv). ?branch=N pentru o filiala, implicit cele globale. ?template=1 = doar antet. */
+function admin_closures_export(): void {
+    $tmpl = isset($_GET['template']);
+    $branch = (int)($_GET['branch'] ?? 0);
+    if ($tmpl) $rows = [];
+    elseif ($branch) $rows = all("SELECT closed_date, reason FROM branch_closures WHERE branch_id=? ORDER BY closed_date", [$branch]);
+    else $rows = all("SELECT closed_date, reason FROM branch_closures WHERE branch_id IS NULL ORDER BY closed_date");
+    if (!$tmpl) audit('export', 'closures');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_zile_inchise.csv' : 'zile_inchise_' . date('Ymd_His') . '.csv') . '"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['data', 'motiv']);
+    foreach ($rows as $r) fputcsv($out, [$r['closed_date'], $r['reason']]);
+    fclose($out); exit;
+}
+/** Import zile inchise din CSV (data,motiv) pentru o filiala (0 = toate); sare peste datele deja existente in acel domeniu. */
+function admin_closures_import(): void {
+    csrf_check();
+    $bid = (int)($_POST['branch_id'] ?? 0);  // 0 = global (toate filialele)
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_closures_csv($csv);
+    $ex = $bid ? all('SELECT closed_date FROM branch_closures WHERE branch_id=?', [$bid])
+               : all('SELECT closed_date FROM branch_closures WHERE branch_id IS NULL');
+    $existing = array_flip(array_column($ex, 'closed_date'));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[$r['date']])) { $skipped++; continue; }
+        q("INSERT INTO branch_closures (branch_id, closed_date, reason) VALUES (?,?,?)",
+            [$bid ?: null, $r['date'], $r['reason'] !== '' ? $r['reason'] : null]);
+        $existing[$r['date']] = 1; $n++;
+    }
+    audit('import', 'closures', $bid ?: 'all', $n . ' zile');
+    $msg = $n > 0 ? "$n zile inchise importate." : 'Nicio zi noua de importat.';
+    if ($skipped) $msg .= " $skipped sarite (data existenta).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/closures');
 }
 function admin_branch_save(): void {
     csrf_check();
@@ -1428,10 +1583,10 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
         $hdr = $s->row(['Operator', 'Total', 'Servite', 'Timp asteptare (min)', 'Timp servire (min)', 'Disponibil (min)', 'Ocupat (min)', 'Pauza (min)'], Xlsx::S_HEAD);
         $cats = []; $vals = []; $first = $hdr + 1;
         foreach ($op_rows as $r) {
-            $s->row([$r['name'], (int)$r['total'], (int)$r['served'],
-                ['v' => $mins($r['w']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['sv']), 's' => Xlsx::S_NUM1],
-                ['v' => $mins($r['available']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['busy']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['paused']), 's' => Xlsx::S_NUM1]]);
-            $cats[] = $r['name']; $vals[] = (int)$r['served'];
+            $s->row([$r['name'] ?? '', (int)($r['total'] ?? 0), (int)($r['served'] ?? 0),
+                ['v' => $mins($r['w'] ?? 0), 's' => Xlsx::S_NUM1], ['v' => $mins($r['sv'] ?? 0), 's' => Xlsx::S_NUM1],
+                ['v' => $mins($r['available'] ?? 0), 's' => Xlsx::S_NUM1], ['v' => $mins($r['busy'] ?? 0), 's' => Xlsx::S_NUM1], ['v' => $mins($r['paused'] ?? 0), 's' => Xlsx::S_NUM1]]);
+            $cats[] = $r['name'] ?? ''; $vals[] = (int)($r['served'] ?? 0);
         }
         $last = $s->row_count();
         if ($vals) $s->chart([

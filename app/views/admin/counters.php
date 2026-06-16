@@ -1,5 +1,20 @@
 <?php $title='Ghisee'; $active='counters'; require __DIR__.'/_header.php'; ?>
 <div class="topbar"><h1>Ghisee</h1><a class="btn btn-primary" href="<?= e(url('admin/counters/new')) ?>">+ Ghiseu nou</a></div>
+<?php if(!empty($branches)): ?>
+<details class="card pad" style="margin-bottom:1rem">
+  <summary style="cursor:pointer;font-weight:700">⤓ Import / export ghișee (CSV)</summary>
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/counters/export')) ?>">⬆ Exportă ghișeele (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/counters/export?template=1')) ?>">⬇ Șablon gol</a></p>
+  <form method="post" action="<?= e(url('admin/counters/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
+    <?= csrf_field() ?>
+    <div class="field" style="margin:0"><label>Filiala</label><select name="branch_id"><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select></div>
+    <div class="field" style="margin-top:.5rem"><label>Linii CSV: <code>cod,nume</code></label>
+      <textarea name="csv" rows="4" placeholder="G1,Birou 1&#10;G2,Birou 2&#10;G3,Casierie"></textarea></div>
+    <div class="field" style="margin-top:.4rem"><label>… sau încarcă un fișier .csv</label>
+      <input type="file" name="file" accept=".csv,text/csv"></div>
+    <button class="btn btn-primary">Importă</button>
+  </form>
+</details>
+<?php endif; ?>
 <?= list_toolbar('Cauta ghiseu...') ?>
 <div class="cardgrid">
 <?php foreach($rows as $r): ?>

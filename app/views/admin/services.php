@@ -3,14 +3,16 @@
 <?php if(!empty($branches)): ?>
 <details class="card pad" style="margin-bottom:1rem">
   <summary style="cursor:pointer;font-weight:700">⤓ Import / export servicii (CSV)</summary>
-  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/services/export')) ?>">⬆ Exportă serviciile (CSV)</a></p>
-  <form method="post" action="<?= e(url('admin/services/import')) ?>" style="margin-top:.8rem">
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/services/export')) ?>">⬆ Exportă serviciile (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/services/export?template=1')) ?>">⬇ Șablon gol</a></p>
+  <form method="post" action="<?= e(url('admin/services/import')) ?>" enctype="multipart/form-data" style="margin-top:.8rem">
     <?= csrf_field() ?>
     <div class="row" style="align-items:flex-end">
       <div class="field" style="margin:0"><label>Filiala</label><select name="branch_id"><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select></div>
     </div>
     <div class="field" style="margin-top:.5rem"><label>Linii CSV: <code>prefix,nume,culoare</code> (culoarea e opțională)</label>
       <textarea name="csv" rows="5" placeholder="A,Casierie,#2563eb&#10;B,Informații&#10;C,Acte,#16a34a"></textarea></div>
+    <div class="field" style="margin-top:.4rem"><label>… sau încarcă un fișier .csv</label>
+      <input type="file" name="file" accept=".csv,text/csv"></div>
     <button class="btn btn-primary">Importă</button>
   </form>
 </details>

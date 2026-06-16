@@ -234,6 +234,29 @@ chk($pcsv[0]['prefix'] === 'A' && $pcsv[0]['color'] === '#2563eb', 'csv: rand cu
 chk($pcsv[1]['color'] === '#2563eb', 'csv: culoare lipsa -> default');
 chk($pcsv[2]['color'] === '#2563eb', 'csv: culoare invalida -> default');
 
+/* ---- 25. Parser CSV ghisee ---- */
+$ccsv = parse_counters_csv("cod,nume\nG1,Birou 1\nG2\n , \nG3,Casierie");
+chk(count($ccsv) === 3, 'csv ghisee: 3 randuri (sare antet+gol)');
+chk($ccsv[1]['code'] === 'G2' && $ccsv[1]['name'] === 'G2', 'csv ghisee: nume lipsa -> codul');
+
+/* ---- 25a. Parser CSV zile inchise ---- */
+$clcsv = parse_closures_csv("data,motiv\n2026-12-01,Ziua Nationala\n2026-13-40,Data invalida\nnu-i data,x\n2027-01-01,Anul Nou");
+chk(count($clcsv) === 2, 'csv zile: 2 randuri valide (sare antet/data inexistenta/format gresit)');
+chk($clcsv[0]['date'] === '2026-12-01' && $clcsv[0]['reason'] === 'Ziua Nationala', 'csv zile: data+motiv');
+chk($clcsv[1]['date'] === '2027-01-01', 'csv zile: a doua data valida');
+
+/* ---- 25b. Parser CSV filiale ---- */
+$bcsv = parse_branches_csv("nume,oras,adresa\nFiliala Centru,Cluj,Str. A 1\nFiliala Nord\n , , \nFiliala Sud,Cluj,Bd. B 2");
+chk(count($bcsv) === 3, 'csv filiale: 3 randuri (sare antet+gol)');
+chk($bcsv[0]['name'] === 'Filiala Centru' && $bcsv[0]['city'] === 'Cluj', 'csv filiale: nume+oras');
+chk($bcsv[1]['name'] === 'Filiala Nord' && $bcsv[1]['city'] === '', 'csv filiale: oras lipsa -> gol');
+
+/* ---- 26. Parser CSV utilizatori ---- */
+$ucsv = parse_users_csv("nume,email,rol,parola\nIon Popescu,ion@firma.ro,manager,Parola123\nFara Email,nu-i email,agent,x\nAna,ana@firma.ro,sef,Secret456\nGol,,agent,\nMaria,maria@firma.ro");
+chk(count($ucsv) === 2, 'csv useri: 2 randuri valide (sare antet/email invalid/parola lipsa)');
+chk($ucsv[0]['email'] === 'ion@firma.ro' && $ucsv[0]['role'] === 'manager', 'csv useri: rol valid pastrat');
+chk($ucsv[1]['role'] === 'agent', 'csv useri: rol necunoscut -> agent implicit');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

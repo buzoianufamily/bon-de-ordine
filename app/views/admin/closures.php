@@ -5,6 +5,20 @@ $dowRo = fn($d) => $zileRo[(int)date('w', strtotime($d))];
 ?>
 <div class="topbar"><h1>Zile închise / sărbători</h1><a class="btn btn-ghost" href="<?= e(url('admin/branches')) ?>">← Filiale</a></div>
 <p class="muted" style="margin-top:-.6rem;max-width:720px">În zilele marcate aici nu se mai emit bonuri (dispenserul afișează serviciile ca „închis"). O zi setată „toate filialele" acoperă întreaga instanță. Programul săptămânal normal se setează per serviciu.</p>
+<details class="card pad" style="margin-bottom:1rem">
+  <summary style="cursor:pointer;font-weight:700">⤓ Import / export zile închise (CSV)</summary>
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/closures/export')) ?>">⬆ Exportă zilele globale (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/closures/export?template=1')) ?>">⬇ Șablon gol</a></p>
+  <form method="post" action="<?= e(url('admin/closures/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
+    <?= csrf_field() ?>
+    <div class="field" style="margin:0"><label>Filiala</label>
+      <select name="branch_id"><option value="0">Toate filialele</option><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select></div>
+    <div class="field" style="margin-top:.5rem"><label>Linii CSV: <code>data,motiv</code> (data în format AAAA-LL-ZZ)</label>
+      <textarea name="csv" rows="4" placeholder="2026-12-01,Ziua Națională&#10;2026-12-25,Crăciun&#10;2027-01-01,Anul Nou"></textarea></div>
+    <div class="field" style="margin-top:.4rem"><label>… sau încarcă un fișier .csv</label>
+      <input type="file" name="file" accept=".csv,text/csv"></div>
+    <button class="btn btn-primary" style="margin-top:.5rem">Importă</button>
+  </form>
+</details>
 
 <div class="row" style="align-items:flex-start">
   <form method="post" action="<?= e(url('admin/closures')) ?>" class="card pad" style="flex:1;min-width:300px;max-width:380px"><?= csrf_field() ?>
