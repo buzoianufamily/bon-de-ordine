@@ -165,6 +165,23 @@ function parse_services_csv(string $csv): array {
     return $out;
 }
 
+/** Parseaza un CSV de zile inchise (linii: data,motiv?). data in format YYYY-MM-DD. Sare antet/linii invalide. Returneaza [['date','reason'], ...]. */
+function parse_closures_csv(string $csv): array {
+    $out = [];
+    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+        $ln = trim($ln);
+        if ($ln === '') continue;
+        $p = array_map('trim', explode(',', $ln));
+        $date = (string)($p[0] ?? '');
+        if (strcasecmp($date, 'data') === 0 || strcasecmp($date, 'date') === 0) continue; // antet
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) continue;                          // data invalida
+        $t = strtotime($date);
+        if ($t === false || date('Y-m-d', $t) !== $date) continue;                          // data inexistenta (ex: 2026-13-40)
+        $out[] = ['date' => $date, 'reason' => mb_substr((string)($p[1] ?? ''), 0, 120)];
+    }
+    return $out;
+}
+
 /** Parseaza un CSV de filiale (linii: nume,oras?,adresa?). Sare antet/linii goale. Returneaza [['name','city','address'], ...]. */
 function parse_branches_csv(string $csv): array {
     $out = [];

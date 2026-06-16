@@ -239,6 +239,12 @@ $ccsv = parse_counters_csv("cod,nume\nG1,Birou 1\nG2\n , \nG3,Casierie");
 chk(count($ccsv) === 3, 'csv ghisee: 3 randuri (sare antet+gol)');
 chk($ccsv[1]['code'] === 'G2' && $ccsv[1]['name'] === 'G2', 'csv ghisee: nume lipsa -> codul');
 
+/* ---- 25a. Parser CSV zile inchise ---- */
+$clcsv = parse_closures_csv("data,motiv\n2026-12-01,Ziua Nationala\n2026-13-40,Data invalida\nnu-i data,x\n2027-01-01,Anul Nou");
+chk(count($clcsv) === 2, 'csv zile: 2 randuri valide (sare antet/data inexistenta/format gresit)');
+chk($clcsv[0]['date'] === '2026-12-01' && $clcsv[0]['reason'] === 'Ziua Nationala', 'csv zile: data+motiv');
+chk($clcsv[1]['date'] === '2027-01-01', 'csv zile: a doua data valida');
+
 /* ---- 25b. Parser CSV filiale ---- */
 $bcsv = parse_branches_csv("nume,oras,adresa\nFiliala Centru,Cluj,Str. A 1\nFiliala Nord\n , , \nFiliala Sud,Cluj,Bd. B 2");
 chk(count($bcsv) === 3, 'csv filiale: 3 randuri (sare antet+gol)');

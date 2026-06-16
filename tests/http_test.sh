@@ -105,6 +105,11 @@ case "$USR_EXP" in *'$2y$'*) FAIL=$((FAIL+1)); echo "FAIL: export utilizatori co
 t "POST /admin/users/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/users/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Operator Importat CI,opci@firma.ro,agent,ParolaCI123')"
 tcontains "utilizatorul importat apare in lista" 'Operator Importat CI' "$(curl -s -b "$JAR" "$B/admin/users")"
 
+# --- export/import zile inchise din CSV (autentificat) ---
+tcontains "export zile inchise CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/closures/export" | grep -i 'content-type')"
+t "POST /admin/closures/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/closures/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=0" --data-urlencode $'csv=2030-12-25,Craciun CI')"
+tcontains "ziua inchisa importata apare in lista" 'Craciun CI' "$(curl -s -b "$JAR" "$B/admin/closures")"
+
 # --- sabloane CSV goale (doar antetul, fara date) ---
 BR_TMPL="$(curl -s -b "$JAR" "$B/admin/branches/export?template=1")"
 tcontains "sablon filiale are antetul" 'nume,oras,adresa' "$BR_TMPL"

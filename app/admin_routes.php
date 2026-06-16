@@ -48,6 +48,8 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'closures':
             if (!can('branches')) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
+            if ($method === 'POST' && $a === 'import') { admin_closures_import(); return; }
+            if ($a === 'export') { admin_closures_export(); return; }
             if ($method === 'POST' && $a === null) { admin_closure_save(); return; }
             if ($method === 'POST' && $b === 'delete') { admin_closure_delete((int)$a); return; }
             admin_closures_page(); return;
@@ -1125,6 +1127,45 @@ function admin_closure_delete(int $id): void {
     q("DELETE FROM branch_closures WHERE id=?", [$id]);
     audit('delete', 'closure', $id);
     flash('Zi inchisa stearsa.'); redirect('admin/closures');
+}
+/** Export zile inchise (CSV: data,motiv). ?branch=N pentru o filiala, implicit cele globale. ?template=1 = doar antet. */
+function admin_closures_export(): void {
+    $tmpl = isset($_GET['template']);
+    $branch = (int)($_GET['branch'] ?? 0);
+    if ($tmpl) $rows = [];
+    elseif ($branch) $rows = all("SELECT closed_date, reason FROM branch_closures WHERE branch_id=? ORDER BY closed_date", [$branch]);
+    else $rows = all("SELECT closed_date, reason FROM branch_closures WHERE branch_id IS NULL ORDER BY closed_date");
+    if (!$tmpl) audit('export', 'closures');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_zile_inchise.csv' : 'zile_inchise_' . date('Ymd_His') . '.csv') . '"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['data', 'motiv']);
+    foreach ($rows as $r) fputcsv($out, [$r['closed_date'], $r['reason']]);
+    fclose($out); exit;
+}
+/** Import zile inchise din CSV (data,motiv) pentru o filiala (0 = toate); sare peste datele deja existente in acel domeniu. */
+function admin_closures_import(): void {
+    csrf_check();
+    $bid = (int)($_POST['branch_id'] ?? 0);  // 0 = global (toate filialele)
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_closures_csv($csv);
+    $ex = $bid ? all('SELECT closed_date FROM branch_closures WHERE branch_id=?', [$bid])
+               : all('SELECT closed_date FROM branch_closures WHERE branch_id IS NULL');
+    $existing = array_flip(array_column($ex, 'closed_date'));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[$r['date']])) { $skipped++; continue; }
+        q("INSERT INTO branch_closures (branch_id, closed_date, reason) VALUES (?,?,?)",
+            [$bid ?: null, $r['date'], $r['reason'] !== '' ? $r['reason'] : null]);
+        $existing[$r['date']] = 1; $n++;
+    }
+    audit('import', 'closures', $bid ?: 'all', $n . ' zile');
+    $msg = $n > 0 ? "$n zile inchise importate." : 'Nicio zi noua de importat.';
+    if ($skipped) $msg .= " $skipped sarite (data existenta).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/closures');
 }
 function admin_branch_save(): void {
     csrf_check();
