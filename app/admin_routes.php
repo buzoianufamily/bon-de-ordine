@@ -1502,10 +1502,10 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
         $hdr = $s->row(['Operator', 'Total', 'Servite', 'Timp asteptare (min)', 'Timp servire (min)', 'Disponibil (min)', 'Ocupat (min)', 'Pauza (min)'], Xlsx::S_HEAD);
         $cats = []; $vals = []; $first = $hdr + 1;
         foreach ($op_rows as $r) {
-            $s->row([$r['name'], (int)$r['total'], (int)$r['served'],
-                ['v' => $mins($r['w']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['sv']), 's' => Xlsx::S_NUM1],
-                ['v' => $mins($r['available']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['busy']), 's' => Xlsx::S_NUM1], ['v' => $mins($r['paused']), 's' => Xlsx::S_NUM1]]);
-            $cats[] = $r['name']; $vals[] = (int)$r['served'];
+            $s->row([$r['name'] ?? '', (int)($r['total'] ?? 0), (int)($r['served'] ?? 0),
+                ['v' => $mins($r['w'] ?? 0), 's' => Xlsx::S_NUM1], ['v' => $mins($r['sv'] ?? 0), 's' => Xlsx::S_NUM1],
+                ['v' => $mins($r['available'] ?? 0), 's' => Xlsx::S_NUM1], ['v' => $mins($r['busy'] ?? 0), 's' => Xlsx::S_NUM1], ['v' => $mins($r['paused'] ?? 0), 's' => Xlsx::S_NUM1]]);
+            $cats[] = $r['name'] ?? ''; $vals[] = (int)($r['served'] ?? 0);
         }
         $last = $s->row_count();
         if ($vals) $s->chart([
