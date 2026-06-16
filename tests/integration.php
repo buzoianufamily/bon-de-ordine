@@ -234,6 +234,11 @@ chk($pcsv[0]['prefix'] === 'A' && $pcsv[0]['color'] === '#2563eb', 'csv: rand cu
 chk($pcsv[1]['color'] === '#2563eb', 'csv: culoare lipsa -> default');
 chk($pcsv[2]['color'] === '#2563eb', 'csv: culoare invalida -> default');
 
+/* ---- 25. Parser CSV ghisee ---- */
+$ccsv = parse_counters_csv("cod,nume\nG1,Birou 1\nG2\n , \nG3,Casierie");
+chk(count($ccsv) === 3, 'csv ghisee: 3 randuri (sare antet+gol)');
+chk($ccsv[1]['code'] === 'G2' && $ccsv[1]['name'] === 'G2', 'csv ghisee: nume lipsa -> codul');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

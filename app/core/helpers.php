@@ -165,6 +165,23 @@ function parse_services_csv(string $csv): array {
     return $out;
 }
 
+/** Parseaza un CSV de ghisee (linii: cod,nume). Sare peste antet/linii goale. Returneaza [['code'=>..,'name'=>..], ...]. */
+function parse_counters_csv(string $csv): array {
+    $out = [];
+    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+        $ln = trim($ln);
+        if ($ln === '') continue;
+        $p = array_map('trim', explode(',', $ln));
+        if (strcasecmp((string)($p[0] ?? ''), 'cod') === 0 || strcasecmp((string)($p[0] ?? ''), 'code') === 0) continue; // antet
+        $code = substr($p[0] ?? '', 0, 10);
+        if ($code === '') continue;
+        $name = (string)($p[1] ?? '');
+        if ($name === '') $name = $code;
+        $out[] = ['code' => $code, 'name' => mb_substr($name, 0, 80)];
+    }
+    return $out;
+}
+
 /** Jurnalizeaza o actiune din admin (cine, ce, cand). Best-effort. */
 function audit(string $action, string $entity = '', $entity_id = null, string $details = ''): void {
     try {

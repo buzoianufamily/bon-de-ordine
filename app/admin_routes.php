@@ -74,6 +74,8 @@ function admin_dispatch(array $seg, string $method): void {
             admin_groups_list(); return;
 
         case 'counters':
+            if ($method === 'POST' && $a === 'import') { admin_counters_import(); return; }
+            if ($a === 'export') { admin_counters_export(); return; }
             if ($method === 'POST' && $a === null) { admin_counter_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); audit('delete','counter',(int)$a); flash('Ghiseu sters.'); redirect('admin/counters'); }
             if ($a === 'new') { admin_counter_form(null); return; }
@@ -450,7 +452,43 @@ function admin_services_reorder(): void {
 /* ----------------------- COUNTERS ----------------------- */
 function admin_counters_list(): void {
     $rows = all('SELECT c.*, b.name AS branch_name, (SELECT COUNT(*) FROM counter_services cs WHERE cs.counter_id=c.id) svc_count FROM counters c JOIN branches b ON b.id=c.branch_id ORDER BY b.name, c.code');
-    view('admin/counters', ['rows' => $rows]);
+    $branches = all('SELECT id, name FROM branches ORDER BY name');
+    view('admin/counters', ['rows' => $rows, 'branches' => $branches]);
+}
+/** Export ghisee in CSV (cod,nume) — round-trip cu importul. */
+function admin_counters_export(): void {
+    $branch = (int)($_GET['branch'] ?? 0);
+    $where = '1=1'; $args = [];
+    if ($branch) { $where .= ' AND branch_id=?'; $args[] = $branch; }
+    $rows = all("SELECT code, name FROM counters WHERE $where ORDER BY branch_id, code", $args);
+    audit('export', 'counters');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="ghisee_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['cod', 'nume']);
+    foreach ($rows as $r) fputcsv($out, [$r['code'], $r['name']]);
+    fclose($out); exit;
+}
+/** Import ghisee din CSV (cod,nume) pentru o filiala; sare peste codurile existente. */
+function admin_counters_import(): void {
+    csrf_check();
+    $branch = (int)($_POST['branch_id'] ?? 0) ?: (int) val('SELECT id FROM branches ORDER BY id LIMIT 1');
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_counters_csv($csv);
+    $existing = array_flip(array_map('strtoupper', array_column(all('SELECT code FROM counters WHERE branch_id=?', [$branch]), 'code')));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[strtoupper($r['code'])])) { $skipped++; continue; }
+        q("INSERT INTO counters (branch_id, code, name, status, all_services) VALUES (?,?,?,'closed',1)", [$branch, $r['code'], $r['name']]);
+        $existing[strtoupper($r['code'])] = 1; $n++;
+    }
+    audit('import', 'counters', $branch, $n . ' ghisee');
+    $msg = $n > 0 ? "$n ghisee importate." : 'Niciun ghiseu nou de importat.';
+    if ($skipped) $msg .= " $skipped sarite (cod existent).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/counters');
 }
 function admin_counter_form(?int $id): void {
     $row = $id ? one('SELECT * FROM counters WHERE id=?', [$id]) : null;
