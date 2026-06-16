@@ -83,6 +83,8 @@ function admin_dispatch(array $seg, string $method): void {
             admin_counters_list(); return;
 
         case 'users':
+            if ($method === 'POST' && $a === 'import') { admin_users_import(); return; }
+            if ($a === 'export') { admin_users_export(); return; }
             if ($method === 'POST' && $a === null) { admin_user_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); audit('delete','user',(int)$a); flash('Utilizator sters.'); redirect('admin/users'); }
             if ($a === 'new') { admin_user_form(null); return; }
@@ -543,6 +545,40 @@ function admin_user_save(): void {
     }
     if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
     audit($id?'update':'create','user',$id); flash('Utilizator salvat.'); redirect('admin/users');
+}
+/** Export operatori (CSV: nume,email,rol). NU exporta parole/hash-uri din motive de securitate. */
+function admin_users_export(): void {
+    $rows = all('SELECT name, email, role FROM users ORDER BY name');
+    audit('export', 'users');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="utilizatori_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['nume', 'email', 'rol']);
+    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['email'], $r['role']]);
+    fclose($out); exit;
+}
+/** Import operatori din CSV (nume,email,rol,parola); sare peste emailurile deja existente. */
+function admin_users_import(): void {
+    csrf_check();
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_users_csv($csv);
+    $existing = array_flip(array_map('strtolower', array_column(all('SELECT email FROM users'), 'email')));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[$r['email']])) { $skipped++; continue; }
+        try {
+            q('INSERT INTO users (name,email,role,active,password_hash) VALUES (?,?,?,1,?)',
+                [$r['name'], $r['email'], $r['role'], password_hash($r['password'], PASSWORD_DEFAULT)]);
+            $existing[$r['email']] = 1; $n++;
+        } catch (Throwable $e) { $skipped++; }
+    }
+    audit('import', 'users', null, $n . ' utilizatori');
+    $msg = $n > 0 ? "$n utilizatori importati." : 'Niciun utilizator nou de importat.';
+    if ($skipped) $msg .= " $skipped sariti (email existent sau date invalide).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/users');
 }
 
 /* ----------------------- DEVICES ----------------------- */

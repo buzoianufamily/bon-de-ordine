@@ -182,6 +182,29 @@ function parse_counters_csv(string $csv): array {
     return $out;
 }
 
+/**
+ * Parseaza un CSV de utilizatori (linii: nume,email,rol?,parola). Sare antet/linii goale.
+ * rol implicit 'agent'; valideaza emailul si rolul. Returneaza [['name','email','role','password'], ...].
+ */
+function parse_users_csv(string $csv): array {
+    $out = [];
+    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+        $ln = trim($ln);
+        if ($ln === '') continue;
+        $p = array_map('trim', explode(',', $ln));
+        $first = strtolower((string)($p[0] ?? ''));
+        if ($first === 'nume' || $first === 'name') continue;          // antet
+        $name  = (string)($p[0] ?? '');
+        $email = strtolower((string)($p[1] ?? ''));
+        $role  = strtolower((string)($p[2] ?? 'agent'));
+        $pass  = (string)($p[3] ?? '');
+        if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $pass === '') continue;
+        if (!in_array($role, ['admin','manager','agent'], true)) $role = 'agent';
+        $out[] = ['name' => mb_substr($name, 0, 120), 'email' => $email, 'role' => $role, 'password' => $pass];
+    }
+    return $out;
+}
+
 /** Jurnalizeaza o actiune din admin (cine, ce, cand). Best-effort. */
 function audit(string $action, string $entity = '', $entity_id = null, string $details = ''): void {
     try {

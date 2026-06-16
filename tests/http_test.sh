@@ -91,6 +91,14 @@ tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - 
 t "POST /admin/counters/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/counters/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=GCI,Ghiseu Importat CI')"
 tcontains "ghiseul importat apare in lista" 'Ghiseu Importat CI' "$(curl -s -b "$JAR" "$B/admin/counters")"
 
+# --- export/import utilizatori din CSV (autentificat) ---
+tcontains "export utilizatori CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/users/export" | grep -i 'content-type')"
+# exportul NU trebuie sa contina hash-uri de parola
+USR_EXP="$(curl -s -b "$JAR" "$B/admin/users/export")"
+case "$USR_EXP" in *'$2y$'*) FAIL=$((FAIL+1)); echo "FAIL: export utilizatori contine hash parola";; *) PASS=$((PASS+1));; esac
+t "POST /admin/users/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/users/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Operator Importat CI,opci@firma.ro,agent,ParolaCI123')"
+tcontains "utilizatorul importat apare in lista" 'Operator Importat CI' "$(curl -s -b "$JAR" "$B/admin/users")"
+
 # --- CSRF lipsa pe POST autentificat => respins (419) ---
 t "POST fara CSRF -> 419" 419 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/api/call-next -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
 
