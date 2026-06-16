@@ -265,6 +265,7 @@ function admin_dashboard(): void {
             ['done' => setting('brand_name', '') !== '' && setting('brand_name') !== 'Compania Mea', 'label' => 'Seteaza numele si culoarea brandului', 'url' => url('admin/settings')],
             ['done' => (int) val('SELECT COUNT(*) FROM services') > 0, 'label' => 'Creeaza serviciile tale', 'url' => url('admin/services')],
             ['done' => (int) val('SELECT COUNT(*) FROM counters') > 0, 'label' => 'Creeaza ghiseele', 'url' => url('admin/counters')],
+            ['done' => (int) val("SELECT COUNT(*) FROM users WHERE role IN ('agent','manager')") > 0, 'label' => 'Adauga operatori (deservesc ghiseele)', 'url' => url('admin/users')],
             ['done' => (int) val('SELECT COUNT(*) FROM devices') > 0, 'label' => 'Configureaza un dispozitiv (dispenser / afisaj)', 'url' => url('admin/devices')],
             ['done' => (int) val('SELECT COUNT(*) FROM tickets') > 0, 'label' => 'Emite primul bon de test', 'url' => url('admin/devices')],
         ];

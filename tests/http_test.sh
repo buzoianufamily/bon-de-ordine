@@ -55,6 +55,7 @@ CSRF="$(curl -s -c "$JAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | hea
 t "POST /login bad creds -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=GRESIT")"
 t "POST /login ok -> 302"        302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=123456")"
 t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/admin)"
+tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$(curl -s -b "$JAR" "$B/admin")"
 t "GET /admin/statistics"        200 "$(code -b "$JAR" $B/admin/statistics)"
 t "GET /admin/closures"          200 "$(code -b "$JAR" $B/admin/closures)"
 t "GET /admin/help"              200 "$(code -b "$JAR" $B/admin/help)"
