@@ -165,6 +165,21 @@ function parse_services_csv(string $csv): array {
     return $out;
 }
 
+/** Parseaza un CSV de filiale (linii: nume,oras?,adresa?). Sare antet/linii goale. Returneaza [['name','city','address'], ...]. */
+function parse_branches_csv(string $csv): array {
+    $out = [];
+    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+        $ln = trim($ln);
+        if ($ln === '') continue;
+        $p = array_map('trim', explode(',', $ln));
+        if (strcasecmp((string)($p[0] ?? ''), 'nume') === 0 || strcasecmp((string)($p[0] ?? ''), 'name') === 0) continue; // antet
+        $name = (string)($p[0] ?? '');
+        if ($name === '') continue;
+        $out[] = ['name' => mb_substr($name, 0, 120), 'city' => mb_substr((string)($p[1] ?? ''), 0, 80), 'address' => mb_substr((string)($p[2] ?? ''), 0, 255)];
+    }
+    return $out;
+}
+
 /** Parseaza un CSV de ghisee (linii: cod,nume). Sare peste antet/linii goale. Returneaza [['code'=>..,'name'=>..], ...]. */
 function parse_counters_csv(string $csv): array {
     $out = [];

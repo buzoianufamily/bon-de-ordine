@@ -1,5 +1,15 @@
 <?php $title='Filiale'; $active='branches'; require __DIR__.'/_header.php'; ?>
 <div class="topbar"><h1>Filiale</h1><div style="display:flex;gap:.5rem"><a class="btn btn-ghost" href="<?= e(url('admin/closures')) ?>">📅 Zile închise</a><a class="btn btn-primary" href="<?= e(url('admin/branches/new')) ?>">+ Filiala noua</a></div></div>
+<details class="card pad" style="margin-bottom:1rem">
+  <summary style="cursor:pointer;font-weight:700">⤓ Import / export filiale (CSV)</summary>
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/branches/export')) ?>">⬆ Exportă filialele (CSV)</a></p>
+  <form method="post" action="<?= e(url('admin/branches/import')) ?>" style="margin-top:.4rem">
+    <?= csrf_field() ?>
+    <div class="field" style="margin:0"><label>Linii CSV: <code>nume,oras,adresa</code></label>
+      <textarea name="csv" rows="4" placeholder="Filiala Centru,Cluj-Napoca,Str. Memorandumului 1&#10;Filiala Nord,Cluj-Napoca,Bd. Muncii 20"></textarea></div>
+    <button class="btn btn-primary" style="margin-top:.5rem">Importă</button>
+  </form>
+</details>
 <?= list_toolbar('Cauta filiala...') ?>
 <div class="cardgrid wide">
 <?php foreach($rows as $b): $loc=trim(($b['city']?:'').(($b['city']&&$b['country'])?', ':'').($b['country']?:'')); ?>

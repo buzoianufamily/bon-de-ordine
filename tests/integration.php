@@ -239,6 +239,12 @@ $ccsv = parse_counters_csv("cod,nume\nG1,Birou 1\nG2\n , \nG3,Casierie");
 chk(count($ccsv) === 3, 'csv ghisee: 3 randuri (sare antet+gol)');
 chk($ccsv[1]['code'] === 'G2' && $ccsv[1]['name'] === 'G2', 'csv ghisee: nume lipsa -> codul');
 
+/* ---- 25b. Parser CSV filiale ---- */
+$bcsv = parse_branches_csv("nume,oras,adresa\nFiliala Centru,Cluj,Str. A 1\nFiliala Nord\n , , \nFiliala Sud,Cluj,Bd. B 2");
+chk(count($bcsv) === 3, 'csv filiale: 3 randuri (sare antet+gol)');
+chk($bcsv[0]['name'] === 'Filiala Centru' && $bcsv[0]['city'] === 'Cluj', 'csv filiale: nume+oras');
+chk($bcsv[1]['name'] === 'Filiala Nord' && $bcsv[1]['city'] === '', 'csv filiale: oras lipsa -> gol');
+
 /* ---- 26. Parser CSV utilizatori ---- */
 $ucsv = parse_users_csv("nume,email,rol,parola\nIon Popescu,ion@firma.ro,manager,Parola123\nFara Email,nu-i email,agent,x\nAna,ana@firma.ro,sef,Secret456\nGol,,agent,\nMaria,maria@firma.ro");
 chk(count($ucsv) === 2, 'csv useri: 2 randuri valide (sare antet/email invalid/parola lipsa)');

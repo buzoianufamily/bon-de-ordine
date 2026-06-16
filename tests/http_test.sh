@@ -91,6 +91,11 @@ tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - 
 t "POST /admin/counters/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/counters/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=GCI,Ghiseu Importat CI')"
 tcontains "ghiseul importat apare in lista" 'Ghiseu Importat CI' "$(curl -s -b "$JAR" "$B/admin/counters")"
 
+# --- export/import filiale din CSV (autentificat) ---
+tcontains "export filiale CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/branches/export" | grep -i 'content-type')"
+t "POST /admin/branches/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/branches/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Filiala Importata CI,Cluj,Str. Test 1')"
+tcontains "filiala importata apare in lista" 'Filiala Importata CI' "$(curl -s -b "$JAR" "$B/admin/branches")"
+
 # --- export/import utilizatori din CSV (autentificat) ---
 tcontains "export utilizatori CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/users/export" | grep -i 'content-type')"
 # exportul NU trebuie sa contina hash-uri de parola

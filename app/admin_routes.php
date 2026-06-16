@@ -33,6 +33,8 @@ function admin_dispatch(array $seg, string $method): void {
         case 'statistics': admin_statistics(); return;
 
         case 'branches':
+            if ($method === 'POST' && $a === 'import') { admin_branches_import(); return; }
+            if ($a === 'export') { admin_branches_export(); return; }
             if ($method === 'POST' && $a === null) { admin_branch_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 if ((int)val('SELECT COUNT(*) FROM branches') > 1) { q('DELETE FROM branches WHERE id=?', [(int)$a]); audit('delete','branch',(int)$a); flash('Filiala stearsa.'); }
@@ -1055,6 +1057,38 @@ function admin_branches_list(): void {
 function admin_branch_form(?int $id): void {
     $row = $id ? one('SELECT * FROM branches WHERE id=?', [$id]) : null;
     view('admin/branch_edit', ['row' => $row]);
+}
+/** Export filiale (CSV: nume,oras,adresa). */
+function admin_branches_export(): void {
+    $rows = all('SELECT name, city, address FROM branches ORDER BY name');
+    audit('export', 'branches');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="filiale_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['nume', 'oras', 'adresa']);
+    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['city'], $r['address']]);
+    fclose($out); exit;
+}
+/** Import filiale din CSV (nume,oras,adresa); sare peste numele deja existente. */
+function admin_branches_import(): void {
+    csrf_check();
+    $csv = (string)($_POST['csv'] ?? '');
+    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
+        $csv = (string) file_get_contents($_FILES['file']['tmp_name']);
+    $rows = parse_branches_csv($csv);
+    $existing = array_flip(array_map('mb_strtolower', array_column(all('SELECT name FROM branches'), 'name')));
+    $n = 0; $skipped = 0;
+    foreach ($rows as $r) {
+        if (isset($existing[mb_strtolower($r['name'])])) { $skipped++; continue; }
+        q("INSERT INTO branches (name, city, country, address, timezone, active) VALUES (?,?,'Romania',?,'Europe/Bucharest',1)",
+            [$r['name'], $r['city'], $r['address']]);
+        $existing[mb_strtolower($r['name'])] = 1; $n++;
+    }
+    audit('import', 'branches', null, $n . ' filiale');
+    $msg = $n > 0 ? "$n filiale importate." : 'Nicio filiala noua de importat.';
+    if ($skipped) $msg .= " $skipped sarite (nume existent).";
+    flash($msg, $n > 0 ? 'info' : 'error');
+    redirect('admin/branches');
 }
 
 /* ----------------------- ZILE INCHISE / SARBATORI ----------------------- */
