@@ -1,20 +1,21 @@
-<?php $title='Parerea ta · '.setting('brand_name','Bon de ordine'); require __DIR__.'/_head.php'; ?>
+<?php $lang = $lang ?? 'ro'; $pageLang = $lang; $L = fb_i18n($lang);
+$title='Parerea ta · '.setting('brand_name','Bon de ordine'); require __DIR__.'/_head.php'; ?>
 <body class="portalpage"><div class="center"><div class="vt-card" style="max-width:420px;width:92%;text-align:center">
 <?php if (!empty($done)): ?>
   <div style="font-size:3rem;margin-bottom:.4rem">✅</div>
-  <h2 style="margin:.2rem 0">Multumim!</h2>
-  <p class="muted">Parerea ta ne ajuta sa imbunatatim serviciile.</p>
+  <h2 style="margin:.2rem 0"><?= e($L['thanks_title']) ?></h2>
+  <p class="muted"><?= e($L['thanks_sub']) ?></p>
 <?php else: ?>
   <div class="muted"><?= e(setting('brand_name','')) ?></div>
-  <h2 style="margin:.3rem 0 .1rem">Cum a fost experienta?</h2>
-  <p class="muted" style="margin-top:0">Acorda o nota de la 1 la 5.</p>
-  <form method="post" action="<?= e(url('feedback')) ?>?branch=<?= (int)($branch ?? 1) ?>" id="fbForm">
+  <h2 style="margin:.3rem 0 .1rem"><?= e($L['q_title']) ?></h2>
+  <p class="muted" style="margin-top:0"><?= e($L['q_sub']) ?></p>
+  <form method="post" action="<?= e(url('feedback')) ?>?branch=<?= (int)($branch ?? 1) ?>&amp;lang=<?= e($lang) ?>" id="fbForm">
     <input type="hidden" name="rating" id="fbRating" value="0">
     <div class="fb-stars" style="display:flex;justify-content:center;gap:.35rem;font-size:2.6rem;margin:.6rem 0;cursor:pointer">
       <?php for($i=1;$i<=5;$i++): ?><span data-v="<?= $i ?>" class="star" style="color:#3a4151;transition:.1s">★</span><?php endfor; ?>
     </div>
-    <textarea name="comment" rows="3" maxlength="500" placeholder="Comentariu (optional)" style="margin-bottom:.8rem"></textarea>
-    <button class="btn btn-primary btn-lg" style="width:100%" id="fbSend" disabled>Trimite</button>
+    <textarea name="comment" rows="3" maxlength="500" placeholder="<?= e($L['comment_ph']) ?>" style="margin-bottom:.8rem"></textarea>
+    <button class="btn btn-primary btn-lg" style="width:100%" id="fbSend" disabled><?= e($L['send']) ?></button>
   </form>
   <script>
   (function(){

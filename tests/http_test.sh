@@ -45,6 +45,9 @@ t "GET / (portal)"         200 "$(code $B/)"
 t "GET /login"             200 "$(code $B/login)"
 t "GET /login/forgot"      200 "$(code $B/login/forgot)"
 t "GET /concierge anon->redirect" 302 "$(code $B/concierge)"
+# feedback multilingv (ca biletul digital)
+tcontains "feedback RO implicit" 'Cum a fost experienta' "$(curl -s "$B/feedback")"
+tcontains "feedback EN (?lang=en)" 'How was your experience' "$(curl -s "$B/feedback?lang=en")"
 # cod QR local (SVG) — inlocuieste serviciul extern qrserver
 tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
 tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"

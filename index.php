@@ -407,11 +407,13 @@ SWJS;
     if ($seg[0] === 'feedback') {
         if (setting('mod_feedback', '1') !== '1') { http_response_code(404); echo 'Modulul de feedback este dezactivat.'; return; }
         $branch = (int)($_GET['branch'] ?? 1);
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
         if ($method === 'POST') {
             // anti-spam: max 3 evaluari / IP / 10 minute
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             if (!rate_limit_ok('fb:' . $ip, 3, 600)) {
-                view('public/feedback', ['done' => true, 'branch' => $branch]);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
                 return;
             }
             $rating  = (int) input('rating', 0);
@@ -419,12 +421,12 @@ SWJS;
             if ($rating >= 1 && $rating <= 5) {
                 q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (NULL, ?, ?, ?)',
                   [$branch ?: null, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
-                view('public/feedback', ['done' => true, 'branch' => $branch]);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
                 return;
             }
             flash('Alege o nota de la 1 la 5.', 'error');
         }
-        view('public/feedback', ['done' => false, 'branch' => $branch]);
+        view('public/feedback', ['done' => false, 'branch' => $branch, 'lang' => $lang]);
         return;
     }
 
