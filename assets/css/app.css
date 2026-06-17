@@ -157,8 +157,7 @@ body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var
 .kiosk-overlay{position:fixed;inset:0;background:rgba(15,17,21,.6);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(3px);opacity:0;transition:opacity .22s}
 .kiosk-overlay.show{display:flex;opacity:1}
 .ticket-card{background:#fff;border-radius:26px;padding:2.4rem 2.6rem;text-align:center;max-width:440px;width:92%;box-shadow:0 30px 80px rgba(0,0,0,.3);animation:pop .25s}
-/* efect de atingere (ripple) pe butoanele de serviciu */
-.svc-btn{overflow:hidden}
+/* efect de atingere (ripple) pe butoanele de serviciu (.svc-btn are deja overflow:hidden) */
 .svc-btn .rip{position:absolute;border-radius:999px;background:rgba(255,255,255,.45);transform:scale(0);animation:ripple .55s ease-out forwards;pointer-events:none}
 @keyframes ripple{to{transform:scale(3.2);opacity:0}}
 .svc-btn:not(.closed):active{transform:scale(.975)}
@@ -210,8 +209,6 @@ body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var
 .tv-call{display:flex;align-items:center;justify-content:space-between;padding:1.6vh 1.4vw;border-radius:14px;background:#161a22;margin-bottom:1vh}
 .tv-call .l{font-family:var(--display);font-size:3.2vw;font-weight:800}
 .tv-call .c{font-size:2.2vw;font-weight:800;color:var(--accent)}
-.tv-call.flash{animation:tvflash 1s ease 3}
-@keyframes tvflash{0%,100%{background:#161a22}50%{background:var(--accent)}}
 .tv-wait{font-size:1.4vw}
 .tv-wait .wrow{display:flex;align-items:center;gap:.8vw;padding:1vh 0;border-bottom:1px solid #1c2029}
 .tv-wait .cnt{margin-left:auto;font-family:var(--display);font-weight:800;font-size:2vw}

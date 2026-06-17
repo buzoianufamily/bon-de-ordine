@@ -53,14 +53,25 @@ function appt_book(int $service_id, string $slot_start, ?string $name, ?string $
         throw new RuntimeException('Ziua aleasa este inchisa' . ($cl !== '' ? ' (' . $cl . ')' : '') . '. Alege alta zi.');
     $key = date('Y-m-d H:i:00', $ts);
     $cap = max(1, (int)$svc['appt_capacity']);
-    $used = (int) val("SELECT COUNT(*) FROM appointments WHERE service_id=? AND slot_start=? AND status IN ('booked','checked_in')", [$service_id, $key]);
-    if ($used >= $cap) throw new RuntimeException('Intervalul tocmai s-a ocupat. Alege altul.');
     $len = max(5, (int)$svc['appt_slot_min']);
     $token = gen_token(16);
-    q("INSERT INTO appointments (branch_id,service_id,customer_name,customer_phone,customer_email,slot_start,slot_end,status,public_token,note)
-       VALUES (?,?,?,?,?,?,?, 'booked', ?, ?)",
-      [$svc['branch_id'], $service_id, $name, $phone, $email, $key, date('Y-m-d H:i:00', $ts+$len*60), $token, $note]);
-    $appt = one('SELECT * FROM appointments WHERE id=?', [insert_id()]);
+    // verificare capacitate + inserare ATOMICA (tranzactie + lock pe slot via idx_appt_slot)
+    // — fara asta, doua rezervari simultane pot trece amandoua de verificare si suprarezerva slotul
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $used = (int) val("SELECT COUNT(*) FROM appointments WHERE service_id=? AND slot_start=? AND status IN ('booked','checked_in') FOR UPDATE", [$service_id, $key]);
+        if ($used >= $cap) throw new RuntimeException('Intervalul tocmai s-a ocupat. Alege altul.');
+        q("INSERT INTO appointments (branch_id,service_id,customer_name,customer_phone,customer_email,slot_start,slot_end,status,public_token,note)
+           VALUES (?,?,?,?,?,?,?, 'booked', ?, ?)",
+          [$svc['branch_id'], $service_id, $name, $phone, $email, $key, date('Y-m-d H:i:00', $ts+$len*60), $token, $note]);
+        $newId = insert_id();
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    $appt = one('SELECT * FROM appointments WHERE id=?', [$newId]);
     if (function_exists('fire_webhook')) fire_webhook('appointment.created', webhook_appointment($appt));
 
     // email de confirmare (best-effort, doar daca emailul e completat si modulul e activ)
@@ -102,10 +113,19 @@ function appt_reschedule(int $id, string $newSlot): ?array {
     if (function_exists('branch_closure_reason') && ($cl = branch_closure_reason((int)$a['branch_id'], $ts)) !== null)
         throw new RuntimeException('Ziua aleasa este inchisa' . ($cl !== '' ? ' (' . $cl . ')' : '') . '. Alege alta zi.');
     $key = date('Y-m-d H:i:00', $ts); $cap = max(1, (int)$svc['appt_capacity']);
-    $used = (int) val("SELECT COUNT(*) FROM appointments WHERE service_id=? AND slot_start=? AND status IN ('booked','checked_in') AND id<>?", [$a['service_id'], $key, $id]);
-    if ($used >= $cap) throw new RuntimeException('Intervalul este ocupat. Alege altul.');
     $len = max(5, (int)$svc['appt_slot_min']);
-    q("UPDATE appointments SET slot_start=?, slot_end=? WHERE id=?", [$key, date('Y-m-d H:i:00', $ts + $len*60), $id]);
+    // verificare + mutare ATOMICA (tranzactie + lock pe slot) — anti-suprarezervare la reprogramari simultane
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $used = (int) val("SELECT COUNT(*) FROM appointments WHERE service_id=? AND slot_start=? AND status IN ('booked','checked_in') AND id<>? FOR UPDATE", [$a['service_id'], $key, $id]);
+        if ($used >= $cap) throw new RuntimeException('Intervalul este ocupat. Alege altul.');
+        q("UPDATE appointments SET slot_start=?, slot_end=? WHERE id=?", [$key, date('Y-m-d H:i:00', $ts + $len*60), $id]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
     $a['slot_start'] = $key;
     if (function_exists('fire_webhook')) fire_webhook('appointment.rescheduled', webhook_appointment($a));
     return one('SELECT * FROM appointments WHERE id=?', [$id]);

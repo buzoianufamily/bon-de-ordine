@@ -458,6 +458,8 @@ function run_migrations(): void {
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?", [$t]) > 0;
     $hasCol = fn(string $t, string $c) => (int) val(
         "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?", [$t,$c]) > 0;
+    $hasIdx = fn(string $t, string $i) => (int) val(
+        "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name=? AND index_name=?", [$t,$i]) > 0;
 
     // ruleaza un DDL ignorand erorile individuale (ex: obiect deja existent)
     $ddl = function(string $sql){ try { db()->exec($sql); } catch (Throwable $e) {} };
@@ -480,6 +482,8 @@ function run_migrations(): void {
         status ENUM('booked','checked_in','cancelled','no_show') NOT NULL DEFAULT 'booked',
         ticket_id BIGINT NULL, public_token VARCHAR(40) NULL, note VARCHAR(255) NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_appt_branch  FOREIGN KEY (branch_id)  REFERENCES branches(id) ON DELETE CASCADE,
+        CONSTRAINT fk_appt_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
         INDEX idx_appt_slot (service_id, slot_start), INDEX idx_appt_token (public_token),
         INDEX idx_appt_day (branch_id, slot_start)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -578,6 +582,9 @@ function run_migrations(): void {
     // v23: plafon zilnic de bonuri per serviciu (0 = nelimitat)
     if (!$hasCol('services','max_per_day')) $ddl("ALTER TABLE services ADD COLUMN max_per_day INT NOT NULL DEFAULT 0");
 
+    // v24: index pentru cautarea bonului curent pe ghiseu (counter_view / etichete curente)
+    if (!$hasIdx('tickets','idx_tickets_counter')) $ddl("ALTER TABLE tickets ADD INDEX idx_tickets_counter (counter_id, called_at)");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -590,7 +597,8 @@ function run_migrations(): void {
             && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
             && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
-            && $hasCol('services','pause_note') && $hasCol('services','max_per_day')) {
+            && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
+            && $hasIdx('tickets','idx_tickets_counter')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

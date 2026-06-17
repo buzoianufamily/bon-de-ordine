@@ -4,6 +4,9 @@
 # pagini admin, logout) si verifica codurile/raspunsurile. Iese !=0 daca pica ceva.
 # Config DB din env: BDO_DB_HOST/PORT/NAME/USER/PASS (ca tests/integration.php).
 set -u
+# python3 e folosit pentru a parsa raspunsuri JSON (API v1, sloturi) — fara el, testele ar fi
+# sarite silentios si ar da "green" fals; esueaza explicit daca lipseste.
+command -v python3 >/dev/null 2>&1 || { echo "FATAL: python3 lipseste (necesar pentru asertiile API v1)"; exit 1; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 HOST=127.0.0.1; PORT=${BDO_HTTP_PORT:-8123}
 DBH=${BDO_DB_HOST:-127.0.0.1}; DBP=${BDO_DB_PORT:-3306}

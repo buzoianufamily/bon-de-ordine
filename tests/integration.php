@@ -266,6 +266,17 @@ $svg = QR::svg('hello', 200);
 chk(strpos($svg, '<svg') === 0 && strpos($svg, '</svg>') !== false && strpos($svg, '<rect') !== false, 'qr: svg valid cu module');
 chk(QR::matrix(str_repeat('x', 400)) === null, 'qr: peste capacitate (v1..10-L) -> null');
 
+/* ---- 28. Calea de migrare (upgrade DB vechi -> versiunea curenta) ---- */
+// simuleaza o baza mai veche: scoate o coloana recenta si da inapoi schema_version
+q("ALTER TABLE services DROP COLUMN max_per_day");
+set_setting('schema_version', '5');
+run_migrations(); // trebuie sa re-adauge coloana lipsa si sa urce versiunea la zi
+$hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
+$hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
+chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
+chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
+chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

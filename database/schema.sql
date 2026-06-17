@@ -32,7 +32,6 @@ CREATE TABLE IF NOT EXISTS services (
   branch_id       INT NOT NULL,
   prefix          VARCHAR(3)   NOT NULL,            -- ex: 'A', 'C'
   name            VARCHAR(120) NOT NULL,
-  abbreviation    VARCHAR(40)  NULL,
   description     VARCHAR(255) NULL,
   color           VARCHAR(20)  NOT NULL DEFAULT '#2563eb',
   status          ENUM('active','inactive') NOT NULL DEFAULT 'active',
@@ -102,7 +101,6 @@ CREATE TABLE IF NOT EXISTS users (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   name          VARCHAR(120) NOT NULL,
   email         VARCHAR(160) NOT NULL UNIQUE,
-  username      VARCHAR(80)  NULL,
   password_hash VARCHAR(255) NOT NULL,
   role          ENUM('admin','manager','agent') NOT NULL DEFAULT 'agent',
   pin           VARCHAR(12)  NULL,
@@ -183,7 +181,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   INDEX idx_tickets_status (branch_id, status),
   INDEX idx_tickets_service_day (service_id, issued_at),
   INDEX idx_tickets_token (public_token),
-  INDEX idx_tickets_called (branch_id, called_at)
+  INDEX idx_tickets_called (branch_id, called_at),
+  INDEX idx_tickets_counter (counter_id, called_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- Sesiuni ghiseu (un operator activ per ghiseu) ----------
