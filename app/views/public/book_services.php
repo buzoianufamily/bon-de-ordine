@@ -2,6 +2,7 @@
 $lq = $lang !== 'ro' ? '?lang='.$lang : '';
 $title='Programari'; require __DIR__.'/_head.php'; ?>
 <body><div class="center"><div class="portal">
+  <?= public_lang_bar($lang, url('book')) ?>
   <div style="text-align:center"><h1><?= e($L['title']) ?></h1><p class="muted"><?= e($L['choose']) ?></p></div>
   <div class="portal-grid">
     <?php foreach($services as $s): ?>

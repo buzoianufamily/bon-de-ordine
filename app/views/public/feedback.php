@@ -6,6 +6,7 @@ $title='Parerea ta · '.setting('brand_name','Bon de ordine'); require __DIR__.'
   <h2 style="margin:.2rem 0"><?= e($L['thanks_title']) ?></h2>
   <p class="muted"><?= e($L['thanks_sub']) ?></p>
 <?php else: ?>
+  <?= public_lang_bar($lang, url('feedback').'?branch='.(int)($branch ?? 1)) ?>
   <div class="muted"><?= e(setting('brand_name','')) ?></div>
   <h2 style="margin:.3rem 0 .1rem"><?= e($L['q_title']) ?></h2>
   <p class="muted" style="margin-top:0"><?= e($L['q_sub']) ?></p>

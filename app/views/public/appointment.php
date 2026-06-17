@@ -6,6 +6,7 @@ $statusColor=['booked'=>'#17E58F','checked_in'=>'#2563eb','cancelled'=>'#FF3A33'
 $now=time(); $canCheckin = $a['status']==='booked' && $now >= $ts-1800 && $now <= $endts+600;
 $stLabel=$L['st_'.$a['status']] ?? '—'; $stCol=$statusColor[$a['status']] ?? '#888'; ?>
 <body><div class="vt"><div class="vt-card">
+  <?= public_lang_bar($lang, url('a/'.$a['public_token'])) ?>
   <div class="muted"><?= e($a['branch_name']) ?></div>
   <h2 style="margin:.2rem 0 0"><?= e($a['service_name']) ?></h2>
   <div class="vt-num" style="font-size:2.4rem;color:<?= e($a['color']) ?>"><?= date('H:i',$ts) ?></div>

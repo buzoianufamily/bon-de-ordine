@@ -4,6 +4,7 @@ $prev=date('Y-m-d',strtotime($date.' -1 day')); $next=date('Y-m-d',strtotime($da
 $dts=strtotime($date); $dateLabel=$L['days'][(int)date('w',$dts)].', '.date('d.m.Y',$dts); ?>
 <body><div class="center"><div class="portal" style="max-width:620px">
   <a href="<?= e(url('book').($lang!=='ro'?'?lang='.$lang:'')) ?>" class="muted"><?= e($L['all_services']) ?></a>
+  <?= public_lang_bar($lang, url('book/'.$svc['id']).'?date='.e($date)) ?>
   <div style="text-align:center;margin:.4rem 0 1rem"><span class="tag" style="background:<?= e($svc['color']) ?>;display:inline-flex"><?= e($svc['prefix']) ?></span>
     <h1 style="margin:.3rem 0"><?= e($svc['name']) ?></h1><p class="muted" style="margin:0"><?= e($svc['branch_name']) ?></p></div>
   <?php foreach(get_flashes() as $f): ?><div class="pill" style="display:block;text-align:center;background:#fee2e2;color:#b91c1c;margin-bottom:.8rem"><?= e($f['msg']) ?></div><?php endforeach; ?>

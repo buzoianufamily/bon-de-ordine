@@ -333,6 +333,15 @@ $svcRow['max_per_day'] = 0;            chk(service_cap_reached($svcRow) === fals
 $svcRow['max_per_day'] = $nToday + 1;  chk(service_cap_reached($svcRow) === false, 'cap: sub plafon -> false');
 $svcRow['max_per_day'] = max(1, $nToday); chk(service_cap_reached($svcRow) === true, 'cap: la/peste plafon -> true');
 
+/* ---- 34. Bara de limbi pe paginile publice ---- */
+set_setting('dispenser_langs', 'ro');
+chk(public_lang_bar('ro', url('feedback')) === '', 'langbar: o singura limba -> gol');
+set_setting('dispenser_langs', 'ro,en,de');
+$bar = public_lang_bar('en', url('feedback').'?branch=1');
+chk(strpos($bar, 'lang=en') !== false && strpos($bar, 'lang=de') !== false, 'langbar: contine limbile configurate');
+chk(strpos($bar, 'aria-current') !== false, 'langbar: limba curenta marcata (a11y)');
+set_setting('dispenser_langs', 'ro');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

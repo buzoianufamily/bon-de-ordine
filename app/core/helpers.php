@@ -454,6 +454,28 @@ function appt_i18n(string $lang): array {
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
 }
 
+/**
+ * Bara de limbi (steaguri) pentru paginile publice, pe baza setarii dispenser_langs.
+ * Returneaza '' daca e configurata o singura limba. $base = URL-ul paginii (fara param lang).
+ */
+function public_lang_bar(string $current, string $base): string {
+    $codes = array_values(array_filter(array_map('trim', explode(',', (string) setting('dispenser_langs', 'ro')))));
+    if (!in_array('ro', $codes, true)) array_unshift($codes, 'ro');
+    $meta = disp_lang_meta();
+    $codes = array_values(array_filter($codes, fn($c) => isset($meta[$c])));
+    if (count($codes) < 2) return '';
+    $sep = strpos($base, '?') !== false ? '&' : '?';
+    $h = '<div class="langbar" role="group" aria-label="Limba" style="display:flex;gap:.4rem;justify-content:center;flex-wrap:wrap;margin:.2rem 0 1rem">';
+    foreach ($codes as $c) {
+        $on = $c === $current;
+        $h .= '<a href="' . e($base . $sep . 'lang=' . $c) . '"' . ($on ? ' aria-current="true"' : '')
+            . ' style="text-decoration:none;padding:.2rem .55rem;border-radius:8px;font-size:.85rem;'
+            . ($on ? 'background:var(--accent,#2563eb);color:#fff' : 'opacity:.65') . '">'
+            . $meta[$c][1] . ' ' . e(strtoupper($c)) . '</a>';
+    }
+    return $h . '</div>';
+}
+
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
 function disp_lang_meta(): array {
     return [
