@@ -1482,7 +1482,14 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo'));
+    // statistici programari pe interval (dupa data slotului)
+    $apWhere = 'DATE(slot_start) BETWEEN ? AND ?'; $apArgs = [$from, $to];
+    if ($branch) { $apWhere .= ' AND branch_id = ?'; $apArgs[] = $branch; }
+    $appt = one("SELECT COUNT(*) total, SUM(status='booked') booked, SUM(status='checked_in') checked_in,
+                 SUM(status='no_show') no_show, SUM(status='cancelled') cancelled
+                 FROM appointments WHERE $apWhere", $apArgs) ?: [];
+
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
 }
 
 /**

@@ -242,6 +242,25 @@ $delta = function($cur, $prev, bool $invert=false): string {
   <?php endif; ?>
 </div>
 
+<?php $apT=(int)($appt['total']??0); if($apT>0 || setting('mod_booking','1')==='1'):
+  $apCi=(int)($appt['checked_in']??0); $apNs=(int)($appt['no_show']??0); $apCa=(int)($appt['cancelled']??0); $apBk=(int)($appt['booked']??0);
+  $rate=fn($x)=> $apT>0 ? round($x*100/$apT) : 0; ?>
+<div class="card pad" style="margin-top:1.2rem">
+  <h3 style="margin:0 0 .6rem">Programari online</h3>
+  <?php if($apT===0): ?>
+    <p class="muted">Nicio programare in interval.</p>
+  <?php else: ?>
+  <div class="kpis">
+    <div class="card pad kpi"><div class="n"><?= $apT ?></div><div class="l">Total programari</div></div>
+    <div class="card pad kpi"><div class="n" style="color:var(--ok)"><?= $apCi ?></div><div class="l">Check-in (<?= $rate($apCi) ?>%)</div></div>
+    <div class="card pad kpi"><div class="n" style="color:var(--muted)"><?= $apNs ?></div><div class="l">Neprezentate (<?= $rate($apNs) ?>%)</div></div>
+    <div class="card pad kpi"><div class="n" style="color:var(--danger)"><?= $apCa ?></div><div class="l">Anulate (<?= $rate($apCa) ?>%)</div></div>
+    <div class="card pad kpi"><div class="n"><?= $apBk ?></div><div class="l">In asteptare</div></div>
+  </div>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <?php $act=[]; foreach(($op_activity??[]) as $r){ $act[$r['name']][$r['status']]=(int)$r['secs']; } ?>
 <div class="card pad" style="margin-top:1.2rem">
   <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0 0 .6rem">Activitate operatori (timp pe status)</h3><?= $dlcsv('op_activity') ?></div>
