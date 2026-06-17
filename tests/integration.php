@@ -284,6 +284,9 @@ chk($tw['ok'] === false && strpos((string)$tw['error'], 'URL') !== false, 'webho
 set_setting('webhook_url', 'http://127.0.0.1:1/hook');   // port inchis -> conexiune refuzata
 $tw2 = test_webhook();
 chk($tw2['ok'] === false, 'webhook test: endpoint inaccesibil -> ok=false');
+// incercarea de livrare e inregistrata in jurnal
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='ping'") >= 1, 'webhook log: incercarea de test e inregistrata');
+chk((int)val("SELECT ok FROM webhook_log ORDER BY id DESC LIMIT 1") === 0, 'webhook log: livrare esuata -> ok=0');
 set_setting('webhook_url', '');
 
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";

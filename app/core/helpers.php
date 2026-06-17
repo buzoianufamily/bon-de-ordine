@@ -306,7 +306,23 @@ function fire_webhook(string $event, array $data): void {
             CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 3, CURLOPT_CONNECTTIMEOUT => 2,
         ]);
-        curl_exec($ch); curl_close($ch);
+        curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+        $ok = $cerr === '' && $status >= 200 && $status < 300;
+        log_webhook($event, $url, $cerr === '' ? $status : null, $ok, $cerr !== '' ? $cerr : ($ok ? null : 'HTTP ' . $status));
+    } catch (Throwable $e) {}
+}
+
+/** Inregistreaza o incercare de livrare webhook in jurnal (pastreaza ultimele 100). */
+function log_webhook(string $event, string $url, ?int $status, bool $ok, ?string $error): void {
+    try {
+        q("INSERT INTO webhook_log (event, url, status_code, ok, error) VALUES (?,?,?,?,?)",
+          [mb_substr($event, 0, 40), mb_substr($url, 0, 255), $status, $ok ? 1 : 0,
+           $error !== null ? mb_substr($error, 0, 255) : null]);
+        // bound: pastreaza doar ultimele 100 de inregistrari
+        q("DELETE FROM webhook_log WHERE id <= (SELECT x FROM (SELECT MAX(id)-100 AS x FROM webhook_log) t)");
     } catch (Throwable $e) {}
 }
 
@@ -339,8 +355,9 @@ function test_webhook(): array {
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $cerr = curl_error($ch);
         curl_close($ch);
-        if ($cerr !== '') return ['ok' => false, 'status' => null, 'signed' => $signed, 'error' => 'Conexiune esuata: ' . $cerr];
+        if ($cerr !== '') { log_webhook('ping', $url, null, false, $cerr); return ['ok' => false, 'status' => null, 'signed' => $signed, 'error' => 'Conexiune esuata: ' . $cerr]; }
         $okStatus = $status >= 200 && $status < 300;
+        log_webhook('ping', $url, $status, $okStatus, $okStatus ? null : ('HTTP ' . $status));
         return ['ok' => $okStatus, 'status' => $status, 'signed' => $signed,
                 'error' => $okStatus ? null : ('Endpointul a raspuns cu codul ' . $status . '.')];
     } catch (Throwable $e) {
@@ -623,6 +640,13 @@ function run_migrations(): void {
     // v24: index pentru cautarea bonului curent pe ghiseu (counter_view / etichete curente)
     if (!$hasIdx('tickets','idx_tickets_counter')) $ddl("ALTER TABLE tickets ADD INDEX idx_tickets_counter (counter_id, called_at)");
 
+    // v25: jurnal livrari webhook (depanare integrari)
+    if (!$hasTable('webhook_log')) $ddl("CREATE TABLE webhook_log (
+        id INT AUTO_INCREMENT PRIMARY KEY, event VARCHAR(40) NOT NULL, url VARCHAR(255) NOT NULL,
+        status_code INT NULL, ok TINYINT(1) NOT NULL DEFAULT 0, error VARCHAR(255) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_whlog_time (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -636,7 +660,7 @@ function run_migrations(): void {
             && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
-            && $hasIdx('tickets','idx_tickets_counter')) {
+            && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

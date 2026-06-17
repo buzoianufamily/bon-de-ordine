@@ -103,6 +103,7 @@ ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
 tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
 tcontains "test-webhook mesaj despre URL" 'URL' "$WHT"
+tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$(curl -s -b "$JAR" "$B/admin/api")"
 
 # --- export/import ghisee din CSV (autentificat) ---
 tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/counters/export" | grep -i 'content-type')"

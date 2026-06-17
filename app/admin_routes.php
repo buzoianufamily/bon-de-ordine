@@ -159,6 +159,7 @@ function admin_dispatch(array $seg, string $method): void {
         case 'api':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             if ($method === 'POST' && $a === 'test-webhook') { admin_api_test_webhook(); return; }
+            if ($method === 'POST' && $a === 'clear-webhook-log') { csrf_check(); q('DELETE FROM webhook_log'); audit('clear','webhook_log'); flash('Jurnal webhook golit.'); redirect('admin/api'); }
             if ($method === 'POST') { admin_api_save(); return; }
             admin_api_page(); return;
 

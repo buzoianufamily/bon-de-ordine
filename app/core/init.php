@@ -8,7 +8,7 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__, 2));
 define('APP_START', microtime(true));
 
-define('APP_SCHEMA_VERSION', 24);   // versiunea curenta a schemei (folosita de migrari si landlord)
+define('APP_SCHEMA_VERSION', 25);   // versiunea curenta a schemei (folosita de migrari si landlord)
 
 // Config: din config/config.php; testele de integrare pot injecta prin $GLOBALS['__config_override'].
 $config = $GLOBALS['__config_override'] ?? (require APP_ROOT . '/config/config.php');

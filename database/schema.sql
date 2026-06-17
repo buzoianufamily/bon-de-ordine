@@ -304,3 +304,15 @@ CREATE TABLE IF NOT EXISTS branch_closures (
   UNIQUE KEY uq_closure (branch_id, closed_date),
   INDEX idx_closure_date (closed_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Jurnal livrari webhook (ultimele incercari, pentru depanare integrari) ----------
+CREATE TABLE IF NOT EXISTS webhook_log (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  event       VARCHAR(40)  NOT NULL,
+  url         VARCHAR(255) NOT NULL,
+  status_code INT NULL,                              -- codul HTTP raspuns (NULL daca n-a conectat)
+  ok          TINYINT(1) NOT NULL DEFAULT 0,
+  error       VARCHAR(255) NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_whlog_time (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
