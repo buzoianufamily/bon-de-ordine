@@ -20,7 +20,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. | `…/feedback` |
 | **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
-| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
+| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
 | **Landlord** | Panoul TĂU multi‑tenant: instanțele tuturor clienților, cu **health‑check** (funcționează / eroare / suspendată), adăugare/suspendare clienți. | `…/landlord` |
 
 ### Funcționalități cheie
@@ -33,6 +33,8 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Anunț general live** (📢): mesaj ad‑hoc cu expirare, afișat și actualizat **în timp real** (fără reîncărcare) pe dispenser, afișaje TV, afișaje de ghișeu, pagina de status și terminalul operatorului.
 - **Statistici operator live** chiar în terminal (bilete servite azi + timp mediu pe bon).
 - **Module activabile**: bilet digital QR, programări, feedback, concierge — pornite/oprite din Setări.
+- **Provizionare rapidă din CSV**: import/export pentru filiale, servicii, ghișee, utilizatori și zile închise — descarci un șablon gol, îl completezi în Excel și îl încarci (paste sau fișier `.csv`); reimportul sare peste rândurile existente. Un client nou se configurează din foi de calcul.
+- **Coduri QR generate local** (SVG, fără servicii externe): 2FA, chei dispozitive, bilete digitale și widget‑urile de pe afișaje — funcționează și fără internet, iar secretul 2FA nu mai pleacă către un terț.
 - **Printare ESC/POS** (Bixolon și orice imprimantă termică): rețea (port 9100), **Android USB** (aplicația din `android/`), sau browser (test). Conținutul bonului e configurabil, cu **preview live** în Setări. **Foaie printabilă cu coduri QR** pentru instalarea rapidă a dispozitivelor (Admin → Dispozitive → Coduri QR).
 - **Email integrat** (SMTP propriu sau `mail()` de pe cPanel): confirmări + remindere programări, raport zilnic, **alerte SLA** (când cozile depășesc ținta, cu prag + pauză anti‑spam); **cron** inclus (curățare automată a biletelor vechi + închiderea automată a biletelor uitate „în servire"/„chemat").
 - **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set; pagina **Bilete** are **export CSV** al listei filtrate.
@@ -40,7 +42,6 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, ghișee, statistici, **programări online** — sloturi/rezervare/status) — documentate în Admin → API & Webhooks. Evenimente webhook pentru tot ciclul biletului + **`sla.breach`** (cozi peste țintă). Endpoint **`/health`** (JSON) pentru monitorizare uptime.
 - **Multi‑tenant**: subdomeniu + bază de date per client, panou **landlord** cu health‑check și suspendare instanțe.
 - **Temă deschisă/închisă** (cu auto după sistemul de operare), admin **responsive pe mobil**, căutare globală **Ctrl+K**, checklist de onboarding.
-- **Anunț general**: banner ad‑hoc (📢) cu expirare opțională, afișat pe dispenser, pagina de status, afișajele de ghișeu și terminalul operatorului — pentru mesaje rapide („azi program redus").
 - **White‑label**: nume, logo, culoare, texte — din Setări (pe taburi).
 
 ---
@@ -127,16 +128,17 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 ---
 
 ## Dezvoltare & teste
-Există un **test de integrare** care rulează logica reală pe o bază de date MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit — 50+ aserțiuni).
+Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR — ~100 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1 — ~65 verificări).
 
 Rulare locală (cu o bază de test):
 ```bash
 BDO_DB_HOST=127.0.0.1 BDO_DB_PORT=3306 BDO_DB_NAME=bon BDO_DB_USER=bon BDO_DB_PASS=bon \
-  php tests/integration.php && php tests/closure_block_test.php
+  php tests/integration.php && php tests/closure_block_test.php && bash tests/http_test.sh
 ```
 
-La fiecare `push`/PR, **GitHub Actions** (`.github/workflows/ci.yml`) rulează automat:
+La fiecare `push`/PR, **GitHub Actions** (`.github/workflows/ci.yml`) rulează automat trei joburi:
 - **lint**: `php -l` pe tot codul PHP + `node --check` pe JS;
-- **integration**: pornește un serviciu MariaDB și rulează testele de mai sus.
+- **integration**: pornește un serviciu MariaDB și rulează testele de integrare;
+- **http**: pornește serverul integrat PHP și rulează testul HTTP end‑to‑end.
 
 Astfel, regresii precum bug‑urile de instalare nu mai pot ajunge nedetectate în producție.

@@ -143,7 +143,7 @@
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.background=p.bg||'#ffffff';el.style.padding='8px';
         const data=encodeURIComponent(p.url||location.origin);
         const sz=Math.max(60,Math.min(el.clientWidth,el.clientHeight)-(p.caption?34:14));
-        el.innerHTML=`<img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=${sz}x${sz}&margin=0&data=${data}" style="width:${sz}px;height:${sz}px">`+
+        el.innerHTML=`<img alt="QR" src="${QMS.base()}/qr?size=${sz}&data=${data}" style="width:${sz}px;height:${sz}px">`+
           (p.caption?`<div style="color:#111;font-weight:700;margin-top:6px;text-align:center;font-size:${Math.max(11,H*.07)}px">${esc(pickML(p.caption))}</div>`:'');
         break; }
       case 'iframe': {
@@ -161,7 +161,7 @@
         const link=p.url||(QMS.base()+'/feedback?branch='+(cfg.branch||1));
         const sz=Math.max(60,Math.min(el.clientWidth,el.clientHeight)-70);
         el.innerHTML=`<div style="font-weight:700;margin-bottom:8px;font-size:${Math.max(12,H*.09)}px">${esc(pickML(p.title||'Spune-ne parerea ta'))}</div>
-          <img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=${sz}x${sz}&margin=0&data=${encodeURIComponent(link)}" style="width:${sz}px;height:${sz}px;background:#fff;border-radius:6px;padding:4px">
+          <img alt="QR" src="${QMS.base()}/qr?size=${sz}&data=${encodeURIComponent(link)}" style="width:${sz}px;height:${sz}px;background:#fff;border-radius:6px;padding:4px">
           <div style="margin-top:8px;color:#f5b301;font-size:${Math.max(13,H*.1)}px">★★★★★</div>
           <div style="margin-top:2px;opacity:.75;font-size:${Math.max(10,H*.06)}px">Scaneaza pentru a evalua</div>`;
         break; }

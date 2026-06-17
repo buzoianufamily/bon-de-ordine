@@ -42,6 +42,9 @@ t "GET / (portal)"         200 "$(code $B/)"
 t "GET /login"             200 "$(code $B/login)"
 t "GET /login/forgot"      200 "$(code $B/login/forgot)"
 t "GET /concierge anon->redirect" 302 "$(code $B/concierge)"
+# cod QR local (SVG) — inlocuieste serviciul extern qrserver
+tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
+tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"
 
 # --- emitere bon prin API public (dispenser) ---
 ISS="$(curl -s -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"service_id\":$SVC,\"channel\":\"paper\"}")"
@@ -68,6 +71,11 @@ CT_CSV="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/tickets/export?date=$TOD
 tcontains "export bilete CSV content-type" 'text/csv' "$CT_CSV"
 CFG_JSON="$(curl -s -b "$JAR" "$B/admin/settings/export")"
 tcontains "export config JSON" '"settings"' "$CFG_JSON"
+# reorganizare: backup DB + tab Automatizari mutate in Setari; API nu mai are backup
+SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
+tcontains "Setari are backup baza de date (mutat din API)" 'Backup bază de date' "$SET_PAGE"
+tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
+case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((FAIL+1)); echo "FAIL: API inca are backup DB";; *) PASS=$((PASS+1));; esac
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"

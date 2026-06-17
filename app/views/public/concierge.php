@@ -46,8 +46,8 @@
 <script>
 window.CONCIERGE = {
   branch: <?= (int)$branch['id'] ?>,
-  accent: <?= json_encode(setting('accent_color','#2563eb')) ?>,
-  counters: <?= json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $counters), JSON_UNESCAPED_UNICODE) ?>
+  accent: <?= jsenc(setting('accent_color','#2563eb')) ?>,
+  counters: <?= jsenc(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $counters), JSON_UNESCAPED_UNICODE) ?>
 };
 /* emitere bon walk-in */
 (function(){

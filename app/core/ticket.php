@@ -282,7 +282,8 @@ function cancel_ticket(int $ticket_id): void {
 }
 /** Transfera biletul catre alt serviciu (revine in asteptare). */
 function transfer_ticket(int $ticket_id, int $service_id): void {
-    q("UPDATE tickets SET service_id = ?, status = 'waiting', counter_id = NULL, called_at = NULL, served_at = NULL
+    q("UPDATE tickets SET service_id = ?, status = 'waiting', counter_id = NULL, agent_id = NULL,
+        called_at = NULL, served_at = NULL, finished_at = NULL, target_counter_id = NULL, recall_count = 0
        WHERE id = ?", [$service_id, $ticket_id]);
     ticket_event($ticket_id, 'ticket.transferred');
 }

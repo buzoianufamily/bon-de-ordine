@@ -10,7 +10,7 @@
     <?php if($row): ?><p class="muted">Cheie conectare: <code style="font-size:1.1rem;font-weight:800"><?= e($row['connection_key']) ?></code> (generata automat)</p><?php endif; ?>
     <div class="row">
       <div class="field"><label>Tip</label><select name="type">
-        <?php foreach(['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','digital_ticket'=>'Bilet digital QR'] as $k=>$lab): ?>
+        <?php foreach(['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj widget','digital_ticket'=>'Bilet digital QR','launcher'=>'Launcher dispozitiv'] as $k=>$lab): ?>
           <option value="<?= $k ?>" <?= ($row['type']??'dispenser')===$k?'selected':'' ?>><?= $lab ?></option><?php endforeach; ?></select></div>
       <div class="field" style="flex:2"><label>Nume</label><input name="name" value="<?= $v('name') ?>" placeholder="Dispenser intrare" required></div>
     </div>

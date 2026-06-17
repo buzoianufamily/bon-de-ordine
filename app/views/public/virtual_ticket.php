@@ -16,12 +16,12 @@ require __DIR__.'/_head.php'; ?>
 </div></div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
-const token = <?= json_encode($token) ?>;
-const LANG = <?= json_encode($lang) ?>;
-const T = <?= json_encode($L, JSON_UNESCAPED_UNICODE) ?>;
+const token = <?= jsenc($token) ?>;
+const LANG = <?= jsenc($lang) ?>;
+const T = <?= jsenc($L, JSON_UNESCAPED_UNICODE) ?>;
 const ALERTS = {
-  called: <?= json_encode(setting('alert_called','Este randul dumneavoastra! Va rugam prezentati-va la ghiseu.')) ?>,
-  transfer: <?= json_encode(setting('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.')) ?>,
+  called: <?= jsenc(setting('alert_called','Este randul dumneavoastra! Va rugam prezentati-va la ghiseu.')) ?>,
+  transfer: <?= jsenc(setting('alert_transfer','Biletul dvs. a fost transferat catre alt serviciu.')) ?>,
   delay: <?= (int) setting('alert_delay','0') ?>,
   nearTurn: <?= (int) setting('near_turn_alert','2') ?>
 };

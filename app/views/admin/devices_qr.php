@@ -1,4 +1,5 @@
 <?php $title='Coduri QR dispozitive'; $active='devices'; require __DIR__.'/_header.php';
+require_once __DIR__.'/../../core/qr.php';
 $labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj TV (widget)','digital_ticket'=>'Bilet digital QR','launcher'=>'Launcher'];
 ?>
 <style>
@@ -23,10 +24,9 @@ $labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>
 </div>
 <p class="muted noprint" style="margin-top:-.6rem;max-width:720px">Scanează codul cu camera mini‑PC‑ului/tabletei (sau introdu linkul în aplicația Android) ca să deschizi dispozitivul. Pagină optimizată pentru printare — lipește fiecare cod lângă dispozitivul lui.</p>
 <div class="qrgrid">
-<?php foreach($rows as $d): $u=url('launcher?key='.$d['connection_key']);
-  $qr='https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data='.rawurlencode($u); ?>
+<?php foreach($rows as $d): $u=url('launcher?key='.$d['connection_key']); ?>
   <div class="qrcard">
-    <img src="<?= e($qr) ?>" alt="QR <?= e($d['name']) ?>">
+    <div role="img" aria-label="QR <?= e($d['name']) ?>" style="width:200px;height:200px;margin:0 auto"><?= QR::svg($u, 200) ?></div>
     <div class="nm"><?= e($d['name']) ?></div>
     <div class="muted" style="font-size:.8rem"><?= e($labels[$d['type']]??$d['type']) ?> · <?= e($d['branch_name']) ?></div>
     <div style="margin-top:.35rem"><code><?= e($d['connection_key']) ?></code></div>
