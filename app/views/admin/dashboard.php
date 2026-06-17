@@ -6,7 +6,8 @@ function spark(array $v, string $color='var(--accent)'): string {
     $W=86; $H=24; $max=max($v); $min=min($v); $rng=max(1,$max-$min);
     $pts=[]; $n=count($v);
     foreach ($v as $i=>$x) $pts[] = round($i/($n-1)*$W,1).','.round($H-2-($x-$min)/$rng*($H-4),1);
-    return '<svg class="spk" viewBox="0 0 '.$W.' '.$H.'" width="'.$W.'" height="'.$H.'" preserveAspectRatio="none">'
+    $desc = 'Tendinta 7 zile: ' . implode(', ', array_map('intval', $v));
+    return '<svg class="spk" viewBox="0 0 '.$W.' '.$H.'" width="'.$W.'" height="'.$H.'" preserveAspectRatio="none" role="img" aria-label="'.e($desc).'"><title>'.e($desc).'</title>'
          . '<polyline points="'.implode(' ',$pts).'" fill="none" stroke="'.$color.'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>'
          . '</svg>';
 }
@@ -99,8 +100,9 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
     <?php if($totalSvc===0): ?>
       <p class="muted">Niciun bilet emis azi.</p>
     <?php else: ?>
+    <?php $donutDesc = 'Distributie bilete azi pe serviciu (total '.$totalSvc.'): '.(implode(', ', array_map(fn($s)=>$s['name'].' '.$s['cnt'], $segs)) ?: 'fara date'); ?>
     <div style="display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap">
-      <svg viewBox="0 0 120 120" width="150" height="150" style="flex:0 0 auto">
+      <svg viewBox="0 0 120 120" width="150" height="150" style="flex:0 0 auto" role="img" aria-label="<?= e($donutDesc) ?>"><title><?= e($donutDesc) ?></title>
         <circle cx="60" cy="60" r="54" fill="none" stroke="var(--track)" stroke-width="12"/>
         <g transform="rotate(-90 60 60)">
         <?php foreach($segs as $sgm): ?>
@@ -142,7 +144,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
 
 <div class="panel-grid">
   <div class="panel dvbox">
-    <h4>Bilete pe serviciu (azi) <span class="dvtoggle"><button type="button" class="on" data-dv="chart">📊</button><button type="button" data-dv="table">▦</button></span></h4>
+    <h4>Bilete pe serviciu (azi) <span class="dvtoggle" role="group" aria-label="Mod vizualizare"><button type="button" class="on" data-dv="chart" aria-pressed="true" aria-label="Grafic">📊</button><button type="button" data-dv="table" aria-pressed="false" aria-label="Tabel">▦</button></span></h4>
     <?php if(!$per_service): ?><p class="muted">Niciun serviciu.</p><?php endif; ?>
     <div class="dv-table dv-hidden">
       <table><thead><tr><th>Serviciu</th><th>Bilete</th><th>%</th></tr></thead><tbody>

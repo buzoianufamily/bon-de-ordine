@@ -60,8 +60,11 @@ CSRF="$(curl -s -c "$JAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | hea
 [ -n "$CSRF" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: extract login CSRF"; }
 t "POST /login bad creds -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=GRESIT")"
 t "POST /login ok -> 302"        302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=123456")"
+DASH="$(curl -s -b "$JAR" "$B/admin")"
 t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/admin)"
-tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$(curl -s -b "$JAR" "$B/admin")"
+tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$DASH"
+tcontains "a11y: toggle grafic/tabel are aria-pressed" 'aria-pressed' "$DASH"
+tcontains "a11y: SVG-uri date au role=img" 'role="img"' "$DASH"
 t "GET /admin/statistics"        200 "$(code -b "$JAR" $B/admin/statistics)"
 t "GET /admin/closures"          200 "$(code -b "$JAR" $B/admin/closures)"
 t "GET /admin/help"              200 "$(code -b "$JAR" $B/admin/help)"

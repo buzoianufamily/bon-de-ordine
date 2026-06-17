@@ -5,7 +5,7 @@ $qs = fn($extra)=>e(url('admin/statistics').'?'.http_build_query(array_merge(['f
 // buton mic de download CSV pentru un set de date
 $dlcsv = fn($ds)=>'<a class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem" href="'.$qs(['export'=>'csv','dataset'=>$ds]).'">⬇ CSV</a>';
 // comutator grafic/tabel pentru un panou (ca la Moviik)
-$dvtoggle = '<span class="dvtoggle"><button type="button" class="on" data-dv="chart">📊 Grafic</button><button type="button" data-dv="table">▦ Tabel</button></span>';
+$dvtoggle = '<span class="dvtoggle" role="group" aria-label="Mod vizualizare date"><button type="button" class="on" data-dv="chart" aria-pressed="true">📊 Grafic</button><button type="button" data-dv="table" aria-pressed="false">▦ Tabel</button></span>';
 // pregatire date grafice
 $maxDay = 1; foreach($per_day as $r) $maxDay=max($maxDay,(int)$r['c']);
 $hours = array_fill(0,24,0); foreach($per_hour as $r) $hours[(int)$r['h']]=(int)$r['c'];
