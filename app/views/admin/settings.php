@@ -6,6 +6,7 @@
   <a data-tab="display"><span class="ic">📺</span>Afisaj &amp; voce</a>
   <a data-tab="digital"><span class="ic">📱</span>Digital &amp; alerte</a>
   <a data-tab="email"><span class="ic">✉️</span>Email</a>
+  <a data-tab="auto"><span class="ic">⏱</span>Automatizări</a>
   <a data-tab="module"><span class="ic">🧩</span>Module</a>
 </div>
 <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
@@ -136,9 +137,13 @@
         <div class="field" style="flex:2"><label>Trimite un email de test catre</label><input type="email" name="mail_test_to" placeholder="adresa@ta.ro"></div>
         <div class="field"><button class="btn" name="mail_test" value="1">✉️ Salveaza si testeaza</button></div>
       </div>
-      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
-      <h3 style="margin-top:0">Automatizari (necesita cron)</h3>
-      <p class="muted" style="font-size:.82rem;margin-top:0">Configureaza job-ul cron din <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>. Apoi activeaza:</p>
+    </div>
+  </div>
+
+  <div class="settab dv-hidden" data-pane="auto">
+    <div class="card pad" style="max-width:640px">
+      <h3 style="margin-top:0">Automatizări (necesită cron)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Aceste sarcini rulează prin job-ul cron — configurează-l în <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>. Remindere și raportul zilnic necesită și email activ (tabul <strong>Email</strong>).</p>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="reminder_enabled" <?= setting('reminder_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>reminder</strong> pe email cu ~24h inainte de programare</label>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="daily_report_enabled" <?= setting('daily_report_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>raport zilnic</strong> pe email (despre ziua precedenta)</label>
       <div class="field"><label>Destinatari raport zilnic (gol = toti adminii)</label><input name="daily_report_to" value="<?= $s('daily_report_to') ?>" placeholder="a@x.ro, b@y.ro"></div>
@@ -149,6 +154,8 @@
         <div class="field" style="margin:0"><label>Pauza intre alerte (min)</label><input type="number" name="sla_alert_cooldown_min" min="5" max="1440" value="<?= $s('sla_alert_cooldown_min','30') ?>"></div>
       </div>
       <p class="muted" style="font-size:.78rem;margin-top:.3rem">Alerta se trimite cel mult o data la „pauza" minute, doar daca numarul de bilete peste tinta atinge pragul. Tinta per serviciu = „timp asteptare" din editarea serviciului.</p>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Ciclu de viață date</h3>
       <div class="field"><label>Sterge automat biletele mai vechi de … luni (0 = pastreaza tot)</label><input type="number" name="retention_months" min="0" max="120" value="<?= $s('retention_months','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Curatarea ruleaza prin cron (nu necesita email activ). Statisticile pentru perioadele sterse dispar — fa un backup inainte.</p></div>
       <div class="field"><label>Închide automat biletele uitate după … minute (0 = oprit)</label><input type="number" name="auto_close_min" min="0" max="1440" value="<?= $s('auto_close_min','0') ?>">
@@ -182,6 +189,12 @@
     <?= csrf_field() ?>
     <div class="field"><label>Importă dintr-un fișier .json</label><input type="file" name="file" accept="application/json,.json"></div>
     <button class="btn btn-danger">⬆ Importă configurația</button>
+  </form>
+  <hr style="border:none;border-top:1px solid var(--line);margin:1.1rem 0">
+  <h3 style="margin-top:0">Backup bază de date</h3>
+  <p class="muted" style="font-size:.82rem;margin-top:0">Descarcă un fișier <code>.sql</code> cu toată baza de date (structură + date: filiale, servicii, bilete, programări…). Păstrează-l într-un loc sigur — conține datele clienților.</p>
+  <form method="post" action="<?= e(url('admin/backup')) ?>"><?= csrf_field() ?>
+    <button class="btn btn-primary">⬇ Descarcă backup SQL</button>
   </form>
 </div>
 <script>

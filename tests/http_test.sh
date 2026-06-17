@@ -68,6 +68,11 @@ CT_CSV="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/tickets/export?date=$TOD
 tcontains "export bilete CSV content-type" 'text/csv' "$CT_CSV"
 CFG_JSON="$(curl -s -b "$JAR" "$B/admin/settings/export")"
 tcontains "export config JSON" '"settings"' "$CFG_JSON"
+# reorganizare: backup DB + tab Automatizari mutate in Setari; API nu mai are backup
+SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
+tcontains "Setari are backup baza de date (mutat din API)" 'Backup bază de date' "$SET_PAGE"
+tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
+case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((FAIL+1)); echo "FAIL: API inca are backup DB";; *) PASS=$((PASS+1));; esac
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"

@@ -28,13 +28,7 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
     <div class="field"><label>URL cron</label><input readonly value="<?= e($cronUrl) ?>" onclick="this.select()" style="font-family:monospace;font-size:.78rem"></div>
     <p class="muted" style="font-size:.82rem">Comanda cPanel (interval */15):</p>
     <pre style="background:#0f1115;color:#cde3ff;padding:.8rem;border-radius:10px;overflow:auto;font-size:.78rem">*/15 * * * * curl -s "<?= e($cronUrl) ?>" >/dev/null 2>&1</pre>
-    <p class="muted" style="font-size:.8rem;margin-bottom:0">Activeaza remindere/raport din <a href="<?= e(url('admin/settings')) ?>">Setari → Email</a>.</p>
-    <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
-    <h3 style="margin-top:0">Backup baza de date</h3>
-    <p class="muted" style="font-size:.85rem;margin-top:0">Descarca un fisier <code>.sql</code> cu toata baza de date (structura + date). Pastreaza-l intr-un loc sigur.</p>
-    <form method="post" action="<?= e(url('admin/backup')) ?>"><?= csrf_field() ?>
-      <button class="btn btn-primary">⬇ Descarca backup SQL</button>
-    </form>
+    <p class="muted" style="font-size:.8rem;margin-bottom:0">Activeaza remindere/raport/curatare din <a href="<?= e(url('admin/settings')) ?>">Setari → Automatizări</a>. Backup-ul bazei de date este în <a href="<?= e(url('admin/settings')) ?>">Setari → backup</a>.</p>
   </div>
 
   <form method="post" action="<?= e(url('admin/api')) ?>" class="card pad" style="flex:1;min-width:320px"><?= csrf_field() ?>
