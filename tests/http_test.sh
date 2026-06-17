@@ -103,6 +103,10 @@ curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services/import --data-urlencode
 ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 [ "$ZZ_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat la re-import (count=$ZZ_COUNT)"; }
 
+# --- reordonare servicii: butoane a11y + endpoint ---
+tcontains "servicii: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/services")"
+tcontains "reorder servicii -> ok" '"ok":true' "$(curl -s -b "$JAR" -X POST $B/admin/services/reorder -H 'Content-Type: application/json' -H "X-CSRF: $ICSRF" -d "{\"ids\":[$SVC]}")"
+
 # --- webhook de test (fara URL configurat -> eroare clara, fara 500) ---
 WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
 tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
