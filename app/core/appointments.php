@@ -84,7 +84,8 @@ function appt_book(int $service_id, string $slot_start, ?string $name, ?string $
               . '<ul><li>Serviciu: <strong>' . e($svc['name']) . '</strong></li>'
               . '<li>Data: <strong>' . e($when) . '</strong></li>'
               . ($loc ? '<li>Locatie: ' . e($loc) . '</li>' : '') . '</ul>'
-              . '<p>In ziua programarii, deschide linkul de mai jos si apasa <strong>Check-in</strong> cand ajungi — primesti automat bonul de ordine.</p>';
+              . '<p>In ziua programarii, deschide linkul de mai jos si apasa <strong>Check-in</strong> cand ajungi — primesti automat bonul de ordine.</p>'
+              . '<p><a href="' . e(url('a/' . $token . '/ics')) . '">📅 Adauga in calendar</a></p>';
         send_mail($email, 'Confirmare programare — ' . $svc['name'],
                   mail_template('Programare confirmata', $body, 'Vezi programarea', url('a/' . $token)));
     }

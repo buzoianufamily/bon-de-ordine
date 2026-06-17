@@ -129,7 +129,8 @@ function run_cron_jobs(): array {
                   . '<ul><li>Serviciu: <strong>' . e($a['service_name']) . '</strong></li>'
                   . '<li>Data: <strong>' . e($when) . '</strong></li>'
                   . ($loc ? '<li>Locatie: ' . e($loc) . '</li>' : '') . '</ul>'
-                  . '<p>Cand ajungi, deschide linkul de mai jos si apasa <strong>Check-in</strong> — primesti automat bonul de ordine.</p>';
+                  . '<p>Cand ajungi, deschide linkul de mai jos si apasa <strong>Check-in</strong> — primesti automat bonul de ordine.</p>'
+                  . '<p><a href="' . e(url('a/' . $a['public_token'] . '/ics')) . '">📅 Adauga in calendar</a></p>';
             if (send_mail($a['customer_email'], 'Reminder programare — ' . $a['service_name'],
                     mail_template('Reminder programare', $body, 'Vezi programarea', url('a/' . $a['public_token'])))) {
                 q("UPDATE appointments SET reminded_at=NOW() WHERE id=?", [$a['id']]);
