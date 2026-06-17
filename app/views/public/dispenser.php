@@ -43,15 +43,20 @@ if ($showWait) {
         $waitCnt[(int)$r['service_id']] = (int)$r['c']; } catch (Throwable $e) {}
 }
 $renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc,$showWait,$waitCnt) {
-  $open=service_is_open($s); $snm=$svcName($s); $sds=$svcDesc($s); ?>
+  $capped=service_cap_reached($s); $open=service_is_open($s) && !$capped; $snm=$svcName($s); $sds=$svcDesc($s); ?>
       <button class="svc-btn<?= $open?'':' closed' ?>" <?= $open?'':'disabled' ?> data-id="<?= (int)$s['id'] ?>" data-color="<?= e($s['color']) ?>" data-priority="<?= $s['allow_priority']?'1':'0' ?>" data-name="<?= e($snm) ?>"
               style="background:linear-gradient(135deg,<?= e($s['color']) ?>,<?= e($s['color']) ?>cc)">
         <?php if($showWait && $open): ?><span class="wbadge" data-wc="<?= (int)$s['id'] ?>" style="<?= empty($waitCnt[(int)$s['id']])?'display:none':'' ?>">👥 <b><?= (int)($waitCnt[(int)$s['id']] ?? 0) ?></b></span><?php endif; ?>
         <span class="pfx"><?= e($s['prefix']) ?></span>
         <span class="nm"><?= e($snm) ?></span>
-        <span class="ds"><?= $open ? e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet'))) : e((!empty($s['paused']) && !empty($s['pause_note'])) ? $s['pause_note'] : $tr('closed_hint',$gd($T,'closed_hint','Inchis acum'))) ?></span>
+        <span class="ds"><?php
+          if ($open) echo e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet')));
+          elseif ($capped) echo e($tr('cap_hint',$gd($T,'cap_hint','Limita atinsa azi')));
+          elseif (!empty($s['paused']) && !empty($s['pause_note'])) echo e($s['pause_note']);
+          else echo e($tr('closed_hint',$gd($T,'closed_hint','Inchis acum')));
+        ?></span>
         <?php if(!$open): ?>
-          <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('closed_label',$gd($T,'closed_label','🔒 Inchis'))) ?></span>
+          <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= $capped ? e($tr('cap_label',$gd($T,'cap_label','⛔ Epuizat azi'))) : e($tr('closed_label',$gd($T,'closed_label','🔒 Inchis'))) ?></span>
         <?php elseif($s['allow_priority'] && !$gb($PU,'ask_type',false)): ?>
           <span class="prio-btn pill" style="background:rgba(255,255,255,.25);color:#fff;align-self:flex-start;margin-top:.5rem"><?= e($tr('priority_label',$gd($T,'priority_label','★ Bilet prioritar'))) ?></span>
         <?php endif; ?>

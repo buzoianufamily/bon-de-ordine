@@ -9,6 +9,13 @@
  * active_hours = JSON {"enabled":true,"days":{"1":["09:00","17:00"],...}} (0=Dum..6=Sam).
  * Gol / dezactivat => mereu deschis.
  */
+/** True daca serviciul are plafon zilnic si l-a atins azi (pt a-l marca indisponibil pe dispenser). */
+function service_cap_reached(array $svc): bool {
+    $cap = (int)($svc['max_per_day'] ?? 0);
+    if ($cap <= 0 || empty($svc['id'])) return false;
+    return (int) val('SELECT COUNT(*) FROM tickets WHERE service_id = ? AND DATE(issued_at) = CURDATE()', [(int)$svc['id']]) >= $cap;
+}
+
 function service_is_open(array $svc, ?int $ts = null): bool {
     // pauza temporara pe serviciu -> inchis, indiferent de orar
     if (!empty($svc['paused'])) return false;

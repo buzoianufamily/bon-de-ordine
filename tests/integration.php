@@ -325,6 +325,14 @@ chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='y'") === 1, 'retentie
 chk((int)val("SELECT COUNT(*) FROM user_status_log WHERE started_at < NOW() - INTERVAL 4 MONTH") === 0, 'retentie: user_status_log vechi sters');
 set_setting('retention_months', '0');
 
+/* ---- 33. Plafon zilnic serviciu (service_cap_reached) ---- */
+issue_ticket($svc, false, 'web');  // garanteaza >=1 bilet azi pentru $svc
+$nToday = (int) val("SELECT COUNT(*) FROM tickets WHERE service_id=$svc AND DATE(issued_at)=CURDATE()");
+$svcRow = one("SELECT * FROM services WHERE id=$svc");
+$svcRow['max_per_day'] = 0;            chk(service_cap_reached($svcRow) === false, 'cap: max_per_day=0 = nelimitat');
+$svcRow['max_per_day'] = $nToday + 1;  chk(service_cap_reached($svcRow) === false, 'cap: sub plafon -> false');
+$svcRow['max_per_day'] = max(1, $nToday); chk(service_cap_reached($svcRow) === true, 'cap: la/peste plafon -> true');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
