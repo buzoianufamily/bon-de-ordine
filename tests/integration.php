@@ -306,10 +306,12 @@ $apPast = (int) insert_id();
 q("INSERT INTO appointments (branch_id,service_id,slot_start,status) VALUES (?,?, NOW() + INTERVAL 60 MINUTE, 'booked')", [$br, $svc]);
 $apFuture = (int) insert_id();
 set_setting('appt_noshow_min', '60');
+set_setting('webhook_url', 'http://127.0.0.1:1/hook');   // configurat -> no_show declanseaza webhook
 run_cron_jobs();
 chk(val("SELECT status FROM appointments WHERE id=?", [$apPast]) === 'no_show', 'cron: programare trecuta neonorata -> no_show');
 chk(val("SELECT status FROM appointments WHERE id=?", [$apFuture]) === 'booked', 'cron: programare viitoare ramane booked');
-set_setting('appt_noshow_min', '0');
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='appointment.no_show'") >= 1, 'cron: no_show declanseaza webhook appointment.no_show');
+set_setting('appt_noshow_min', '0'); set_setting('webhook_url', '');
 
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }

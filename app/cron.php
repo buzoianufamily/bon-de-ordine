@@ -95,6 +95,13 @@ function run_cron_jobs(): array {
     $apNs = (int) setting('appt_noshow_min', '0');
     if ($apNs > 0) {
         try {
+            // notifica integratorii (webhook) pentru fiecare programare neonorata — doar daca e configurat URL
+            if (trim((string) setting('webhook_url', '')) !== '') {
+                foreach (all("SELECT * FROM appointments WHERE status='booked' AND slot_start < NOW() - INTERVAL $apNs MINUTE LIMIT 100") as $a) {
+                    $a['status'] = 'no_show';
+                    fire_webhook('appointment.no_show', webhook_appointment($a));
+                }
+            }
             $out['appt_no_show'] = q("UPDATE appointments SET status='no_show'
                 WHERE status='booked' AND slot_start < NOW() - INTERVAL $apNs MINUTE")->rowCount();
         } catch (Throwable $e) {}

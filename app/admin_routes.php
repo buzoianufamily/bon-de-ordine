@@ -948,7 +948,7 @@ function admin_api_save(): void {
     set_setting('webhook_url', trim((string)($_POST['webhook_url'] ?? '')));
     set_setting('webhook_secret', trim((string)($_POST['webhook_secret'] ?? '')));
     $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled',
-              'appointment.created','appointment.cancelled','appointment.checked_in','appointment.rescheduled','sla.breach'];
+              'appointment.created','appointment.cancelled','appointment.checked_in','appointment.rescheduled','appointment.no_show','sla.breach'];
     $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
     set_setting('webhook_events', implode(',', $evs));
     audit('update','webhook');

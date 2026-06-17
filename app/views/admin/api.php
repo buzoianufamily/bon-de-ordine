@@ -4,7 +4,7 @@ $base = rtrim(base_url(),'/').'/api/v1';
 $wurl = setting('webhook_url','');
 $wsec = setting('webhook_secret','');
 $wev  = array_filter(array_map('trim', explode(',', setting('webhook_events',''))));
-$allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.serving'=>'In servire','ticket.served'=>'Finalizat','ticket.no_show'=>'Neprezentat','ticket.cancelled'=>'Anulat','ticket.transferred'=>'Transferat','ticket.recalled'=>'Rechemat','appointment.created'=>'Programare creata','appointment.cancelled'=>'Programare anulata','appointment.checked_in'=>'Check-in programare','appointment.rescheduled'=>'Programare mutata','sla.breach'=>'Alerta SLA (cozi peste tinta)'];
+$allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.serving'=>'In servire','ticket.served'=>'Finalizat','ticket.no_show'=>'Neprezentat','ticket.cancelled'=>'Anulat','ticket.transferred'=>'Transferat','ticket.recalled'=>'Rechemat','appointment.created'=>'Programare creata','appointment.cancelled'=>'Programare anulata','appointment.checked_in'=>'Check-in programare','appointment.rescheduled'=>'Programare mutata','appointment.no_show'=>'Programare neprezentata','sla.breach'=>'Alerta SLA (cozi peste tinta)'];
 $cron = setting('cron_token','');
 $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
 ?>
