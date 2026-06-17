@@ -163,6 +163,8 @@ t "GET /api/v1/state no key -> 401" 401 "$(code "$B/api/v1/state?branch=$BR")"
 ST_API="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/state?branch=$BR")"
 tcontains "GET /api/v1/state with key" '"ok":true' "$ST_API"
 tcontains "GET /api/v1/branches" '"branches"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/branches")"
+tcontains "POST /api/v1/feedback ok" '"ok":true' "$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d '{"rating":5,"comment":"CI test"}' "$B/api/v1/feedback")"
+t "POST /api/v1/feedback rating invalid -> 422" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d '{"rating":9}' "$B/api/v1/feedback")"
 ISS_API="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC}" "$B/api/v1/tickets")"
 tcontains "POST /api/v1/tickets issues" '"label"' "$ISS_API"
 # anuleaza biletul emis prin API

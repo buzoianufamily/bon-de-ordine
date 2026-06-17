@@ -81,6 +81,7 @@ document.getElementById('whTest').addEventListener('click', async function(){
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments/{token}/checkin</code></td><td>Check-in: genereaza bonul</td></tr>
       <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/appointments/{token}/reschedule</code></td><td>Muta in alt slot: <code>{slot_start}</code></td></tr>
       <tr><td><span class="pill" style="background:#fee2e2;color:#b91c1c">DELETE</span></td><td><code>/api/v1/appointments/{token}</code></td><td>Anuleaza o programare (rezervata)</td></tr>
+      <tr><td><span class="pill" style="background:#dbeafe;color:#1e40af">POST</span></td><td><code>/api/v1/feedback</code></td><td>Evaluare: <code>{rating:1-5, comment?, ticket_token?}</code></td></tr>
       <tr><td><span class="pill" style="background:#dcfce7;color:#166534">GET</span></td><td><code>/api/v1/stats?from=&to=&branch=</code></td><td>Rezumat KPI pe interval</td></tr>
     </tbody>
   </table>

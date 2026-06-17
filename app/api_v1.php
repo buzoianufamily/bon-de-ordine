@@ -208,6 +208,23 @@ function api_v1(array $seg, string $method): void {
         ]]);
     }
 
+    // POST /api/v1/feedback {rating, comment?, branch?, ticket_token?} — trimite o evaluare
+    if ($res === 'feedback' && $method === 'POST') {
+        if (setting('mod_feedback', '1') !== '1') json_out(['ok' => false, 'error' => 'Modulul de feedback este dezactivat'], 404);
+        $rating = (int) input('rating', 0);
+        if ($rating < 1 || $rating > 5) json_out(['ok' => false, 'error' => 'rating trebuie sa fie intre 1 si 5'], 422);
+        $comment = trim((string) input('comment', ''));
+        $ticketId = null; $branchId = ((int) input('branch', 0)) ?: null;
+        $tok = trim((string) input('ticket_token', ''));
+        if ($tok !== '') {
+            $t = one('SELECT id, branch_id FROM tickets WHERE public_token = ?', [$tok]);
+            if ($t) { $ticketId = (int) $t['id']; $branchId = (int) $t['branch_id']; }
+        }
+        q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (?,?,?,?)',
+          [$ticketId, $branchId, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
+        json_out(['ok' => true, 'id' => insert_id()]);
+    }
+
     // GET /api/v1/stats?from&to&branch — rezumat KPI
     if ($res === 'stats' && $method === 'GET') {
         $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from'] ?? '') ? $_GET['from'] : date('Y-m-d');
