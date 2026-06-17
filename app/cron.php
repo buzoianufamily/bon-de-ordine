@@ -15,6 +15,9 @@ function run_cron_jobs(): array {
             $out['cleaned'] = q("DELETE FROM tickets WHERE issued_at < NOW() - INTERVAL $months MONTH LIMIT 1000")->rowCount();
             q("DELETE FROM ticket_sequences WHERE seq_date < CURDATE() - INTERVAL $months MONTH");
             q("DELETE FROM appointments WHERE slot_start < NOW() - INTERVAL $months MONTH AND status <> 'booked'");
+            // jurnale operationale (cresc nelimitat altfel) — aceeasi perioada de retentie
+            q("DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL $months MONTH");
+            q("DELETE FROM user_status_log WHERE started_at < NOW() - INTERVAL $months MONTH");
         } catch (Throwable $e) {}
     }
 

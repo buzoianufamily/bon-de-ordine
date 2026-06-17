@@ -314,6 +314,17 @@ chk(val("SELECT status FROM appointments WHERE id=?", [$apFuture]) === 'booked',
 chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='appointment.no_show'") >= 1, 'cron: no_show declanseaza webhook appointment.no_show');
 set_setting('appt_noshow_min', '0'); set_setting('webhook_url', '');
 
+/* ---- 32. Cron: retentie pe jurnalele operationale (audit_log / user_status_log) ---- */
+q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','x', NOW() - INTERVAL 5 MONTH)");
+q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','y', NOW())");
+q("INSERT INTO user_status_log (user_id, status, started_at) VALUES (?, 'available', NOW() - INTERVAL 5 MONTH)", [$sid]);
+set_setting('retention_months', '3');
+run_cron_jobs();
+chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='x'") === 0, 'retentie: audit_log vechi sters');
+chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='y'") === 1, 'retentie: audit_log recent pastrat');
+chk((int)val("SELECT COUNT(*) FROM user_status_log WHERE started_at < NOW() - INTERVAL 4 MONTH") === 0, 'retentie: user_status_log vechi sters');
+set_setting('retention_months', '0');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
