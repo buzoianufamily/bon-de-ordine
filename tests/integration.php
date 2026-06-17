@@ -289,6 +289,17 @@ chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='ping'") >= 1, 'webho
 chk((int)val("SELECT ok FROM webhook_log ORDER BY id DESC LIMIT 1") === 0, 'webhook log: livrare esuata -> ok=0');
 set_setting('webhook_url', '');
 
+/* ---- 30. Cron: operatori inactivi -> offline (statistici de prezenta corecte) ---- */
+require __DIR__ . '/../app/cron.php';
+q("INSERT INTO users (name,email,role,active,work_status,last_seen,password_hash) VALUES ('Stale Op','stale@ci.ro','agent',1,'available', NOW() - INTERVAL 30 MINUTE, ?)", [password_hash('x', PASSWORD_DEFAULT)]);
+$sid = (int) insert_id();
+run_cron_jobs();
+chk(val("SELECT work_status FROM users WHERE id=?", [$sid]) === 'offline', 'cron: operator inactiv -> offline');
+chk((int)val("SELECT COUNT(*) FROM user_status_log WHERE user_id=? AND status='offline'", [$sid]) >= 1, 'cron: tranzitia offline e logata');
+q("UPDATE users SET work_status='available', last_seen=NOW() WHERE id=?", [$sid]);  // activ recent
+run_cron_jobs();
+chk(val("SELECT work_status FROM users WHERE id=?", [$sid]) === 'available', 'cron: operator activ recent ramane online');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

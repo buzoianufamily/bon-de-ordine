@@ -79,6 +79,18 @@ function run_cron_jobs(): array {
         }
     }
 
+    /* 0d) Operatori inactivi (browser inchis fara logout) -> offline. Nu necesita email. */
+    $offMin = max(2, (int) setting('auto_offline_min', '10'));
+    try {
+        $stale = all("SELECT id FROM users WHERE work_status<>'offline'
+                      AND (last_seen IS NULL OR last_seen < NOW() - INTERVAL $offMin MINUTE)");
+        foreach ($stale as $su) {
+            log_user_status((int)$su['id'], 'offline');   // inchide intervalul de status (statistici corecte)
+            q("UPDATE users SET work_status='offline' WHERE id=?", [(int)$su['id']]);
+        }
+        $out['auto_offline'] = count($stale);
+    } catch (Throwable $e) {}
+
     if (!function_exists('mail_enabled') || !mail_enabled()) { $out['note'] = 'Email dezactivat'; return $out; }
 
     /* 1) Remindere pentru programarile din urmatoarele 24h, inca neremindate. */
