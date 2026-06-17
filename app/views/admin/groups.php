@@ -29,7 +29,7 @@
         <td><?= (int)$g['svc'] ?></td>
         <td class="muted"><?= (int)$g['sort_order'] ?></td>
         <td style="text-align:right;white-space:nowrap">
-          <a class="lnk" href="#" onclick='gEdit(<?= json_encode(["id"=>(int)$g["id"],"branch_id"=>(int)$g["branch_id"],"name"=>$g["name"],"color"=>$g["color"],"sort_order"=>(int)$g["sort_order"]], JSON_UNESCAPED_UNICODE) ?>);return false'>Editeaza</a>
+          <a class="lnk" href="#" onclick='gEdit(<?= json_encode(["id"=>(int)$g["id"],"branch_id"=>(int)$g["branch_id"],"name"=>$g["name"],"color"=>$g["color"],"sort_order"=>(int)$g["sort_order"]], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?>);return false'>Editeaza</a>
           <form method="post" action="<?= e(url('admin/groups/'.$g['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi grupul? Serviciile raman, dar fara grup."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
         </td>
       </tr>

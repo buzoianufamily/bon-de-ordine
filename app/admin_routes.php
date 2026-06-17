@@ -382,7 +382,7 @@ function admin_service_save(): void {
     }
     $f = [
         'branch_id'=>(int)($_POST['branch_id'] ?? 1), 'prefix'=>strtoupper(trim($_POST['prefix'] ?? 'A')),
-        'name'=>trim($_POST['name'] ?? ''), 'abbreviation'=>trim($_POST['abbreviation'] ?? ''),
+        'name'=>trim($_POST['name'] ?? ''),
         'description'=>trim($_POST['description'] ?? ''), 'color'=>trim($_POST['color'] ?? '#2563eb'),
         'status'=>($_POST['status'] ?? 'active'), 'num_from'=>(int)($_POST['num_from'] ?? 1),
         'num_to'=>(int)($_POST['num_to'] ?? 999), 'pad_length'=>(int)($_POST['pad_length'] ?? 3),
@@ -941,7 +941,8 @@ function admin_api_save(): void {
     if (isset($_POST['regen'])) { set_setting('api_key', bin2hex(random_bytes(24))); audit('regenerate','api_key'); flash('Cheie API regenerata.'); redirect('admin/api'); }
     set_setting('webhook_url', trim((string)($_POST['webhook_url'] ?? '')));
     set_setting('webhook_secret', trim((string)($_POST['webhook_secret'] ?? '')));
-    $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled'];
+    $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled',
+              'appointment.created','appointment.cancelled','appointment.checked_in','appointment.rescheduled','sla.breach'];
     $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
     set_setting('webhook_events', implode(',', $evs));
     audit('update','webhook');
@@ -1200,12 +1201,21 @@ function admin_branch_duplicate(int $id): void {
           [$newName, $src['city'], $src['country'], $src['address'], $src['timezone'], $src['active']]);
         $newBranch = insert_id();
 
+        // 1b) grupuri de servicii (sunt per-filiala) — pastreaza maparea vechi->nou
+        $grpMap = [];
+        foreach (all('SELECT * FROM service_groups WHERE branch_id=? ORDER BY id', [$id]) as $g) {
+            q('INSERT INTO service_groups (branch_id,name,color,sort_order) VALUES (?,?,?,?)',
+              [$newBranch, $g['name'], $g['color'], $g['sort_order']]);
+            $grpMap[(int)$g['id']] = insert_id();
+        }
+
         // 2) servicii (pastreaza maparea vechi->nou pt ghisee/dispozitive)
         $svcMap = [];
         foreach (all('SELECT * FROM services WHERE branch_id=? ORDER BY id', [$id]) as $s) {
-            q('INSERT INTO services (branch_id,prefix,name,abbreviation,description,color,status,num_from,num_to,include_zeros,pad_length,allow_priority,terminate_on_call,kpi_wait_sec,kpi_service_sec,max_queued,sort_order,active_hours,form_id,appt_enabled,appt_slot_min,appt_capacity)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-              [$newBranch,$s['prefix'],$s['name'],$s['abbreviation'],$s['description'],$s['color'],$s['status'],$s['num_from'],$s['num_to'],$s['include_zeros'],$s['pad_length'],$s['allow_priority'],$s['terminate_on_call'],$s['kpi_wait_sec'],$s['kpi_service_sec'],$s['max_queued'],$s['sort_order'],$s['active_hours'],$s['form_id'],$s['appt_enabled'],$s['appt_slot_min'],$s['appt_capacity']]);
+            $gid = $s['group_id'] !== null ? ($grpMap[(int)$s['group_id']] ?? null) : null;
+            q('INSERT INTO services (branch_id,prefix,name,description,color,status,num_from,num_to,include_zeros,pad_length,allow_priority,terminate_on_call,kpi_wait_sec,kpi_service_sec,max_queued,max_per_day,sort_order,active_hours,form_id,group_id,i18n,paused,pause_note,appt_enabled,appt_slot_min,appt_capacity)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+              [$newBranch,$s['prefix'],$s['name'],$s['description'],$s['color'],$s['status'],$s['num_from'],$s['num_to'],$s['include_zeros'],$s['pad_length'],$s['allow_priority'],$s['terminate_on_call'],$s['kpi_wait_sec'],$s['kpi_service_sec'],$s['max_queued'],$s['max_per_day'],$s['sort_order'],$s['active_hours'],$s['form_id'],$gid,$s['i18n'],$s['paused'],$s['pause_note'],$s['appt_enabled'],$s['appt_slot_min'],$s['appt_capacity']]);
             $svcMap[(int)$s['id']] = insert_id();
         }
 

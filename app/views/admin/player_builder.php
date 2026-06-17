@@ -88,7 +88,7 @@ window.PLAYER = {
   deviceId: <?= (int)$dev['id'] ?>,
   saveUrl: <?= json_encode('admin/devices/'.$dev['id'].'/player') ?>,
   accent: <?= json_encode($accent) ?>,
-  config: <?= $cfg ? json_encode($cfg, JSON_UNESCAPED_UNICODE) : 'null' ?>
+  config: <?= $cfg ? json_encode($cfg, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>
 <script src="<?= e(asset('js/player_builder.js')) ?>"></script>
