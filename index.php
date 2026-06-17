@@ -454,6 +454,8 @@ SWJS;
     // ===================== PROGRAMARI (public) =====================
     if ($seg[0] === 'book') {
         if (setting('mod_booking', '1') !== '1') { http_response_code(404); echo 'Modulul de programari este dezactivat.'; return; }
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
         if (!empty($seg[1]) && ctype_digit($seg[1])) {
             $svc = one('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                         WHERE s.id=? AND s.status="active" AND s.appt_enabled=1', [(int)$seg[1]]);
@@ -462,18 +464,18 @@ SWJS;
                 $slot = (string)input('slot_start', '');
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }
-                catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d'))); }
+                catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).'&lang='.$lang); }
                 redirect('a/'.$appt['public_token']);
             }
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
             $slots = appt_slots($svc, $date);
             $closed = branch_closure_reason((int)$svc['branch_id'], strtotime($date.' 12:00:00'));
-            view('public/book_slots', compact('svc','date','slots','closed'));
+            view('public/book_slots', compact('svc','date','slots','closed','lang'));
             return;
         }
         $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                          WHERE s.status="active" AND s.appt_enabled=1 ORDER BY b.name, s.sort_order');
-        view('public/book_services', ['services' => $services]);
+        view('public/book_services', ['services' => $services, 'lang' => $lang]);
         return;
     }
 

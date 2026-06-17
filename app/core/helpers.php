@@ -409,6 +409,30 @@ function fb_i18n(string $lang): array {
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
 }
 
+/** Traduceri pentru fluxul public de programare (alegere serviciu + slot + formular). */
+function book_i18n(string $lang): array {
+    $ro = [
+        'title'=>'Programare online', 'choose'=>'Alege serviciul pentru care vrei sa te programezi',
+        'none'=>'Momentan nu sunt servicii disponibile pentru programare.',
+        'all_services'=>'← Toate serviciile', 'day'=>'Zi',
+        'closed_day'=>'Inchis in aceasta zi. Alege alta data.',
+        'closed_named'=>'🚫 Inchis in aceasta zi', 'pick_other'=>'Alege alta data.',
+        'chosen_time'=>'Ora aleasa:', 'name'=>'Nume', 'phone'=>'Telefon', 'email'=>'Email (optional)',
+        'confirm'=>'Confirma programarea',
+        'days'=>['Dum','Lun','Mar','Mie','Joi','Vin','Sam'],
+    ];
+    $tr = [
+        'en'=>['title'=>'Online booking','choose'=>'Choose the service you want to book','none'=>'No services are currently available for booking.','all_services'=>'← All services','day'=>'Day','closed_day'=>'Closed on this day. Choose another date.','closed_named'=>'🚫 Closed on this day','pick_other'=>'Choose another date.','chosen_time'=>'Chosen time:','name'=>'Name','phone'=>'Phone','email'=>'Email (optional)','confirm'=>'Confirm booking','days'=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat']],
+        'de'=>['title'=>'Online-Termin','choose'=>'Wählen Sie die gewünschte Dienstleistung','none'=>'Derzeit sind keine Dienste für Termine verfügbar.','all_services'=>'← Alle Dienste','day'=>'Tag','closed_day'=>'An diesem Tag geschlossen. Wählen Sie ein anderes Datum.','closed_named'=>'🚫 An diesem Tag geschlossen','pick_other'=>'Wählen Sie ein anderes Datum.','chosen_time'=>'Gewählte Zeit:','name'=>'Name','phone'=>'Telefon','email'=>'E-Mail (optional)','confirm'=>'Termin bestätigen','days'=>['So','Mo','Di','Mi','Do','Fr','Sa']],
+        'fr'=>['title'=>'Rendez-vous en ligne','choose'=>'Choisissez le service souhaité','none'=>'Aucun service disponible pour le moment.','all_services'=>'← Tous les services','day'=>'Jour','closed_day'=>'Fermé ce jour-là. Choisissez une autre date.','closed_named'=>'🚫 Fermé ce jour-là','pick_other'=>'Choisissez une autre date.','chosen_time'=>'Heure choisie :','name'=>'Nom','phone'=>'Téléphone','email'=>'E-mail (facultatif)','confirm'=>'Confirmer le rendez-vous','days'=>['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']],
+        'hu'=>['title'=>'Online időpont','choose'=>'Válassza ki a kívánt szolgáltatást','none'=>'Jelenleg nincs foglalható szolgáltatás.','all_services'=>'← Összes szolgáltatás','day'=>'Nap','closed_day'=>'Ezen a napon zárva. Válasszon másik dátumot.','closed_named'=>'🚫 Ezen a napon zárva','pick_other'=>'Válasszon másik dátumot.','chosen_time'=>'Választott időpont:','name'=>'Név','phone'=>'Telefon','email'=>'E-mail (opcionális)','confirm'=>'Időpont megerősítése','days'=>['Vas','Hét','Ked','Sze','Csü','Pén','Szo']],
+        'it'=>['title'=>'Prenotazione online','choose'=>'Scegli il servizio da prenotare','none'=>'Nessun servizio disponibile al momento.','all_services'=>'← Tutti i servizi','day'=>'Giorno','closed_day'=>'Chiuso in questo giorno. Scegli un\'altra data.','closed_named'=>'🚫 Chiuso in questo giorno','pick_other'=>'Scegli un\'altra data.','chosen_time'=>'Orario scelto:','name'=>'Nome','phone'=>'Telefono','email'=>'Email (facoltativo)','confirm'=>'Conferma prenotazione','days'=>['Dom','Lun','Mar','Mer','Gio','Ven','Sab']],
+        'es'=>['title'=>'Reserva en línea','choose'=>'Elige el servicio que quieres reservar','none'=>'No hay servicios disponibles por el momento.','all_services'=>'← Todos los servicios','day'=>'Día','closed_day'=>'Cerrado este día. Elige otra fecha.','closed_named'=>'🚫 Cerrado este día','pick_other'=>'Elige otra fecha.','chosen_time'=>'Hora elegida:','name'=>'Nombre','phone'=>'Teléfono','email'=>'Correo (opcional)','confirm'=>'Confirmar la reserva','days'=>['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
 function disp_lang_meta(): array {
     return [
