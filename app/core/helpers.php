@@ -311,6 +311,44 @@ function fire_webhook(string $event, array $data): void {
 }
 
 /**
+ * Trimite un webhook de test ('ping') catre URL-ul configurat si RAPORTEAZA rezultatul
+ * (cod HTTP / eroare), pentru butonul de test din admin. Ignora filtrul de evenimente.
+ * Returneaza ['ok'=>bool, 'status'=>int|null, 'signed'=>bool, 'error'=>string|null].
+ */
+function test_webhook(): array {
+    $url = trim((string) setting('webhook_url', ''));
+    if ($url === '' || !preg_match('#^https?://#i', $url)) {
+        return ['ok' => false, 'error' => 'Configureaza mai intai un URL de webhook (https).'];
+    }
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'Extensia cURL nu este disponibila pe server.'];
+    }
+    $payload = json_encode(['event' => 'ping', 'ts' => time(),
+        'data' => ['message' => 'Test webhook din Bon de ordine', 'ok' => true]], JSON_UNESCAPED_UNICODE);
+    $headers = ['Content-Type: application/json', 'User-Agent: BonDeOrdine-Webhook'];
+    $secret = (string) setting('webhook_secret', '');
+    $signed = $secret !== '';
+    if ($signed) $headers[] = 'X-Signature: sha256=' . hash_hmac('sha256', $payload, $secret);
+    try {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5, CURLOPT_CONNECTTIMEOUT => 3,
+        ]);
+        curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+        if ($cerr !== '') return ['ok' => false, 'status' => null, 'signed' => $signed, 'error' => 'Conexiune esuata: ' . $cerr];
+        $okStatus = $status >= 200 && $status < 300;
+        return ['ok' => $okStatus, 'status' => $status, 'signed' => $signed,
+                'error' => $okStatus ? null : ('Endpointul a raspuns cu codul ' . $status . '.')];
+    } catch (Throwable $e) {
+        return ['ok' => false, 'status' => null, 'signed' => $signed, 'error' => 'Eroare: ' . $e->getMessage()];
+    }
+}
+
+/**
  * Traduceri pentru pagina biletului digital (telefon). Returneaza setul pentru limba data,
  * cu fallback pe romana pentru cheile lipsa. Limbi: ro/en/de/fr/hu/it/es.
  */

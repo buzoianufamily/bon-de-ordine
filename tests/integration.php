@@ -277,6 +277,15 @@ chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
 
+/* ---- 29. Webhook de test (raporteaza rezultatul) ---- */
+set_setting('webhook_url', '');
+$tw = test_webhook();
+chk($tw['ok'] === false && strpos((string)$tw['error'], 'URL') !== false, 'webhook test: fara URL -> eroare clara');
+set_setting('webhook_url', 'http://127.0.0.1:1/hook');   // port inchis -> conexiune refuzata
+$tw2 = test_webhook();
+chk($tw2['ok'] === false, 'webhook test: endpoint inaccesibil -> ok=false');
+set_setting('webhook_url', '');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

@@ -99,6 +99,11 @@ curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services/import --data-urlencode
 ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 [ "$ZZ_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat la re-import (count=$ZZ_COUNT)"; }
 
+# --- webhook de test (fara URL configurat -> eroare clara, fara 500) ---
+WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
+tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
+tcontains "test-webhook mesaj despre URL" 'URL' "$WHT"
+
 # --- export/import ghisee din CSV (autentificat) ---
 tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/counters/export" | grep -i 'content-type')"
 t "POST /admin/counters/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/counters/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=GCI,Ghiseu Importat CI')"

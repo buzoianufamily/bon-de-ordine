@@ -44,9 +44,23 @@ $cronUrl = rtrim(base_url(),'/').'/cron?key='.$cron;
       </div>
       <span class="muted" style="font-size:.78rem">Niciun eveniment bifat = se trimit toate.</span>
     </div>
-    <button class="btn btn-primary">Salveaza webhook</button>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary">Salveaza webhook</button>
+      <button type="button" class="btn btn-ghost" id="whTest">↗ Trimite webhook de test</button>
+      <span id="whTestRes" class="muted" style="font-size:.82rem"></span>
+    </div>
+    <p class="muted" style="font-size:.78rem;margin:.5rem 0 0">Testul trimite un eveniment <code>ping</code> către URL-ul <strong>salvat</strong> (semnat HMAC dacă ai pus un secret). Salvează întâi, apoi testează.</p>
   </form>
 </div>
+<script>
+document.getElementById('whTest').addEventListener('click', async function(){
+  var res = document.getElementById('whTestRes');
+  res.textContent = 'Se trimite…'; res.style.color = 'var(--muted)';
+  var r = await QMS.api('admin/api/test-webhook', {});
+  if (r && r.ok) { res.style.color = 'var(--ok)'; res.textContent = '✓ Livrat (cod ' + r.status + (r.signed ? ', semnat' : '') + ')'; }
+  else { res.style.color = 'var(--danger)'; res.textContent = '✗ ' + ((r && r.error) ? r.error : 'Eroare necunoscuta'); }
+});
+</script>
 
 <div class="card pad" style="margin-top:1.2rem">
   <h3 style="margin-top:0">Endpoint-uri (v1)</h3>

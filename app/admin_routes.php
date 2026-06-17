@@ -158,6 +158,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'api':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST' && $a === 'test-webhook') { admin_api_test_webhook(); return; }
             if ($method === 'POST') { admin_api_save(); return; }
             admin_api_page(); return;
 
@@ -951,6 +952,12 @@ function admin_api_save(): void {
     set_setting('webhook_events', implode(',', $evs));
     audit('update','webhook');
     flash('Setari API salvate.'); redirect('admin/api');
+}
+/** Trimite un webhook de test ('ping') si raporteaza rezultatul (AJAX). */
+function admin_api_test_webhook(): void {
+    csrf_check();
+    audit('test', 'webhook');
+    json_out(test_webhook());
 }
 
 /* ----------------------- SETTINGS ----------------------- */
