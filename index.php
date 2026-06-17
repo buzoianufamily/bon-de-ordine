@@ -465,7 +465,7 @@ SWJS;
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }
                 catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).'&lang='.$lang); }
-                redirect('a/'.$appt['public_token']);
+                redirect('a/'.$appt['public_token'].($lang!=='ro'?'?lang='.$lang:''));
             }
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
             $slots = appt_slots($svc, $date);
@@ -485,6 +485,9 @@ SWJS;
                      FROM appointments a JOIN services s ON s.id=a.service_id JOIN branches b ON b.id=a.branch_id
                      LEFT JOIN tickets t ON t.id=a.ticket_id WHERE a.public_token=?', [$seg[1]]);
         if (!$appt) { http_response_code(404); echo 'Programare inexistenta.'; return; }
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        $lq = $lang !== 'ro' ? '?lang='.$lang : '';
         if (($seg[2] ?? '') === 'ics') {   // „Adauga in calendar" — fisier iCalendar, fara servicii externe
             $start = strtotime($appt['slot_start']);
             $end   = $appt['slot_end'] ? strtotime($appt['slot_end']) : $start + 900;
@@ -504,15 +507,15 @@ SWJS;
             echo $ics; exit;
         }
         if (($seg[2] ?? '') === 'checkin' && $method === 'POST') {
-            try { $tk = appt_checkin($appt); redirect('t/'.$tk['public_token']); }
-            catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }
+            try { $tk = appt_checkin($appt); redirect('t/'.$tk['public_token'].$lq); }
+            catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1].$lq); }
         }
         if (($seg[2] ?? '') === 'cancel' && $method === 'POST') {
             if (appt_cancel((int)$appt['id'])) flash('Programarea a fost anulată.');
             else flash('Programarea nu mai poate fi anulată.', 'error');
-            redirect('a/'.$seg[1]);
+            redirect('a/'.$seg[1].$lq);
         }
-        view('public/appointment', ['a' => $appt]);
+        view('public/appointment', ['a' => $appt, 'lang' => $lang]);
         return;
     }
 

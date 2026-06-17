@@ -196,6 +196,8 @@ if [ -n "$SLOT" ]; then
     # „Adauga in calendar" — fisier iCalendar (public, fara servicii externe)
     tcontains "GET a/{token}/ics -> text/calendar" 'text/calendar' "$(curl -s -D - -o /dev/null "$B/a/$ATOK/ics" | grep -i 'content-type')"
     tcontains "ics contine VEVENT" 'BEGIN:VEVENT' "$(curl -s "$B/a/$ATOK/ics")"
+    # pagina de programare multilingva
+    tcontains "appointment EN (?lang=en)" 'Add to calendar' "$(curl -s "$B/a/$ATOK?lang=en")"
     # reprogrameaza in al doilea slot, apoi anuleaza
     [ -n "$SLOT2" ] && tcontains "POST /api/v1/appointments/{token}/reschedule" '"ok":true' "$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"slot_start\":\"$SLOT2\"}" "$B/api/v1/appointments/$ATOK/reschedule")"
     t "DELETE /api/v1/appointments/{token}" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"

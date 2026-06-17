@@ -433,6 +433,27 @@ function book_i18n(string $lang): array {
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
 }
 
+/** Traduceri pentru pagina de status a programarii (a/{token}). */
+function appt_i18n(string $lang): array {
+    $ro = [
+        'st_booked'=>'Confirmata','st_checked_in'=>'Check-in efectuat','st_cancelled'=>'Anulata','st_no_show'=>'Neprezentat',
+        'view_ticket'=>'Vezi biletul →','checkin'=>'Check-in (am ajuns)',
+        'checkin_note'=>'Check-in-ul devine disponibil cu 30 de minute inainte de ora programata.',
+        'cancel'=>'Anuleaza programarea','cancel_confirm'=>'Anulezi programarea? Locul se elibereaza pentru alti clienti.',
+        'add_cal'=>'📅 Adauga in calendar','keep'=>'Pastreaza acest link — il poti redeschide oricand pentru status.',
+    ];
+    $tr = [
+        'en'=>['st_booked'=>'Confirmed','st_checked_in'=>'Checked in','st_cancelled'=>'Cancelled','st_no_show'=>'No-show','view_ticket'=>'View ticket →','checkin'=>'Check in (I have arrived)','checkin_note'=>'Check-in becomes available 30 minutes before your appointment time.','cancel'=>'Cancel appointment','cancel_confirm'=>'Cancel the appointment? The slot is freed for other customers.','add_cal'=>'📅 Add to calendar','keep'=>'Keep this link — you can reopen it anytime for status.'],
+        'de'=>['st_booked'=>'Bestätigt','st_checked_in'=>'Eingecheckt','st_cancelled'=>'Storniert','st_no_show'=>'Nicht erschienen','view_ticket'=>'Ticket ansehen →','checkin'=>'Check-in (Ich bin da)','checkin_note'=>'Check-in ist 30 Minuten vor Ihrem Termin verfügbar.','cancel'=>'Termin stornieren','cancel_confirm'=>'Termin stornieren? Der Platz wird für andere frei.','add_cal'=>'📅 Zum Kalender hinzufügen','keep'=>'Bewahren Sie diesen Link auf — jederzeit für den Status abrufbar.'],
+        'fr'=>['st_booked'=>'Confirmé','st_checked_in'=>'Enregistré','st_cancelled'=>'Annulé','st_no_show'=>'Absent','view_ticket'=>'Voir le ticket →','checkin'=>'Enregistrement (je suis arrivé)','checkin_note'=>'L\'enregistrement est disponible 30 minutes avant l\'heure du rendez-vous.','cancel'=>'Annuler le rendez-vous','cancel_confirm'=>'Annuler le rendez-vous ? La place est libérée pour d\'autres.','add_cal'=>'📅 Ajouter au calendrier','keep'=>'Conservez ce lien — réouvrable à tout moment pour le statut.'],
+        'hu'=>['st_booked'=>'Megerősítve','st_checked_in'=>'Bejelentkezve','st_cancelled'=>'Törölve','st_no_show'=>'Nem jelent meg','view_ticket'=>'Jegy megtekintése →','checkin'=>'Bejelentkezés (megérkeztem)','checkin_note'=>'A bejelentkezés 30 perccel az időpont előtt elérhető.','cancel'=>'Időpont lemondása','cancel_confirm'=>'Lemondja az időpontot? A hely felszabadul másoknak.','add_cal'=>'📅 Naptárhoz adás','keep'=>'Őrizze meg ezt a linket — bármikor megnyitható a státuszért.'],
+        'it'=>['st_booked'=>'Confermato','st_checked_in'=>'Check-in fatto','st_cancelled'=>'Annullato','st_no_show'=>'Assente','view_ticket'=>'Vedi biglietto →','checkin'=>'Check-in (sono arrivato)','checkin_note'=>'Il check-in è disponibile 30 minuti prima dell\'orario.','cancel'=>'Annulla prenotazione','cancel_confirm'=>'Annullare la prenotazione? Il posto si libera per altri.','add_cal'=>'📅 Aggiungi al calendario','keep'=>'Conserva questo link — riapribile in qualsiasi momento per lo stato.'],
+        'es'=>['st_booked'=>'Confirmado','st_checked_in'=>'Registrado','st_cancelled'=>'Cancelado','st_no_show'=>'No presentado','view_ticket'=>'Ver ticket →','checkin'=>'Check-in (he llegado)','checkin_note'=>'El check-in está disponible 30 minutos antes de la hora.','cancel'=>'Cancelar la cita','cancel_confirm'=>'¿Cancelar la cita? La plaza se libera para otros.','add_cal'=>'📅 Añadir al calendario','keep'=>'Guarda este enlace — puedes reabrirlo en cualquier momento para el estado.'],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
 function disp_lang_meta(): array {
     return [
