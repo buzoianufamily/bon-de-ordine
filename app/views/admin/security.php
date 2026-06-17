@@ -1,7 +1,9 @@
 <?php $title='Securitate'; $active='security'; require __DIR__.'/_header.php';
+require_once __DIR__.'/../../core/qr.php';
 $brand = setting('brand_name','Bon de ordine');
 $uri = $enabled ? '' : totp_uri($secret, $u['email'] ?? 'cont', $brand);
-$qr = $uri ? 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data='.rawurlencode($uri) : '';
+// codul QR e generat LOCAL (SVG) — secretul 2FA nu mai pleaca catre un serviciu extern
+$qrSvg = $uri ? QR::svg($uri, 200) : '';
 ?>
 <div class="topbar"><h1>Securitate</h1></div>
 
@@ -40,7 +42,7 @@ $qr = $uri ? 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&
       <li>Introdu codul de 6 cifre afisat de aplicatie ca sa confirmi.</li>
     </ol>
     <div style="display:flex;gap:1.4rem;align-items:center;flex-wrap:wrap;margin:.4rem 0 1rem">
-      <img src="<?= e($qr) ?>" alt="QR 2FA" width="200" height="200" style="background:#fff;border-radius:10px;padding:8px;border:1px solid var(--line)">
+      <div role="img" aria-label="Cod QR pentru configurarea 2FA" style="background:#fff;border-radius:10px;padding:8px;border:1px solid var(--line);width:200px;height:200px"><?= $qrSvg ?></div>
       <form method="post" action="<?= e(url('admin/security')) ?>" style="flex:1;min-width:220px">
         <?= csrf_field() ?><input type="hidden" name="act" value="enable">
         <div class="field"><label>Cod din aplicatie</label>

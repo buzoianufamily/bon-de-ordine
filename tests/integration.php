@@ -257,6 +257,15 @@ chk(count($ucsv) === 2, 'csv useri: 2 randuri valide (sare antet/email invalid/p
 chk($ucsv[0]['email'] === 'ion@firma.ro' && $ucsv[0]['role'] === 'manager', 'csv useri: rol valid pastrat');
 chk($ucsv[1]['role'] === 'agent', 'csv useri: rol necunoscut -> agent implicit');
 
+/* ---- 27. Generator QR local (SVG, fara servicii externe) ---- */
+require __DIR__ . '/../app/core/qr.php';
+$qm = QR::matrix('otpauth://totp/Test:a@b.ro?secret=ABCDEF234567&issuer=Test');
+chk(is_array($qm) && count($qm) === count($qm[0]) && (count($qm) - 17) % 4 === 0, 'qr: matrice patrata cu dimensiune de versiune valida');
+chk($qm[0][0]===1 && $qm[0][6]===1 && $qm[1][1]===0 && $qm[2][2]===1 && $qm[6][6]===1, 'qr: finder pattern stanga-sus corect');
+$svg = QR::svg('hello', 200);
+chk(strpos($svg, '<svg') === 0 && strpos($svg, '</svg>') !== false && strpos($svg, '<rect') !== false, 'qr: svg valid cu module');
+chk(QR::matrix(str_repeat('x', 400)) === null, 'qr: peste capacitate (v1..10-L) -> null');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

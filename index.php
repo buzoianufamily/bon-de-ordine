@@ -62,6 +62,18 @@ try {
         ], $ok ? 200 : 503);
     }
 
+    // ===================== Cod QR local (SVG) — fara servicii externe =====================
+    if ($seg[0] === 'qr') {
+        require_once APP_ROOT . '/app/core/qr.php';
+        $data = (string) input('data', '');
+        $size = max(80, min(600, (int) input('size', 200)));
+        header('Content-Type: image/svg+xml; charset=utf-8');
+        header('Cache-Control: public, max-age=86400');
+        $svg = $data !== '' ? QR::svg($data, $size) : '';
+        echo $svg !== '' ? $svg : '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size . '"></svg>';
+        exit;
+    }
+
     // ===================== PWA (manifest + service worker) =====================
     if ($route === '/manifest.webmanifest') {
         header('Content-Type: application/manifest+json; charset=utf-8');
