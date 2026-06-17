@@ -141,17 +141,17 @@ if ($fids) {
 
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>window.DISPENSER={
-  key:<?= json_encode($dev['connection_key']) ?>, printerMode:<?= json_encode($printerMode) ?>,
-  accent:<?= json_encode(setting('accent_color','#2563eb')) ?>, brand:<?= json_encode(setting('brand_name','')) ?>,
-  branch:<?= json_encode($branch['name']) ?>, footer:<?= json_encode($footer) ?>,
-  virtual:<?= setting('virtual_enabled','1')==='1'?'true':'false' ?>, logo:<?= json_encode($logo) ?>,
+  key:<?= jsenc($dev['connection_key']) ?>, printerMode:<?= jsenc($printerMode) ?>,
+  accent:<?= jsenc(setting('accent_color','#2563eb')) ?>, brand:<?= jsenc(setting('brand_name','')) ?>,
+  branch:<?= jsenc($branch['name']) ?>, footer:<?= jsenc($footer) ?>,
+  virtual:<?= setting('virtual_enabled','1')==='1'?'true':'false' ?>, logo:<?= jsenc($logo) ?>,
   branchId:<?= (int)$branch['id'] ?>, showWaiting:<?= $showWait?'true':'false' ?>,
-  forms:<?= json_encode($svcForms, JSON_UNESCAPED_UNICODE) ?>,
-  lang:<?= json_encode($lang) ?>, revertUrl:<?= json_encode($revertUrl) ?>,
+  forms:<?= jsenc($svcForms, JSON_UNESCAPED_UNICODE) ?>,
+  lang:<?= jsenc($lang) ?>, revertUrl:<?= jsenc($revertUrl) ?>,
   autoReturn:<?= (int)$gd($L,'auto_return_sec',7) ?>, screensaver:<?= (int)$gd($L,'screensaver_sec',0) ?>,
   print:{logo:<?= $gb($L,'print_logo',true)?1:0 ?>,service:<?= $gb($L,'print_service',true)?1:0 ?>,position:<?= $gb($L,'print_position',true)?1:0 ?>,datetime:<?= $gb($L,'print_datetime',true)?1:0 ?>,qr:<?= $gb($L,'print_qr',true)?1:0 ?>},
-  texts:{popup_title:<?= json_encode($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= json_encode($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= json_encode($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= json_encode($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= json_encode($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= json_encode($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>},
-  popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= json_encode($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= json_encode($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= json_encode($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= json_encode($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= json_encode($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= json_encode($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= json_encode($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
+  texts:{popup_title:<?= jsenc($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= jsenc($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= jsenc($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= jsenc($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= jsenc($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= jsenc($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>},
+  popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= jsenc($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= jsenc($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= jsenc($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= jsenc($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= jsenc($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= jsenc($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= jsenc($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
 <script src="<?= e(asset('js/dispenser.js')) ?>"></script>
 </body></html>

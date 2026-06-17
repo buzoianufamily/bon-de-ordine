@@ -56,18 +56,18 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
 <?php $notify = (int) (val('SELECT notify_browser FROM users WHERE id=?', [$u['id']]) ?? 0); ?>
 <script>window.COUNTER={
   counterId:<?= (int)$counter['id'] ?>,
-  counterName:<?= json_encode($counter['name'] ?: ('ghiseul '.$counter['code'])) ?>,
-  accent:<?= json_encode(setting('accent_color','#2563eb')) ?>,
+  counterName:<?= jsenc($counter['name'] ?: ('ghiseul '.$counter['code'])) ?>,
+  accent:<?= jsenc(setting('accent_color','#2563eb')) ?>,
   notify:<?= $notify?'true':'false' ?>,
   voiceOn:<?= setting('counter_voice','0')==='1'?'true':'false' ?>,
-  voice:<?= json_encode(setting('display_voice','ro-RO')) ?>,
+  voice:<?= jsenc(setting('display_voice','ro-RO')) ?>,
   sayNumber:<?= setting('display_say_number','1')==='1'?'true':'false' ?>,
   sayCounter:<?= setting('display_say_counter','1')==='1'?'true':'false' ?>,
   repeat:<?= (int)setting('display_repeat','2') ?>,
-  myStatus:<?= json_encode($myStatus) ?>,
-  services:<?= json_encode(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name']], $services), JSON_UNESCAPED_UNICODE) ?>,
+  myStatus:<?= jsenc($myStatus) ?>,
+  services:<?= jsenc(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name']], $services), JSON_UNESCAPED_UNICODE) ?>,
   counters:<?php $otherCounters = all('SELECT id, code, name FROM counters WHERE branch_id=? AND id<>? ORDER BY code', [$counter['branch_id'], $counter['id']]);
-    echo json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $otherCounters), JSON_UNESCAPED_UNICODE); ?>
+    echo jsenc(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $otherCounters), JSON_UNESCAPED_UNICODE); ?>
 };</script>
 <script>
 /* schimbare rapida operator prin PIN */

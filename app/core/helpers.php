@@ -3,6 +3,16 @@
 
 function e($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
+/**
+ * json_encode sigur pentru includere intr-un bloc <script> sau atribut on*=.
+ * Escapeaza <, >, &, ', " ca secvente \uXXXX, deci continutul (texte/traduceri
+ * editabile din admin) nu poate iesi din contextul scriptului (</script>) sau
+ * al atributului. $flags se adauga peste setul de baza (ex: JSON_PRETTY_PRINT).
+ */
+function jsenc($v, int $flags = 0): string {
+    return (string) json_encode($v, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | $flags);
+}
+
 function cfg(string $path, $default = null) {
     $parts = explode('.', $path);
     $v = $GLOBALS['__config'];

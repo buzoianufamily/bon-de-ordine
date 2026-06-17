@@ -32,13 +32,13 @@ $sound = $hasLayout && !empty($layout['sound']) ? $layout['sound'] : [
 <script>
 window.DISPLAY = {
   branch: <?= (int)$branch['id'] ?>,
-  voice: <?= json_encode($sound['voice']) ?>,
+  voice: <?= jsenc($sound['voice']) ?>,
   sayNumber: <?= !empty($sound['say_number']) ? 'true':'false' ?>,
   sayCounter: <?= !empty($sound['say_counter']) ? 'true':'false' ?>,
   repeat: <?= (int)($sound['repeat'] ?? 2) ?>,
   useSSE: true,
-  accent: <?= json_encode(setting('accent_color','#2563eb')) ?>,
-  layout: <?= $hasLayout ? json_encode($layout, JSON_UNESCAPED_UNICODE) : 'null' ?>
+  accent: <?= jsenc(setting('accent_color','#2563eb')) ?>,
+  layout: <?= $hasLayout ? jsenc($layout, JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>
 <script src="<?= e(asset('js/display.js')) ?>"></script>
