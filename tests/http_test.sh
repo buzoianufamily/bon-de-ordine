@@ -107,6 +107,10 @@ ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 tcontains "servicii: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/services")"
 tcontains "reorder servicii -> ok" '"ok":true' "$(curl -s -b "$JAR" -X POST $B/admin/services/reorder -H 'Content-Type: application/json' -H "X-CSRF: $ICSRF" -d "{\"ids\":[$SVC]}")"
 
+# --- grupuri: creeaza un grup, apoi verifica butoanele de reordonare a11y ---
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Grup CI" --data-urlencode "color=#64748b" --data-urlencode "sort_order=0"
+tcontains "grupuri: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/groups")"
+
 # --- webhook de test (fara URL configurat -> eroare clara, fara 500) ---
 WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
 tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
