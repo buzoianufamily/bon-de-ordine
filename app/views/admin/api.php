@@ -103,7 +103,10 @@ document.getElementById('whTest').addEventListener('click', async function(){
   <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
     <h3 style="margin:0">Jurnal livrări webhook</h3>
     <span class="muted" style="font-size:.82rem">ultimele <?= count($whLog) ?> încercări</span>
-    <?php if($whLog): ?><form method="post" action="<?= e(url('admin/api/clear-webhook-log')) ?>" style="margin-left:auto" data-confirm="Golești jurnalul de livrări webhook?"><?= csrf_field() ?><button class="btn btn-ghost" style="padding:.25rem .6rem;font-size:.78rem;text-transform:none;letter-spacing:0">Golește</button></form><?php endif; ?>
+    <?php if($whLog): ?>
+    <a class="btn btn-ghost" href="<?= e(url('admin/api/webhook-log-export')) ?>" style="margin-left:auto;padding:.25rem .6rem;font-size:.78rem;text-transform:none;letter-spacing:0">⬇ CSV</a>
+    <form method="post" action="<?= e(url('admin/api/clear-webhook-log')) ?>" data-confirm="Golești jurnalul de livrări webhook?"><?= csrf_field() ?><button class="btn btn-ghost" style="padding:.25rem .6rem;font-size:.78rem;text-transform:none;letter-spacing:0">Golește</button></form>
+    <?php endif; ?>
   </div>
   <?php if($whLog): ?>
   <table style="margin-top:.6rem">

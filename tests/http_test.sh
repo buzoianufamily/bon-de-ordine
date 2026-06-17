@@ -116,6 +116,7 @@ WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_cs
 tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
 tcontains "test-webhook mesaj despre URL" 'URL' "$WHT"
 tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$(curl -s -b "$JAR" "$B/admin/api")"
+tcontains "export jurnal webhook CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/api/webhook-log-export" | grep -i 'content-type')"
 
 # --- export/import ghisee din CSV (autentificat) ---
 tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/counters/export" | grep -i 'content-type')"

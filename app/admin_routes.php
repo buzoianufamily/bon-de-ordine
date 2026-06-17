@@ -159,6 +159,7 @@ function admin_dispatch(array $seg, string $method): void {
         case 'api':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             if ($method === 'POST' && $a === 'test-webhook') { admin_api_test_webhook(); return; }
+            if ($a === 'webhook-log-export') { admin_webhook_log_export(); return; }
             if ($method === 'POST' && $a === 'clear-webhook-log') { csrf_check(); q('DELETE FROM webhook_log'); audit('clear','webhook_log'); flash('Jurnal webhook golit.'); redirect('admin/api'); }
             if ($method === 'POST') { admin_api_save(); return; }
             admin_api_page(); return;
@@ -959,6 +960,17 @@ function admin_api_test_webhook(): void {
     csrf_check();
     audit('test', 'webhook');
     json_out(test_webhook());
+}
+/** Export CSV al jurnalului de livrari webhook. */
+function admin_webhook_log_export(): void {
+    $rows = all('SELECT created_at, event, ok, status_code, url, error FROM webhook_log ORDER BY id DESC');
+    audit('export', 'webhook_log');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="webhook_log_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['data', 'eveniment', 'ok', 'cod_http', 'url', 'eroare']);
+    foreach ($rows as $r) fputcsv($out, [$r['created_at'], $r['event'], $r['ok'] ? 'da' : 'nu', $r['status_code'], $r['url'], $r['error']]);
+    fclose($out); exit;
 }
 
 /* ----------------------- SETTINGS ----------------------- */
