@@ -208,6 +208,8 @@ SWJS;
                           'virtual_url' => url('t/' . $t['public_token'])]);
             }
             case 'pin-switch': {
+                if (!rate_limit_ok('pin:' . (int)$u['id'], 10, 300))   // anti brute-force PIN
+                    json_out(['ok' => false, 'error' => 'Prea multe incercari. Asteapta cateva minute.'], 429);
                 $nu = pin_switch((string) input('pin', ''));
                 if (!$nu) json_out(['ok' => false, 'error' => 'PIN invalid']);
                 audit('pin_switch', 'auth', $nu['id']);

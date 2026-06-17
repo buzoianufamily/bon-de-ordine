@@ -34,7 +34,8 @@ function smtp_send(string $host, int $port, string $secure, string $user, string
                    string $fromEmail, string $fromName, string $to, string $subject, string $html): bool {
     $remote = ($secure === 'ssl' ? 'ssl://' : '') . $host;
     $fp = @stream_socket_client($remote . ':' . ($port ?: ($secure === 'ssl' ? 465 : 587)),
-        $errno, $errstr, 8, STREAM_CLIENT_CONNECT, stream_context_create(['ssl' => ['verify_peer' => true]]));
+        $errno, $errstr, 8, STREAM_CLIENT_CONNECT,
+        stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host]]));
     if (!$fp) return false;
     stream_set_timeout($fp, 8);
 

@@ -615,6 +615,10 @@ function admin_device_save(): void {
           'printer_mode'=>$_POST['printer_mode'] ?? 'browser', 'printer_ip'=>trim($_POST['printer_ip'] ?? ''),
           'printer_port'=>(int)($_POST['printer_port'] ?? 9100)];
     if ($f['name'] === '') { flash('Nume obligatoriu.', 'error'); redirect('admin/devices'); }
+    // printarea in retea deschide o conexiune catre IP-ul configurat -> accepta doar un IP valid (anti-SSRF)
+    if ($f['printer_mode'] === 'network' && $f['printer_ip'] !== '' && !filter_var($f['printer_ip'], FILTER_VALIDATE_IP)) {
+        flash('IP imprimanta invalid (introdu o adresa IP, ex: 192.168.1.50).', 'error'); redirect('admin/devices');
+    }
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE devices SET $set WHERE id=?", array_merge(array_values($f), [$id]));
