@@ -183,6 +183,8 @@ if [ -n "$SLOT" ]; then
   ATOK="$(printf '%s' "$APPT_API" | python3 -c "import sys,json; print(json.load(sys.stdin).get('appointment',{}).get('public_token',''))" 2>/dev/null)"
   if [ -n "$ATOK" ]; then
     tcontains "GET /api/v1/appointments/{token}" '"status"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
+    # lista programarilor (sincronizare integratori)
+    tcontains "GET /api/v1/appointments (lista)" '"appointments"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F)")"
     # „Adauga in calendar" — fisier iCalendar (public, fara servicii externe)
     tcontains "GET a/{token}/ics -> text/calendar" 'text/calendar' "$(curl -s -D - -o /dev/null "$B/a/$ATOK/ics" | grep -i 'content-type')"
     tcontains "ics contine VEVENT" 'BEGIN:VEVENT' "$(curl -s "$B/a/$ATOK/ics")"
