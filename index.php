@@ -156,8 +156,11 @@ SWJS;
         }
         if ($action === 'ticket' && $method === 'POST') { // emitere bilet (dispenser)
             $dev = device_by_key((string)input('device_key', ''));
-            $branch_id = $dev['branch_id'] ?? (int)input('branch_id', 1);
             $svc = (int)input('service_id', 0);
+            // un dispozitiv emite doar bonuri pentru serviciile filialei lui (nu poate polua coada altei filiale)
+            if ($dev && (int) val('SELECT branch_id FROM services WHERE id=?', [$svc]) !== (int)$dev['branch_id']) {
+                json_out(['ok' => false, 'error' => 'Serviciu indisponibil pe acest dispozitiv.'], 422);
+            }
             $priority = (bool)input('priority', false);
             $channel = (string)input('channel', 'paper');
             $formData = input('form_data', null);
