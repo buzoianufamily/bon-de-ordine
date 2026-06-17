@@ -477,10 +477,28 @@ SWJS;
 
     // status programare + check-in:  /a/{token}
     if ($seg[0] === 'a' && !empty($seg[1])) {
-        $appt = one('SELECT a.*, s.name service_name, s.color, b.name branch_name, t.public_token AS ticket_token
+        $appt = one('SELECT a.*, s.name service_name, s.color, b.name branch_name, b.address, b.city, t.public_token AS ticket_token
                      FROM appointments a JOIN services s ON s.id=a.service_id JOIN branches b ON b.id=a.branch_id
                      LEFT JOIN tickets t ON t.id=a.ticket_id WHERE a.public_token=?', [$seg[1]]);
         if (!$appt) { http_response_code(404); echo 'Programare inexistenta.'; return; }
+        if (($seg[2] ?? '') === 'ics') {   // „Adauga in calendar" — fisier iCalendar, fara servicii externe
+            $start = strtotime($appt['slot_start']);
+            $end   = $appt['slot_end'] ? strtotime($appt['slot_end']) : $start + 900;
+            $dt    = fn($ts) => gmdate('Ymd\THis\Z', $ts);
+            $escI  = fn($s) => preg_replace('/([,;\\\\])/', '\\\\$1', str_replace(["\r\n","\n"], '\\n', (string)$s));
+            $loc   = trim(($appt['branch_name'] ?? '') . ($appt['address'] ? ', '.$appt['address'] : '') . ($appt['city'] ? ', '.$appt['city'] : ''));
+            $brand = setting('brand_name', 'Bon de ordine');
+            $uid   = $appt['public_token'] . '@' . preg_replace('/[^a-z0-9.\-]/i', '', $_SERVER['HTTP_HOST'] ?? 'bondeordine');
+            $ics   = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Bon de ordine//RO\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n"
+                   . "BEGIN:VEVENT\r\nUID:" . $escI($uid) . "\r\nDTSTAMP:" . $dt(time()) . "\r\nDTSTART:" . $dt($start) . "\r\nDTEND:" . $dt($end) . "\r\n"
+                   . "SUMMARY:" . $escI($appt['service_name'] . ' · ' . $brand) . "\r\n"
+                   . ($loc !== '' ? "LOCATION:" . $escI($loc) . "\r\n" : '')
+                   . "DESCRIPTION:" . $escI('Programare ' . $appt['service_name'] . ($appt['customer_name'] ? ' — ' . $appt['customer_name'] : '')) . "\r\n"
+                   . "STATUS:CONFIRMED\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+            header('Content-Type: text/calendar; charset=utf-8');
+            header('Content-Disposition: attachment; filename="programare.ics"');
+            echo $ics; exit;
+        }
         if (($seg[2] ?? '') === 'checkin' && $method === 'POST') {
             try { $tk = appt_checkin($appt); redirect('t/'.$tk['public_token']); }
             catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }

@@ -27,5 +27,8 @@ $st=$statusMap[$a['status']]??['—','#888']; ?>
       <button class="btn btn-ghost" style="width:100%">Anulează programarea</button>
     </form>
   <?php endif; ?>
+  <?php if(in_array($a['status'],['booked','checked_in'],true)): ?>
+    <a class="btn btn-ghost" style="margin-top:.6rem;width:100%" href="<?= e(url('a/'.$a['public_token'].'/ics')) ?>">📅 Adaugă în calendar</a>
+  <?php endif; ?>
   <p class="muted" style="font-size:.76rem;margin-top:1.2rem">Pastreaza acest link — il poti redeschide oricand pentru status.</p>
 </div></div></body></html>
