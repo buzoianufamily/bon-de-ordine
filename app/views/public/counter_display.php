@@ -45,7 +45,8 @@
     es.onmessage=function(e){ try{ render(JSON.parse(e.data)); }catch(_){ } };
     es.onerror=function(){ es.close(); startPolling(); }; }catch(e){ startPolling(); } }
   var pt=null; function startPolling(){ if(pt)return;
-    var tick=function(){ QMS.api('api/state?branch='+branch,null,'GET').then(function(s){ if(s.ok) render(s); }); };
+    var busy=false;
+    var tick=function(){ if(busy) return; busy=true; QMS.api('api/state?branch='+branch,null,'GET').then(function(s){ if(s.ok) render(s); }).finally(function(){ busy=false; }); };
     tick(); pt=setInterval(tick, 2000); }
   if(window.EventSource) startSSE(); else startPolling();
 })();

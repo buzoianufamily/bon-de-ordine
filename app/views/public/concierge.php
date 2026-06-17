@@ -109,7 +109,9 @@ window.CONCIERGE = {
     const r=await QMS.api('api/requeue',{ticket_id:+b.dataset.requeue});
     if(r.ok){ QMS.toast('Bilet repus la rand','ok'); refresh(); } else { QMS.toast(r.error||'Eroare','error'); b.disabled=false; }
   });
-  refresh(); setInterval(refresh, 2000);
+  refresh();
+  var _busy=false;  // anti-suprapunere pe retele lente
+  setInterval(async function(){ if(_busy) return; _busy=true; try{ await refresh(); } finally{ _busy=false; } }, 2000);
 })();
 </script>
 </body></html>

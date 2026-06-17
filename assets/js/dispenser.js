@@ -171,5 +171,6 @@
       });
     }
   }
-  pollState(); setInterval(pollState, 12000);
+  pollState();
+  var _ps=false; setInterval(async function(){ if(_ps) return; _ps=true; try{ await pollState(); } finally{ _ps=false; } }, 12000);
 })();

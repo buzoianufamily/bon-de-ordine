@@ -233,7 +233,8 @@
   function startSSE(){ try{ const es=new EventSource(QMS.base()+'/api/sse?branch='+cfg.branch);
     es.onmessage=e=>{try{render(JSON.parse(e.data));}catch(_){}}; es.onerror=()=>{es.close();startPolling();}; }catch(e){startPolling();} }
   let pollTimer=null; function startPolling(){ if(pollTimer)return;
-    const tick=async()=>{const s=await QMS.api('api/state?branch='+cfg.branch,null,'GET'); if(s.ok)render(s);}; tick(); pollTimer=setInterval(tick,2000); }
+    let busy=false;
+    const tick=async()=>{ if(busy) return; busy=true; try{ const s=await QMS.api('api/state?branch='+cfg.branch,null,'GET'); if(s.ok)render(s); } finally{ busy=false; } }; tick(); pollTimer=setInterval(tick,2000); }
 
   document.body.addEventListener('click',()=>{ if(window.speechSynthesis)speak(' '); },{once:true});
 
