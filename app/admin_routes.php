@@ -1462,6 +1462,13 @@ function admin_statistics(): void {
         fclose($out); exit;
     }
 
+    // statistici programari pe interval (dupa data slotului) — pentru ecran si export
+    $apWhere = 'DATE(slot_start) BETWEEN ? AND ?'; $apArgs = [$from, $to];
+    if ($branch) { $apWhere .= ' AND branch_id = ?'; $apArgs[] = $branch; }
+    $appt = one("SELECT COUNT(*) total, SUM(status='booked') booked, SUM(status='checked_in') checked_in,
+                 SUM(status='no_show') no_show, SUM(status='cancelled') cancelled
+                 FROM appointments WHERE $apWhere", $apArgs) ?: [];
+
     // export Excel (.xlsx) cu grafice native
     if (($_GET['export'] ?? '') === 'xlsx') {
         $brand = (string) setting('brand_name', 'Bon de ordine');
@@ -1478,16 +1485,9 @@ function admin_statistics(): void {
             if (in_array($r['status'], ['available','busy','paused'], true)) $opMap[$r['name']][$r['status']] = (int)$r['secs'];
         }
         $op_rows = array_values($opMap);
-        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows);
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
-
-    // statistici programari pe interval (dupa data slotului)
-    $apWhere = 'DATE(slot_start) BETWEEN ? AND ?'; $apArgs = [$from, $to];
-    if ($branch) { $apWhere .= ' AND branch_id = ?'; $apArgs[] = $branch; }
-    $appt = one("SELECT COUNT(*) total, SUM(status='booked') booked, SUM(status='checked_in') checked_in,
-                 SUM(status='no_show') no_show, SUM(status='cancelled') cancelled
-                 FROM appointments WHERE $apWhere", $apArgs) ?: [];
 
     view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
 }
@@ -1498,7 +1498,7 @@ function admin_statistics(): void {
  */
 function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
                           array $kpi, array $per_day, array $per_service, array $per_hour,
-                          array $per_counter, string $accent, array $op_rows = []): Xlsx {
+                          array $per_counter, string $accent, array $op_rows = [], array $appt = []): Xlsx {
     $mins = fn($s) => round(((float)$s) / 60, 1);
     $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
 
@@ -1518,6 +1518,15 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
     $s->row(['Anulate', $canc]);
     $s->row(['Timp mediu asteptare (min)', ['v' => $mins($kpi['avg_wait'] ?? 0), 's' => Xlsx::S_NUM1]]);
     $s->row(['Timp mediu servire (min)', ['v' => $mins($kpi['avg_service'] ?? 0), 's' => Xlsx::S_NUM1]]);
+    if (!empty($appt) && (int)($appt['total'] ?? 0) > 0) {
+        $s->blank();
+        $s->row(['Programari online', 'Valoare'], Xlsx::S_HEAD);
+        $s->row(['Total programari', (int)$appt['total']]);
+        $s->row(['Check-in', (int)($appt['checked_in'] ?? 0)]);
+        $s->row(['Neprezentate', (int)($appt['no_show'] ?? 0)]);
+        $s->row(['Anulate', (int)($appt['cancelled'] ?? 0)]);
+        $s->row(['In asteptare', (int)($appt['booked'] ?? 0)]);
+    }
     $s->blank();
     $s->row(['Status', 'Bilete'], Xlsx::S_HEAD);
     $r1 = $s->row(['Servite', $served]);
