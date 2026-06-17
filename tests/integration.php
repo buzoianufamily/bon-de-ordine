@@ -300,6 +300,17 @@ q("UPDATE users SET work_status='available', last_seen=NOW() WHERE id=?", [$sid]
 run_cron_jobs();
 chk(val("SELECT work_status FROM users WHERE id=?", [$sid]) === 'available', 'cron: operator activ recent ramane online');
 
+/* ---- 31. Cron: programari neonorate -> no_show ---- */
+q("INSERT INTO appointments (branch_id,service_id,slot_start,status) VALUES (?,?, NOW() - INTERVAL 200 MINUTE, 'booked')", [$br, $svc]);
+$apPast = (int) insert_id();
+q("INSERT INTO appointments (branch_id,service_id,slot_start,status) VALUES (?,?, NOW() + INTERVAL 60 MINUTE, 'booked')", [$br, $svc]);
+$apFuture = (int) insert_id();
+set_setting('appt_noshow_min', '60');
+run_cron_jobs();
+chk(val("SELECT status FROM appointments WHERE id=?", [$apPast]) === 'no_show', 'cron: programare trecuta neonorata -> no_show');
+chk(val("SELECT status FROM appointments WHERE id=?", [$apFuture]) === 'booked', 'cron: programare viitoare ramane booked');
+set_setting('appt_noshow_min', '0');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

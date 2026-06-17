@@ -162,6 +162,8 @@
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Prin cron: biletele rămase „în servire" devin <strong>finalizate</strong>, iar cele „chemate" neprezentate devin <strong>neprezentate</strong>. Pune o valoare generoasă (ex: 30–60) ca să nu închizi servirile lungi.</p></div>
       <div class="field"><label>Marchează operatorii inactivi drept „offline" după … minute</label><input type="number" name="auto_offline_min" min="2" max="240" value="<?= $s('auto_offline_min','10') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Prin cron: dacă un operator a închis browserul fără să se delogheze, statusul lui devine <strong>offline</strong> (altfel rămâne „disponibil" și strică statisticile de prezență).</p></div>
+      <div class="field"><label>Marchează programările neonorate drept „neprezentat" după … minute (0 = oprit)</label><input type="number" name="appt_noshow_min" min="0" max="1440" value="<?= $s('appt_noshow_min','0') ?>">
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Prin cron: o programare <strong>rezervată</strong> al cărei interval a trecut de atâtea minute și care n-a făcut check-in devine <strong>neprezentat</strong> (pentru rata de neprezentare corectă). Pune o valoare generoasă (ex: 60).</p></div>
     </div>
   </div>
 

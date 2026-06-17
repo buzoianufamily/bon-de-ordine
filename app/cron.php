@@ -91,6 +91,15 @@ function run_cron_jobs(): array {
         $out['auto_offline'] = count($stale);
     } catch (Throwable $e) {}
 
+    /* 0e) Programari neonorate: 'booked' cu slot trecut de mult -> 'no_show'. Nu necesita email. */
+    $apNs = (int) setting('appt_noshow_min', '0');
+    if ($apNs > 0) {
+        try {
+            $out['appt_no_show'] = q("UPDATE appointments SET status='no_show'
+                WHERE status='booked' AND slot_start < NOW() - INTERVAL $apNs MINUTE")->rowCount();
+        } catch (Throwable $e) {}
+    }
+
     if (!function_exists('mail_enabled') || !mail_enabled()) { $out['note'] = 'Email dezactivat'; return $out; }
 
     /* 1) Remindere pentru programarile din urmatoarele 24h, inca neremindate. */
