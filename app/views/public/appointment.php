@@ -12,6 +12,9 @@ $stLabel=$L['st_'.$a['status']] ?? '—'; $stCol=$statusColor[$a['status']] ?? '
   <div class="vt-num" style="font-size:2.4rem;color:<?= e($a['color']) ?>"><?= date('H:i',$ts) ?></div>
   <div class="muted"><?= e($dateLabel) ?></div>
   <div class="vt-status" style="background:<?= $stCol ?>;color:#06210f"><?= e($stLabel) ?></div>
+  <?php if($a['status']==='booked' && $ts > $now): ?>
+    <div class="muted" id="apCountdown" style="margin-top:.5rem;font-weight:600"></div>
+  <?php endif; ?>
   <?php foreach(get_flashes() as $f): ?><div style="color:#fca5a5;margin:.5rem 0;font-size:.9rem"><?= e($f['msg']) ?></div><?php endforeach; ?>
   <?php if($a['ticket_token']): ?>
     <a class="btn btn-primary btn-lg" style="margin-top:1rem;width:100%" href="<?= e(url('t/'.$a['ticket_token']).$lq) ?>"><?= e($L['view_ticket']) ?></a>
@@ -31,4 +34,33 @@ $stLabel=$L['st_'.$a['status']] ?? '—'; $stCol=$statusColor[$a['status']] ?? '
     <a class="btn btn-ghost" style="margin-top:.6rem;width:100%" href="<?= e(url('a/'.$a['public_token'].'/ics')) ?>"><?= e($L['add_cal']) ?></a>
   <?php endif; ?>
   <p class="muted" style="font-size:.76rem;margin-top:1.2rem"><?= e($L['keep']) ?></p>
-</div></div></body></html>
+</div></div>
+<?php if(in_array($a['status'],['booked'],true)): ?>
+<script>
+(function(){
+  var token = <?= jsenc($a['public_token']) ?>;
+  var initStatus = <?= jsenc($a['status']) ?>, initTicket = <?= jsenc((string)($a['ticket_token'] ?? '')) ?>;
+  var slotTs = <?= (int)$ts ?>, skew = <?= (int)$now ?> - Math.floor(Date.now()/1000);
+  var checkinOpenTs = slotTs - 1800;            // check-in se deschide cu 30 min inainte
+  var startsIn = <?= jsenc($L['starts_in']) ?>;
+  var cd = document.getElementById('apCountdown');
+  function nowS(){ return Math.floor(Date.now()/1000) + skew; }
+  function fmt(s){ if(s<=0) return ''; var h=Math.floor(s/3600), m=Math.floor((s%3600)/60); return (h>0?h+'h ':'')+m+'min'; }
+  function tickCountdown(){ if(!cd) return; var s = slotTs - nowS(); cd.textContent = s>0 ? (startsIn+' '+fmt(s)) : ''; }
+  tickCountdown(); setInterval(tickCountdown, 30000);
+  // reincarca exact cand se deschide fereastra de check-in (ca sa apara butonul fara reload manual)
+  var toOpen = (checkinOpenTs - nowS());
+  if (toOpen > 0 && toOpen < 6*3600) setTimeout(function(){ location.reload(); }, toOpen*1000 + 500);
+  // polling de stare: daca s-a schimbat statusul sau a aparut un bon (check-in din admin), reincarca
+  setInterval(function(){
+    fetch('<?= e(url('api/appt')) ?>?token='+encodeURIComponent(token), {headers:{'Accept':'application/json'}})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ if(!d||!d.ok||!d.appt) return;
+        if (d.appt.status !== initStatus || (d.appt.ticket_token||'') !== initTicket) location.reload();
+        if (typeof d.appt.now_ts==='number' && typeof d.appt.slot_ts==='number'){ skew = d.appt.now_ts - Math.floor(Date.now()/1000); slotTs = d.appt.slot_ts; }
+      }).catch(function(){});
+  }, 20000);
+})();
+</script>
+<?php endif; ?>
+</body></html>

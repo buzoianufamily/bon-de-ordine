@@ -17,7 +17,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Concierge** | Recepția vede toată coada, cheamă orice bilet la orice ghișeu, **emite bonuri walk-in** și repune neprezentații la rând. | `…/concierge` |
 | **Afișaj de ghișeu** | Tabletă la birou: codul ghișeului + bonul curent, live (sau mesajul de pauză). | `…/cd/{id}` |
 | **Bilet digital** | Clientul urmărește pe telefon (**multilingv** RO/EN/DE/FR/HU/IT/ES): status, poziție, **timp estimat**, ghișeu, alerte configurabile, **alertă „aproape la rând"**, **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
-| **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
+| **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; **pagină de status live** (numărătoare inversă până la programare, butonul de check‑in apare automat când se deschide fereastra, se actualizează singură dacă recepția schimbă starea); în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. | `…/feedback` |
 | **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
 | **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
@@ -129,7 +129,7 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 ---
 
 ## Dezvoltare & teste
-Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială — ~135 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1 — ~85 verificări).
+Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială — ~135 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1, status programare live — ~90 verificări).
 
 Rulare locală (cu o bază de test):
 ```bash

@@ -154,6 +154,16 @@ SWJS;
                 'priority' => (int)$t['priority'],
             ]]);
         }
+        if ($action === 'appt') { // stare programare (pagina publica /a/{token}, polling)
+            $a = one('SELECT a.status, a.slot_start, t.public_token AS ticket_token
+                      FROM appointments a LEFT JOIN tickets t ON t.id=a.ticket_id
+                      WHERE a.public_token = ?', [$_GET['token'] ?? '']);
+            if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+            json_out(['ok' => true, 'appt' => [
+                'status' => $a['status'], 'ticket_token' => $a['ticket_token'],
+                'slot_ts' => strtotime($a['slot_start']), 'now_ts' => time(),
+            ]]);
+        }
         if ($action === 'ticket' && $method === 'POST') { // emitere bilet (dispenser)
             $dev = device_by_key((string)input('device_key', ''));
             $svc = (int)input('service_id', 0);

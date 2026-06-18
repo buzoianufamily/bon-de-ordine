@@ -200,6 +200,11 @@ if [ -n "$SLOT" ]; then
     tcontains "ics contine VEVENT" 'BEGIN:VEVENT' "$(curl -s "$B/a/$ATOK/ics")"
     # pagina de programare multilingva
     tcontains "appointment EN (?lang=en)" 'Add to calendar' "$(curl -s "$B/a/$ATOK?lang=en")"
+    # stare programare live: endpoint de polling + script in pagina
+    tcontains "GET /api/appt -> status" '"status"' "$(curl -s "$B/api/appt?token=$ATOK")"
+    tcontains "GET /api/appt -> slot_ts" '"slot_ts"' "$(curl -s "$B/api/appt?token=$ATOK")"
+    t "GET /api/appt token gresit -> 404" 404 "$(code "$B/api/appt?token=inexistent_xyz")"
+    tcontains "pagina programarii face polling live (api/appt)" 'api/appt' "$(curl -s "$B/a/$ATOK")"
     # reprogrameaza in al doilea slot, apoi anuleaza
     [ -n "$SLOT2" ] && tcontains "POST /api/v1/appointments/{token}/reschedule" '"ok":true' "$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"slot_start\":\"$SLOT2\"}" "$B/api/v1/appointments/$ATOK/reschedule")"
     t "DELETE /api/v1/appointments/{token}" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
