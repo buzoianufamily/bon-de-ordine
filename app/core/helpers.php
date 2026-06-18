@@ -419,15 +419,17 @@ function book_i18n(string $lang): array {
         'closed_named'=>'🚫 Inchis in aceasta zi', 'pick_other'=>'Alege alta data.',
         'chosen_time'=>'Ora aleasa:', 'name'=>'Nume', 'phone'=>'Telefon', 'email'=>'Email (optional)',
         'confirm'=>'Confirma programarea',
+        'full'=>'complet', 'wl_join'=>'Anunta-ma daca se elibereaza un loc', 'wl_for'=>'Lista de asteptare pentru:',
+        'wl_email'=>'Email (te anuntam aici)', 'wl_submit'=>'Adauga-ma pe lista',
         'days'=>['Dum','Lun','Mar','Mie','Joi','Vin','Sam'],
     ];
     $tr = [
-        'en'=>['title'=>'Online booking','choose'=>'Choose the service you want to book','none'=>'No services are currently available for booking.','all_services'=>'← All services','day'=>'Day','closed_day'=>'Closed on this day. Choose another date.','closed_named'=>'🚫 Closed on this day','pick_other'=>'Choose another date.','chosen_time'=>'Chosen time:','name'=>'Name','phone'=>'Phone','email'=>'Email (optional)','confirm'=>'Confirm booking','days'=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat']],
-        'de'=>['title'=>'Online-Termin','choose'=>'Wählen Sie die gewünschte Dienstleistung','none'=>'Derzeit sind keine Dienste für Termine verfügbar.','all_services'=>'← Alle Dienste','day'=>'Tag','closed_day'=>'An diesem Tag geschlossen. Wählen Sie ein anderes Datum.','closed_named'=>'🚫 An diesem Tag geschlossen','pick_other'=>'Wählen Sie ein anderes Datum.','chosen_time'=>'Gewählte Zeit:','name'=>'Name','phone'=>'Telefon','email'=>'E-Mail (optional)','confirm'=>'Termin bestätigen','days'=>['So','Mo','Di','Mi','Do','Fr','Sa']],
-        'fr'=>['title'=>'Rendez-vous en ligne','choose'=>'Choisissez le service souhaité','none'=>'Aucun service disponible pour le moment.','all_services'=>'← Tous les services','day'=>'Jour','closed_day'=>'Fermé ce jour-là. Choisissez une autre date.','closed_named'=>'🚫 Fermé ce jour-là','pick_other'=>'Choisissez une autre date.','chosen_time'=>'Heure choisie :','name'=>'Nom','phone'=>'Téléphone','email'=>'E-mail (facultatif)','confirm'=>'Confirmer le rendez-vous','days'=>['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']],
-        'hu'=>['title'=>'Online időpont','choose'=>'Válassza ki a kívánt szolgáltatást','none'=>'Jelenleg nincs foglalható szolgáltatás.','all_services'=>'← Összes szolgáltatás','day'=>'Nap','closed_day'=>'Ezen a napon zárva. Válasszon másik dátumot.','closed_named'=>'🚫 Ezen a napon zárva','pick_other'=>'Válasszon másik dátumot.','chosen_time'=>'Választott időpont:','name'=>'Név','phone'=>'Telefon','email'=>'E-mail (opcionális)','confirm'=>'Időpont megerősítése','days'=>['Vas','Hét','Ked','Sze','Csü','Pén','Szo']],
-        'it'=>['title'=>'Prenotazione online','choose'=>'Scegli il servizio da prenotare','none'=>'Nessun servizio disponibile al momento.','all_services'=>'← Tutti i servizi','day'=>'Giorno','closed_day'=>'Chiuso in questo giorno. Scegli un\'altra data.','closed_named'=>'🚫 Chiuso in questo giorno','pick_other'=>'Scegli un\'altra data.','chosen_time'=>'Orario scelto:','name'=>'Nome','phone'=>'Telefono','email'=>'Email (facoltativo)','confirm'=>'Conferma prenotazione','days'=>['Dom','Lun','Mar','Mer','Gio','Ven','Sab']],
-        'es'=>['title'=>'Reserva en línea','choose'=>'Elige el servicio que quieres reservar','none'=>'No hay servicios disponibles por el momento.','all_services'=>'← Todos los servicios','day'=>'Día','closed_day'=>'Cerrado este día. Elige otra fecha.','closed_named'=>'🚫 Cerrado este día','pick_other'=>'Elige otra fecha.','chosen_time'=>'Hora elegida:','name'=>'Nombre','phone'=>'Teléfono','email'=>'Correo (opcional)','confirm'=>'Confirmar la reserva','days'=>['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']],
+        'en'=>['title'=>'Online booking','choose'=>'Choose the service you want to book','none'=>'No services are currently available for booking.','all_services'=>'← All services','day'=>'Day','closed_day'=>'Closed on this day. Choose another date.','closed_named'=>'🚫 Closed on this day','pick_other'=>'Choose another date.','chosen_time'=>'Chosen time:','name'=>'Name','phone'=>'Phone','email'=>'Email (optional)','confirm'=>'Confirm booking','full'=>'full','wl_join'=>'Notify me if a spot frees up','wl_for'=>'Waitlist for:','wl_email'=>'Email (we notify you here)','wl_submit'=>'Add me to the waitlist','days'=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat']],
+        'de'=>['title'=>'Online-Termin','choose'=>'Wählen Sie die gewünschte Dienstleistung','none'=>'Derzeit sind keine Dienste für Termine verfügbar.','all_services'=>'← Alle Dienste','day'=>'Tag','closed_day'=>'An diesem Tag geschlossen. Wählen Sie ein anderes Datum.','closed_named'=>'🚫 An diesem Tag geschlossen','pick_other'=>'Wählen Sie ein anderes Datum.','chosen_time'=>'Gewählte Zeit:','name'=>'Name','phone'=>'Telefon','email'=>'E-Mail (optional)','confirm'=>'Termin bestätigen','full'=>'belegt','wl_join'=>'Benachrichtigen, wenn ein Platz frei wird','wl_for'=>'Warteliste für:','wl_email'=>'E-Mail (wir benachrichtigen Sie hier)','wl_submit'=>'Zur Warteliste hinzufügen','days'=>['So','Mo','Di','Mi','Do','Fr','Sa']],
+        'fr'=>['title'=>'Rendez-vous en ligne','choose'=>'Choisissez le service souhaité','none'=>'Aucun service disponible pour le moment.','all_services'=>'← Tous les services','day'=>'Jour','closed_day'=>'Fermé ce jour-là. Choisissez une autre date.','closed_named'=>'🚫 Fermé ce jour-là','pick_other'=>'Choisissez une autre date.','chosen_time'=>'Heure choisie :','name'=>'Nom','phone'=>'Téléphone','email'=>'E-mail (facultatif)','confirm'=>'Confirmer le rendez-vous','full'=>'complet','wl_join'=>'Me prévenir si une place se libère','wl_for'=>'Liste d\'attente pour :','wl_email'=>'E-mail (nous vous prévenons ici)','wl_submit'=>'M\'ajouter à la liste','days'=>['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']],
+        'hu'=>['title'=>'Online időpont','choose'=>'Válassza ki a kívánt szolgáltatást','none'=>'Jelenleg nincs foglalható szolgáltatás.','all_services'=>'← Összes szolgáltatás','day'=>'Nap','closed_day'=>'Ezen a napon zárva. Válasszon másik dátumot.','closed_named'=>'🚫 Ezen a napon zárva','pick_other'=>'Válasszon másik dátumot.','chosen_time'=>'Választott időpont:','name'=>'Név','phone'=>'Telefon','email'=>'E-mail (opcionális)','confirm'=>'Időpont megerősítése','full'=>'megtelt','wl_join'=>'Értesítsen, ha felszabadul egy hely','wl_for'=>'Várólista erre:','wl_email'=>'E-mail (ide értesítjük)','wl_submit'=>'Felveszem a listára','days'=>['Vas','Hét','Ked','Sze','Csü','Pén','Szo']],
+        'it'=>['title'=>'Prenotazione online','choose'=>'Scegli il servizio da prenotare','none'=>'Nessun servizio disponibile al momento.','all_services'=>'← Tutti i servizi','day'=>'Giorno','closed_day'=>'Chiuso in questo giorno. Scegli un\'altra data.','closed_named'=>'🚫 Chiuso in questo giorno','pick_other'=>'Scegli un\'altra data.','chosen_time'=>'Orario scelto:','name'=>'Nome','phone'=>'Telefono','email'=>'Email (facoltativo)','confirm'=>'Conferma prenotazione','full'=>'completo','wl_join'=>'Avvisami se si libera un posto','wl_for'=>'Lista d\'attesa per:','wl_email'=>'Email (ti avvisiamo qui)','wl_submit'=>'Aggiungimi alla lista','days'=>['Dom','Lun','Mar','Mer','Gio','Ven','Sab']],
+        'es'=>['title'=>'Reserva en línea','choose'=>'Elige el servicio que quieres reservar','none'=>'No hay servicios disponibles por el momento.','all_services'=>'← Todos los servicios','day'=>'Día','closed_day'=>'Cerrado este día. Elige otra fecha.','closed_named'=>'🚫 Cerrado este día','pick_other'=>'Elige otra fecha.','chosen_time'=>'Hora elegida:','name'=>'Nombre','phone'=>'Teléfono','email'=>'Correo (opcional)','confirm'=>'Confirmar la reserva','full'=>'completo','wl_join'=>'Avísame si se libera una plaza','wl_for'=>'Lista de espera para:','wl_email'=>'Correo (te avisamos aquí)','wl_submit'=>'Añadirme a la lista','days'=>['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']],
     ];
     $lang = strtolower($lang);
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
@@ -733,6 +735,15 @@ function run_migrations(): void {
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_whlog_time (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    // v26: lista de asteptare programari
+    if (!$hasTable('appointment_waitlist')) $ddl("CREATE TABLE appointment_waitlist (
+        id INT AUTO_INCREMENT PRIMARY KEY, service_id INT NOT NULL, branch_id INT NULL,
+        slot_start DATETIME NOT NULL, customer_name VARCHAR(120) NULL, customer_email VARCHAR(160) NOT NULL,
+        customer_phone VARCHAR(32) NULL, notified_at DATETIME NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_wl_slot (service_id, slot_start, notified_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -746,7 +757,8 @@ function run_migrations(): void {
             && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
-            && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')) {
+            && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
+            && $hasTable('appointment_waitlist')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

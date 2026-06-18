@@ -99,7 +99,52 @@ function appt_cancel(int $id): ?array {
     q("UPDATE appointments SET status='cancelled' WHERE id=?", [$id]);
     $a['status'] = 'cancelled';
     if (function_exists('fire_webhook')) fire_webhook('appointment.cancelled', webhook_appointment($a));
+    appt_waitlist_notify((int)$a['service_id'], (string)$a['slot_start']);  // s-a eliberat un loc
     return $a;
+}
+
+/** Numar de locuri ocupate intr-un slot (booked + checked_in). */
+function appt_slot_used(int $service_id, string $slot_key): int {
+    return (int) val("SELECT COUNT(*) FROM appointments WHERE service_id=? AND slot_start=? AND status IN ('booked','checked_in')", [$service_id, $slot_key]);
+}
+
+/** Inscrie un client pe lista de asteptare a unui slot plin. Arunca exceptie la date invalide. */
+function appt_waitlist_add(int $service_id, string $slot_start, ?string $name, string $email, ?string $phone = null): bool {
+    $svc = one('SELECT * FROM services WHERE id=? AND status="active" AND appt_enabled=1', [$service_id]);
+    if (!$svc) throw new RuntimeException('Serviciu indisponibil pentru programari.');
+    $ts = strtotime($slot_start);
+    if ($ts === false || $ts < time()) throw new RuntimeException('Interval invalid.');
+    $email = strtolower(trim($email));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('Adresa de email este invalida.');
+    $key = date('Y-m-d H:i:00', $ts);
+    if (appt_slot_used($service_id, $key) < max(1, (int)$svc['appt_capacity']))
+        throw new RuntimeException('Mai sunt locuri libere — poti rezerva direct.');
+    $dup = (int) val("SELECT COUNT(*) FROM appointment_waitlist WHERE service_id=? AND slot_start=? AND customer_email=? AND notified_at IS NULL", [$service_id, $key, $email]);
+    if (!$dup) {
+        q("INSERT INTO appointment_waitlist (service_id, branch_id, slot_start, customer_name, customer_email, customer_phone) VALUES (?,?,?,?,?,?)",
+          [$service_id, (int)$svc['branch_id'], $key, $name ? mb_substr($name, 0, 120) : null, $email, $phone ?: null]);
+    }
+    return true;
+}
+
+/** Daca un slot are loc liber si exista cineva pe lista, il anunta pe email. Returneaza intrarea anuntata sau null. */
+function appt_waitlist_notify(int $service_id, string $slot_start): ?array {
+    $svc = one('SELECT * FROM services WHERE id=?', [$service_id]);
+    if (!$svc) return null;
+    $key = date('Y-m-d H:i:00', strtotime($slot_start));
+    if (appt_slot_used($service_id, $key) >= max(1, (int)$svc['appt_capacity'])) return null; // tot plin
+    $w = one("SELECT * FROM appointment_waitlist WHERE service_id=? AND slot_start=? AND notified_at IS NULL ORDER BY id LIMIT 1", [$service_id, $key]);
+    if (!$w) return null;
+    q("UPDATE appointment_waitlist SET notified_at=NOW() WHERE id=?", [(int)$w['id']]);
+    if (function_exists('send_mail') && mail_enabled()) {
+        $when = date('d.m.Y H:i', strtotime($key));
+        $body = '<p>Buna' . ($w['customer_name'] ? ' <strong>' . e($w['customer_name']) . '</strong>' : '') . ',</p>'
+              . '<p>S-a eliberat un loc pentru <strong>' . e($svc['name']) . '</strong> la <strong>' . e($when) . '</strong>.</p>'
+              . '<p>Rezerva acum — primul venit, primul servit:</p>';
+        send_mail($w['customer_email'], 'S-a eliberat un loc — ' . $svc['name'],
+            mail_template('Loc disponibil', $body, 'Rezerva acum', url('book/' . $service_id . '?date=' . substr($key, 0, 10))));
+    }
+    return $w;
 }
 
 /** Reprogrameaza o programare 'booked' intr-un slot nou (acelasi serviciu). Returneaza randul nou sau null. */

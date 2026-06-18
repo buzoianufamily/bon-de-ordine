@@ -342,6 +342,23 @@ chk(strpos($bar, 'lang=en') !== false && strpos($bar, 'lang=de') !== false, 'lan
 chk(strpos($bar, 'aria-current') !== false, 'langbar: limba curenta marcata (a11y)');
 set_setting('dispenser_langs', 'ro');
 
+/* ---- 35. Lista de asteptare programari (waitlist) ---- */
+q("UPDATE services SET appt_enabled=1, appt_capacity=1, appt_slot_min=30 WHERE id=$svc");
+$slotWl = date('Y-m-d H:i:00', strtotime('tomorrow 10:00'));
+$b1 = appt_book($svc, $slotWl, 'Client 1', null, null);
+chk($b1 && $b1['status']==='booked', 'wl: slot ocupat de prima rezervare');
+$full=false; try { appt_book($svc, $slotWl, 'Client 2', null, null); } catch (Throwable $e) { $full=true; }
+chk($full, 'wl: a doua rezervare pe slot plin -> respinsa');
+chk(appt_waitlist_add($svc, $slotWl, 'Client 2', 'c2@ci.ro') === true, 'wl: inscriere pe lista');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE service_id=$svc AND customer_email='c2@ci.ro'")===1, 'wl: o intrare in lista');
+appt_waitlist_add($svc, $slotWl, 'Client 2', 'c2@ci.ro'); // dedupe
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE service_id=$svc AND customer_email='c2@ci.ro'")===1, 'wl: dedupe (nu se dubleaza)');
+chk(appt_waitlist_notify($svc, $slotWl) === null, 'wl: slot plin -> niciun anunt');
+appt_cancel((int)$b1['id']); // elibereaza slotul -> anunta primul de pe lista
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='c2@ci.ro' AND notified_at IS NOT NULL")===1, 'wl: la anulare, primul de pe lista e anuntat');
+$wlFail=false; try { appt_waitlist_add($svc, $slotWl, 'X', 'not-an-email'); } catch (Throwable $e) { $wlFail=true; }
+chk($wlFail, 'wl: email invalid -> respins');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

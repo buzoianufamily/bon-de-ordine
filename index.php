@@ -460,6 +460,14 @@ SWJS;
             $svc = one('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                         WHERE s.id=? AND s.status="active" AND s.appt_enabled=1', [(int)$seg[1]]);
             if (!$svc) { http_response_code(404); echo 'Serviciu indisponibil pentru programari.'; return; }
+            if ($method === 'POST' && ($seg[2] ?? '') === 'waitlist') {
+                $slot = (string)input('slot_start', '');
+                if (!rate_limit_ok('wl:' . ($_SERVER['REMOTE_ADDR'] ?? ''), 6, 600)) { flash('Prea multe cereri. Reincearca mai tarziu.', 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d'))); }
+                try { appt_waitlist_add((int)$svc['id'], $slot, trim((string)input('name','')) ?: null, trim((string)input('email','')), trim((string)input('phone','')) ?: null);
+                      flash('Te-am adaugat pe lista de asteptare. Te anuntam pe email daca se elibereaza un loc.'); }
+                catch (Throwable $ex) { flash($ex->getMessage(), 'error'); }
+                redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).($lang!=='ro'?'&lang='.$lang:''));
+            }
             if ($method === 'POST') {
                 $slot = (string)input('slot_start', '');
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
@@ -470,7 +478,8 @@ SWJS;
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
             $slots = appt_slots($svc, $date);
             $closed = branch_closure_reason((int)$svc['branch_id'], strtotime($date.' 12:00:00'));
-            view('public/book_slots', compact('svc','date','slots','closed','lang'));
+            $wlOn = function_exists('mail_enabled') && mail_enabled();  // lista de asteptare necesita email
+            view('public/book_slots', compact('svc','date','slots','closed','lang','wlOn'));
             return;
         }
         $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id

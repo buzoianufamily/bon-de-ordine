@@ -22,8 +22,8 @@ $dts=strtotime($date); $dateLabel=$L['days'][(int)date('w',$dts)].', '.date('d.m
       <?php endif; ?>
     <?php else: ?>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem">
-        <?php foreach($slots as $sl): $dis=$sl['full']||$sl['past']; ?>
-          <button type="button" class="btn slot" <?= $dis?'disabled':'' ?> data-slot="<?= e($sl['start']) ?>" style="<?= $dis?'opacity:.4':'' ?>"><?= e($sl['time']) ?></button>
+        <?php foreach($slots as $sl): $wlSlot=$sl['full'] && !$sl['past'] && !empty($wlOn); $dis=$sl['past'] || ($sl['full'] && !$wlSlot); ?>
+          <button type="button" class="btn slot" <?= $dis?'disabled':'' ?> data-slot="<?= e($sl['start']) ?>" data-full="<?= $sl['full']?'1':'0' ?>" title="<?= $sl['full']?e($L['full']):'' ?>" style="<?= $dis?'opacity:.4':($wlSlot?'opacity:.6':'') ?>"><?= e($sl['time']) ?></button>
         <?php endforeach; ?>
       </div>
       <form method="post" action="<?= e(url('book/'.$svc['id']).($lang!=='ro'?'?lang='.$lang:'')) ?>" id="bookForm" style="display:none;margin-top:1.2rem">
@@ -34,16 +34,33 @@ $dts=strtotime($date); $dateLabel=$L['days'][(int)date('w',$dts)].', '.date('d.m
         <div class="field"><label><?= e($L['email']) ?></label><input name="email" type="email"></div>
         <button class="btn btn-primary btn-lg" style="width:100%"><?= e($L['confirm']) ?></button>
       </form>
+      <?php if(!empty($wlOn)): ?>
+      <form method="post" action="<?= e(url('book/'.$svc['id'].'/waitlist').($lang!=='ro'?'?lang='.$lang:'')) ?>" id="wlForm" style="display:none;margin-top:1.2rem">
+        <input type="hidden" name="slot_start" id="wlSlot">
+        <div class="muted" style="margin-bottom:.6rem"><?= e($L['wl_for']) ?> <strong id="wlLabel" style="color:var(--ink)"></strong></div>
+        <div class="field"><label><?= e($L['name']) ?></label><input name="name"></div>
+        <div class="field"><label><?= e($L['wl_email']) ?></label><input name="email" type="email" required></div>
+        <button class="btn btn-primary btn-lg" style="width:100%"><?= e($L['wl_submit']) ?></button>
+      </form>
+      <?php endif; ?>
     <?php endif; ?>
   </div>
 </div></div>
 <script>
 document.querySelectorAll('.slot').forEach(function(b){ b.addEventListener('click',function(){
-  document.querySelectorAll('.slot').forEach(x=>x.classList.remove('btn-primary'));
+  document.querySelectorAll('.slot').forEach(function(x){ x.classList.remove('btn-primary'); });
   b.classList.add('btn-primary');
-  document.getElementById('slotStart').value=b.dataset.slot;
-  document.getElementById('slotLabel').textContent=b.textContent;
-  var f=document.getElementById('bookForm'); f.style.display=''; f.scrollIntoView({behavior:'smooth'});
+  var full = b.dataset.full === '1';
+  var bf = document.getElementById('bookForm'), wf = document.getElementById('wlForm');
+  if(full && wf){
+    wf.querySelector('#wlSlot').value = b.dataset.slot;
+    document.getElementById('wlLabel').textContent = b.textContent;
+    wf.style.display=''; if(bf) bf.style.display='none'; wf.scrollIntoView({behavior:'smooth'});
+  } else if(bf){
+    document.getElementById('slotStart').value = b.dataset.slot;
+    document.getElementById('slotLabel').textContent = b.textContent;
+    bf.style.display=''; if(wf) wf.style.display='none'; bf.scrollIntoView({behavior:'smooth'});
+  }
 }); });
 </script>
 </body></html>

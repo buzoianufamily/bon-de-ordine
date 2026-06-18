@@ -316,3 +316,18 @@ CREATE TABLE IF NOT EXISTS webhook_log (
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_whlog_time (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Lista de asteptare programari (slot plin -> anunt pe email la eliberare) ----------
+CREATE TABLE IF NOT EXISTS appointment_waitlist (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  service_id     INT NOT NULL,
+  branch_id      INT NULL,
+  slot_start     DATETIME NOT NULL,
+  customer_name  VARCHAR(120) NULL,
+  customer_email VARCHAR(160) NOT NULL,
+  customer_phone VARCHAR(32)  NULL,
+  notified_at    DATETIME NULL,                      -- cand a fost anuntat ca s-a eliberat un loc
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_wl_slot (service_id, slot_start, notified_at),
+  CONSTRAINT fk_wl_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
