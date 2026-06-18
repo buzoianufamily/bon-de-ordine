@@ -85,6 +85,22 @@ function branch_closure_reason(int $branchId, ?int $ts = null): ?string {
     return null;
 }
 
+/**
+ * Urmatorul moment in care serviciul redevine deschis (timestamp), sau null daca nu se poate
+ * determina in ~14 zile (sau e oprit temporar). Reutilizeaza service_is_open ca sa nu divergam
+ * de logica de orar (serviciu ∩ filiala + inchideri). Cautare la pas de 5 min, cu oprire devreme.
+ */
+function service_next_open(array $svc, ?int $from = null): ?int {
+    if (!empty($svc['paused'])) return null;        // pauza: nu stim cand revine
+    $from = $from ?? time();
+    $step = 300; $limit = $from + 14 * 86400;
+    $t = $from - ($from % $step) + $step;           // urmatorul interval rotund de 5 min
+    for (; $t <= $limit; $t += $step) {
+        if (service_is_open($svc, $t)) return $t;
+    }
+    return null;
+}
+
 /** Formateaza eticheta biletului (ex: C001 / C1). */
 function format_label(array $service, int $number): string {
     $n = $service['include_zeros']

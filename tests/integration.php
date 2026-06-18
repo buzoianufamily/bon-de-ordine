@@ -96,6 +96,9 @@ $svcAppt = ['branch_id'=>$bSet, 'active_hours'=>json_encode(['enabled'=>true,'da
 chk(appt_open_window($svcAppt, $future) === ['10:00','12:00'], 'bhours: fereastra programari intersectata cu filiala');
 $svcAppt2 = ['branch_id'=>$bSet, 'active_hours'=>json_encode(['enabled'=>true,'days'=>[(string)$fdow=>['13:00','18:00']]])];
 chk(appt_open_window($svcAppt2, $future) === null, 'bhours: fara suprapunere -> niciun slot');
+// service_next_open: urmatorul moment deschis, plecand dintr-o ora inchisa
+chk(service_next_open($svcBH, strtotime($future.' 09:00:00')) === strtotime($future.' 10:00:00'), 'next_open: inainte de fereastra -> ora de deschidere');
+chk(service_next_open(['branch_id'=>$bSet,'active_hours'=>'','paused'=>1]) === null, 'next_open: serviciu in pauza -> null');
 q("DELETE FROM branches WHERE name IN ('CI-bh-none','CI-bh-set')");
 
 /* ---- 7. Pauza serviciu (fara cache: deterministic) ---- */

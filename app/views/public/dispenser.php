@@ -53,7 +53,12 @@ $renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc,$showW
           if ($open) echo e($sds ?: $tr('btn_hint',$gd($T,'btn_hint','Apasati pentru bilet')));
           elseif ($capped) echo e($tr('cap_hint',$gd($T,'cap_hint','Limita atinsa azi')));
           elseif (!empty($s['paused']) && !empty($s['pause_note'])) echo e($s['pause_note']);
-          else echo e($tr('closed_hint',$gd($T,'closed_hint','Inchis acum')));
+          else {
+            $no = service_next_open($s);
+            if ($no) { $sameDay = date('Y-m-d',$no) === date('Y-m-d');
+              echo e($tr('opens_at',$gd($T,'opens_at','Deschide')).' '.($sameDay ? date('H:i',$no) : date('d.m H:i',$no))); }
+            else echo e($tr('closed_hint',$gd($T,'closed_hint','Inchis acum')));
+          }
         ?></span>
         <?php if(!$open): ?>
           <span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem"><?= $capped ? e($tr('cap_label',$gd($T,'cap_label','⛔ Epuizat azi'))) : e($tr('closed_label',$gd($T,'closed_label','🔒 Inchis'))) ?></span>
