@@ -107,6 +107,13 @@ $pb = false; try { issue_ticket($svc, false, 'paper'); } catch (Throwable $e) { 
 chk($pb, 'pause: blocks issuance');
 q("UPDATE services SET paused=0 WHERE id=$svc");
 
+/* ---- 7b. Autorizare ghiseu (allowed_counters aplicat si pe API, nu doar in UI) ---- */
+chk(user_counter_allowed($adminId, $ctr) === true, 'authz: utilizator fara restrictie -> orice ghiseu');
+q("INSERT INTO users (name,email,role,active,allowed_counters,password_hash) VALUES ('Pinned CI','pinned@ci.ro','agent',1,?,?)", [(string)$ctr, password_hash('x', PASSWORD_DEFAULT)]);
+$pinId = (int) insert_id();
+chk(user_counter_allowed($pinId, $ctr) === true, 'authz: ghiseu permis -> ok');
+chk(user_counter_allowed($pinId, $ctr + 99999) === false, 'authz: ghiseu nepermis -> blocat');
+
 /* ---- 8. Programari ---- */
 q("UPDATE services SET appt_enabled=1, appt_slot_min=15, appt_capacity=2 WHERE id=$svc");
 $svcRow = one("SELECT * FROM services WHERE id=$svc"); $day = date('Y-m-d', strtotime('+1 day'));

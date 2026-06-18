@@ -225,6 +225,11 @@ SWJS;
         $u = require_login();
         if ($method === 'POST') csrf_check();
         q('UPDATE users SET last_seen = NOW() WHERE id = ?', [(int)$u['id']]); // prezenta
+        // un operator legat de anumite ghisee nu poate opera (call/pauza) alt ghiseu nici prin API
+        $guardCounter = function (int $cid) use ($u) {
+            if (!user_counter_allowed((int)$u['id'], $cid))
+                json_out(['ok' => false, 'error' => 'Nu ai acces la acest ghiseu.'], 403);
+        };
 
         switch ($action) {
             case 'user-status': {
@@ -252,9 +257,11 @@ SWJS;
                 json_out(['ok' => true, 'name' => $nu['name']]);
             }
             case 'call-next':
+                $guardCounter((int)input('counter_id', 0));
                 $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);
             case 'call-specific':
+                $guardCounter((int)input('counter_id', 0));
                 $t = call_specific((int)input('ticket_id', 0), (int)input('counter_id', 0), (int)$u['id']);
                 json_out(['ok' => (bool)$t, 'ticket' => $t] + ($t ? [] : ['error' => 'Biletul nu mai este la rand']));
             case 'recall':    json_out(['ok' => true, 'status' => recall_ticket((int)input('ticket_id', 0))]);
@@ -268,6 +275,7 @@ SWJS;
             case 'transfer-counter': transfer_to_counter((int)input('ticket_id', 0), (int)input('target_counter', 0)); json_out(['ok' => true]);
             case 'counter-pause': {
                 $cid = (int) input('counter_id', 0);
+                $guardCounter($cid);
                 $note = mb_substr(trim((string) input('note', '')), 0, 120);
                 q("UPDATE counters SET status='paused', pause_note=? WHERE id=?", [$note !== '' ? $note : null, $cid]);
                 // elibereaza biletele directionate catre acest ghiseu, ca sa nu ramana blocate (optional)
@@ -275,6 +283,7 @@ SWJS;
                 json_out(['ok' => true, 'released' => $released]);
             }
             case 'counter-open':
+                $guardCounter((int) input('counter_id', 0));
                 q("UPDATE counters SET status='open', pause_note=NULL WHERE id=?", [(int) input('counter_id', 0)]);
                 json_out(['ok' => true]);
             case 'counter-state':

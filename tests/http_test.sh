@@ -232,6 +232,20 @@ else
   echo "WARN: niciun slot liber maine (skip booking via API)"
 fi
 
+# --- IDOR: allowed_counters aplicat si pe API, nu doar in UI ---
+# agent legat de un ghiseu inexistent (999999) => orice ghiseu real ii e interzis
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/users --data-urlencode "_csrf=$ICSRF" \
+  --data-urlencode "name=Pinned CI" --data-urlencode "email=pinnedci@firma.ro" \
+  --data-urlencode "role=agent" --data-urlencode "active=1" \
+  --data-urlencode "password=PinnedCI123" --data-urlencode "allowed_counters[]=999999"
+PJAR="$(mktemp)"
+PCSRF="$(curl -s -c "$PJAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
+curl -s -o /dev/null -b "$PJAR" -c "$PJAR" -X POST $B/login -d "_csrf=$PCSRF&email=pinnedci@firma.ro&password=PinnedCI123"
+PACSRF="$(curl -s -b "$PJAR" "$B/counter" | grep -oE 'name="csrf" content="[^"]+"' | head -1 | sed -E 's/.*content="([^"]+)".*/\1/')"
+t "API call-next pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/call-next -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
+t "API counter-pause pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/counter-pause -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
+rm -f "$PJAR"
+
 # --- logout ---
 t "GET /logout -> 302"   302 "$(code -b "$JAR" $B/logout)"
 

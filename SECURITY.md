@@ -6,6 +6,7 @@ Rezumatul măsurilor de securitate și recomandări de hardening.
 - **Parole**: bcrypt (`password_hash`), re-hash automat la schimbarea algoritmului. Nu se stochează parole în clar.
 - **Sesiuni**: cookie `HttpOnly`, `SameSite=Lax`, `Secure` pe HTTPS, legat de host (izolare între subdomenii/tenanti), `session_regenerate_id` la login.
 - **CSRF**: token verificat (`hash_equals`) pe toate acțiunile POST din admin și pe API-ul intern al operatorului.
+- **Control acces**: backoffice-ul cere rol (`admin`/`manager`); restul rutelor cer autentificare. Operatorii legați de anumite ghișee (`allowed_counters`) sunt restricționați **și la nivel de API** (call-next / call-specific / pauză / deschidere ghișeu returnează `403` pentru un ghișeu nepermis) — restricția din interfață nu poate fi ocolită prin apeluri directe.
 - **SQL**: exclusiv prepared statements (PDO, `EMULATE_PREPARES=false`). Fără concatenare de input în SQL.
 - **XSS**: tot ce se afișează trece prin `e()` (`htmlspecialchars`). Datele incluse în blocuri `<script>`/atribute `on*` sunt encodate cu `jsenc()` (`JSON_HEX_*`), deci textele editabile din admin nu pot ieși din context. În JS se folosește escaping la randare.
 - **Brute-force**: login — max 10 încercări eșuate / IP în 10 minute (din `audit_log`), apoi cooldown. **Pasul 2FA** aplică același prag (codul de 6 cifre nu poate fi forțat chiar dacă parola e cunoscută). Schimbarea rapidă de operator prin **PIN** este limitată la 10 încercări / 5 minute.

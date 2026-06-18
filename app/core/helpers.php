@@ -511,6 +511,21 @@ function disp_strings(): array {
     ];
 }
 
+/**
+ * Poate utilizatorul opera ghiseul dat? `allowed_counters` (CSV de id-uri) gol/absent = toate.
+ * Aceeasi semantica folosita la deschiderea terminalului (/counter), aplicata si pe API
+ * ca sa nu poata fi ocolita prin apeluri directe (call-next/pause/open pe alt ghiseu).
+ */
+function user_counter_allowed(int $userId, int $counterId): bool {
+    static $cache = [];
+    if (!array_key_exists($userId, $cache)) {
+        $csv = (string) (val('SELECT allowed_counters FROM users WHERE id=?', [$userId]) ?? '');
+        $cache[$userId] = array_values(array_filter(array_map('intval', explode(',', $csv))));
+    }
+    $ids = $cache[$userId];
+    return empty($ids) || in_array($counterId, $ids, true);
+}
+
 /** Render view cu layout. $view relativ la app/views. */
 function view(string $view, array $data = []): void {
     extract($data, EXTR_SKIP);
