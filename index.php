@@ -175,9 +175,11 @@ SWJS;
         }
         if ($action === 'ticket' && $method === 'POST') { // emitere bilet (dispenser)
             $dev = device_by_key((string)input('device_key', ''));
+            // fara cheie de dispozitiv valida nu se emit bonuri (altfel oricine putea inunda coada)
+            if (!$dev) json_out(['ok' => false, 'error' => 'Dispozitiv neautorizat'], 403);
             $svc = (int)input('service_id', 0);
             // un dispozitiv emite doar bonuri pentru serviciile filialei lui (nu poate polua coada altei filiale)
-            if ($dev && (int) val('SELECT branch_id FROM services WHERE id=?', [$svc]) !== (int)$dev['branch_id']) {
+            if ((int) val('SELECT branch_id FROM services WHERE id=?', [$svc]) !== (int)$dev['branch_id']) {
                 json_out(['ok' => false, 'error' => 'Serviciu indisponibil pe acest dispozitiv.'], 422);
             }
             $priority = (bool)input('priority', false);
@@ -308,6 +310,11 @@ SWJS;
             }
             if ($method === 'POST') {
                 csrf_check();
+                // acelasi throttling ca la parola: impiedica brute-force pe codul de 6 cifre
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                $fails = 0;
+                try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action IN('login_failed','login_failed_2fa') AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
+                if ($fails >= 10) { unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']); flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login'); }
                 $pu = one('SELECT * FROM users WHERE id=? AND active=1', [$puid]);
                 $code = (string)($_POST['code'] ?? '');
                 if ($pu && !empty($pu['totp_enabled'])) {
@@ -488,6 +495,11 @@ SWJS;
                 redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).($lang!=='ro'?'&lang='.$lang:''));
             }
             if ($method === 'POST') {
+                // limiteaza rezervarile pe IP (anti-spam / blocare artificiala a sloturilor)
+                if (!rate_limit_ok('book:' . ($_SERVER['REMOTE_ADDR'] ?? ''), 10, 600)) {
+                    flash('Prea multe cereri. Reincearca mai tarziu.', 'error');
+                    redirect('book/'.$svc['id'].($lang!=='ro'?'?lang='.$lang:''));
+                }
                 $slot = (string)input('slot_start', '');
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }

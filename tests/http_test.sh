@@ -52,6 +52,8 @@ tcontains "feedback EN (?lang=en)" 'How was your experience' "$(curl -s "$B/feed
 tcontains "book RO implicit" 'Programare online' "$(curl -s "$B/book")"
 tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
 t "POST /book/{id}/waitlist -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC/waitlist --data-urlencode 'slot_start=2030-01-01 10:00:00' --data-urlencode 'email=wl@ci.ro')"
+# rezervarea publica (slot in trecut -> respinsa cu redirect, dar calea cu rate-limit nu da 500)
+t "POST /book/{id} (slot trecut) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode 'slot_start=2000-01-01 10:00:00' --data-urlencode 'name=CI')"
 # cod QR local (SVG) — inlocuieste serviciul extern qrserver
 tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
 tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"
@@ -60,6 +62,9 @@ tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exem
 ISS="$(curl -s -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"service_id\":$SVC,\"channel\":\"paper\"}")"
 tcontains "POST /api/ticket ok" '"ok":true' "$ISS"
 tcontains "POST /api/ticket has label" '"label"' "$ISS"
+# securitate: fara cheie de dispozitiv valida, emiterea e respinsa (nu se poate inunda coada)
+t "POST /api/ticket fara cheie -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"channel\":\"paper\"}")"
+t "POST /api/ticket cheie gresita -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"device_key\":\"NUEXISTA\",\"service_id\":$SVC}")"
 t "GET /api/state"         200 "$(code "$B/api/state?branch=$BR")"
 # bilet digital pe telefon: pagina de urmarire + notificari locale
 VTOK="$(printf '%s' "$ISS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ticket',{}).get('public_token',''))" 2>/dev/null)"
