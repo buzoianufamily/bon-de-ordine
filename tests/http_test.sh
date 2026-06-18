@@ -61,6 +61,14 @@ ISS="$(curl -s -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"
 tcontains "POST /api/ticket ok" '"ok":true' "$ISS"
 tcontains "POST /api/ticket has label" '"label"' "$ISS"
 t "GET /api/state"         200 "$(code "$B/api/state?branch=$BR")"
+# bilet digital pe telefon: pagina de urmarire + notificari locale
+VTOK="$(printf '%s' "$ISS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ticket',{}).get('public_token',''))" 2>/dev/null)"
+if [ -n "$VTOK" ]; then
+  t "GET /t/{token} (bilet digital)" 200 "$(code "$B/t/$VTOK")"
+  tcontains "bilet digital: buton notificare in browser" 'vNotify' "$(curl -s "$B/t/$VTOK")"
+  tcontains "bilet digital EN (?lang=en)" 'Notify me' "$(curl -s "$B/t/$VTOK?lang=en")"
+else { FAIL=$((FAIL+1)); echo "FAIL: public_token lipsa la emitere"; }; fi
+tcontains "sw.js are handler notificationclick" 'notificationclick' "$(curl -s "$B/sw.js")"
 
 # --- login cu CSRF ---
 CSRF="$(curl -s -c "$JAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"

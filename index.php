@@ -120,6 +120,15 @@ self.addEventListener('fetch', e => {
     }).catch(() => caches.match(req)));
   }
 });
+// la atingerea notificarii (bilet digital): focus pe pagina deja deschisa, sau o deschide
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(self.clients.matchAll({type:'window', includeUncontrolled:true}).then(cs => {
+    for (const c of cs) { if (c.url.indexOf(url) !== -1 && 'focus' in c) return c.focus(); }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+  }));
+});
 SWJS;
         exit;
     }
