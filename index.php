@@ -479,7 +479,9 @@ SWJS;
             $slots = appt_slots($svc, $date);
             $closed = branch_closure_reason((int)$svc['branch_id'], strtotime($date.' 12:00:00'));
             $wlOn = function_exists('mail_enabled') && mail_enabled();  // lista de asteptare necesita email
-            view('public/book_slots', compact('svc','date','slots','closed','lang','wlOn'));
+            $hasFree = false; foreach ($slots as $sl) { if (empty($sl['past']) && empty($sl['full'])) { $hasFree = true; break; } }
+            $nextDay = $hasFree ? null : appt_next_open_day($svc, $date);  // sugereaza prima zi libera
+            view('public/book_slots', compact('svc','date','slots','closed','lang','wlOn','nextDay'));
             return;
         }
         $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id

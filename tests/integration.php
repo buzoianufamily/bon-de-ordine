@@ -113,6 +113,9 @@ $svcRow = one("SELECT * FROM services WHERE id=$svc"); $day = date('Y-m-d', strt
 $slots = appt_slots($svcRow, $day); chk(count($slots) > 0, 'appt: slots generated');
 $appt = appt_book($svc, $slots[0]['start'], 'Ion', '0712', ''); chk(!empty($appt['id']) && $appt['status'] === 'booked', 'appt: booked');
 $tk = appt_checkin($appt); chk(!empty($tk['id']) && val("SELECT status FROM appointments WHERE id=".(int)$appt['id']) === 'checked_in', 'appt: checkin -> ticket');
+// next_open_day: dintr-o zi din trecut, prima zi cu sloturi e azi+? (serviciul are program zilnic implicit 09-17)
+$nd = appt_next_open_day($svcRow, date('Y-m-d', strtotime('-3 day')));
+chk($nd !== null && $nd > date('Y-m-d', strtotime('-3 day')), 'appt: next_open_day gaseste o zi disponibila');
 
 /* ---- 9. queue_state + estimari ---- */
 $qs = queue_state($br, true);

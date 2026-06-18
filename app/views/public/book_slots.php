@@ -14,6 +14,11 @@ $dts=strtotime($date); $dateLabel=$L['days'][(int)date('w',$dts)].', '.date('d.m
       <strong style="font-size:1.05rem"><?= e($dateLabel) ?></strong>
       <a class="btn btn-ghost" href="<?= e(url('book/'.$svc['id'].'?date='.$next).$lq) ?>"><?= e($L['day']) ?> →</a>
     </div>
+    <?php if(!empty($nextDay)): $ndts=strtotime($nextDay); ?>
+      <a href="<?= e(url('book/'.$svc['id'].'?date='.$nextDay).$lq) ?>" style="display:block;text-align:center;background:#dbeafe;color:#1e40af;border-radius:10px;padding:.6rem;margin-bottom:1rem;text-decoration:none;font-weight:700">
+        <?= e($L['next_avail']) ?> <?= e($L['days'][(int)date('w',$ndts)].', '.date('d.m.Y',$ndts)) ?> →
+      </a>
+    <?php endif; ?>
     <?php if(!$slots): ?>
       <?php if(($closed ?? null) !== null): ?>
         <p style="text-align:center;padding:1rem;color:#b91c1c;font-weight:700"><?= e($L['closed_named']) ?><?= $closed !== '' ? ' (' . e($closed) . ')' : '' ?>. <?= e($L['pick_other']) ?></p>

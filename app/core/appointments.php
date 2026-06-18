@@ -54,6 +54,19 @@ function appt_slots(array $svc, string $date): array {
     return $slots;
 }
 
+/** Prima zi (dupa $fromDate) cu cel putin un slot liber, in urmatoarele $maxDays zile. null daca nu. */
+function appt_next_open_day(array $svc, string $fromDate, int $maxDays = 21): ?string {
+    $start = strtotime($fromDate);
+    if (!$start) return null;
+    for ($i = 1; $i <= $maxDays; $i++) {
+        $d = date('Y-m-d', strtotime("+$i day", $start));
+        foreach (appt_slots($svc, $d) as $sl) {
+            if (empty($sl['past']) && empty($sl['full'])) return $d;
+        }
+    }
+    return null;
+}
+
 /** Creeaza o programare. */
 function appt_book(int $service_id, string $slot_start, ?string $name, ?string $phone, ?string $email = null, ?string $note = null): array {
     $svc = one('SELECT * FROM services WHERE id=? AND status="active"', [$service_id]);
