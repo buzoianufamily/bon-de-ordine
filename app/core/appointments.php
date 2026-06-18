@@ -1,19 +1,31 @@
 <?php
 /** Programari: sloturi disponibile, rezervare, check-in (genereaza bilet). */
 
-/** Fereastra de program [open,close] pentru o data, din active_hours sau implicit 09-17. */
+/** Fereastra de program [open,close] pentru o data, din active_hours (sau implicit 09-17),
+ *  intersectata cu orarul filialei daca acesta e configurat. null = inchis in ziua aceea. */
 function appt_open_window(array $svc, string $date): ?array {
     $raw = trim((string)($svc['active_hours'] ?? ''));
     $dow = (int)date('w', strtotime($date));
+    $win = ['09:00', '17:00'];
     if ($raw !== '') {
         $cfg = json_decode($raw, true);
         if (is_array($cfg) && !empty($cfg['enabled'])) {
             $day = $cfg['days'][$dow] ?? ($cfg['days'][(string)$dow] ?? null);
             if (!is_array($day) || count($day) < 2 || !$day[0] || !$day[1]) return null; // inchis in ziua aceea
-            return [$day[0], $day[1]];
+            $win = [$day[0], $day[1]];
         }
     }
-    return ['09:00', '17:00'];
+    // intersecteaza cu orarul filialei (daca e configurat la nivel de filiala)
+    if (isset($svc['branch_id']) && function_exists('branch_hours_window')) {
+        $bw = branch_hours_window((int)$svc['branch_id'], strtotime($date . ' 12:00:00'));
+        if ($bw === null) return null;                              // filiala inchisa in ziua aceea
+        if (is_array($bw)) {
+            $open = max($win[0], $bw[0]); $close = min($win[1], $bw[1]);
+            if ($open >= $close) return null;                       // fara suprapunere -> niciun slot
+            $win = [$open, $close];
+        }
+    }
+    return $win;
 }
 
 /** Sloturi pentru un serviciu intr-o zi. */

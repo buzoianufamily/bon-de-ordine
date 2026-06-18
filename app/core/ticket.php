@@ -19,18 +19,50 @@ function service_cap_reached(array $svc): bool {
 function service_is_open(array $svc, ?int $ts = null): bool {
     // pauza temporara pe serviciu -> inchis, indiferent de orar
     if (!empty($svc['paused'])) return false;
-    // zi inchisa (sarbatoare / inchidere) pe filiala sau globala -> inchis, indiferent de orar
-    if (isset($svc['branch_id']) && branch_closure_reason((int)$svc['branch_id'], $ts) !== null) return false;
+    $ts = $ts ?? time();
+    if (isset($svc['branch_id'])) {
+        // zi inchisa (sarbatoare / inchidere) pe filiala sau globala -> inchis, indiferent de orar
+        if (branch_closure_reason((int)$svc['branch_id'], $ts) !== null) return false;
+        // orar de functionare al filialei (plic): in afara lui, totul e inchis
+        $bw = branch_hours_window((int)$svc['branch_id'], $ts);
+        if ($bw === null) return false;                       // filiala inchisa in ziua aceea
+        if (is_array($bw)) { $now = date('H:i', $ts); if ($now < $bw[0] || $now >= $bw[1]) return false; }
+    }
     $raw = trim((string)($svc['active_hours'] ?? ''));
     if ($raw === '') return true;
     $cfg = json_decode($raw, true);
     if (!is_array($cfg) || empty($cfg['enabled'])) return true;
-    $ts = $ts ?? time();
     $dow = (int)date('w', $ts);
     $day = $cfg['days'][$dow] ?? ($cfg['days'][(string)$dow] ?? null);
     if (!is_array($day) || count($day) < 2 || !$day[0] || !$day[1]) return false;
     $now = date('H:i', $ts);
     return $now >= $day[0] && $now < $day[1];
+}
+
+/**
+ * Orarul de functionare al filialei pentru momentul $ts:
+ *   false = fara orar configurat (mereu deschis), null = inchisa in ziua aceea, [open,close] = interval.
+ * Formatul open_hours e identic cu active_hours: {"enabled":true,"days":{"1":["09:00","17:00"],...}}.
+ */
+function branch_hours_window(int $branchId, ?int $ts = null): array|null|false {
+    static $cache = [];
+    if (!array_key_exists($branchId, $cache)) {
+        $cache[$branchId] = false;
+        try {
+            $raw = trim((string) val('SELECT open_hours FROM branches WHERE id=?', [$branchId]));
+            if ($raw !== '') {
+                $cfg = json_decode($raw, true);
+                if (is_array($cfg) && !empty($cfg['enabled'])) $cache[$branchId] = $cfg;
+            }
+        } catch (Throwable $e) { $cache[$branchId] = false; }
+    }
+    $cfg = $cache[$branchId];
+    if ($cfg === false) return false;
+    $ts = $ts ?? time();
+    $dow = (int)date('w', $ts);
+    $day = $cfg['days'][$dow] ?? ($cfg['days'][(string)$dow] ?? null);
+    if (!is_array($day) || count($day) < 2 || !$day[0] || !$day[1]) return null;
+    return [$day[0], $day[1]];
 }
 
 /**

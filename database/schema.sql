@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS branches (
   country    VARCHAR(80)  NULL DEFAULT 'Romania',
   address    VARCHAR(255) NULL,
   timezone   VARCHAR(64)  NOT NULL DEFAULT 'Europe/Bucharest',
+  open_hours TEXT         NULL,                         -- orar saptamanal JSON (plic peste orarele serviciilor)
   active     TINYINT(1)   NOT NULL DEFAULT 1,
   created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

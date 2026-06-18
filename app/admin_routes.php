@@ -1196,9 +1196,22 @@ function admin_closures_import(): void {
 function admin_branch_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
+    // orar de functionare al filialei (open_hours JSON) — acelasi format ca la servicii
+    $oh = '';
+    if (isset($_POST['bsched_enabled'])) {
+        $days = [];
+        foreach ([1,2,3,4,5,6,0] as $d) {
+            if (isset($_POST["bday_{$d}_open"])) {
+                $fr = trim((string)($_POST["bday_{$d}_from"] ?? '')); $tt = trim((string)($_POST["bday_{$d}_to"] ?? ''));
+                if ($fr && $tt) $days[(string)$d] = [$fr, $tt];
+            }
+        }
+        $oh = json_encode(['enabled'=>true,'days'=>$days], JSON_UNESCAPED_UNICODE);
+    }
     $f = ['name'=>trim($_POST['name'] ?? ''), 'city'=>trim($_POST['city'] ?? ''),
           'country'=>trim($_POST['country'] ?? 'Romania'), 'address'=>trim($_POST['address'] ?? ''),
-          'timezone'=>trim($_POST['timezone'] ?? 'Europe/Bucharest'), 'active'=>isset($_POST['active'])?1:0];
+          'timezone'=>trim($_POST['timezone'] ?? 'Europe/Bucharest'), 'open_hours'=>$oh,
+          'active'=>isset($_POST['active'])?1:0];
     if ($f['name'] === '') { flash('Numele filialei este obligatoriu.', 'error'); redirect('admin/branches'); }
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
@@ -1222,8 +1235,8 @@ function admin_branch_duplicate(int $id): void {
         $base = preg_replace('/\s*\(copie( \d+)?\)$/u', '', $src['name']);
         $n = 1; do { $newName = $base.' (copie'.($n>1?' '.$n:'').')'; $n++; }
         while ($n <= 50 && (int)val('SELECT COUNT(*) FROM branches WHERE name=?', [$newName]) > 0);
-        q('INSERT INTO branches (name,city,country,address,timezone,active) VALUES (?,?,?,?,?,?)',
-          [$newName, $src['city'], $src['country'], $src['address'], $src['timezone'], $src['active']]);
+        q('INSERT INTO branches (name,city,country,address,timezone,open_hours,active) VALUES (?,?,?,?,?,?,?)',
+          [$newName, $src['city'], $src['country'], $src['address'], $src['timezone'], $src['open_hours'] ?? null, $src['active']]);
         $newBranch = insert_id();
 
         // 1b) grupuri de servicii (sunt per-filiala) — pastreaza maparea vechi->nou

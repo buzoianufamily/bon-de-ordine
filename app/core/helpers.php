@@ -744,6 +744,9 @@ function run_migrations(): void {
         INDEX idx_wl_slot (service_id, slot_start, notified_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    // v27: orar de functionare la nivel de filiala (JSON, plic peste orarele serviciilor)
+    if (!$hasCol('branches','open_hours')) $ddl("ALTER TABLE branches ADD COLUMN open_hours TEXT NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -758,7 +761,7 @@ function run_migrations(): void {
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
             && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
-            && $hasTable('appointment_waitlist')) {
+            && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

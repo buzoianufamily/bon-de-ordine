@@ -32,7 +32,7 @@ chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === (defined('AP
 chk((int)val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro' AND role='admin'") === 1, 'install: default admin');
 foreach (['users','tickets','feedback','counter_sessions','password_resets','branch_closures'] as $t)
     chk((int)val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?", [$t]) === 1, "install: table $t exists");
-foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id']] as $c)
+foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id'],['branches','open_hours']] as $c)
     chk((int)val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?", $c) === 1, "install: column {$c[0]}.{$c[1]}");
 
 /* ---- 2. Autentificare + parola ---- */
@@ -76,6 +76,27 @@ chk(service_is_open(one("SELECT * FROM services WHERE id=$svc"), $futTs) === fal
 q("INSERT INTO branch_closures (branch_id, closed_date, reason) VALUES (NULL, DATE_ADD(?, INTERVAL 1 DAY), 'global')", [$future]);
 chk(branch_closure_reason(99999, strtotime($future . ' +1 day 12:00:00')) === 'global', 'closure: global covers any branch');
 q("DELETE FROM branch_closures WHERE reason IN ('CI','global')");
+
+/* ---- 6b. Orar de functionare la nivel de filiala (plic peste orarele serviciilor) ---- */
+// branch_hours_window cache-uieste pe id-ul filialei => folosim filiale noi pt fiecare config
+$fdow = (int)date('w', $futTs);
+q("DELETE FROM branches WHERE name IN ('CI-bh-none','CI-bh-set')");
+q("INSERT INTO branches (name) VALUES ('CI-bh-none')"); $bNone = (int) insert_id();
+chk(branch_hours_window($bNone) === false, 'bhours: fara orar -> false (mereu deschis)');
+$ohSet = json_encode(['enabled'=>true,'days'=>[(string)$fdow=>['10:00','12:00']]], JSON_UNESCAPED_UNICODE);
+q("INSERT INTO branches (name, open_hours) VALUES ('CI-bh-set', ?)", [$ohSet]); $bSet = (int) insert_id();
+chk(branch_hours_window($bSet, $futTs) === ['10:00','12:00'], 'bhours: interval pt ziua configurata');
+chk(branch_hours_window($bSet, strtotime($future.' +1 day 12:00:00')) === null, 'bhours: zi neconfigurata -> null (inchisa)');
+// service_is_open respecta orarul filialei chiar daca serviciul nu are orar propriu
+$svcBH = ['branch_id'=>$bSet, 'active_hours'=>'', 'paused'=>0];
+chk(service_is_open($svcBH, strtotime($future.' 11:00:00')) === true,  'bhours: serviciu deschis in fereastra filialei');
+chk(service_is_open($svcBH, strtotime($future.' 09:00:00')) === false, 'bhours: serviciu inchis inainte de fereastra filialei');
+// appt_open_window intersecteaza orarul serviciului cu cel al filialei
+$svcAppt = ['branch_id'=>$bSet, 'active_hours'=>json_encode(['enabled'=>true,'days'=>[(string)$fdow=>['08:00','18:00']]])];
+chk(appt_open_window($svcAppt, $future) === ['10:00','12:00'], 'bhours: fereastra programari intersectata cu filiala');
+$svcAppt2 = ['branch_id'=>$bSet, 'active_hours'=>json_encode(['enabled'=>true,'days'=>[(string)$fdow=>['13:00','18:00']]])];
+chk(appt_open_window($svcAppt2, $future) === null, 'bhours: fara suprapunere -> niciun slot');
+q("DELETE FROM branches WHERE name IN ('CI-bh-none','CI-bh-set')");
 
 /* ---- 7. Pauza serviciu (fara cache: deterministic) ---- */
 q("UPDATE services SET paused=1 WHERE id=$svc");
@@ -270,11 +291,14 @@ chk(QR::matrix(str_repeat('x', 400)) === null, 'qr: peste capacitate (v1..10-L) 
 /* ---- 28. Calea de migrare (upgrade DB vechi -> versiunea curenta) ---- */
 // simuleaza o baza mai veche: scoate o coloana recenta si da inapoi schema_version
 q("ALTER TABLE services DROP COLUMN max_per_day");
+q("ALTER TABLE branches DROP COLUMN open_hours");
 set_setting('schema_version', '5');
-run_migrations(); // trebuie sa re-adauge coloana lipsa si sa urce versiunea la zi
+run_migrations(); // trebuie sa re-adauge coloanele lipsa si sa urce versiunea la zi
 $hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
+$hasOh  = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='branches' AND column_name='open_hours'");
 $hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
 chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
+chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
 

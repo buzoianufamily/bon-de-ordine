@@ -25,6 +25,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 
 ### Funcționalități cheie
 - **Servicii** cu prefix + culoare, interval de numere, reset zilnic automat, bilete prioritare, KPI, **program de funcționare** (orar pe zile, cu mesaj „închis" configurabil), **zile închise / sărbători** (per filială sau globale), **pauză temporară** per serviciu (oprește emiterea fără a schimba programul), **formular** la emitere, **programări online**, **traduceri** nume/descriere, **grupuri**, ordonare prin **drag & drop**.
+- **Orar la nivel de filială**: un program săptămânal setat o singură dată pe filială acționează ca „plic" peste toate serviciile ei (bilete și programări) — în afara lui totul e închis, iar un serviciu cu orar propriu mai larg e restrâns automat la intervalul filialei. Lăsat necompletat, filiala e mereu deschisă (comportamentul implicit).
 - **Apelare inteligentă**: prioritate apoi vechime; **escaladare anti‑„înfometare"** (biletele care așteaptă peste un prag configurabil sunt chemate ca prioritare); un operator per ghișeu; recall, transfer la serviciu sau la **alt birou**, no‑show; operatori **atribuiți pe ghișee**.
 - **Real‑time**: SSE cu fallback pe polling; **dashboard live** cu sparkline 7 zile, abandon %, vârf de zi, comparație filiale, prezență operatori și dispozitive online, plus **monitorizare SLA** (servicii/bilete care depășesc ținta de așteptare, acum). Operatorul vede în terminal biletele „⏱ peste timp".
 - **Anunț vocal RO** pe afișaj (Web Speech) + opțional la terminalul operatorului; texte multilingve alternante pe TV (`Text RO | Text EN`).
@@ -128,7 +129,7 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 ---
 
 ## Dezvoltare & teste
-Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR — ~100 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1 — ~65 verificări).
+Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială — ~135 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1 — ~85 verificări).
 
 Rulare locală (cu o bază de test):
 ```bash
