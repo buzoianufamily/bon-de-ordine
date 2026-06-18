@@ -118,7 +118,7 @@
         break; }
       case 'image': {
         el.style.padding='0';
-        el.innerHTML=p.url?`<img src="${esc(p.url)}" style="width:100%;height:100%;object-fit:${p.fit||'cover'}">`:'';
+        el.innerHTML=safeUrl(p.url)?`<img src="${esc(safeUrl(p.url))}" style="width:100%;height:100%;object-fit:${p.fit||'cover'}">`:'';
         break; }
       case 'tickets_grid': {
         el.style.background=p.bg||'transparent';el.style.padding='6px';el.style.display='flex';el.style.flexDirection='column';el.style.gap=Math.max(3,H*.012)+'px';
@@ -148,7 +148,7 @@
         break; }
       case 'iframe': {
         el.style.padding='0';
-        el.innerHTML=p.url?`<iframe src="${esc(p.url)}" style="width:100%;height:100%;border:0" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>`
+        el.innerHTML=safeUrl(p.url)?`<iframe src="${esc(safeUrl(p.url))}" style="width:100%;height:100%;border:0" referrerpolicy="no-referrer" sandbox="allow-scripts allow-popups"></iframe>`
           :'<div style="color:#5b6270;display:flex;align-items:center;justify-content:center;height:100%">Adauga un URL</div>';
         break; }
       case 'ticker': {
@@ -205,6 +205,8 @@
   }
 
   const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  /* accepta doar URL-uri http(s) sau relative (anti javascript:/data: in src de widget) */
+  const safeUrl=u=>{ u=String(u||'').trim(); return (/^https?:\/\//i.test(u)||/^\//.test(u))?u:''; };
 
   /* anunt general (banner 📢 in josul ecranului) — apare/dispare live odata cu setarea */
   function renderNotice(state){
@@ -231,7 +233,8 @@
   function startSSE(){ try{ const es=new EventSource(QMS.base()+'/api/sse?branch='+cfg.branch);
     es.onmessage=e=>{try{render(JSON.parse(e.data));}catch(_){}}; es.onerror=()=>{es.close();startPolling();}; }catch(e){startPolling();} }
   let pollTimer=null; function startPolling(){ if(pollTimer)return;
-    const tick=async()=>{const s=await QMS.api('api/state?branch='+cfg.branch,null,'GET'); if(s.ok)render(s);}; tick(); pollTimer=setInterval(tick,2000); }
+    let busy=false;
+    const tick=async()=>{ if(busy) return; busy=true; try{ const s=await QMS.api('api/state?branch='+cfg.branch,null,'GET'); if(s.ok)render(s); } finally{ busy=false; } }; tick(); pollTimer=setInterval(tick,2000); }
 
   document.body.addEventListener('click',()=>{ if(window.speechSynthesis)speak(' '); },{once:true});
 

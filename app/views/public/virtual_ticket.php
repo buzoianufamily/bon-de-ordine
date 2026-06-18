@@ -8,8 +8,10 @@ require __DIR__.'/_head.php'; ?>
   <div class="vt-pos" id="vPos" aria-live="polite"></div>
   <div class="muted" id="vEst" style="margin-top:.3rem"></div>
   <div class="muted" id="vCtr" style="margin-top:.6rem;font-weight:700"></div>
+  <button id="vNotify" class="btn btn-ghost" style="display:none;margin-top:1rem"><?= e($L['notify_enable']) ?></button>
+  <div class="muted" id="vStep" style="display:none;margin-top:.6rem;font-size:.85rem"><?= e($L['step_away']) ?></div>
   <?php if (setting('mod_feedback','1')==='1'): ?>
-  <a id="vRate" href="<?= e(url('feedback')) ?>?branch=<?= (int)$t['branch_id'] ?>" class="btn btn-primary" style="display:none;margin-top:1rem">⭐ <?= e($L['rate']) ?></a>
+  <a id="vRate" href="<?= e(url('feedback')) ?>?branch=<?= (int)$t['branch_id'] ?>&amp;lang=<?= e($lang) ?>" class="btn btn-primary" style="display:none;margin-top:1rem">⭐ <?= e($L['rate']) ?></a>
   <?php endif; ?>
   <button id="vCancel" class="btn btn-ghost" style="display:none;margin-top:1rem"><?= e($L['cancel']) ?></button>
   <p class="muted" style="font-size:.78rem;margin-top:1.4rem"><?= e($L['auto']) ?></p>
@@ -29,6 +31,29 @@ const ALERTS = {
 const COLORS = {waiting:'#FFAA00',called:'#17E58F',serving:'#17E58F',served:'#A5A5A5',no_show:'#A5A5A5',cancelled:'#FF3A33',transferred:'#0055FF'};
 const stText = s => T['st_'+s] || s;
 let prevStatus=null, prevPos=null, nearAlerted=false;
+// --- notificari in browser (locale, fara server de push): merg si cu fila in fundal ---
+const NTITLE = <?= jsenc($t['label']) ?>;
+const NURL = <?= jsenc(url('t/'.$token)) ?>;
+const canNotify = ('Notification' in window);
+const notifyBtn = document.getElementById('vNotify');
+function notify(body){
+  if(!canNotify || Notification.permission!=='granted') return;
+  const opts = {body:body, tag:'qms-'+token, renotify:true, data:{url:NURL}};
+  if('serviceWorker' in navigator && navigator.serviceWorker.ready){
+    navigator.serviceWorker.ready.then(function(reg){ try{ reg.showNotification(NTITLE, opts); }catch(e){ try{ new Notification(NTITLE, opts); }catch(e2){} } })
+      .catch(function(){ try{ new Notification(NTITLE, opts); }catch(e){} });
+  } else { try{ new Notification(NTITLE, opts); }catch(e){} }
+}
+function notifyState(){
+  const active = (prevStatus==='waiting' || prevStatus==='called');
+  if(notifyBtn) notifyBtn.style.display = (canNotify && active && Notification.permission==='default') ? 'inline-flex' : 'none';
+  const step = document.getElementById('vStep');
+  if(step) step.style.display = (canNotify && prevStatus==='waiting' && Notification.permission==='granted') ? 'block' : 'none';
+}
+if(notifyBtn){ notifyBtn.addEventListener('click', function(){
+  if(!canNotify) return;
+  Notification.requestPermission().then(function(){ if(navigator.vibrate) navigator.vibrate(30); notifyState(); });
+}); }
 async function tick(){
   const r = await QMS.api('api/virtual?token='+encodeURIComponent(token), null, 'GET');
   if(!r.ok) return;
@@ -45,20 +70,23 @@ async function tick(){
   if(t.status==='waiting' && t.wait_est>0){ var mn=Math.round(t.wait_est/60); estEl.textContent=T.est_label+' '+(mn<1?T.est_under1:T.est_min.replace('{m}',mn)); }
   else estEl.textContent='';
   document.getElementById('vCtr').textContent = t.counter ? T.goto.replace('{c}', t.counter) : '';
-  // alerta (vibratie) o singura data la trecerea in "apelat", cu intarzierea configurata
+  // alerta (vibratie + notificare) o singura data la trecerea in "apelat", cu intarzierea configurata
   if(t.status==='called' && prevStatus!=='called'){
-    setTimeout(function(){ if(navigator.vibrate) navigator.vibrate([200,100,200]); }, Math.max(0,ALERTS.delay)*1000);
+    var calledBody = (LANG==='ro' && ALERTS.called) ? ALERTS.called : T.notify_your_turn;
+    setTimeout(function(){ if(navigator.vibrate) navigator.vibrate([200,100,200]); notify(calledBody); }, Math.max(0,ALERTS.delay)*1000);
   }
-  // alerta "aproape la rand": cand pozitia scade sub prag (o singura data), vibreaza + evidentiaza
+  // alerta "aproape la rand": cand pozitia scade sub prag (o singura data), vibreaza + notifica + evidentiaza
   if(t.status==='waiting' && ALERTS.nearTurn>0 && t.position>0 && t.position<=ALERTS.nearTurn && !nearAlerted){
     nearAlerted=true;
     if(navigator.vibrate) navigator.vibrate([120,80,120]);
+    notify(T.notify_near);
     var pe=document.getElementById('vPos');
     if(pe){ pe.style.transition='none'; pe.style.color='#FFAA00'; pe.style.fontWeight='800';
       setTimeout(function(){ pe.style.transition='color 1.2s'; pe.style.color=''; }, 200); }
   }
   if(t.status!=='waiting') nearAlerted=false;   // reset daca iese din asteptare (ex: transfer)
   prevStatus=t.status; prevPos=t.position;
+  notifyState();
 }
 tick(); setInterval(tick, 3000);
 document.getElementById('vCancel').addEventListener('click', async function(){

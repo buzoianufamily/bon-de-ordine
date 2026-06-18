@@ -32,7 +32,7 @@ chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === (defined('AP
 chk((int)val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro' AND role='admin'") === 1, 'install: default admin');
 foreach (['users','tickets','feedback','counter_sessions','password_resets','branch_closures'] as $t)
     chk((int)val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?", [$t]) === 1, "install: table $t exists");
-foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id']] as $c)
+foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id'],['branches','open_hours']] as $c)
     chk((int)val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?", $c) === 1, "install: column {$c[0]}.{$c[1]}");
 
 /* ---- 2. Autentificare + parola ---- */
@@ -77,6 +77,30 @@ q("INSERT INTO branch_closures (branch_id, closed_date, reason) VALUES (NULL, DA
 chk(branch_closure_reason(99999, strtotime($future . ' +1 day 12:00:00')) === 'global', 'closure: global covers any branch');
 q("DELETE FROM branch_closures WHERE reason IN ('CI','global')");
 
+/* ---- 6b. Orar de functionare la nivel de filiala (plic peste orarele serviciilor) ---- */
+// branch_hours_window cache-uieste pe id-ul filialei => folosim filiale noi pt fiecare config
+$fdow = (int)date('w', $futTs);
+q("DELETE FROM branches WHERE name IN ('CI-bh-none','CI-bh-set')");
+q("INSERT INTO branches (name) VALUES ('CI-bh-none')"); $bNone = (int) insert_id();
+chk(branch_hours_window($bNone) === false, 'bhours: fara orar -> false (mereu deschis)');
+$ohSet = json_encode(['enabled'=>true,'days'=>[(string)$fdow=>['10:00','12:00']]], JSON_UNESCAPED_UNICODE);
+q("INSERT INTO branches (name, open_hours) VALUES ('CI-bh-set', ?)", [$ohSet]); $bSet = (int) insert_id();
+chk(branch_hours_window($bSet, $futTs) === ['10:00','12:00'], 'bhours: interval pt ziua configurata');
+chk(branch_hours_window($bSet, strtotime($future.' +1 day 12:00:00')) === null, 'bhours: zi neconfigurata -> null (inchisa)');
+// service_is_open respecta orarul filialei chiar daca serviciul nu are orar propriu
+$svcBH = ['branch_id'=>$bSet, 'active_hours'=>'', 'paused'=>0];
+chk(service_is_open($svcBH, strtotime($future.' 11:00:00')) === true,  'bhours: serviciu deschis in fereastra filialei');
+chk(service_is_open($svcBH, strtotime($future.' 09:00:00')) === false, 'bhours: serviciu inchis inainte de fereastra filialei');
+// appt_open_window intersecteaza orarul serviciului cu cel al filialei
+$svcAppt = ['branch_id'=>$bSet, 'active_hours'=>json_encode(['enabled'=>true,'days'=>[(string)$fdow=>['08:00','18:00']]])];
+chk(appt_open_window($svcAppt, $future) === ['10:00','12:00'], 'bhours: fereastra programari intersectata cu filiala');
+$svcAppt2 = ['branch_id'=>$bSet, 'active_hours'=>json_encode(['enabled'=>true,'days'=>[(string)$fdow=>['13:00','18:00']]])];
+chk(appt_open_window($svcAppt2, $future) === null, 'bhours: fara suprapunere -> niciun slot');
+// service_next_open: urmatorul moment deschis, plecand dintr-o ora inchisa
+chk(service_next_open($svcBH, strtotime($future.' 09:00:00')) === strtotime($future.' 10:00:00'), 'next_open: inainte de fereastra -> ora de deschidere');
+chk(service_next_open(['branch_id'=>$bSet,'active_hours'=>'','paused'=>1]) === null, 'next_open: serviciu in pauza -> null');
+q("DELETE FROM branches WHERE name IN ('CI-bh-none','CI-bh-set')");
+
 /* ---- 7. Pauza serviciu (fara cache: deterministic) ---- */
 q("UPDATE services SET paused=1 WHERE id=$svc");
 $pb = false; try { issue_ticket($svc, false, 'paper'); } catch (Throwable $e) { $pb = str_contains($e->getMessage(),'oprit'); }
@@ -89,6 +113,9 @@ $svcRow = one("SELECT * FROM services WHERE id=$svc"); $day = date('Y-m-d', strt
 $slots = appt_slots($svcRow, $day); chk(count($slots) > 0, 'appt: slots generated');
 $appt = appt_book($svc, $slots[0]['start'], 'Ion', '0712', ''); chk(!empty($appt['id']) && $appt['status'] === 'booked', 'appt: booked');
 $tk = appt_checkin($appt); chk(!empty($tk['id']) && val("SELECT status FROM appointments WHERE id=".(int)$appt['id']) === 'checked_in', 'appt: checkin -> ticket');
+// next_open_day: dintr-o zi din trecut, prima zi cu sloturi e azi+? (serviciul are program zilnic implicit 09-17)
+$nd = appt_next_open_day($svcRow, date('Y-m-d', strtotime('-3 day')));
+chk($nd !== null && $nd > date('Y-m-d', strtotime('-3 day')), 'appt: next_open_day gaseste o zi disponibila');
 
 /* ---- 9. queue_state + estimari ---- */
 $qs = queue_state($br, true);
@@ -120,8 +147,9 @@ $xl = build_stats_xlsx('CI','Toate','2026-01-01','2026-01-31',
     [['d'=>date('Y-m-d'),'c'=>5,'w'=>120]],
     [['name'=>'Casierie','color'=>'#2563eb','kpi_wait_sec'=>600,'c'=>5,'served'=>3,'w'=>120,'sv'=>90,'called_cnt'=>4,'kpi_ok'=>3]],
     [['h'=>9,'c'=>5]], [['code'=>'G1','name'=>'B1','cnt'=>5]], '#2563eb',
-    [['name'=>'Ana','c'=>5,'served'=>3,'w'=>120,'sv'=>90]]);
-chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip');
+    [['name'=>'Ana','c'=>5,'served'=>3,'w'=>120,'sv'=>90]],
+    ['total'=>8,'booked'=>2,'checked_in'=>4,'no_show'=>1,'cancelled'=>1]);
+chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip (cu sectiune programari)');
 
 /* ---- 13. API v1 + denylist ---- */
 chk(in_array('api_key', settings_export_denylist(), true) && in_array('cron_token', settings_export_denylist(), true), 'settings: denylist excludes secrets');
@@ -265,6 +293,101 @@ chk($qm[0][0]===1 && $qm[0][6]===1 && $qm[1][1]===0 && $qm[2][2]===1 && $qm[6][6
 $svg = QR::svg('hello', 200);
 chk(strpos($svg, '<svg') === 0 && strpos($svg, '</svg>') !== false && strpos($svg, '<rect') !== false, 'qr: svg valid cu module');
 chk(QR::matrix(str_repeat('x', 400)) === null, 'qr: peste capacitate (v1..10-L) -> null');
+
+/* ---- 28. Calea de migrare (upgrade DB vechi -> versiunea curenta) ---- */
+// simuleaza o baza mai veche: scoate o coloana recenta si da inapoi schema_version
+q("ALTER TABLE services DROP COLUMN max_per_day");
+q("ALTER TABLE branches DROP COLUMN open_hours");
+set_setting('schema_version', '5');
+run_migrations(); // trebuie sa re-adauge coloanele lipsa si sa urce versiunea la zi
+$hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
+$hasOh  = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='branches' AND column_name='open_hours'");
+$hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
+chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
+chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
+chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
+chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
+
+/* ---- 29. Webhook de test (raporteaza rezultatul) ---- */
+set_setting('webhook_url', '');
+$tw = test_webhook();
+chk($tw['ok'] === false && strpos((string)$tw['error'], 'URL') !== false, 'webhook test: fara URL -> eroare clara');
+set_setting('webhook_url', 'http://127.0.0.1:1/hook');   // port inchis -> conexiune refuzata
+$tw2 = test_webhook();
+chk($tw2['ok'] === false, 'webhook test: endpoint inaccesibil -> ok=false');
+// incercarea de livrare e inregistrata in jurnal
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='ping'") >= 1, 'webhook log: incercarea de test e inregistrata');
+chk((int)val("SELECT ok FROM webhook_log ORDER BY id DESC LIMIT 1") === 0, 'webhook log: livrare esuata -> ok=0');
+set_setting('webhook_url', '');
+
+/* ---- 30. Cron: operatori inactivi -> offline (statistici de prezenta corecte) ---- */
+require __DIR__ . '/../app/cron.php';
+q("INSERT INTO users (name,email,role,active,work_status,last_seen,password_hash) VALUES ('Stale Op','stale@ci.ro','agent',1,'available', NOW() - INTERVAL 30 MINUTE, ?)", [password_hash('x', PASSWORD_DEFAULT)]);
+$sid = (int) insert_id();
+run_cron_jobs();
+chk(val("SELECT work_status FROM users WHERE id=?", [$sid]) === 'offline', 'cron: operator inactiv -> offline');
+chk((int)val("SELECT COUNT(*) FROM user_status_log WHERE user_id=? AND status='offline'", [$sid]) >= 1, 'cron: tranzitia offline e logata');
+q("UPDATE users SET work_status='available', last_seen=NOW() WHERE id=?", [$sid]);  // activ recent
+run_cron_jobs();
+chk(val("SELECT work_status FROM users WHERE id=?", [$sid]) === 'available', 'cron: operator activ recent ramane online');
+
+/* ---- 31. Cron: programari neonorate -> no_show ---- */
+q("INSERT INTO appointments (branch_id,service_id,slot_start,status) VALUES (?,?, NOW() - INTERVAL 200 MINUTE, 'booked')", [$br, $svc]);
+$apPast = (int) insert_id();
+q("INSERT INTO appointments (branch_id,service_id,slot_start,status) VALUES (?,?, NOW() + INTERVAL 60 MINUTE, 'booked')", [$br, $svc]);
+$apFuture = (int) insert_id();
+set_setting('appt_noshow_min', '60');
+set_setting('webhook_url', 'http://127.0.0.1:1/hook');   // configurat -> no_show declanseaza webhook
+run_cron_jobs();
+chk(val("SELECT status FROM appointments WHERE id=?", [$apPast]) === 'no_show', 'cron: programare trecuta neonorata -> no_show');
+chk(val("SELECT status FROM appointments WHERE id=?", [$apFuture]) === 'booked', 'cron: programare viitoare ramane booked');
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='appointment.no_show'") >= 1, 'cron: no_show declanseaza webhook appointment.no_show');
+set_setting('appt_noshow_min', '0'); set_setting('webhook_url', '');
+
+/* ---- 32. Cron: retentie pe jurnalele operationale (audit_log / user_status_log) ---- */
+q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','x', NOW() - INTERVAL 5 MONTH)");
+q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','y', NOW())");
+q("INSERT INTO user_status_log (user_id, status, started_at) VALUES (?, 'available', NOW() - INTERVAL 5 MONTH)", [$sid]);
+set_setting('retention_months', '3');
+run_cron_jobs();
+chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='x'") === 0, 'retentie: audit_log vechi sters');
+chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='y'") === 1, 'retentie: audit_log recent pastrat');
+chk((int)val("SELECT COUNT(*) FROM user_status_log WHERE started_at < NOW() - INTERVAL 4 MONTH") === 0, 'retentie: user_status_log vechi sters');
+set_setting('retention_months', '0');
+
+/* ---- 33. Plafon zilnic serviciu (service_cap_reached) ---- */
+issue_ticket($svc, false, 'web');  // garanteaza >=1 bilet azi pentru $svc
+$nToday = (int) val("SELECT COUNT(*) FROM tickets WHERE service_id=$svc AND DATE(issued_at)=CURDATE()");
+$svcRow = one("SELECT * FROM services WHERE id=$svc");
+$svcRow['max_per_day'] = 0;            chk(service_cap_reached($svcRow) === false, 'cap: max_per_day=0 = nelimitat');
+$svcRow['max_per_day'] = $nToday + 1;  chk(service_cap_reached($svcRow) === false, 'cap: sub plafon -> false');
+$svcRow['max_per_day'] = max(1, $nToday); chk(service_cap_reached($svcRow) === true, 'cap: la/peste plafon -> true');
+
+/* ---- 34. Bara de limbi pe paginile publice ---- */
+set_setting('dispenser_langs', 'ro');
+chk(public_lang_bar('ro', url('feedback')) === '', 'langbar: o singura limba -> gol');
+set_setting('dispenser_langs', 'ro,en,de');
+$bar = public_lang_bar('en', url('feedback').'?branch=1');
+chk(strpos($bar, 'lang=en') !== false && strpos($bar, 'lang=de') !== false, 'langbar: contine limbile configurate');
+chk(strpos($bar, 'aria-current') !== false, 'langbar: limba curenta marcata (a11y)');
+set_setting('dispenser_langs', 'ro');
+
+/* ---- 35. Lista de asteptare programari (waitlist) ---- */
+q("UPDATE services SET appt_enabled=1, appt_capacity=1, appt_slot_min=30 WHERE id=$svc");
+$slotWl = date('Y-m-d H:i:00', strtotime('tomorrow 10:00'));
+$b1 = appt_book($svc, $slotWl, 'Client 1', null, null);
+chk($b1 && $b1['status']==='booked', 'wl: slot ocupat de prima rezervare');
+$full=false; try { appt_book($svc, $slotWl, 'Client 2', null, null); } catch (Throwable $e) { $full=true; }
+chk($full, 'wl: a doua rezervare pe slot plin -> respinsa');
+chk(appt_waitlist_add($svc, $slotWl, 'Client 2', 'c2@ci.ro') === true, 'wl: inscriere pe lista');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE service_id=$svc AND customer_email='c2@ci.ro'")===1, 'wl: o intrare in lista');
+appt_waitlist_add($svc, $slotWl, 'Client 2', 'c2@ci.ro'); // dedupe
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE service_id=$svc AND customer_email='c2@ci.ro'")===1, 'wl: dedupe (nu se dubleaza)');
+chk(appt_waitlist_notify($svc, $slotWl) === null, 'wl: slot plin -> niciun anunt');
+appt_cancel((int)$b1['id']); // elibereaza slotul -> anunta primul de pe lista
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='c2@ci.ro' AND notified_at IS NOT NULL")===1, 'wl: la anulare, primul de pe lista e anuntat');
+$wlFail=false; try { appt_waitlist_add($svc, $slotWl, 'X', 'not-an-email'); } catch (Throwable $e) { $wlFail=true; }
+chk($wlFail, 'wl: email invalid -> respins');
 
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }

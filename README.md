@@ -16,8 +16,8 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Terminal operator** | Selectezi un bilet → meniu de acțiuni (cheamă/recheamă/servire/finalizat/neprezentat/transfer la serviciu sau **alt birou**, **notă pe bilet**); „cheamă următorul" (global sau pe serviciu); scurtături tastatură; status operator; **pauză ghișeu cu mesaj**; **schimbare rapidă operator prin PIN**; statistici proprii live. | `…/counter` |
 | **Concierge** | Recepția vede toată coada, cheamă orice bilet la orice ghișeu, **emite bonuri walk-in** și repune neprezentații la rând. | `…/concierge` |
 | **Afișaj de ghișeu** | Tabletă la birou: codul ghișeului + bonul curent, live (sau mesajul de pauză). | `…/cd/{id}` |
-| **Bilet digital** | Clientul urmărește pe telefon (**multilingv** RO/EN/DE/FR/HU/IT/ES): status, poziție, **timp estimat**, ghișeu, alerte configurabile, **alertă „aproape la rând"**, **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
-| **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
+| **Bilet digital** | Clientul urmărește pe telefon (**multilingv** RO/EN/DE/FR/HU/IT/ES): status, poziție, **timp estimat**, ghișeu, alerte configurabile, **alertă „aproape la rând"**, **notificări în browser** (locale, fără server de push — merg și cu fila în fundal, pe Android prin service worker), **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
+| **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; **pagină de status live** (numărătoare inversă până la programare, butonul de check‑in apare automat când se deschide fereastra, se actualizează singură dacă recepția schimbă starea); în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. | `…/feedback` |
 | **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
 | **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
@@ -25,11 +25,12 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 
 ### Funcționalități cheie
 - **Servicii** cu prefix + culoare, interval de numere, reset zilnic automat, bilete prioritare, KPI, **program de funcționare** (orar pe zile, cu mesaj „închis" configurabil), **zile închise / sărbători** (per filială sau globale), **pauză temporară** per serviciu (oprește emiterea fără a schimba programul), **formular** la emitere, **programări online**, **traduceri** nume/descriere, **grupuri**, ordonare prin **drag & drop**.
+- **Orar la nivel de filială**: un program săptămânal setat o singură dată pe filială acționează ca „plic" peste toate serviciile ei (bilete și programări) — în afara lui totul e închis, iar un serviciu cu orar propriu mai larg e restrâns automat la intervalul filialei. Lăsat necompletat, filiala e mereu deschisă (comportamentul implicit).
 - **Apelare inteligentă**: prioritate apoi vechime; **escaladare anti‑„înfometare"** (biletele care așteaptă peste un prag configurabil sunt chemate ca prioritare); un operator per ghișeu; recall, transfer la serviciu sau la **alt birou**, no‑show; operatori **atribuiți pe ghișee**.
 - **Real‑time**: SSE cu fallback pe polling; **dashboard live** cu sparkline 7 zile, abandon %, vârf de zi, comparație filiale, prezență operatori și dispozitive online, plus **monitorizare SLA** (servicii/bilete care depășesc ținta de așteptare, acum). Operatorul vede în terminal biletele „⏱ peste timp".
 - **Anunț vocal RO** pe afișaj (Web Speech) + opțional la terminalul operatorului; texte multilingve alternante pe TV (`Text RO | Text EN`).
 - **Status operator** (Disponibil/Ocupat/Pauză/Offline) cu prezență live și **istoric (timp pe status)** în Statistici, Excel și **export CSV**. La punerea în pauză a unui ghișeu, biletele direcționate spre el pot fi **eliberate automat** în coada generală (anti‑blocaj, configurabil).
-- **Dispenser multilingv** (RO/EN/DE/FR/HU/IT/ES) cu bară de steaguri; revine la limba implicită după fiecare bon; efecte de atingere; opțional **insigne „👥 câți așteaptă"** live pe fiecare buton.
+- **Dispenser multilingv** (RO/EN/DE/FR/HU/IT/ES) cu bară de steaguri; revine la limba implicită după fiecare bon; efecte de atingere; opțional **insigne „👥 câți așteaptă"** live pe fiecare buton; serviciile închise arată **ora de redeschidere** (calculată din orarul serviciului și al filialei).
 - **Anunț general live** (📢): mesaj ad‑hoc cu expirare, afișat și actualizat **în timp real** (fără reîncărcare) pe dispenser, afișaje TV, afișaje de ghișeu, pagina de status și terminalul operatorului.
 - **Statistici operator live** chiar în terminal (bilete servite azi + timp mediu pe bon).
 - **Module activabile**: bilet digital QR, programări, feedback, concierge — pornite/oprite din Setări.
@@ -128,7 +129,7 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 ---
 
 ## Dezvoltare & teste
-Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR — ~100 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1 — ~65 verificări).
+Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială — ~135 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1, status programare live — ~90 verificări).
 
 Rulare locală (cu o bază de test):
 ```bash

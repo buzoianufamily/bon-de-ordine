@@ -18,14 +18,14 @@ document.addEventListener('click',function(e){
   var t=e.target.closest('[data-view]'); if(!t)return; e.preventDefault();
   var grid=document.querySelector('.cardgrid'); if(!grid)return;
   grid.classList.toggle('aslist',t.getAttribute('data-view')==='list');
-  document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('on',b===t);});
+  document.querySelectorAll('[data-view]').forEach(function(b){var on=b===t;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
 });
 /* comutator grafic/tabel pe panourile de statistici */
 document.addEventListener('click',function(e){
   var b=e.target.closest('.dvtoggle [data-dv]'); if(!b)return;
   var box=b.closest('.dvbox'); if(!box)return;
   var mode=b.getAttribute('data-dv');
-  box.querySelectorAll('.dvtoggle [data-dv]').forEach(function(x){x.classList.toggle('on',x===b);});
+  box.querySelectorAll('.dvtoggle [data-dv]').forEach(function(x){var on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on?'true':'false');});
   var ch=box.querySelector('.dv-chart'), tb=box.querySelector('.dv-table');
   if(ch) ch.classList.toggle('dv-hidden', mode!=='chart');
   if(tb) tb.classList.toggle('dv-hidden', mode!=='table');

@@ -102,7 +102,8 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
           +'<span class="wait-cnt">'+(+w.cnt)+'</span></div>';
       }).join('')||'<div style="color:#6b7280">Nicio coada de asteptare.</div>'; }
   }
-  setInterval(refresh, 5000);
+  var _busy=false;  // anti-suprapunere pe retele lente
+  setInterval(async function(){ if(_busy) return; _busy=true; try{ await refresh(); } finally{ _busy=false; } }, 5000);
 })();
 </script>
 </body></html>

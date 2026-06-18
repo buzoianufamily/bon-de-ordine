@@ -16,9 +16,9 @@ $navGroups = [
 function list_toolbar(string $placeholder = 'Cauta...'): string {
     return '<div class="listhead">'
         . '<div class="search"><span class="si">🔍</span><input type="text" placeholder="'.e($placeholder).'" data-filter=".cardgrid"></div>'
-        . '<div class="viewtoggle">'
-        .   '<a class="on" data-view="grid" title="Grila">▦</a>'
-        .   '<a data-view="list" title="Lista">☰</a>'
+        . '<div class="viewtoggle" role="group" aria-label="Mod afisare">'
+        .   '<a class="on" data-view="grid" role="button" aria-pressed="true" aria-label="Vizualizare grila" title="Grila">▦</a>'
+        .   '<a data-view="list" role="button" aria-pressed="false" aria-label="Vizualizare lista" title="Lista">☰</a>'
         . '</div></div>';
 }
 ?>

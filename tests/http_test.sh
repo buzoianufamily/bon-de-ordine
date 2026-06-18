@@ -4,6 +4,9 @@
 # pagini admin, logout) si verifica codurile/raspunsurile. Iese !=0 daca pica ceva.
 # Config DB din env: BDO_DB_HOST/PORT/NAME/USER/PASS (ca tests/integration.php).
 set -u
+# python3 e folosit pentru a parsa raspunsuri JSON (API v1, sloturi) — fara el, testele ar fi
+# sarite silentios si ar da "green" fals; esueaza explicit daca lipseste.
+command -v python3 >/dev/null 2>&1 || { echo "FATAL: python3 lipseste (necesar pentru asertiile API v1)"; exit 1; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 HOST=127.0.0.1; PORT=${BDO_HTTP_PORT:-8123}
 DBH=${BDO_DB_HOST:-127.0.0.1}; DBP=${BDO_DB_PORT:-3306}
@@ -42,6 +45,15 @@ t "GET / (portal)"         200 "$(code $B/)"
 t "GET /login"             200 "$(code $B/login)"
 t "GET /login/forgot"      200 "$(code $B/login/forgot)"
 t "GET /concierge anon->redirect" 302 "$(code $B/concierge)"
+# feedback multilingv (ca biletul digital)
+tcontains "feedback RO implicit" 'Cum a fost experienta' "$(curl -s "$B/feedback")"
+tcontains "feedback EN (?lang=en)" 'How was your experience' "$(curl -s "$B/feedback?lang=en")"
+# programare publica multilingva
+tcontains "book RO implicit" 'Programare online' "$(curl -s "$B/book")"
+tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
+t "POST /book/{id}/waitlist -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC/waitlist --data-urlencode 'slot_start=2030-01-01 10:00:00' --data-urlencode 'email=wl@ci.ro')"
+# rezervarea publica (slot in trecut -> respinsa cu redirect, dar calea cu rate-limit nu da 500)
+t "POST /book/{id} (slot trecut) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode 'slot_start=2000-01-01 10:00:00' --data-urlencode 'name=CI')"
 # cod QR local (SVG) — inlocuieste serviciul extern qrserver
 tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
 tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"
@@ -50,16 +62,31 @@ tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exem
 ISS="$(curl -s -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"service_id\":$SVC,\"channel\":\"paper\"}")"
 tcontains "POST /api/ticket ok" '"ok":true' "$ISS"
 tcontains "POST /api/ticket has label" '"label"' "$ISS"
+# securitate: fara cheie de dispozitiv valida, emiterea e respinsa (nu se poate inunda coada)
+t "POST /api/ticket fara cheie -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"channel\":\"paper\"}")"
+t "POST /api/ticket cheie gresita -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"device_key\":\"NUEXISTA\",\"service_id\":$SVC}")"
 t "GET /api/state"         200 "$(code "$B/api/state?branch=$BR")"
+# bilet digital pe telefon: pagina de urmarire + notificari locale
+VTOK="$(printf '%s' "$ISS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ticket',{}).get('public_token',''))" 2>/dev/null)"
+if [ -n "$VTOK" ]; then
+  t "GET /t/{token} (bilet digital)" 200 "$(code "$B/t/$VTOK")"
+  tcontains "bilet digital: buton notificare in browser" 'vNotify' "$(curl -s "$B/t/$VTOK")"
+  tcontains "bilet digital EN (?lang=en)" 'Notify me' "$(curl -s "$B/t/$VTOK?lang=en")"
+else { FAIL=$((FAIL+1)); echo "FAIL: public_token lipsa la emitere"; }; fi
+tcontains "sw.js are handler notificationclick" 'notificationclick' "$(curl -s "$B/sw.js")"
 
 # --- login cu CSRF ---
 CSRF="$(curl -s -c "$JAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
 [ -n "$CSRF" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: extract login CSRF"; }
 t "POST /login bad creds -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=GRESIT")"
 t "POST /login ok -> 302"        302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=123456")"
+DASH="$(curl -s -b "$JAR" "$B/admin")"
 t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/admin)"
-tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$(curl -s -b "$JAR" "$B/admin")"
+tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$DASH"
+tcontains "a11y: toggle grafic/tabel are aria-pressed" 'aria-pressed' "$DASH"
+tcontains "a11y: SVG-uri date au role=img" 'role="img"' "$DASH"
 t "GET /admin/statistics"        200 "$(code -b "$JAR" $B/admin/statistics)"
+tcontains "statistici au sectiunea Programari online" 'Programari online' "$(curl -s -b "$JAR" "$B/admin/statistics")"
 t "GET /admin/closures"          200 "$(code -b "$JAR" $B/admin/closures)"
 t "GET /admin/help"              200 "$(code -b "$JAR" $B/admin/help)"
 tcontains "help documenteaza formatele CSV" 'nume,email,rol,parola' "$(curl -s -b "$JAR" "$B/admin/help")"
@@ -78,6 +105,7 @@ tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
 case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((FAIL+1)); echo "FAIL: API inca are backup DB";; *) PASS=$((PASS+1));; esac
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
+tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
 tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
 XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
@@ -95,6 +123,21 @@ tcontains "serviciul importat apare in lista" 'Serviciu Importat CI' "$(curl -s 
 curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Duplicat,#000000'
 ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 [ "$ZZ_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat la re-import (count=$ZZ_COUNT)"; }
+
+# --- reordonare servicii: butoane a11y + endpoint ---
+tcontains "servicii: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/services")"
+tcontains "reorder servicii -> ok" '"ok":true' "$(curl -s -b "$JAR" -X POST $B/admin/services/reorder -H 'Content-Type: application/json' -H "X-CSRF: $ICSRF" -d "{\"ids\":[$SVC]}")"
+
+# --- grupuri: creeaza un grup, apoi verifica butoanele de reordonare a11y ---
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Grup CI" --data-urlencode "color=#64748b" --data-urlencode "sort_order=0"
+tcontains "grupuri: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/groups")"
+
+# --- webhook de test (fara URL configurat -> eroare clara, fara 500) ---
+WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
+tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
+tcontains "test-webhook mesaj despre URL" 'URL' "$WHT"
+tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$(curl -s -b "$JAR" "$B/admin/api")"
+tcontains "export jurnal webhook CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/api/webhook-log-export" | grep -i 'content-type')"
 
 # --- export/import ghisee din CSV (autentificat) ---
 tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/counters/export" | grep -i 'content-type')"
@@ -141,6 +184,8 @@ t "GET /api/v1/state no key -> 401" 401 "$(code "$B/api/v1/state?branch=$BR")"
 ST_API="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/state?branch=$BR")"
 tcontains "GET /api/v1/state with key" '"ok":true' "$ST_API"
 tcontains "GET /api/v1/branches" '"branches"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/branches")"
+tcontains "POST /api/v1/feedback ok" '"ok":true' "$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d '{"rating":5,"comment":"CI test"}' "$B/api/v1/feedback")"
+t "POST /api/v1/feedback rating invalid -> 422" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d '{"rating":9}' "$B/api/v1/feedback")"
 ISS_API="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC}" "$B/api/v1/tickets")"
 tcontains "POST /api/v1/tickets issues" '"label"' "$ISS_API"
 # anuleaza biletul emis prin API
@@ -161,6 +206,18 @@ if [ -n "$SLOT" ]; then
   ATOK="$(printf '%s' "$APPT_API" | python3 -c "import sys,json; print(json.load(sys.stdin).get('appointment',{}).get('public_token',''))" 2>/dev/null)"
   if [ -n "$ATOK" ]; then
     tcontains "GET /api/v1/appointments/{token}" '"status"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
+    # lista programarilor (sincronizare integratori)
+    tcontains "GET /api/v1/appointments (lista)" '"appointments"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F)")"
+    # „Adauga in calendar" — fisier iCalendar (public, fara servicii externe)
+    tcontains "GET a/{token}/ics -> text/calendar" 'text/calendar' "$(curl -s -D - -o /dev/null "$B/a/$ATOK/ics" | grep -i 'content-type')"
+    tcontains "ics contine VEVENT" 'BEGIN:VEVENT' "$(curl -s "$B/a/$ATOK/ics")"
+    # pagina de programare multilingva
+    tcontains "appointment EN (?lang=en)" 'Add to calendar' "$(curl -s "$B/a/$ATOK?lang=en")"
+    # stare programare live: endpoint de polling + script in pagina
+    tcontains "GET /api/appt -> status" '"status"' "$(curl -s "$B/api/appt?token=$ATOK")"
+    tcontains "GET /api/appt -> slot_ts" '"slot_ts"' "$(curl -s "$B/api/appt?token=$ATOK")"
+    t "GET /api/appt token gresit -> 404" 404 "$(code "$B/api/appt?token=inexistent_xyz")"
+    tcontains "pagina programarii face polling live (api/appt)" 'api/appt' "$(curl -s "$B/a/$ATOK")"
     # reprogrameaza in al doilea slot, apoi anuleaza
     [ -n "$SLOT2" ] && tcontains "POST /api/v1/appointments/{token}/reschedule" '"ok":true' "$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"slot_start\":\"$SLOT2\"}" "$B/api/v1/appointments/$ATOK/reschedule")"
     t "DELETE /api/v1/appointments/{token}" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"

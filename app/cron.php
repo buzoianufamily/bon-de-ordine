@@ -15,6 +15,9 @@ function run_cron_jobs(): array {
             $out['cleaned'] = q("DELETE FROM tickets WHERE issued_at < NOW() - INTERVAL $months MONTH LIMIT 1000")->rowCount();
             q("DELETE FROM ticket_sequences WHERE seq_date < CURDATE() - INTERVAL $months MONTH");
             q("DELETE FROM appointments WHERE slot_start < NOW() - INTERVAL $months MONTH AND status <> 'booked'");
+            // jurnale operationale (cresc nelimitat altfel) — aceeasi perioada de retentie
+            q("DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL $months MONTH");
+            q("DELETE FROM user_status_log WHERE started_at < NOW() - INTERVAL $months MONTH");
         } catch (Throwable $e) {}
     }
 
@@ -79,6 +82,34 @@ function run_cron_jobs(): array {
         }
     }
 
+    /* 0d) Operatori inactivi (browser inchis fara logout) -> offline. Nu necesita email. */
+    $offMin = max(2, (int) setting('auto_offline_min', '10'));
+    try {
+        $stale = all("SELECT id FROM users WHERE work_status<>'offline'
+                      AND (last_seen IS NULL OR last_seen < NOW() - INTERVAL $offMin MINUTE)");
+        foreach ($stale as $su) {
+            log_user_status((int)$su['id'], 'offline');   // inchide intervalul de status (statistici corecte)
+            q("UPDATE users SET work_status='offline' WHERE id=?", [(int)$su['id']]);
+        }
+        $out['auto_offline'] = count($stale);
+    } catch (Throwable $e) {}
+
+    /* 0e) Programari neonorate: 'booked' cu slot trecut de mult -> 'no_show'. Nu necesita email. */
+    $apNs = (int) setting('appt_noshow_min', '0');
+    if ($apNs > 0) {
+        try {
+            // notifica integratorii (webhook) pentru fiecare programare neonorata — doar daca e configurat URL
+            if (trim((string) setting('webhook_url', '')) !== '') {
+                foreach (all("SELECT * FROM appointments WHERE status='booked' AND slot_start < NOW() - INTERVAL $apNs MINUTE LIMIT 100") as $a) {
+                    $a['status'] = 'no_show';
+                    fire_webhook('appointment.no_show', webhook_appointment($a));
+                }
+            }
+            $out['appt_no_show'] = q("UPDATE appointments SET status='no_show'
+                WHERE status='booked' AND slot_start < NOW() - INTERVAL $apNs MINUTE")->rowCount();
+        } catch (Throwable $e) {}
+    }
+
     if (!function_exists('mail_enabled') || !mail_enabled()) { $out['note'] = 'Email dezactivat'; return $out; }
 
     /* 1) Remindere pentru programarile din urmatoarele 24h, inca neremindate. */
@@ -98,7 +129,8 @@ function run_cron_jobs(): array {
                   . '<ul><li>Serviciu: <strong>' . e($a['service_name']) . '</strong></li>'
                   . '<li>Data: <strong>' . e($when) . '</strong></li>'
                   . ($loc ? '<li>Locatie: ' . e($loc) . '</li>' : '') . '</ul>'
-                  . '<p>Cand ajungi, deschide linkul de mai jos si apasa <strong>Check-in</strong> — primesti automat bonul de ordine.</p>';
+                  . '<p>Cand ajungi, deschide linkul de mai jos si apasa <strong>Check-in</strong> — primesti automat bonul de ordine.</p>'
+                  . '<p><a href="' . e(url('a/' . $a['public_token'] . '/ics')) . '">📅 Adauga in calendar</a></p>';
             if (send_mail($a['customer_email'], 'Reminder programare — ' . $a['service_name'],
                     mail_template('Reminder programare', $body, 'Vezi programarea', url('a/' . $a['public_token'])))) {
                 q("UPDATE appointments SET reminded_at=NOW() WHERE id=?", [$a['id']]);

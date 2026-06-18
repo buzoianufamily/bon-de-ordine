@@ -19,11 +19,11 @@
   </form>
 
   <div class="card pad" style="flex:1">
-    <p class="muted" style="margin-top:0;font-size:.82rem">Trage de ⠿ ca să rearanjezi ordinea grupurilor (în interiorul fiecărei filiale).</p>
+    <p class="muted" style="margin-top:0;font-size:.82rem">Trage de ⠿ sau folosește ▲▼ ca să rearanjezi ordinea grupurilor (în interiorul fiecărei filiale).</p>
     <table><thead><tr><th></th><th>Grup</th><th>Filiala</th><th>Servicii</th><th>Ordine</th><th></th></tr></thead><tbody id="grpRows">
     <?php foreach($rows as $g): ?>
       <tr data-id="<?= (int)$g['id'] ?>">
-        <td style="width:1%;cursor:grab;color:var(--muted)" class="grip" title="Trage pentru a rearanja">⠿</td>
+        <td style="width:1%;white-space:nowrap;color:var(--muted)"><button type="button" class="mvbtn" data-mv="up" title="Mută mai sus" aria-label="Mută grupul mai sus" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;padding:0 .12rem">▲</button><button type="button" class="mvbtn" data-mv="down" title="Mută mai jos" aria-label="Mută grupul mai jos" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;padding:0 .12rem">▼</button> <span class="grip" title="Trage pentru a rearanja" style="cursor:grab">⠿</span></td>
         <td><span class="tag" style="background:<?= e($g['color']) ?>;width:18px;height:18px"></span> <strong><?= e($g['name']) ?></strong></td>
         <td class="muted"><?= e($g['branch_name']) ?></td>
         <td><?= (int)$g['svc'] ?></td>
@@ -49,6 +49,21 @@ function gEdit(g){
 window.addEventListener('load', function(){
   var tb = document.getElementById('grpRows'); if(!tb) return;
   var dragEl = null;
+  function saveOrder(){
+    var ids = Array.prototype.map.call(tb.querySelectorAll('tr[data-id]'), function(r){ return +r.dataset.id; });
+    QMS.api('admin/groups/reorder', {ids: ids}).then(function(r){
+      QMS.toast(r && r.ok ? 'Ordine salvata' : 'Eroare la salvare', r && r.ok ? 'ok' : 'error');
+    }).catch(function(){ QMS.toast('Eroare la salvare','error'); });
+  }
+  /* fallback la tastatura / atingere: butoanele ▲▼ */
+  tb.querySelectorAll('.mvbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      var row = b.closest('tr[data-id]'); if(!row) return;
+      if(b.dataset.mv === 'up'){ var p = row.previousElementSibling; if(!(p && p.hasAttribute('data-id'))) return; p.before(row); }
+      else { var n = row.nextElementSibling; if(!(n && n.hasAttribute('data-id'))) return; n.after(row); }
+      saveOrder(); b.focus();
+    });
+  });
   tb.querySelectorAll('tr[data-id]').forEach(function(row){
     var grip = row.querySelector('.grip'); if(!grip) return;
     grip.addEventListener('mousedown', function(){ row.draggable = true; });
@@ -58,10 +73,7 @@ window.addEventListener('load', function(){
     row.addEventListener('dragend', function(){
       row.classList.remove('dragging'); row.draggable = false;
       if(!dragEl) return; dragEl = null;
-      var ids = Array.prototype.map.call(tb.querySelectorAll('tr[data-id]'), function(r){ return +r.dataset.id; });
-      QMS.api('admin/groups/reorder', {ids: ids}).then(function(r){
-        QMS.toast(r && r.ok ? 'Ordine salvata' : 'Eroare la salvare', r && r.ok ? 'ok' : 'error');
-      }).catch(function(){ QMS.toast('Eroare la salvare','error'); });
+      saveOrder();
     });
   });
   tb.addEventListener('dragover', function(e){

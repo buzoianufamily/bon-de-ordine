@@ -5,7 +5,7 @@ $qs = fn($extra)=>e(url('admin/statistics').'?'.http_build_query(array_merge(['f
 // buton mic de download CSV pentru un set de date
 $dlcsv = fn($ds)=>'<a class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem" href="'.$qs(['export'=>'csv','dataset'=>$ds]).'">⬇ CSV</a>';
 // comutator grafic/tabel pentru un panou (ca la Moviik)
-$dvtoggle = '<span class="dvtoggle"><button type="button" class="on" data-dv="chart">📊 Grafic</button><button type="button" data-dv="table">▦ Tabel</button></span>';
+$dvtoggle = '<span class="dvtoggle" role="group" aria-label="Mod vizualizare date"><button type="button" class="on" data-dv="chart" aria-pressed="true">📊 Grafic</button><button type="button" data-dv="table" aria-pressed="false">▦ Tabel</button></span>';
 // pregatire date grafice
 $maxDay = 1; foreach($per_day as $r) $maxDay=max($maxDay,(int)$r['c']);
 $hours = array_fill(0,24,0); foreach($per_hour as $r) $hours[(int)$r['h']]=(int)$r['c'];
@@ -241,6 +241,25 @@ $delta = function($cur, $prev, bool $invert=false): string {
     <?php endif; ?>
   <?php endif; ?>
 </div>
+
+<?php $apT=(int)($appt['total']??0); if($apT>0 || setting('mod_booking','1')==='1'):
+  $apCi=(int)($appt['checked_in']??0); $apNs=(int)($appt['no_show']??0); $apCa=(int)($appt['cancelled']??0); $apBk=(int)($appt['booked']??0);
+  $rate=fn($x)=> $apT>0 ? round($x*100/$apT) : 0; ?>
+<div class="card pad" style="margin-top:1.2rem">
+  <h3 style="margin:0 0 .6rem">Programari online</h3>
+  <?php if($apT===0): ?>
+    <p class="muted">Nicio programare in interval.</p>
+  <?php else: ?>
+  <div class="kpis">
+    <div class="card pad kpi"><div class="n"><?= $apT ?></div><div class="l">Total programari</div></div>
+    <div class="card pad kpi"><div class="n" style="color:var(--ok)"><?= $apCi ?></div><div class="l">Check-in (<?= $rate($apCi) ?>%)</div></div>
+    <div class="card pad kpi"><div class="n" style="color:var(--muted)"><?= $apNs ?></div><div class="l">Neprezentate (<?= $rate($apNs) ?>%)</div></div>
+    <div class="card pad kpi"><div class="n" style="color:var(--danger)"><?= $apCa ?></div><div class="l">Anulate (<?= $rate($apCa) ?>%)</div></div>
+    <div class="card pad kpi"><div class="n"><?= $apBk ?></div><div class="l">In asteptare</div></div>
+  </div>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <?php $act=[]; foreach(($op_activity??[]) as $r){ $act[$r['name']][$r['status']]=(int)$r['secs']; } ?>
 <div class="card pad" style="margin-top:1.2rem">

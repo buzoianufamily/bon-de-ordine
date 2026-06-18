@@ -273,5 +273,6 @@
   }
 
   refresh(true);
-  setInterval(()=>refresh(false), 2000);
+  var _busy=false;  // anti-suprapunere: nu porni un refresh nou cat timp altul e in curs (retele lente)
+  setInterval(async function(){ if(_busy) return; _busy=true; try{ await refresh(false); } finally{ _busy=false; } }, 2000);
 })();

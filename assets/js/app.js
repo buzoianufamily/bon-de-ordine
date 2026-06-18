@@ -6,8 +6,14 @@ window.QMS = {
     const opt = { method, headers: { 'X-Requested-With': 'XMLHttpRequest' } };
     if (data) { opt.headers['Content-Type'] = 'application/json'; opt.headers['X-CSRF'] = this.csrf();
       opt.body = JSON.stringify(data); }
-    const r = await fetch(this.base() + '/' + path.replace(/^\//, ''), opt);
-    return r.json();
+    try {
+      const r = await fetch(this.base() + '/' + path.replace(/^\//, ''), opt);
+      const txt = await r.text();
+      try { return JSON.parse(txt); }
+      catch (_) { return { ok: false, error: 'Raspuns invalid de la server (' + r.status + ')' }; }
+    } catch (_) {
+      return { ok: false, error: 'Eroare de retea. Verifica conexiunea.' };
+    }
   },
   toast(msg, type = '') {
     let w = document.querySelector('.toast-wrap');

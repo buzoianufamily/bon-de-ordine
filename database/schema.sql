@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS branches (
   country    VARCHAR(80)  NULL DEFAULT 'Romania',
   address    VARCHAR(255) NULL,
   timezone   VARCHAR(64)  NOT NULL DEFAULT 'Europe/Bucharest',
+  open_hours TEXT         NULL,                         -- orar saptamanal JSON (plic peste orarele serviciilor)
   active     TINYINT(1)   NOT NULL DEFAULT 1,
   created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -32,7 +33,6 @@ CREATE TABLE IF NOT EXISTS services (
   branch_id       INT NOT NULL,
   prefix          VARCHAR(3)   NOT NULL,            -- ex: 'A', 'C'
   name            VARCHAR(120) NOT NULL,
-  abbreviation    VARCHAR(40)  NULL,
   description     VARCHAR(255) NULL,
   color           VARCHAR(20)  NOT NULL DEFAULT '#2563eb',
   status          ENUM('active','inactive') NOT NULL DEFAULT 'active',
@@ -102,7 +102,6 @@ CREATE TABLE IF NOT EXISTS users (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   name          VARCHAR(120) NOT NULL,
   email         VARCHAR(160) NOT NULL UNIQUE,
-  username      VARCHAR(80)  NULL,
   password_hash VARCHAR(255) NOT NULL,
   role          ENUM('admin','manager','agent') NOT NULL DEFAULT 'agent',
   pin           VARCHAR(12)  NULL,
@@ -183,7 +182,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   INDEX idx_tickets_status (branch_id, status),
   INDEX idx_tickets_service_day (service_id, issued_at),
   INDEX idx_tickets_token (public_token),
-  INDEX idx_tickets_called (branch_id, called_at)
+  INDEX idx_tickets_called (branch_id, called_at),
+  INDEX idx_tickets_counter (counter_id, called_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- Sesiuni ghiseu (un operator activ per ghiseu) ----------
@@ -304,4 +304,31 @@ CREATE TABLE IF NOT EXISTS branch_closures (
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_closure (branch_id, closed_date),
   INDEX idx_closure_date (closed_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Jurnal livrari webhook (ultimele incercari, pentru depanare integrari) ----------
+CREATE TABLE IF NOT EXISTS webhook_log (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  event       VARCHAR(40)  NOT NULL,
+  url         VARCHAR(255) NOT NULL,
+  status_code INT NULL,                              -- codul HTTP raspuns (NULL daca n-a conectat)
+  ok          TINYINT(1) NOT NULL DEFAULT 0,
+  error       VARCHAR(255) NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_whlog_time (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------- Lista de asteptare programari (slot plin -> anunt pe email la eliberare) ----------
+CREATE TABLE IF NOT EXISTS appointment_waitlist (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  service_id     INT NOT NULL,
+  branch_id      INT NULL,
+  slot_start     DATETIME NOT NULL,
+  customer_name  VARCHAR(120) NULL,
+  customer_email VARCHAR(160) NOT NULL,
+  customer_phone VARCHAR(32)  NULL,
+  notified_at    DATETIME NULL,                      -- cand a fost anuntat ca s-a eliberat un loc
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_wl_slot (service_id, slot_start, notified_at),
+  CONSTRAINT fk_wl_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -124,6 +124,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'appointments':
             if ($method === 'POST' && $a === null) { admin_appointment_create(); return; }
+            if ($method === 'POST' && $a === 'waitlist-del') { csrf_check(); q('DELETE FROM appointment_waitlist WHERE id=?', [(int)$b]); audit('delete','waitlist',(int)$b); flash('Intrare stearsa din lista de asteptare.'); redirect('admin/appointments'); }
             if ($method === 'POST' && $b === 'checkin') { admin_appointment_action((int)$a, 'checkin'); return; }
             if ($method === 'POST' && $b === 'cancel')  { admin_appointment_action((int)$a, 'cancel'); return; }
             if ($a === 'export') { admin_appointments_export(); return; }
@@ -158,6 +159,9 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'api':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST' && $a === 'test-webhook') { admin_api_test_webhook(); return; }
+            if ($a === 'webhook-log-export') { admin_webhook_log_export(); return; }
+            if ($method === 'POST' && $a === 'clear-webhook-log') { csrf_check(); q('DELETE FROM webhook_log'); audit('clear','webhook_log'); flash('Jurnal webhook golit.'); redirect('admin/api'); }
             if ($method === 'POST') { admin_api_save(); return; }
             admin_api_page(); return;
 
@@ -946,11 +950,28 @@ function admin_api_save(): void {
     set_setting('webhook_url', trim((string)($_POST['webhook_url'] ?? '')));
     set_setting('webhook_secret', trim((string)($_POST['webhook_secret'] ?? '')));
     $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled',
-              'appointment.created','appointment.cancelled','appointment.checked_in','appointment.rescheduled','sla.breach'];
+              'appointment.created','appointment.cancelled','appointment.checked_in','appointment.rescheduled','appointment.no_show','sla.breach'];
     $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
     set_setting('webhook_events', implode(',', $evs));
     audit('update','webhook');
     flash('Setari API salvate.'); redirect('admin/api');
+}
+/** Trimite un webhook de test ('ping') si raporteaza rezultatul (AJAX). */
+function admin_api_test_webhook(): void {
+    csrf_check();
+    audit('test', 'webhook');
+    json_out(test_webhook());
+}
+/** Export CSV al jurnalului de livrari webhook. */
+function admin_webhook_log_export(): void {
+    $rows = all('SELECT created_at, event, ok, status_code, url, error FROM webhook_log ORDER BY id DESC');
+    audit('export', 'webhook_log');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="webhook_log_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['data', 'eveniment', 'ok', 'cod_http', 'url', 'eroare']);
+    foreach ($rows as $r) fputcsv($out, [$r['created_at'], $r['event'], $r['ok'] ? 'da' : 'nu', $r['status_code'], $r['url'], $r['error']]);
+    fclose($out); exit;
 }
 
 /* ----------------------- SETTINGS ----------------------- */
@@ -1002,7 +1023,7 @@ function admin_settings_save(): void {
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size','priority_escalate_min','max_recalls',
              'alert_called','alert_transfer','alert_delay','near_turn_alert','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
-             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min'];
+             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
@@ -1175,9 +1196,22 @@ function admin_closures_import(): void {
 function admin_branch_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
+    // orar de functionare al filialei (open_hours JSON) — acelasi format ca la servicii
+    $oh = '';
+    if (isset($_POST['bsched_enabled'])) {
+        $days = [];
+        foreach ([1,2,3,4,5,6,0] as $d) {
+            if (isset($_POST["bday_{$d}_open"])) {
+                $fr = trim((string)($_POST["bday_{$d}_from"] ?? '')); $tt = trim((string)($_POST["bday_{$d}_to"] ?? ''));
+                if ($fr && $tt) $days[(string)$d] = [$fr, $tt];
+            }
+        }
+        $oh = json_encode(['enabled'=>true,'days'=>$days], JSON_UNESCAPED_UNICODE);
+    }
     $f = ['name'=>trim($_POST['name'] ?? ''), 'city'=>trim($_POST['city'] ?? ''),
           'country'=>trim($_POST['country'] ?? 'Romania'), 'address'=>trim($_POST['address'] ?? ''),
-          'timezone'=>trim($_POST['timezone'] ?? 'Europe/Bucharest'), 'active'=>isset($_POST['active'])?1:0];
+          'timezone'=>trim($_POST['timezone'] ?? 'Europe/Bucharest'), 'open_hours'=>$oh,
+          'active'=>isset($_POST['active'])?1:0];
     if ($f['name'] === '') { flash('Numele filialei este obligatoriu.', 'error'); redirect('admin/branches'); }
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
@@ -1201,8 +1235,8 @@ function admin_branch_duplicate(int $id): void {
         $base = preg_replace('/\s*\(copie( \d+)?\)$/u', '', $src['name']);
         $n = 1; do { $newName = $base.' (copie'.($n>1?' '.$n:'').')'; $n++; }
         while ($n <= 50 && (int)val('SELECT COUNT(*) FROM branches WHERE name=?', [$newName]) > 0);
-        q('INSERT INTO branches (name,city,country,address,timezone,active) VALUES (?,?,?,?,?,?)',
-          [$newName, $src['city'], $src['country'], $src['address'], $src['timezone'], $src['active']]);
+        q('INSERT INTO branches (name,city,country,address,timezone,open_hours,active) VALUES (?,?,?,?,?,?,?)',
+          [$newName, $src['city'], $src['country'], $src['address'], $src['timezone'], $src['open_hours'] ?? null, $src['active']]);
         $newBranch = insert_id();
 
         // 1b) grupuri de servicii (sunt per-filiala) — pastreaza maparea vechi->nou
@@ -1454,6 +1488,13 @@ function admin_statistics(): void {
         fclose($out); exit;
     }
 
+    // statistici programari pe interval (dupa data slotului) — pentru ecran si export
+    $apWhere = 'DATE(slot_start) BETWEEN ? AND ?'; $apArgs = [$from, $to];
+    if ($branch) { $apWhere .= ' AND branch_id = ?'; $apArgs[] = $branch; }
+    $appt = one("SELECT COUNT(*) total, SUM(status='booked') booked, SUM(status='checked_in') checked_in,
+                 SUM(status='no_show') no_show, SUM(status='cancelled') cancelled
+                 FROM appointments WHERE $apWhere", $apArgs) ?: [];
+
     // export Excel (.xlsx) cu grafice native
     if (($_GET['export'] ?? '') === 'xlsx') {
         $brand = (string) setting('brand_name', 'Bon de ordine');
@@ -1470,11 +1511,11 @@ function admin_statistics(): void {
             if (in_array($r['status'], ['available','busy','paused'], true)) $opMap[$r['name']][$r['status']] = (int)$r['secs'];
         }
         $op_rows = array_values($opMap);
-        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows);
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
 }
 
 /**
@@ -1483,7 +1524,7 @@ function admin_statistics(): void {
  */
 function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
                           array $kpi, array $per_day, array $per_service, array $per_hour,
-                          array $per_counter, string $accent, array $op_rows = []): Xlsx {
+                          array $per_counter, string $accent, array $op_rows = [], array $appt = []): Xlsx {
     $mins = fn($s) => round(((float)$s) / 60, 1);
     $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
 
@@ -1503,6 +1544,15 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
     $s->row(['Anulate', $canc]);
     $s->row(['Timp mediu asteptare (min)', ['v' => $mins($kpi['avg_wait'] ?? 0), 's' => Xlsx::S_NUM1]]);
     $s->row(['Timp mediu servire (min)', ['v' => $mins($kpi['avg_service'] ?? 0), 's' => Xlsx::S_NUM1]]);
+    if (!empty($appt) && (int)($appt['total'] ?? 0) > 0) {
+        $s->blank();
+        $s->row(['Programari online', 'Valoare'], Xlsx::S_HEAD);
+        $s->row(['Total programari', (int)$appt['total']]);
+        $s->row(['Check-in', (int)($appt['checked_in'] ?? 0)]);
+        $s->row(['Neprezentate', (int)($appt['no_show'] ?? 0)]);
+        $s->row(['Anulate', (int)($appt['cancelled'] ?? 0)]);
+        $s->row(['In asteptare', (int)($appt['booked'] ?? 0)]);
+    }
     $s->blank();
     $s->row(['Status', 'Bilete'], Xlsx::S_HEAD);
     $r1 = $s->row(['Servite', $served]);
@@ -1664,7 +1714,12 @@ function admin_appointments_list(): void {
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     $services = all('SELECT id,prefix,name,branch_id FROM services WHERE appt_enabled=1 AND status="active" ORDER BY name');
     $date=$f['date']; $branch=$f['branch']; $viewMode=$f['viewMode']; $weekStart=$f['weekStart']; $weekEnd=$f['weekEnd'];
-    view('admin/appointments', compact('rows','date','branch','branches','services','viewMode','weekStart','weekEnd'));
+    // lista de asteptare: intrari viitoare neanuntate
+    $waitlist = all("SELECT w.*, s.name service_name, s.prefix, s.color, b.name branch_name
+                     FROM appointment_waitlist w JOIN services s ON s.id=w.service_id LEFT JOIN branches b ON b.id=w.branch_id
+                     WHERE w.notified_at IS NULL AND w.slot_start >= NOW()" . ($branch ? ' AND w.branch_id='.(int)$branch : '') . "
+                     ORDER BY w.slot_start, w.id LIMIT 100");
+    view('admin/appointments', compact('rows','date','branch','branches','services','viewMode','weekStart','weekEnd','waitlist'));
 }
 /** Export CSV al programarilor filtrate (BOM UTF-8, separator ;). */
 function admin_appointments_export(): void {

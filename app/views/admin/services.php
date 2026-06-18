@@ -18,7 +18,7 @@
 </details>
 <?php endif; ?>
 <?= list_toolbar('Cauta serviciu...') ?>
-<p class="muted" style="font-size:.8rem;margin:-.5rem 0 .8rem">Trage de <b>⠿</b> ca sa rearanjezi ordinea serviciilor (pe dispenser si in liste) — se salveaza automat.</p>
+<p class="muted" style="font-size:.8rem;margin:-.5rem 0 .8rem">Trage de <b>⠿</b> sau folosește <b>▲▼</b> ca sa rearanjezi ordinea serviciilor (pe dispenser si in liste) — se salveaza automat.</p>
 <div class="cardgrid" id="svcGrid">
 <?php foreach($rows as $r):
   $open=null; if(!empty($r['active_hours']) && ($sc=json_decode($r['active_hours'],true)) && !empty($sc['enabled'])) $open=service_is_open($r); ?>
@@ -29,6 +29,10 @@
         <div class="nm"><?= e($r['name']) ?></div>
         <div class="sub muted"><?= e($r['branch_name']) ?> · interval <?= (int)$r['num_from'] ?>–<?= (int)$r['num_to'] ?><?= $r['allow_priority']?' · prioritar':'' ?></div>
       </div>
+      <span class="reorder" style="display:inline-flex;flex-direction:column;line-height:.7;margin-right:.2rem">
+        <button type="button" class="mvbtn" data-mv="up" title="Mută mai sus" aria-label="Mută serviciul mai sus" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;padding:0 .2rem">▲</button>
+        <button type="button" class="mvbtn" data-mv="down" title="Mută mai jos" aria-label="Mută serviciul mai jos" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;padding:0 .2rem">▼</button>
+      </span>
       <span class="grip" title="Trage pentru a rearanja">⠿</span>
     </div>
     <div class="mbody grow"><?= $r['description']? e($r['description']) : '' ?><?php if(!empty($r['paused'])): ?> <span class="pill" style="background:#fef3c7;color:#92400e">⏸ oprit temporar<?= !empty($r['pause_note']) ? ' · '.e($r['pause_note']) : '' ?></span><?php endif; ?></div>
@@ -49,6 +53,21 @@
 window.addEventListener('load', function(){
   var grid = document.getElementById('svcGrid'); if(!grid) return;
   var dragEl = null;
+  function saveOrder(){
+    var ids = Array.prototype.map.call(grid.querySelectorAll('.mcard'), function(c){ return +c.dataset.id; });
+    QMS.api('admin/services/reorder', {ids: ids}).then(function(r){
+      QMS.toast(r && r.ok ? 'Ordine salvata' : 'Eroare la salvare', r && r.ok ? 'ok' : 'error');
+    }).catch(function(){ QMS.toast('Eroare la salvare','error'); });
+  }
+  /* fallback la tastatura / atingere: butoanele ▲▼ (accesibil, fara drag) */
+  grid.querySelectorAll('.mvbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      var card = b.closest('.mcard'); if(!card) return;
+      if(b.dataset.mv === 'up'){ var p = card.previousElementSibling; if(!(p && p.classList.contains('mcard'))) return; p.before(card); }
+      else { var n = card.nextElementSibling; if(!(n && n.classList.contains('mcard'))) return; n.after(card); }
+      saveOrder(); b.focus();
+    });
+  });
   grid.querySelectorAll('.mcard').forEach(function(card){
     var grip = card.querySelector('.grip'); if(!grip) return;
     grip.addEventListener('mousedown', function(){ card.draggable = true; });
@@ -58,10 +77,7 @@ window.addEventListener('load', function(){
     card.addEventListener('dragend', function(){
       card.classList.remove('dragging'); card.draggable = false;
       if(!dragEl) return; dragEl = null;
-      var ids = Array.prototype.map.call(grid.querySelectorAll('.mcard'), function(c){ return +c.dataset.id; });
-      QMS.api('admin/services/reorder', {ids: ids}).then(function(r){
-        QMS.toast(r && r.ok ? 'Ordine salvata' : 'Eroare la salvare', r && r.ok ? 'ok' : 'error');
-      }).catch(function(){ QMS.toast('Eroare la salvare','error'); });
+      saveOrder();
     });
   });
   grid.addEventListener('dragover', function(e){

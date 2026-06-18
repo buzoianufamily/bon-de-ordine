@@ -9,6 +9,11 @@ $badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>
     <div class="crumb"><a href="<?= e(url('admin/branches')) ?>">Filiale</a> › <?= e($branch['name']) ?></div>
     <h1 style="margin:.1rem 0"><?= e($branch['name']) ?></h1>
     <span class="muted"><?= e(trim(($branch['city']?:'').(($branch['city']&&$branch['country'])?', ':'').($branch['country']?:''))) ?: '—' ?></span>
+    <?php $bh = !empty($branch['open_hours']) ? json_decode($branch['open_hours'], true) : null;
+    if (!empty($bh['enabled'])): $dn=[1=>'Lu',2=>'Ma',3=>'Mi',4=>'Jo',5=>'Vi',6=>'Sa',0=>'Du']; $parts=[];
+      foreach($dn as $d=>$ab){ $dv=$bh['days'][$d]??($bh['days'][(string)$d]??null); if(is_array($dv)&&count($dv)>=2) $parts[]=$ab.' '.$dv[0].'–'.$dv[1]; } ?>
+      <span class="muted" style="display:block;font-size:.8rem;margin-top:.15rem">🕒 <?= $parts ? e(implode(' · ', $parts)) : 'inchisa toata saptamana' ?></span>
+    <?php endif; ?>
   </div>
   <a class="btn" href="<?= e(url('admin/branches/'.$bid.'/edit')) ?>">Editeaza filiala</a>
 </div>

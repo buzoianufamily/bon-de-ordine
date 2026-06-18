@@ -141,6 +141,26 @@ function api_v1(array $seg, string $method): void {
         ]]);
     }
 
+    // GET /api/v1/appointments?date=&service_id=&branch= — lista programari (pt sincronizare)
+    if ($res === 'appointments' && $arg === null && $method === 'GET') {
+        if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
+        $date = (string) input('date', date('Y-m-d'));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) $date = date('Y-m-d');
+        $w = 'DATE(a.slot_start) = ?'; $args = [$date];
+        $sid = (int) input('service_id', 0); if ($sid) { $w .= ' AND a.service_id = ?'; $args[] = $sid; }
+        $bid = (int) input('branch', 0);     if ($bid) { $w .= ' AND a.branch_id = ?';  $args[] = $bid; }
+        $rows = all("SELECT a.public_token, a.status, a.slot_start, a.slot_end, a.service_id, a.branch_id,
+                     a.customer_name, a.customer_phone, a.customer_email, s.name service_name
+                     FROM appointments a JOIN services s ON s.id = a.service_id
+                     WHERE $w ORDER BY a.slot_start LIMIT 500", $args);
+        json_out(['ok' => true, 'date' => $date, 'appointments' => array_map(fn($a) => [
+            'public_token' => $a['public_token'], 'status' => $a['status'],
+            'slot_start' => $a['slot_start'], 'slot_end' => $a['slot_end'],
+            'service_id' => (int)$a['service_id'], 'service' => $a['service_name'], 'branch_id' => (int)$a['branch_id'],
+            'name' => $a['customer_name'], 'phone' => $a['customer_phone'], 'email' => $a['customer_email'],
+        ], $rows)]);
+    }
+
     // POST /api/v1/appointments/{token}/checkin — check-in (genereaza bonul)
     if ($res === 'appointments' && $arg !== null && $sub === 'checkin' && $method === 'POST') {
         if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
@@ -186,6 +206,23 @@ function api_v1(array $seg, string $method): void {
             'service' => $a['service_name'], 'slot_start' => $a['slot_start'],
             'status' => $a['status'], 'ticket_label' => $a['ticket_label'],
         ]]);
+    }
+
+    // POST /api/v1/feedback {rating, comment?, branch?, ticket_token?} — trimite o evaluare
+    if ($res === 'feedback' && $method === 'POST') {
+        if (setting('mod_feedback', '1') !== '1') json_out(['ok' => false, 'error' => 'Modulul de feedback este dezactivat'], 404);
+        $rating = (int) input('rating', 0);
+        if ($rating < 1 || $rating > 5) json_out(['ok' => false, 'error' => 'rating trebuie sa fie intre 1 si 5'], 422);
+        $comment = trim((string) input('comment', ''));
+        $ticketId = null; $branchId = ((int) input('branch', 0)) ?: null;
+        $tok = trim((string) input('ticket_token', ''));
+        if ($tok !== '') {
+            $t = one('SELECT id, branch_id FROM tickets WHERE public_token = ?', [$tok]);
+            if ($t) { $ticketId = (int) $t['id']; $branchId = (int) $t['branch_id']; }
+        }
+        q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (?,?,?,?)',
+          [$ticketId, $branchId, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
+        json_out(['ok' => true, 'id' => insert_id()]);
     }
 
     // GET /api/v1/stats?from&to&branch — rezumat KPI

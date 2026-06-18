@@ -14,7 +14,7 @@
 (function(){
   var branch = <?= (int)$counter['branch_id'] ?>, counterId = <?= (int)$counter['id'] ?>;
   var elNum = document.getElementById('cdNum'), elHint = document.getElementById('cdHint');
-  var lastLabel = null;
+  var lastLabel = null, firstPaint = true;
   function ding(){ try{ var ac=new(window.AudioContext||window.webkitAudioContext)(); var o=ac.createOscillator(),g=ac.createGain();
     o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.setValueAtTime(.0001,ac.currentTime);
     g.gain.exponentialRampToValueAtTime(.25,ac.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.5);o.start();o.stop(ac.currentTime+.5);}catch(e){} }
@@ -27,6 +27,7 @@
       nb.style.display = nt ? '' : 'none';
       var want = nt ? ('📢 ' + nt) : '';
       if(nb.textContent !== want) nb.textContent = want; }
+    var first = firstPaint; firstPaint = false;   // nu sunam la prima afisare (bonul deja curent la deschidere)
     var c = (state.counters||[]).find(function(x){ return +x.id === counterId; });
     if(c && c.status === 'paused'){
       elNum.textContent = '⏸';
@@ -37,14 +38,15 @@
     var label = c && c.current_label ? c.current_label : null;
     elNum.textContent = label || '—';
     elHint.textContent = label ? 'Va rugam prezentati-va la ghiseu' : 'Asteptam urmatorul bon…';
-    if(label && label !== lastLabel && lastLabel !== undefined){ if(lastLabel !== null){ flash(); ding(); } }
+    if(label && label !== lastLabel && !first){ flash(); ding(); }   // suna la orice bon nou (inclusiv din inactiv)
     lastLabel = label;
   }
   function startSSE(){ try{ var es=new EventSource(QMS.base()+'/api/sse?branch='+branch);
     es.onmessage=function(e){ try{ render(JSON.parse(e.data)); }catch(_){ } };
     es.onerror=function(){ es.close(); startPolling(); }; }catch(e){ startPolling(); } }
   var pt=null; function startPolling(){ if(pt)return;
-    var tick=function(){ QMS.api('api/state?branch='+branch,null,'GET').then(function(s){ if(s.ok) render(s); }); };
+    var busy=false;
+    var tick=function(){ if(busy) return; busy=true; QMS.api('api/state?branch='+branch,null,'GET').then(function(s){ if(s.ok) render(s); }).finally(function(){ busy=false; }); };
     tick(); pt=setInterval(tick, 2000); }
   if(window.EventSource) startSSE(); else startPolling();
 })();

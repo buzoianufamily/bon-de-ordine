@@ -306,8 +306,63 @@ function fire_webhook(string $event, array $data): void {
             CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 3, CURLOPT_CONNECTTIMEOUT => 2,
         ]);
-        curl_exec($ch); curl_close($ch);
+        curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+        $ok = $cerr === '' && $status >= 200 && $status < 300;
+        log_webhook($event, $url, $cerr === '' ? $status : null, $ok, $cerr !== '' ? $cerr : ($ok ? null : 'HTTP ' . $status));
     } catch (Throwable $e) {}
+}
+
+/** Inregistreaza o incercare de livrare webhook in jurnal (pastreaza ultimele 100). */
+function log_webhook(string $event, string $url, ?int $status, bool $ok, ?string $error): void {
+    try {
+        q("INSERT INTO webhook_log (event, url, status_code, ok, error) VALUES (?,?,?,?,?)",
+          [mb_substr($event, 0, 40), mb_substr($url, 0, 255), $status, $ok ? 1 : 0,
+           $error !== null ? mb_substr($error, 0, 255) : null]);
+        // bound: pastreaza doar ultimele 100 de inregistrari
+        q("DELETE FROM webhook_log WHERE id <= (SELECT x FROM (SELECT MAX(id)-100 AS x FROM webhook_log) t)");
+    } catch (Throwable $e) {}
+}
+
+/**
+ * Trimite un webhook de test ('ping') catre URL-ul configurat si RAPORTEAZA rezultatul
+ * (cod HTTP / eroare), pentru butonul de test din admin. Ignora filtrul de evenimente.
+ * Returneaza ['ok'=>bool, 'status'=>int|null, 'signed'=>bool, 'error'=>string|null].
+ */
+function test_webhook(): array {
+    $url = trim((string) setting('webhook_url', ''));
+    if ($url === '' || !preg_match('#^https?://#i', $url)) {
+        return ['ok' => false, 'error' => 'Configureaza mai intai un URL de webhook (https).'];
+    }
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'Extensia cURL nu este disponibila pe server.'];
+    }
+    $payload = json_encode(['event' => 'ping', 'ts' => time(),
+        'data' => ['message' => 'Test webhook din Bon de ordine', 'ok' => true]], JSON_UNESCAPED_UNICODE);
+    $headers = ['Content-Type: application/json', 'User-Agent: BonDeOrdine-Webhook'];
+    $secret = (string) setting('webhook_secret', '');
+    $signed = $secret !== '';
+    if ($signed) $headers[] = 'X-Signature: sha256=' . hash_hmac('sha256', $payload, $secret);
+    try {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload, CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5, CURLOPT_CONNECTTIMEOUT => 3,
+        ]);
+        curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+        if ($cerr !== '') { log_webhook('ping', $url, null, false, $cerr); return ['ok' => false, 'status' => null, 'signed' => $signed, 'error' => 'Conexiune esuata: ' . $cerr]; }
+        $okStatus = $status >= 200 && $status < 300;
+        log_webhook('ping', $url, $status, $okStatus, $okStatus ? null : ('HTTP ' . $status));
+        return ['ok' => $okStatus, 'status' => $status, 'signed' => $signed,
+                'error' => $okStatus ? null : ('Endpointul a raspuns cu codul ' . $status . '.')];
+    } catch (Throwable $e) {
+        return ['ok' => false, 'status' => null, 'signed' => $signed, 'error' => 'Eroare: ' . $e->getMessage()];
+    }
 }
 
 /**
@@ -322,17 +377,109 @@ function vt_i18n(string $lang): array {
         'goto'=>'Mergeti la: {c}', 'rate'=>'Evalueaza experienta', 'cancel'=>'Renunt la rand',
         'cancel_confirm'=>'Renunti la locul in coada? Biletul va fi anulat.',
         'auto'=>'Pagina se actualizeaza automat. Pastrati-o deschisa.', 'loading'=>'Se incarca…',
+        'notify_enable'=>'🔔 Anunta-ma cu o notificare', 'notify_your_turn'=>'Este randul tau! Prezinta-te la ghiseu.',
+        'notify_near'=>'Te apropii de ghiseu — fii pregatit.', 'step_away'=>'Poti pleca putin — te anuntam cand te apropii.',
     ];
     $tr = [
-        'en'=>['st_waiting'=>'Waiting','st_called'=>"It's your turn!",'st_serving'=>'Now serving','st_served'=>'Done','st_no_show'=>'No-show','st_cancelled'=>'Cancelled','st_transferred'=>'Transferred','ahead'=>'{n} people ahead of you','est_label'=>'Estimated wait:','est_under1'=>'under 1 minute','est_min'=>'~ {m} min','goto'=>'Go to: {c}','rate'=>'Rate your experience','cancel'=>'Leave the queue','cancel_confirm'=>'Give up your place in the queue? The ticket will be cancelled.','auto'=>'This page updates automatically. Keep it open.','loading'=>'Loading…'],
-        'de'=>['st_waiting'=>'Warten','st_called'=>'Sie sind dran!','st_serving'=>'Wird bedient','st_served'=>'Erledigt','st_no_show'=>'Nicht erschienen','st_cancelled'=>'Storniert','st_transferred'=>'Weitergeleitet','ahead'=>'{n} Personen vor Ihnen','est_label'=>'Geschätzte Wartezeit:','est_under1'=>'unter 1 Minute','est_min'=>'~ {m} Min','goto'=>'Gehen Sie zu: {c}','rate'=>'Bewerten Sie Ihre Erfahrung','cancel'=>'Warteschlange verlassen','cancel_confirm'=>'Ihren Platz aufgeben? Das Ticket wird storniert.','auto'=>'Diese Seite wird automatisch aktualisiert. Lassen Sie sie geöffnet.','loading'=>'Laden…'],
-        'fr'=>['st_waiting'=>'En attente','st_called'=>'C\'est votre tour !','st_serving'=>'En cours','st_served'=>'Terminé','st_no_show'=>'Absent','st_cancelled'=>'Annulé','st_transferred'=>'Transféré','ahead'=>'{n} personnes avant vous','est_label'=>'Temps d\'attente estimé :','est_under1'=>'moins d\'une minute','est_min'=>'~ {m} min','goto'=>'Allez au : {c}','rate'=>'Évaluez votre expérience','cancel'=>'Quitter la file','cancel_confirm'=>'Abandonner votre place dans la file ? Le ticket sera annulé.','auto'=>'Cette page se met à jour automatiquement. Gardez-la ouverte.','loading'=>'Chargement…'],
-        'hu'=>['st_waiting'=>'Várakozás','st_called'=>'Ön következik!','st_serving'=>'Kiszolgálás alatt','st_served'=>'Kész','st_no_show'=>'Nem jelent meg','st_cancelled'=>'Törölve','st_transferred'=>'Átirányítva','ahead'=>'{n} ember van Ön előtt','est_label'=>'Becsült várakozás:','est_under1'=>'kevesebb mint 1 perc','est_min'=>'~ {m} perc','goto'=>'Menjen ide: {c}','rate'=>'Értékelje élményét','cancel'=>'Kilépés a sorból','cancel_confirm'=>'Lemond a helyéről a sorban? A jegy törlődik.','auto'=>'Az oldal automatikusan frissül. Hagyja nyitva.','loading'=>'Betöltés…'],
-        'it'=>['st_waiting'=>'In attesa','st_called'=>'È il suo turno!','st_serving'=>'In servizio','st_served'=>'Completato','st_no_show'=>'Assente','st_cancelled'=>'Annullato','st_transferred'=>'Trasferito','ahead'=>'{n} persone prima di lei','est_label'=>'Attesa stimata:','est_under1'=>'meno di 1 minuto','est_min'=>'~ {m} min','goto'=>'Vada allo: {c}','rate'=>'Valuta la tua esperienza','cancel'=>'Lascia la coda','cancel_confirm'=>'Rinunciare al posto in coda? Il biglietto sarà annullato.','auto'=>'Questa pagina si aggiorna automaticamente. Tienila aperta.','loading'=>'Caricamento…'],
-        'es'=>['st_waiting'=>'En espera','st_called'=>'¡Es su turno!','st_serving'=>'En atención','st_served'=>'Finalizado','st_no_show'=>'No presentado','st_cancelled'=>'Cancelado','st_transferred'=>'Transferido','ahead'=>'{n} personas delante de usted','est_label'=>'Espera estimada:','est_under1'=>'menos de 1 minuto','est_min'=>'~ {m} min','goto'=>'Diríjase a: {c}','rate'=>'Valore su experiencia','cancel'=>'Abandonar la cola','cancel_confirm'=>'¿Renunciar a su lugar en la cola? El ticket se cancelará.','auto'=>'Esta página se actualiza automáticamente. Manténgala abierta.','loading'=>'Cargando…'],
+        'en'=>['st_waiting'=>'Waiting','st_called'=>"It's your turn!",'st_serving'=>'Now serving','st_served'=>'Done','st_no_show'=>'No-show','st_cancelled'=>'Cancelled','st_transferred'=>'Transferred','ahead'=>'{n} people ahead of you','est_label'=>'Estimated wait:','est_under1'=>'under 1 minute','est_min'=>'~ {m} min','goto'=>'Go to: {c}','rate'=>'Rate your experience','cancel'=>'Leave the queue','cancel_confirm'=>'Give up your place in the queue? The ticket will be cancelled.','auto'=>'This page updates automatically. Keep it open.','loading'=>'Loading…','notify_enable'=>'🔔 Notify me','notify_your_turn'=>"It's your turn! Please go to the counter.",'notify_near'=>"You're getting close — be ready.",'step_away'=>"You can step away — we'll alert you when you're close."],
+        'de'=>['st_waiting'=>'Warten','st_called'=>'Sie sind dran!','st_serving'=>'Wird bedient','st_served'=>'Erledigt','st_no_show'=>'Nicht erschienen','st_cancelled'=>'Storniert','st_transferred'=>'Weitergeleitet','ahead'=>'{n} Personen vor Ihnen','est_label'=>'Geschätzte Wartezeit:','est_under1'=>'unter 1 Minute','est_min'=>'~ {m} Min','goto'=>'Gehen Sie zu: {c}','rate'=>'Bewerten Sie Ihre Erfahrung','cancel'=>'Warteschlange verlassen','cancel_confirm'=>'Ihren Platz aufgeben? Das Ticket wird storniert.','auto'=>'Diese Seite wird automatisch aktualisiert. Lassen Sie sie geöffnet.','loading'=>'Laden…','notify_enable'=>'🔔 Benachrichtige mich','notify_your_turn'=>'Sie sind dran! Bitte gehen Sie zum Schalter.','notify_near'=>'Sie sind fast dran — seien Sie bereit.','step_away'=>'Sie können kurz weggehen — wir benachrichtigen Sie, wenn es so weit ist.'],
+        'fr'=>['st_waiting'=>'En attente','st_called'=>'C\'est votre tour !','st_serving'=>'En cours','st_served'=>'Terminé','st_no_show'=>'Absent','st_cancelled'=>'Annulé','st_transferred'=>'Transféré','ahead'=>'{n} personnes avant vous','est_label'=>'Temps d\'attente estimé :','est_under1'=>'moins d\'une minute','est_min'=>'~ {m} min','goto'=>'Allez au : {c}','rate'=>'Évaluez votre expérience','cancel'=>'Quitter la file','cancel_confirm'=>'Abandonner votre place dans la file ? Le ticket sera annulé.','auto'=>'Cette page se met à jour automatiquement. Gardez-la ouverte.','loading'=>'Chargement…','notify_enable'=>'🔔 Me prévenir','notify_your_turn'=>'C\'est votre tour ! Présentez-vous au guichet.','notify_near'=>'Vous approchez — soyez prêt.','step_away'=>'Vous pouvez vous éloigner — nous vous préviendrons quand ce sera bientôt.'],
+        'hu'=>['st_waiting'=>'Várakozás','st_called'=>'Ön következik!','st_serving'=>'Kiszolgálás alatt','st_served'=>'Kész','st_no_show'=>'Nem jelent meg','st_cancelled'=>'Törölve','st_transferred'=>'Átirányítva','ahead'=>'{n} ember van Ön előtt','est_label'=>'Becsült várakozás:','est_under1'=>'kevesebb mint 1 perc','est_min'=>'~ {m} perc','goto'=>'Menjen ide: {c}','rate'=>'Értékelje élményét','cancel'=>'Kilépés a sorból','cancel_confirm'=>'Lemond a helyéről a sorban? A jegy törlődik.','auto'=>'Az oldal automatikusan frissül. Hagyja nyitva.','loading'=>'Betöltés…','notify_enable'=>'🔔 Értesítsen','notify_your_turn'=>'Ön következik! Fáradjon a pulthoz.','notify_near'=>'Mindjárt sorra kerül — készüljön.','step_away'=>'Elmehet egy kicsit — szólunk, amikor közeleg.'],
+        'it'=>['st_waiting'=>'In attesa','st_called'=>'È il suo turno!','st_serving'=>'In servizio','st_served'=>'Completato','st_no_show'=>'Assente','st_cancelled'=>'Annullato','st_transferred'=>'Trasferito','ahead'=>'{n} persone prima di lei','est_label'=>'Attesa stimata:','est_under1'=>'meno di 1 minuto','est_min'=>'~ {m} min','goto'=>'Vada allo: {c}','rate'=>'Valuta la tua esperienza','cancel'=>'Lascia la coda','cancel_confirm'=>'Rinunciare al posto in coda? Il biglietto sarà annullato.','auto'=>'Questa pagina si aggiorna automaticamente. Tienila aperta.','loading'=>'Caricamento…','notify_enable'=>'🔔 Avvisami','notify_your_turn'=>'È il suo turno! Si rechi allo sportello.','notify_near'=>'Sta per toccare a lei — si prepari.','step_away'=>'Può allontanarsi — la avvisiamo quando si avvicina.'],
+        'es'=>['st_waiting'=>'En espera','st_called'=>'¡Es su turno!','st_serving'=>'En atención','st_served'=>'Finalizado','st_no_show'=>'No presentado','st_cancelled'=>'Cancelado','st_transferred'=>'Transferido','ahead'=>'{n} personas delante de usted','est_label'=>'Espera estimada:','est_under1'=>'menos de 1 minuto','est_min'=>'~ {m} min','goto'=>'Diríjase a: {c}','rate'=>'Valore su experiencia','cancel'=>'Abandonar la cola','cancel_confirm'=>'¿Renunciar a su lugar en la cola? El ticket se cancelará.','auto'=>'Esta página se actualiza automáticamente. Manténgala abierta.','loading'=>'Cargando…','notify_enable'=>'🔔 Avísame','notify_your_turn'=>'¡Es su turno! Diríjase a la ventanilla.','notify_near'=>'Ya casi es su turno — prepárese.','step_away'=>'Puede alejarse — le avisaremos cuando se acerque.'],
     ];
     $lang = strtolower($lang);
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
+/** Traduceri pentru pagina de feedback (multilingv ca biletul digital). */
+function fb_i18n(string $lang): array {
+    $ro = [
+        'thanks_title'=>'Multumim!', 'thanks_sub'=>'Parerea ta ne ajuta sa imbunatatim serviciile.',
+        'q_title'=>'Cum a fost experienta?', 'q_sub'=>'Acorda o nota de la 1 la 5.',
+        'comment_ph'=>'Comentariu (optional)', 'send'=>'Trimite',
+    ];
+    $tr = [
+        'en'=>['thanks_title'=>'Thank you!','thanks_sub'=>'Your feedback helps us improve our service.','q_title'=>'How was your experience?','q_sub'=>'Give a rating from 1 to 5.','comment_ph'=>'Comment (optional)','send'=>'Send'],
+        'de'=>['thanks_title'=>'Danke!','thanks_sub'=>'Ihr Feedback hilft uns, unseren Service zu verbessern.','q_title'=>'Wie war Ihre Erfahrung?','q_sub'=>'Geben Sie eine Bewertung von 1 bis 5.','comment_ph'=>'Kommentar (optional)','send'=>'Senden'],
+        'fr'=>['thanks_title'=>'Merci !','thanks_sub'=>'Votre avis nous aide à améliorer nos services.','q_title'=>'Comment s\'est passée votre expérience ?','q_sub'=>'Donnez une note de 1 à 5.','comment_ph'=>'Commentaire (facultatif)','send'=>'Envoyer'],
+        'hu'=>['thanks_title'=>'Köszönjük!','thanks_sub'=>'Visszajelzése segít javítani a szolgáltatásunkon.','q_title'=>'Milyen volt az élmény?','q_sub'=>'Adjon 1-től 5-ig értékelést.','comment_ph'=>'Megjegyzés (opcionális)','send'=>'Küldés'],
+        'it'=>['thanks_title'=>'Grazie!','thanks_sub'=>'Il tuo parere ci aiuta a migliorare il servizio.','q_title'=>'Com\'è stata la tua esperienza?','q_sub'=>'Dai un voto da 1 a 5.','comment_ph'=>'Commento (facoltativo)','send'=>'Invia'],
+        'es'=>['thanks_title'=>'¡Gracias!','thanks_sub'=>'Tu opinión nos ayuda a mejorar el servicio.','q_title'=>'¿Cómo fue tu experiencia?','q_sub'=>'Da una valoración de 1 a 5.','comment_ph'=>'Comentario (opcional)','send'=>'Enviar'],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
+/** Traduceri pentru fluxul public de programare (alegere serviciu + slot + formular). */
+function book_i18n(string $lang): array {
+    $ro = [
+        'title'=>'Programare online', 'choose'=>'Alege serviciul pentru care vrei sa te programezi',
+        'none'=>'Momentan nu sunt servicii disponibile pentru programare.',
+        'all_services'=>'← Toate serviciile', 'day'=>'Zi',
+        'closed_day'=>'Inchis in aceasta zi. Alege alta data.',
+        'closed_named'=>'🚫 Inchis in aceasta zi', 'pick_other'=>'Alege alta data.',
+        'next_avail'=>'Prima zi disponibila:',
+        'chosen_time'=>'Ora aleasa:', 'name'=>'Nume', 'phone'=>'Telefon', 'email'=>'Email (optional)',
+        'confirm'=>'Confirma programarea',
+        'full'=>'complet', 'wl_join'=>'Anunta-ma daca se elibereaza un loc', 'wl_for'=>'Lista de asteptare pentru:',
+        'wl_email'=>'Email (te anuntam aici)', 'wl_submit'=>'Adauga-ma pe lista',
+        'days'=>['Dum','Lun','Mar','Mie','Joi','Vin','Sam'],
+    ];
+    $tr = [
+        'en'=>['title'=>'Online booking','choose'=>'Choose the service you want to book','none'=>'No services are currently available for booking.','all_services'=>'← All services','day'=>'Day','closed_day'=>'Closed on this day. Choose another date.','closed_named'=>'🚫 Closed on this day','pick_other'=>'Choose another date.','next_avail'=>'Next available day:','chosen_time'=>'Chosen time:','name'=>'Name','phone'=>'Phone','email'=>'Email (optional)','confirm'=>'Confirm booking','full'=>'full','wl_join'=>'Notify me if a spot frees up','wl_for'=>'Waitlist for:','wl_email'=>'Email (we notify you here)','wl_submit'=>'Add me to the waitlist','days'=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat']],
+        'de'=>['title'=>'Online-Termin','choose'=>'Wählen Sie die gewünschte Dienstleistung','none'=>'Derzeit sind keine Dienste für Termine verfügbar.','all_services'=>'← Alle Dienste','day'=>'Tag','closed_day'=>'An diesem Tag geschlossen. Wählen Sie ein anderes Datum.','closed_named'=>'🚫 An diesem Tag geschlossen','pick_other'=>'Wählen Sie ein anderes Datum.','next_avail'=>'Nächster freier Tag:','chosen_time'=>'Gewählte Zeit:','name'=>'Name','phone'=>'Telefon','email'=>'E-Mail (optional)','confirm'=>'Termin bestätigen','full'=>'belegt','wl_join'=>'Benachrichtigen, wenn ein Platz frei wird','wl_for'=>'Warteliste für:','wl_email'=>'E-Mail (wir benachrichtigen Sie hier)','wl_submit'=>'Zur Warteliste hinzufügen','days'=>['So','Mo','Di','Mi','Do','Fr','Sa']],
+        'fr'=>['title'=>'Rendez-vous en ligne','choose'=>'Choisissez le service souhaité','none'=>'Aucun service disponible pour le moment.','all_services'=>'← Tous les services','day'=>'Jour','closed_day'=>'Fermé ce jour-là. Choisissez une autre date.','closed_named'=>'🚫 Fermé ce jour-là','pick_other'=>'Choisissez une autre date.','next_avail'=>'Premier jour disponible :','chosen_time'=>'Heure choisie :','name'=>'Nom','phone'=>'Téléphone','email'=>'E-mail (facultatif)','confirm'=>'Confirmer le rendez-vous','full'=>'complet','wl_join'=>'Me prévenir si une place se libère','wl_for'=>'Liste d\'attente pour :','wl_email'=>'E-mail (nous vous prévenons ici)','wl_submit'=>'M\'ajouter à la liste','days'=>['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']],
+        'hu'=>['title'=>'Online időpont','choose'=>'Válassza ki a kívánt szolgáltatást','none'=>'Jelenleg nincs foglalható szolgáltatás.','all_services'=>'← Összes szolgáltatás','day'=>'Nap','closed_day'=>'Ezen a napon zárva. Válasszon másik dátumot.','closed_named'=>'🚫 Ezen a napon zárva','pick_other'=>'Válasszon másik dátumot.','next_avail'=>'Következő szabad nap:','chosen_time'=>'Választott időpont:','name'=>'Név','phone'=>'Telefon','email'=>'E-mail (opcionális)','confirm'=>'Időpont megerősítése','full'=>'megtelt','wl_join'=>'Értesítsen, ha felszabadul egy hely','wl_for'=>'Várólista erre:','wl_email'=>'E-mail (ide értesítjük)','wl_submit'=>'Felveszem a listára','days'=>['Vas','Hét','Ked','Sze','Csü','Pén','Szo']],
+        'it'=>['title'=>'Prenotazione online','choose'=>'Scegli il servizio da prenotare','none'=>'Nessun servizio disponibile al momento.','all_services'=>'← Tutti i servizi','day'=>'Giorno','closed_day'=>'Chiuso in questo giorno. Scegli un\'altra data.','closed_named'=>'🚫 Chiuso in questo giorno','pick_other'=>'Scegli un\'altra data.','next_avail'=>'Primo giorno disponibile:','chosen_time'=>'Orario scelto:','name'=>'Nome','phone'=>'Telefono','email'=>'Email (facoltativo)','confirm'=>'Conferma prenotazione','full'=>'completo','wl_join'=>'Avvisami se si libera un posto','wl_for'=>'Lista d\'attesa per:','wl_email'=>'Email (ti avvisiamo qui)','wl_submit'=>'Aggiungimi alla lista','days'=>['Dom','Lun','Mar','Mer','Gio','Ven','Sab']],
+        'es'=>['title'=>'Reserva en línea','choose'=>'Elige el servicio que quieres reservar','none'=>'No hay servicios disponibles por el momento.','all_services'=>'← Todos los servicios','day'=>'Día','closed_day'=>'Cerrado este día. Elige otra fecha.','closed_named'=>'🚫 Cerrado este día','pick_other'=>'Elige otra fecha.','next_avail'=>'Próximo día disponible:','chosen_time'=>'Hora elegida:','name'=>'Nombre','phone'=>'Teléfono','email'=>'Correo (opcional)','confirm'=>'Confirmar la reserva','full'=>'completo','wl_join'=>'Avísame si se libera una plaza','wl_for'=>'Lista de espera para:','wl_email'=>'Correo (te avisamos aquí)','wl_submit'=>'Añadirme a la lista','days'=>['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
+/** Traduceri pentru pagina de status a programarii (a/{token}). */
+function appt_i18n(string $lang): array {
+    $ro = [
+        'st_booked'=>'Confirmata','st_checked_in'=>'Check-in efectuat','st_cancelled'=>'Anulata','st_no_show'=>'Neprezentat',
+        'view_ticket'=>'Vezi biletul →','checkin'=>'Check-in (am ajuns)',
+        'checkin_note'=>'Check-in-ul devine disponibil cu 30 de minute inainte de ora programata.',
+        'cancel'=>'Anuleaza programarea','cancel_confirm'=>'Anulezi programarea? Locul se elibereaza pentru alti clienti.',
+        'add_cal'=>'📅 Adauga in calendar','keep'=>'Pastreaza acest link — il poti redeschide oricand pentru status.',
+        'starts_in'=>'Incepe in',
+    ];
+    $tr = [
+        'en'=>['st_booked'=>'Confirmed','st_checked_in'=>'Checked in','st_cancelled'=>'Cancelled','st_no_show'=>'No-show','view_ticket'=>'View ticket →','checkin'=>'Check in (I have arrived)','checkin_note'=>'Check-in becomes available 30 minutes before your appointment time.','cancel'=>'Cancel appointment','cancel_confirm'=>'Cancel the appointment? The slot is freed for other customers.','add_cal'=>'📅 Add to calendar','keep'=>'Keep this link — you can reopen it anytime for status.','starts_in'=>'Starts in'],
+        'de'=>['st_booked'=>'Bestätigt','st_checked_in'=>'Eingecheckt','st_cancelled'=>'Storniert','st_no_show'=>'Nicht erschienen','view_ticket'=>'Ticket ansehen →','checkin'=>'Check-in (Ich bin da)','checkin_note'=>'Check-in ist 30 Minuten vor Ihrem Termin verfügbar.','cancel'=>'Termin stornieren','cancel_confirm'=>'Termin stornieren? Der Platz wird für andere frei.','add_cal'=>'📅 Zum Kalender hinzufügen','keep'=>'Bewahren Sie diesen Link auf — jederzeit für den Status abrufbar.','starts_in'=>'Beginnt in'],
+        'fr'=>['st_booked'=>'Confirmé','st_checked_in'=>'Enregistré','st_cancelled'=>'Annulé','st_no_show'=>'Absent','view_ticket'=>'Voir le ticket →','checkin'=>'Enregistrement (je suis arrivé)','checkin_note'=>'L\'enregistrement est disponible 30 minutes avant l\'heure du rendez-vous.','cancel'=>'Annuler le rendez-vous','cancel_confirm'=>'Annuler le rendez-vous ? La place est libérée pour d\'autres.','add_cal'=>'📅 Ajouter au calendrier','keep'=>'Conservez ce lien — réouvrable à tout moment pour le statut.','starts_in'=>'Commence dans'],
+        'hu'=>['st_booked'=>'Megerősítve','st_checked_in'=>'Bejelentkezve','st_cancelled'=>'Törölve','st_no_show'=>'Nem jelent meg','view_ticket'=>'Jegy megtekintése →','checkin'=>'Bejelentkezés (megérkeztem)','checkin_note'=>'A bejelentkezés 30 perccel az időpont előtt elérhető.','cancel'=>'Időpont lemondása','cancel_confirm'=>'Lemondja az időpontot? A hely felszabadul másoknak.','add_cal'=>'📅 Naptárhoz adás','keep'=>'Őrizze meg ezt a linket — bármikor megnyitható a státuszért.','starts_in'=>'Kezdés'],
+        'it'=>['st_booked'=>'Confermato','st_checked_in'=>'Check-in fatto','st_cancelled'=>'Annullato','st_no_show'=>'Assente','view_ticket'=>'Vedi biglietto →','checkin'=>'Check-in (sono arrivato)','checkin_note'=>'Il check-in è disponibile 30 minuti prima dell\'orario.','cancel'=>'Annulla prenotazione','cancel_confirm'=>'Annullare la prenotazione? Il posto si libera per altri.','add_cal'=>'📅 Aggiungi al calendario','keep'=>'Conserva questo link — riapribile in qualsiasi momento per lo stato.','starts_in'=>'Inizia tra'],
+        'es'=>['st_booked'=>'Confirmado','st_checked_in'=>'Registrado','st_cancelled'=>'Cancelado','st_no_show'=>'No presentado','view_ticket'=>'Ver ticket →','checkin'=>'Check-in (he llegado)','checkin_note'=>'El check-in está disponible 30 minutos antes de la hora.','cancel'=>'Cancelar la cita','cancel_confirm'=>'¿Cancelar la cita? La plaza se libera para otros.','add_cal'=>'📅 Añadir al calendario','keep'=>'Guarda este enlace — puedes reabrirlo en cualquier momento para el estado.','starts_in'=>'Empieza en'],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
+/**
+ * Bara de limbi (steaguri) pentru paginile publice, pe baza setarii dispenser_langs.
+ * Returneaza '' daca e configurata o singura limba. $base = URL-ul paginii (fara param lang).
+ */
+function public_lang_bar(string $current, string $base): string {
+    $codes = array_values(array_filter(array_map('trim', explode(',', (string) setting('dispenser_langs', 'ro')))));
+    if (!in_array('ro', $codes, true)) array_unshift($codes, 'ro');
+    $meta = disp_lang_meta();
+    $codes = array_values(array_filter($codes, fn($c) => isset($meta[$c])));
+    if (count($codes) < 2) return '';
+    $sep = strpos($base, '?') !== false ? '&' : '?';
+    $h = '<div class="langbar" role="group" aria-label="Limba" style="display:flex;gap:.4rem;justify-content:center;flex-wrap:wrap;margin:.2rem 0 1rem">';
+    foreach ($codes as $c) {
+        $on = $c === $current;
+        $h .= '<a href="' . e($base . $sep . 'lang=' . $c) . '"' . ($on ? ' aria-current="true"' : '')
+            . ' style="text-decoration:none;padding:.2rem .55rem;border-radius:8px;font-size:.85rem;'
+            . ($on ? 'background:var(--accent,#2563eb);color:#fff' : 'opacity:.65') . '">'
+            . $meta[$c][1] . ' ' . e(strtoupper($c)) . '</a>';
+    }
+    return $h . '</div>';
 }
 
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
@@ -350,6 +497,7 @@ function disp_strings(): array {
       'no_services'     => ['en'=>'No services available right now','de'=>'Derzeit keine Dienste verfügbar','fr'=>'Aucun service disponible','hu'=>'Jelenleg nincs elérhető szolgáltatás','it'=>'Nessun servizio disponibile','es'=>'No hay servicios disponibles'],
       'priority_label'  => ['en'=>'★ Priority ticket','de'=>'★ Prioritätsticket','fr'=>'★ Ticket prioritaire','hu'=>'★ Elsőbbségi jegy','it'=>'★ Biglietto prioritario','es'=>'★ Boleto prioritario'],
       'closed_hint'     => ['en'=>'Closed now','de'=>'Jetzt geschlossen','fr'=>'Fermé','hu'=>'Most zárva','it'=>'Ora chiuso','es'=>'Cerrado ahora'],
+      'opens_at'        => ['en'=>'Opens','de'=>'Öffnet','fr'=>'Ouvre','hu'=>'Nyit','it'=>'Apre','es'=>'Abre'],
       'closed_label'    => ['en'=>'🔒 Closed','de'=>'🔒 Geschlossen','fr'=>'🔒 Fermé','hu'=>'🔒 Zárva','it'=>'🔒 Chiuso','es'=>'🔒 Cerrado'],
       'popup_title'     => ['en'=>'Your ticket','de'=>'Ihr Ticket','fr'=>'Votre ticket','hu'=>'Az Ön jegye','it'=>'Il tuo biglietto','es'=>'Su boleto'],
       'ahead_text'      => ['en'=>'{n} people ahead of you','de'=>'{n} Personen vor Ihnen','fr'=>'{n} personnes avant vous','hu'=>'{n} ember van Ön előtt','it'=>'{n} persone prima di te','es'=>'{n} personas antes que usted'],
@@ -458,6 +606,8 @@ function run_migrations(): void {
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?", [$t]) > 0;
     $hasCol = fn(string $t, string $c) => (int) val(
         "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?", [$t,$c]) > 0;
+    $hasIdx = fn(string $t, string $i) => (int) val(
+        "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name=? AND index_name=?", [$t,$i]) > 0;
 
     // ruleaza un DDL ignorand erorile individuale (ex: obiect deja existent)
     $ddl = function(string $sql){ try { db()->exec($sql); } catch (Throwable $e) {} };
@@ -480,6 +630,8 @@ function run_migrations(): void {
         status ENUM('booked','checked_in','cancelled','no_show') NOT NULL DEFAULT 'booked',
         ticket_id BIGINT NULL, public_token VARCHAR(40) NULL, note VARCHAR(255) NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_appt_branch  FOREIGN KEY (branch_id)  REFERENCES branches(id) ON DELETE CASCADE,
+        CONSTRAINT fk_appt_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
         INDEX idx_appt_slot (service_id, slot_start), INDEX idx_appt_token (public_token),
         INDEX idx_appt_day (branch_id, slot_start)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -578,6 +730,28 @@ function run_migrations(): void {
     // v23: plafon zilnic de bonuri per serviciu (0 = nelimitat)
     if (!$hasCol('services','max_per_day')) $ddl("ALTER TABLE services ADD COLUMN max_per_day INT NOT NULL DEFAULT 0");
 
+    // v24: index pentru cautarea bonului curent pe ghiseu (counter_view / etichete curente)
+    if (!$hasIdx('tickets','idx_tickets_counter')) $ddl("ALTER TABLE tickets ADD INDEX idx_tickets_counter (counter_id, called_at)");
+
+    // v25: jurnal livrari webhook (depanare integrari)
+    if (!$hasTable('webhook_log')) $ddl("CREATE TABLE webhook_log (
+        id INT AUTO_INCREMENT PRIMARY KEY, event VARCHAR(40) NOT NULL, url VARCHAR(255) NOT NULL,
+        status_code INT NULL, ok TINYINT(1) NOT NULL DEFAULT 0, error VARCHAR(255) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_whlog_time (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // v26: lista de asteptare programari
+    if (!$hasTable('appointment_waitlist')) $ddl("CREATE TABLE appointment_waitlist (
+        id INT AUTO_INCREMENT PRIMARY KEY, service_id INT NOT NULL, branch_id INT NULL,
+        slot_start DATETIME NOT NULL, customer_name VARCHAR(120) NULL, customer_email VARCHAR(160) NOT NULL,
+        customer_phone VARCHAR(32) NULL, notified_at DATETIME NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_wl_slot (service_id, slot_start, notified_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // v27: orar de functionare la nivel de filiala (JSON, plic peste orarele serviciilor)
+    if (!$hasCol('branches','open_hours')) $ddl("ALTER TABLE branches ADD COLUMN open_hours TEXT NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -590,7 +764,9 @@ function run_migrations(): void {
             && $hasCol('users','totp_secret') && $hasCol('users','totp_enabled') && $hasCol('users','totp_backup')
             && $hasCol('users','allowed_counters') && $hasCol('counters','pause_note')
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
-            && $hasCol('services','pause_note') && $hasCol('services','max_per_day')) {
+            && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
+            && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
+            && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

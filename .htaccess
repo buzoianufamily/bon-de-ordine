@@ -17,8 +17,8 @@ DirectoryIndex index.php
 # Blocheaza accesul direct la foldere sensibile
 RedirectMatch 403 ^/?(app|config|database)(/|$)
 
-# Blocheaza fisiere sensibile
-<FilesMatch "\.(sql|md|log|ini)$">
+# Blocheaza fisiere sensibile (inclusiv tenants.json / .env — manifestul PWA e servit de index.php, nu ca fisier)
+<FilesMatch "\.(sql|md|log|ini|json|env)$">
   Require all denied
 </FilesMatch>
 

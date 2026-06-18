@@ -120,6 +120,15 @@ self.addEventListener('fetch', e => {
     }).catch(() => caches.match(req)));
   }
 });
+// la atingerea notificarii (bilet digital): focus pe pagina deja deschisa, sau o deschide
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(self.clients.matchAll({type:'window', includeUncontrolled:true}).then(cs => {
+    for (const c of cs) { if (c.url.indexOf(url) !== -1 && 'focus' in c) return c.focus(); }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+  }));
+});
 SWJS;
         exit;
     }
@@ -154,10 +163,25 @@ SWJS;
                 'priority' => (int)$t['priority'],
             ]]);
         }
+        if ($action === 'appt') { // stare programare (pagina publica /a/{token}, polling)
+            $a = one('SELECT a.status, a.slot_start, t.public_token AS ticket_token
+                      FROM appointments a LEFT JOIN tickets t ON t.id=a.ticket_id
+                      WHERE a.public_token = ?', [$_GET['token'] ?? '']);
+            if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+            json_out(['ok' => true, 'appt' => [
+                'status' => $a['status'], 'ticket_token' => $a['ticket_token'],
+                'slot_ts' => strtotime($a['slot_start']), 'now_ts' => time(),
+            ]]);
+        }
         if ($action === 'ticket' && $method === 'POST') { // emitere bilet (dispenser)
             $dev = device_by_key((string)input('device_key', ''));
-            $branch_id = $dev['branch_id'] ?? (int)input('branch_id', 1);
+            // fara cheie de dispozitiv valida nu se emit bonuri (altfel oricine putea inunda coada)
+            if (!$dev) json_out(['ok' => false, 'error' => 'Dispozitiv neautorizat'], 403);
             $svc = (int)input('service_id', 0);
+            // un dispozitiv emite doar bonuri pentru serviciile filialei lui (nu poate polua coada altei filiale)
+            if ((int) val('SELECT branch_id FROM services WHERE id=?', [$svc]) !== (int)$dev['branch_id']) {
+                json_out(['ok' => false, 'error' => 'Serviciu indisponibil pe acest dispozitiv.'], 422);
+            }
             $priority = (bool)input('priority', false);
             $channel = (string)input('channel', 'paper');
             $formData = input('form_data', null);
@@ -286,6 +310,11 @@ SWJS;
             }
             if ($method === 'POST') {
                 csrf_check();
+                // acelasi throttling ca la parola: impiedica brute-force pe codul de 6 cifre
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                $fails = 0;
+                try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action IN('login_failed','login_failed_2fa') AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
+                if ($fails >= 10) { unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']); flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login'); }
                 $pu = one('SELECT * FROM users WHERE id=? AND active=1', [$puid]);
                 $code = (string)($_POST['code'] ?? '');
                 if ($pu && !empty($pu['totp_enabled'])) {
@@ -404,11 +433,13 @@ SWJS;
     if ($seg[0] === 'feedback') {
         if (setting('mod_feedback', '1') !== '1') { http_response_code(404); echo 'Modulul de feedback este dezactivat.'; return; }
         $branch = (int)($_GET['branch'] ?? 1);
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
         if ($method === 'POST') {
             // anti-spam: max 3 evaluari / IP / 10 minute
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             if (!rate_limit_ok('fb:' . $ip, 3, 600)) {
-                view('public/feedback', ['done' => true, 'branch' => $branch]);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
                 return;
             }
             $rating  = (int) input('rating', 0);
@@ -416,12 +447,12 @@ SWJS;
             if ($rating >= 1 && $rating <= 5) {
                 q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (NULL, ?, ?, ?)',
                   [$branch ?: null, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
-                view('public/feedback', ['done' => true, 'branch' => $branch]);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
                 return;
             }
             flash('Alege o nota de la 1 la 5.', 'error');
         }
-        view('public/feedback', ['done' => false, 'branch' => $branch]);
+        view('public/feedback', ['done' => false, 'branch' => $branch, 'lang' => $lang]);
         return;
     }
 
@@ -449,45 +480,84 @@ SWJS;
     // ===================== PROGRAMARI (public) =====================
     if ($seg[0] === 'book') {
         if (setting('mod_booking', '1') !== '1') { http_response_code(404); echo 'Modulul de programari este dezactivat.'; return; }
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
         if (!empty($seg[1]) && ctype_digit($seg[1])) {
             $svc = one('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                         WHERE s.id=? AND s.status="active" AND s.appt_enabled=1', [(int)$seg[1]]);
             if (!$svc) { http_response_code(404); echo 'Serviciu indisponibil pentru programari.'; return; }
+            if ($method === 'POST' && ($seg[2] ?? '') === 'waitlist') {
+                $slot = (string)input('slot_start', '');
+                if (!rate_limit_ok('wl:' . ($_SERVER['REMOTE_ADDR'] ?? ''), 6, 600)) { flash('Prea multe cereri. Reincearca mai tarziu.', 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d'))); }
+                try { appt_waitlist_add((int)$svc['id'], $slot, trim((string)input('name','')) ?: null, trim((string)input('email','')), trim((string)input('phone','')) ?: null);
+                      flash('Te-am adaugat pe lista de asteptare. Te anuntam pe email daca se elibereaza un loc.'); }
+                catch (Throwable $ex) { flash($ex->getMessage(), 'error'); }
+                redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).($lang!=='ro'?'&lang='.$lang:''));
+            }
             if ($method === 'POST') {
+                // limiteaza rezervarile pe IP (anti-spam / blocare artificiala a sloturilor)
+                if (!rate_limit_ok('book:' . ($_SERVER['REMOTE_ADDR'] ?? ''), 10, 600)) {
+                    flash('Prea multe cereri. Reincearca mai tarziu.', 'error');
+                    redirect('book/'.$svc['id'].($lang!=='ro'?'?lang='.$lang:''));
+                }
                 $slot = (string)input('slot_start', '');
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }
-                catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d'))); }
-                redirect('a/'.$appt['public_token']);
+                catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).'&lang='.$lang); }
+                redirect('a/'.$appt['public_token'].($lang!=='ro'?'?lang='.$lang:''));
             }
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
             $slots = appt_slots($svc, $date);
             $closed = branch_closure_reason((int)$svc['branch_id'], strtotime($date.' 12:00:00'));
-            view('public/book_slots', compact('svc','date','slots','closed'));
+            $wlOn = function_exists('mail_enabled') && mail_enabled();  // lista de asteptare necesita email
+            $hasFree = false; foreach ($slots as $sl) { if (empty($sl['past']) && empty($sl['full'])) { $hasFree = true; break; } }
+            $nextDay = $hasFree ? null : appt_next_open_day($svc, $date);  // sugereaza prima zi libera
+            view('public/book_slots', compact('svc','date','slots','closed','lang','wlOn','nextDay'));
             return;
         }
         $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                          WHERE s.status="active" AND s.appt_enabled=1 ORDER BY b.name, s.sort_order');
-        view('public/book_services', ['services' => $services]);
+        view('public/book_services', ['services' => $services, 'lang' => $lang]);
         return;
     }
 
     // status programare + check-in:  /a/{token}
     if ($seg[0] === 'a' && !empty($seg[1])) {
-        $appt = one('SELECT a.*, s.name service_name, s.color, b.name branch_name, t.public_token AS ticket_token
+        $appt = one('SELECT a.*, s.name service_name, s.color, b.name branch_name, b.address, b.city, t.public_token AS ticket_token
                      FROM appointments a JOIN services s ON s.id=a.service_id JOIN branches b ON b.id=a.branch_id
                      LEFT JOIN tickets t ON t.id=a.ticket_id WHERE a.public_token=?', [$seg[1]]);
         if (!$appt) { http_response_code(404); echo 'Programare inexistenta.'; return; }
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        $lq = $lang !== 'ro' ? '?lang='.$lang : '';
+        if (($seg[2] ?? '') === 'ics') {   // „Adauga in calendar" — fisier iCalendar, fara servicii externe
+            $start = strtotime($appt['slot_start']);
+            $end   = $appt['slot_end'] ? strtotime($appt['slot_end']) : $start + 900;
+            $dt    = fn($ts) => gmdate('Ymd\THis\Z', $ts);
+            $escI  = fn($s) => preg_replace('/([,;\\\\])/', '\\\\$1', str_replace(["\r\n","\n"], '\\n', (string)$s));
+            $loc   = trim(($appt['branch_name'] ?? '') . ($appt['address'] ? ', '.$appt['address'] : '') . ($appt['city'] ? ', '.$appt['city'] : ''));
+            $brand = setting('brand_name', 'Bon de ordine');
+            $uid   = $appt['public_token'] . '@' . preg_replace('/[^a-z0-9.\-]/i', '', $_SERVER['HTTP_HOST'] ?? 'bondeordine');
+            $ics   = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Bon de ordine//RO\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n"
+                   . "BEGIN:VEVENT\r\nUID:" . $escI($uid) . "\r\nDTSTAMP:" . $dt(time()) . "\r\nDTSTART:" . $dt($start) . "\r\nDTEND:" . $dt($end) . "\r\n"
+                   . "SUMMARY:" . $escI($appt['service_name'] . ' · ' . $brand) . "\r\n"
+                   . ($loc !== '' ? "LOCATION:" . $escI($loc) . "\r\n" : '')
+                   . "DESCRIPTION:" . $escI('Programare ' . $appt['service_name'] . ($appt['customer_name'] ? ' — ' . $appt['customer_name'] : '')) . "\r\n"
+                   . "STATUS:CONFIRMED\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+            header('Content-Type: text/calendar; charset=utf-8');
+            header('Content-Disposition: attachment; filename="programare.ics"');
+            echo $ics; exit;
+        }
         if (($seg[2] ?? '') === 'checkin' && $method === 'POST') {
-            try { $tk = appt_checkin($appt); redirect('t/'.$tk['public_token']); }
-            catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1]); }
+            try { $tk = appt_checkin($appt); redirect('t/'.$tk['public_token'].$lq); }
+            catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('a/'.$seg[1].$lq); }
         }
         if (($seg[2] ?? '') === 'cancel' && $method === 'POST') {
             if (appt_cancel((int)$appt['id'])) flash('Programarea a fost anulată.');
             else flash('Programarea nu mai poate fi anulată.', 'error');
-            redirect('a/'.$seg[1]);
+            redirect('a/'.$seg[1].$lq);
         }
-        view('public/appointment', ['a' => $appt]);
+        view('public/appointment', ['a' => $appt, 'lang' => $lang]);
         return;
     }
 
