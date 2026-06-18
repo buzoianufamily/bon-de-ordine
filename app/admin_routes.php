@@ -124,6 +124,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'appointments':
             if ($method === 'POST' && $a === null) { admin_appointment_create(); return; }
+            if ($method === 'POST' && $a === 'waitlist-del') { csrf_check(); q('DELETE FROM appointment_waitlist WHERE id=?', [(int)$b]); audit('delete','waitlist',(int)$b); flash('Intrare stearsa din lista de asteptare.'); redirect('admin/appointments'); }
             if ($method === 'POST' && $b === 'checkin') { admin_appointment_action((int)$a, 'checkin'); return; }
             if ($method === 'POST' && $b === 'cancel')  { admin_appointment_action((int)$a, 'cancel'); return; }
             if ($a === 'export') { admin_appointments_export(); return; }
@@ -1700,7 +1701,12 @@ function admin_appointments_list(): void {
     $branches = all('SELECT id,name FROM branches ORDER BY name');
     $services = all('SELECT id,prefix,name,branch_id FROM services WHERE appt_enabled=1 AND status="active" ORDER BY name');
     $date=$f['date']; $branch=$f['branch']; $viewMode=$f['viewMode']; $weekStart=$f['weekStart']; $weekEnd=$f['weekEnd'];
-    view('admin/appointments', compact('rows','date','branch','branches','services','viewMode','weekStart','weekEnd'));
+    // lista de asteptare: intrari viitoare neanuntate
+    $waitlist = all("SELECT w.*, s.name service_name, s.prefix, s.color, b.name branch_name
+                     FROM appointment_waitlist w JOIN services s ON s.id=w.service_id LEFT JOIN branches b ON b.id=w.branch_id
+                     WHERE w.notified_at IS NULL AND w.slot_start >= NOW()" . ($branch ? ' AND w.branch_id='.(int)$branch : '') . "
+                     ORDER BY w.slot_start, w.id LIMIT 100");
+    view('admin/appointments', compact('rows','date','branch','branches','services','viewMode','weekStart','weekEnd','waitlist'));
 }
 /** Export CSV al programarilor filtrate (BOM UTF-8, separator ;). */
 function admin_appointments_export(): void {

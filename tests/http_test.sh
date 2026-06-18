@@ -92,6 +92,7 @@ tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
 case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((FAIL+1)); echo "FAIL: API inca are backup DB";; *) PASS=$((PASS+1));; esac
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
+tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
 tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
 XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"

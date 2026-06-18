@@ -113,4 +113,23 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
   </div>
 </div>
 <?php endif; ?>
+
+<div class="card pad" style="margin-top:1.2rem">
+  <h3 style="margin-top:0">Listă de așteptare <span class="muted" style="font-size:.85rem">(<?= count($waitlist ?? []) ?> în așteptare)</span></h3>
+  <?php if(empty($waitlist)): ?>
+    <p class="muted" style="margin:0">Nimeni pe lista de așteptare pentru sloturi viitoare. Clienții se pot înscrie când un slot e plin (necesită email activ).</p>
+  <?php else: ?>
+    <table><thead><tr><th>Slot</th><th>Serviciu</th><th>Client</th><th>Email</th><th></th></tr></thead><tbody>
+    <?php foreach($waitlist as $w): ?>
+      <tr>
+        <td style="white-space:nowrap"><strong><?= e(date('d.m.Y H:i', strtotime($w['slot_start']))) ?></strong></td>
+        <td><span class="tag" style="background:<?= e($w['color']) ?>"><?= e($w['prefix']) ?></span> <?= e($w['service_name']) ?><?= $w['branch_name'] ? ' · <span class="muted">'.e($w['branch_name']).'</span>' : '' ?></td>
+        <td><?= e($w['customer_name'] ?: '—') ?></td>
+        <td class="muted" style="font-size:.85rem"><?= e($w['customer_email']) ?></td>
+        <td style="text-align:right"><form method="post" action="<?= e(url('admin/appointments/waitlist-del/'.$w['id'])) ?>" data-confirm="Stergi aceasta intrare din lista de asteptare?"><?= csrf_field() ?><button class="lnk del" style="background:none;border:none;cursor:pointer;color:var(--danger);font-weight:700">Șterge</button></form></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody></table>
+  <?php endif; ?>
+</div>
 <?php require __DIR__.'/_footer.php'; ?>
