@@ -1453,6 +1453,10 @@ function admin_statistics(): void {
     $fb_service = all("SELECT s.name service_name, s.color, COUNT(*) n, AVG(f.rating) avg
                        FROM feedback f JOIN tickets t ON t.id=f.ticket_id JOIN services s ON s.id=t.service_id
                        WHERE $fbWhere GROUP BY s.id, s.name, s.color ORDER BY n DESC, avg DESC", $fbArgs);
+    // CSAT pe operator (feedback legat de un bon care a fost servit de cineva)
+    $fb_operator = all("SELECT u.name, COUNT(*) n, AVG(f.rating) avg
+                        FROM feedback f JOIN tickets t ON t.id=f.ticket_id JOIN users u ON u.id=t.agent_id
+                        WHERE $fbWhere GROUP BY t.agent_id, u.name ORDER BY n DESC, avg DESC", $fbArgs);
 
     // activitate operatori: timp pe status in interval (clamped la interval)
     $fromDt = $from.' 00:00:00'; $toDt = $to.' 23:59:59';
@@ -1463,7 +1467,7 @@ function admin_statistics(): void {
       GROUP BY u.id, l.status", [$fromDt, $toDt, $toDt, $fromDt]);
 
     // export CSV per set de date (fiecare grafic are buton propriu de download)
-    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity','csat'], true)) {
+    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity','csat','csat_op'], true)) {
         $ds = $_GET['dataset'];
         // activitate operatori pivotata: o linie/operator cu minute pe fiecare status
         $opPivot = [];
@@ -1486,6 +1490,8 @@ function admin_statistics(): void {
                         array_map(fn($n)=>[$n, round($opPivot[$n]['available']/60), round($opPivot[$n]['busy']/60), round($opPivot[$n]['paused']/60), round($opPivot[$n]['offline']/60)], array_keys($opPivot))],
           'csat'    => ['csat_pe_serviciu', ['Serviciu','Raspunsuri','Nota medie'],
                         array_map(fn($r)=>[$r['service_name'],(int)$r['n'],round((float)$r['avg'],2)], $fb_service)],
+          'csat_op' => ['csat_pe_operator', ['Operator','Raspunsuri','Nota medie'],
+                        array_map(fn($r)=>[$r['name'],(int)$r['n'],round((float)$r['avg'],2)], $fb_operator)],
         ];
         [$fname,$head,$data] = $sets[$ds];
         header('Content-Type: text/csv; charset=utf-8');
@@ -1518,11 +1524,11 @@ function admin_statistics(): void {
             if (in_array($r['status'], ['available','busy','paused'], true)) $opMap[$r['name']][$r['status']] = (int)$r['secs'];
         }
         $op_rows = array_values($opMap);
-        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt, $fb_service);
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt, $fb_service, $fb_operator);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','fb_service','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','fb_service','fb_operator','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
 }
 
 /**
@@ -1532,7 +1538,7 @@ function admin_statistics(): void {
 function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
                           array $kpi, array $per_day, array $per_service, array $per_hour,
                           array $per_counter, string $accent, array $op_rows = [], array $appt = [],
-                          array $fb_service = []): Xlsx {
+                          array $fb_service = [], array $fb_operator = []): Xlsx {
     $mins = fn($s) => round(((float)$s) / 60, 1);
     $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
 
@@ -1611,24 +1617,34 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
         'series' => [['name' => 'Total', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'colors' => $cols]],
     ]);
 
-    /* ---- Foaia: CSAT pe serviciu (bare cu nota medie) ---- */
-    if ($fb_service) {
-        $s = $xl->add_sheet('CSAT serviciu');
-        $s->set_col_widths([1 => 24, 2 => 12, 3 => 12]);
-        $s->row([['v' => 'Nota medie pe serviciu', 's' => Xlsx::S_TITLE]]);
-        $hdr = $s->row(['Serviciu', 'Raspunsuri', 'Nota medie'], Xlsx::S_HEAD);
-        $cats = []; $vals = []; $cols = []; $first = $hdr + 1;
-        foreach ($fb_service as $r) {
-            $s->row([$r['service_name'], (int)$r['n'], ['v' => round((float)$r['avg'], 2), 's' => Xlsx::S_NUM1]]);
-            $cats[] = $r['service_name']; $vals[] = round((float)$r['avg'], 2); $cols[] = $r['color'] ?: $accent;
+    /* ---- Foaia: CSAT pe serviciu / operator (bare cu nota medie) ---- */
+    if ($fb_service || $fb_operator) {
+        $s = $xl->add_sheet('CSAT');
+        $s->set_col_widths([1 => 26, 2 => 12, 3 => 12]);
+        if ($fb_service) {
+            $s->row([['v' => 'Nota medie pe serviciu', 's' => Xlsx::S_TITLE]]);
+            $hdr = $s->row(['Serviciu', 'Raspunsuri', 'Nota medie'], Xlsx::S_HEAD);
+            $cats = []; $vals = []; $cols = []; $first = $hdr + 1;
+            foreach ($fb_service as $r) {
+                $s->row([$r['service_name'], (int)$r['n'], ['v' => round((float)$r['avg'], 2), 's' => Xlsx::S_NUM1]]);
+                $cats[] = $r['service_name']; $vals[] = round((float)$r['avg'], 2); $cols[] = $r['color'] ?: $accent;
+            }
+            $last = $s->row_count();
+            $s->chart([
+                'type' => 'bar', 'title' => 'Nota medie pe serviciu (1–5)',
+                'anchor' => ['col' => 5, 'row' => 1, 'col2' => 14, 'row2' => 18],
+                'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+                'series' => [['name' => 'Nota medie', 'name_ref' => '$C$' . $hdr, 'ref' => '$C$' . $first . ':$C$' . $last, 'vals' => $vals, 'colors' => $cols]],
+            ]);
         }
-        $last = $s->row_count();
-        $s->chart([
-            'type' => 'bar', 'title' => 'Nota medie pe serviciu (1–5)',
-            'anchor' => ['col' => 4, 'row' => 1, 'col2' => 13, 'row2' => 21],
-            'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
-            'series' => [['name' => 'Nota medie', 'name_ref' => '$C$' . $hdr, 'ref' => '$C$' . $first . ':$C$' . $last, 'vals' => $vals, 'colors' => $cols]],
-        ]);
+        if ($fb_operator) {
+            $s->blank();
+            $s->row([['v' => 'Nota medie pe operator', 's' => Xlsx::S_TITLE]]);
+            $s->row(['Operator', 'Raspunsuri', 'Nota medie'], Xlsx::S_HEAD);
+            foreach ($fb_operator as $r) {
+                $s->row([$r['name'], (int)$r['n'], ['v' => round((float)$r['avg'], 2), 's' => Xlsx::S_NUM1]]);
+            }
+        }
     }
 
     /* ---- Foaia 4: Pe ora (coloane) ---- */

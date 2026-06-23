@@ -111,12 +111,20 @@ tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
 # feedback public legat de bonul servit (din biletul digital) -> apare in admin cu eticheta bonului
 if [ -n "${VTOK:-}" ]; then
   VLABEL="$(printf '%s' "$ISS" | python3 -c "import sys,json;print(json.load(sys.stdin)['ticket']['label'])" 2>/dev/null)"
+  VID="$(printf '%s' "$ISS" | python3 -c "import sys,json;print(json.load(sys.stdin)['ticket']['id'])" 2>/dev/null)"
+  # serveste bonul (admin la ghiseul CTR) ca sa aiba operator -> activeaza CSAT pe operator
+  ACSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+  curl -s -o /dev/null -b "$JAR" -X POST $B/api/call-specific -H "X-CSRF: $ACSRF" -H 'Content-Type: application/json' -d "{\"ticket_id\":$VID,\"counter_id\":$CTR}"
+  curl -s -o /dev/null -b "$JAR" -X POST $B/api/finish -H "X-CSRF: $ACSRF" -H 'Content-Type: application/json' -d "{\"ticket_id\":$VID}"
   curl -s -o /dev/null -X POST "$B/feedback?t=$VTOK" --data-urlencode 'rating=5' --data-urlencode 'comment=CI feedback legat de bon'
   tcontains "feedback public retine eticheta bonului in admin" "$VLABEL" "$(curl -s -b "$JAR" "$B/admin/feedback")"
   tcontains "pagina feedback poarta tokenul bonului (camp ascuns)" 'name="t"' "$(curl -s "$B/feedback?t=$VTOK&branch=$BR")"
-  # CSAT pe serviciu in statistici (acum ca feedback-ul e legat de bon)
-  tcontains "statistici au sectiunea CSAT pe serviciu" 'Nota medie pe serviciu' "$(curl -s -b "$JAR" "$B/admin/statistics?from=$TODAY&to=$TODAY")"
+  # CSAT pe serviciu + pe operator in statistici (feedback legat de bon servit de un operator)
+  STAT_PAGE="$(curl -s -b "$JAR" "$B/admin/statistics?from=$TODAY&to=$TODAY")"
+  tcontains "statistici au sectiunea CSAT pe serviciu" 'Nota medie pe serviciu' "$STAT_PAGE"
+  tcontains "statistici au sectiunea CSAT pe operator" 'Nota medie pe operator' "$STAT_PAGE"
   tcontains "export CSAT pe serviciu CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=csat&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
+  tcontains "export CSAT pe operator CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=csat_op&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
 fi
 XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
 [ "$XLSX_SIG" = "PK" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: stats xlsx not a zip (got '$XLSX_SIG')"; }

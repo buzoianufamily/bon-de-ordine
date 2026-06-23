@@ -156,8 +156,9 @@ $xl = build_stats_xlsx('CI','Toate','2026-01-01','2026-01-31',
     [['h'=>9,'c'=>5]], [['code'=>'G1','name'=>'B1','cnt'=>5]], '#2563eb',
     [['name'=>'Ana','c'=>5,'served'=>3,'w'=>120,'sv'=>90]],
     ['total'=>8,'booked'=>2,'checked_in'=>4,'no_show'=>1,'cancelled'=>1],
-    [['service_name'=>'Casierie','color'=>'#2563eb','n'=>4,'avg'=>4.5]]);
-chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip (cu sectiuni programari + CSAT)');
+    [['service_name'=>'Casierie','color'=>'#2563eb','n'=>4,'avg'=>4.5]],
+    [['name'=>'Ana','n'=>3,'avg'=>4.7]]);
+chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip (cu sectiuni programari + CSAT serviciu/operator)');
 
 /* ---- 13. API v1 + denylist ---- */
 chk(in_array('api_key', settings_export_denylist(), true) && in_array('cron_token', settings_export_denylist(), true), 'settings: denylist excludes secrets');
