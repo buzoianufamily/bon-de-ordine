@@ -353,14 +353,17 @@ chk(QR::matrix(str_repeat('x', 400)) === null, 'qr: peste capacitate (v1..10-L) 
 // simuleaza o baza mai veche: scoate o coloana recenta si da inapoi schema_version
 q("ALTER TABLE services DROP COLUMN max_per_day");
 q("ALTER TABLE branches DROP COLUMN open_hours");
+q("ALTER TABLE tickets DROP INDEX idx_tickets_svc_status");
 set_setting('schema_version', '5');
-run_migrations(); // trebuie sa re-adauge coloanele lipsa si sa urce versiunea la zi
+run_migrations(); // trebuie sa re-adauge coloanele/indecsii lipsa si sa urce versiunea la zi
 $hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
 $hasOh  = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='branches' AND column_name='open_hours'");
 $hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
+$hasSvcIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_svc_status'");
 chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
 chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
+chk($hasSvcIdx > 0, 'migrare: idx_tickets_svc_status re-adaugat dupa upgrade');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
 
 /* ---- 29. Webhook de test (raporteaza rezultatul) ---- */

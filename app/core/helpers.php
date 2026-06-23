@@ -837,6 +837,10 @@ function run_migrations(): void {
     // v27: orar de functionare la nivel de filiala (JSON, plic peste orarele serviciilor)
     if (!$hasCol('branches','open_hours')) $ddl("ALTER TABLE branches ADD COLUMN open_hours TEXT NULL");
 
+    // v28: index pe (service_id, status) — accelereaza pozitia in coada, numaratoarea pe serviciu
+    // si media de servire (queue_state ruleaza la fiecare tick de afisaj/dispenser)
+    if (!$hasIdx('tickets','idx_tickets_svc_status')) $ddl("ALTER TABLE tickets ADD INDEX idx_tickets_svc_status (service_id, status)");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -851,7 +855,8 @@ function run_migrations(): void {
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
             && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
-            && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')) {
+            && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')
+            && $hasIdx('tickets','idx_tickets_svc_status')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

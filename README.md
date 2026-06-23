@@ -129,7 +129,7 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 ---
 
 ## Dezvoltare & teste
-Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială — ~135 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1, status programare live — ~90 verificări).
+Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială, injecție CSV, indecși — ~165 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1, status programare live, IDOR ghișee — ~108 verificări).
 
 Rulare locală (cu o bază de test):
 ```bash

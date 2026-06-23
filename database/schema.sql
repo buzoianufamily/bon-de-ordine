@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   CONSTRAINT fk_tickets_agent   FOREIGN KEY (agent_id)   REFERENCES users(id)     ON DELETE SET NULL,
   INDEX idx_tickets_status (branch_id, status),
   INDEX idx_tickets_service_day (service_id, issued_at),
+  INDEX idx_tickets_svc_status (service_id, status),
   INDEX idx_tickets_token (public_token),
   INDEX idx_tickets_called (branch_id, called_at),
   INDEX idx_tickets_counter (counter_id, called_at)
