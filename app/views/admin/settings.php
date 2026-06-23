@@ -155,7 +155,7 @@
       </div>
       <p class="muted" style="font-size:.78rem;margin-top:.3rem">Alerta se trimite cel mult o data la „pauza" minute, doar daca numarul de bilete peste tinta atinge pragul. Tinta per serviciu = „timp asteptare" din editarea serviciului.</p>
       <div class="field"><label>Alertă webhook la notă mică de feedback (≤ … stele; 0 = oprit)</label><input type="number" name="feedback_alert_rating" min="0" max="5" value="<?= $s('feedback_alert_rating','2') ?>">
-        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Când un client lasă o notă sub acest prag, se trimite evenimentul webhook <code>feedback.low</code> (cu serviciul/operatorul bonului, dacă evaluarea e legată de un bon). Configurează URL-ul în <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>. Nu necesită email.</p></div>
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Când un client lasă o notă sub acest prag, se trimite evenimentul webhook <code>feedback.low</code> (cu serviciul/operatorul bonului, dacă evaluarea e legată de un bon) și — dacă emailul e activ — o alertă pe email către managerii de la alerta SLA / raportul zilnic. Configurează URL-ul în <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>.</p></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Ciclu de viață date</h3>
       <div class="field"><label>Sterge automat biletele mai vechi de … luni (0 = pastreaza tot)</label><input type="number" name="retention_months" min="0" max="120" value="<?= $s('retention_months','0') ?>">

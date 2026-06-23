@@ -338,7 +338,7 @@ function submit_feedback(int $rating, ?string $comment, ?int $ticketId, ?int $br
       [$ticketId ?: null, $branchId ?: null, $rating, $comment]);
     $id = (int) insert_id();
     $thr = (int) setting('feedback_alert_rating', '2');
-    if ($thr > 0 && $rating <= $thr && function_exists('fire_webhook')) {
+    if ($thr > 0 && $rating <= $thr) {
         $ctx = ['feedback_id' => $id, 'rating' => $rating, 'comment' => $comment, 'branch_id' => $branchId];
         if ($ticketId) {
             $t = one('SELECT t.label, s.name service, u.name agent, b.name branch
@@ -347,9 +347,32 @@ function submit_feedback(int $rating, ?string $comment, ?int $ticketId, ?int $br
                       WHERE t.id=?', [$ticketId]);
             if ($t) $ctx += ['ticket' => $t['label'], 'service' => $t['service'], 'agent' => $t['agent'], 'branch' => $t['branch']];
         }
-        fire_webhook('feedback.low', $ctx);
+        if (function_exists('fire_webhook')) fire_webhook('feedback.low', $ctx);
+        feedback_low_email($rating, $comment, $ctx);   // best-effort, doar daca emailul e activ
     }
     return $id;
+}
+
+/** Trimite (best-effort) alerta de feedback slab catre manageri — acelasi tipar ca alerta SLA. */
+function feedback_low_email(int $rating, ?string $comment, array $ctx): void {
+    if (!function_exists('mail_enabled') || !mail_enabled()) return;
+    $to = trim((string) setting('sla_alert_to', '')) ?: trim((string) setting('daily_report_to', ''));
+    if ($to === '') $to = implode(',', array_column(all("SELECT email FROM users WHERE role='admin' AND active=1"), 'email'));
+    $recipients = array_filter(array_map('trim', explode(',', $to)));
+    if (!$recipients) return;
+    $stars = str_repeat('★', max(0, $rating)) . str_repeat('☆', max(0, 5 - $rating));
+    $li = '';
+    if (!empty($ctx['service'])) $li .= '<li>Serviciu: <strong>' . e($ctx['service']) . '</strong></li>';
+    if (!empty($ctx['agent']))   $li .= '<li>Operator: <strong>' . e($ctx['agent']) . '</strong></li>';
+    if (!empty($ctx['ticket']))  $li .= '<li>Bon: <strong>' . e($ctx['ticket']) . '</strong></li>';
+    if (!empty($ctx['branch']))  $li .= '<li>Filiala: ' . e($ctx['branch']) . '</li>';
+    $body = '<p>Un client a lasat o nota mica: <strong style="font-size:18px;color:#b91c1c">' . $stars . '</strong> (' . (int)$rating . '/5)</p>'
+          . ($li ? '<ul>' . $li . '</ul>' : '')
+          . ($comment !== null && $comment !== '' ? '<p>Comentariu: <em>' . e($comment) . '</em></p>' : '')
+          . '<p style="color:#6b7280;font-size:13px">Verifica si, daca e cazul, urmareste cu operatorul / clientul.</p>';
+    foreach ($recipients as $addr)
+        send_mail($addr, '⚠ Feedback slab (' . (int)$rating . '/5) · ' . setting('brand_name', 'Bon de ordine'),
+            mail_template('Feedback cu nota mica', $body, 'Vezi feedback', url('admin/feedback')));
 }
 
 /**

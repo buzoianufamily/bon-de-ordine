@@ -340,6 +340,11 @@ submit_feedback(5, 'excelent', null, $br);  // peste prag -> fara alerta
 chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: nota mare NU declanseaza webhook');
 set_setting('feedback_alert_rating', '0'); $fid2 = submit_feedback(1, 'rea dar alerta oprita', null, $br);  // prag 0 = oprit
 chk($fid2 > 0 && (int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: pragul 0 dezactiveaza alerta');
+// alerta pe email (best-effort): cu email activ, calea de email ruleaza fara erori (fara MTA -> send_mail=false)
+set_setting('feedback_alert_rating', '2'); set_setting('mail_enabled', '1'); set_setting('smtp_host', ''); set_setting('sla_alert_to', 'manager@ci.ro');
+$fid3 = submit_feedback(1, 'rea cu email activ', null, $br);
+chk($fid3 > 0, 'feedback.low: calea de email ruleaza fara erori (mail activ)');
+set_setting('mail_enabled', '0'); set_setting('sla_alert_to', '');
 set_setting('webhook_url', ''); set_setting('feedback_alert_rating', '2');
 
 /* ---- 30. Cron: operatori inactivi -> offline (statistici de prezenta corecte) ---- */
