@@ -154,7 +154,9 @@ tcontains "grupuri: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JA
 WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
 tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
 tcontains "test-webhook mesaj despre URL" 'URL' "$WHT"
-tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$(curl -s -b "$JAR" "$B/admin/api")"
+API_PAGE="$(curl -s -b "$JAR" "$B/admin/api")"
+tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$API_PAGE"
+tcontains "pagina API listeaza evenimentul feedback.low" 'feedback.low' "$API_PAGE"
 tcontains "export jurnal webhook CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/api/webhook-log-export" | grep -i 'content-type')"
 
 # --- export/import ghisee din CSV (autentificat) ---

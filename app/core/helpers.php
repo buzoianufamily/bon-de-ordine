@@ -327,6 +327,32 @@ function log_webhook(string $event, string $url, ?int $status, bool $ok, ?string
 }
 
 /**
+ * Inregistreaza o evaluare (feedback) si declanseaza alerta de nota mica daca e cazul.
+ * Sursa unica de adevar pentru pagina publica si API v1. Returneaza id-ul randului.
+ * La rating <= pragul `feedback_alert_rating` (0 = dezactivat) trimite webhook `feedback.low`
+ * imbogatit cu serviciul/operatorul bonului (cand evaluarea e legata de un bon servit).
+ */
+function submit_feedback(int $rating, ?string $comment, ?int $ticketId, ?int $branchId): int {
+    $comment = ($comment !== null && trim($comment) !== '') ? mb_substr(trim($comment), 0, 500) : null;
+    q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (?,?,?,?)',
+      [$ticketId ?: null, $branchId ?: null, $rating, $comment]);
+    $id = (int) insert_id();
+    $thr = (int) setting('feedback_alert_rating', '2');
+    if ($thr > 0 && $rating <= $thr && function_exists('fire_webhook')) {
+        $ctx = ['feedback_id' => $id, 'rating' => $rating, 'comment' => $comment, 'branch_id' => $branchId];
+        if ($ticketId) {
+            $t = one('SELECT t.label, s.name service, u.name agent, b.name branch
+                      FROM tickets t LEFT JOIN services s ON s.id=t.service_id
+                      LEFT JOIN users u ON u.id=t.agent_id LEFT JOIN branches b ON b.id=t.branch_id
+                      WHERE t.id=?', [$ticketId]);
+            if ($t) $ctx += ['ticket' => $t['label'], 'service' => $t['service'], 'agent' => $t['agent'], 'branch' => $t['branch']];
+        }
+        fire_webhook('feedback.low', $ctx);
+    }
+    return $id;
+}
+
+/**
  * Trimite un webhook de test ('ping') catre URL-ul configurat si RAPORTEAZA rezultatul
  * (cod HTTP / eroare), pentru butonul de test din admin. Ignora filtrul de evenimente.
  * Returneaza ['ok'=>bool, 'status'=>int|null, 'signed'=>bool, 'error'=>string|null].

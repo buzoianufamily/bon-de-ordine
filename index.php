@@ -459,8 +459,7 @@ SWJS;
             $rating  = (int) input('rating', 0);
             $comment = trim((string) input('comment', ''));
             if ($rating >= 1 && $rating <= 5) {
-                q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (?, ?, ?, ?)',
-                  [$ticketId, $branch ?: null, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
+                submit_feedback($rating, $comment, $ticketId, $branch ?: null);
                 view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
                 return;
             }

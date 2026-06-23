@@ -327,7 +327,20 @@ chk($tw2['ok'] === false, 'webhook test: endpoint inaccesibil -> ok=false');
 // incercarea de livrare e inregistrata in jurnal
 chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='ping'") >= 1, 'webhook log: incercarea de test e inregistrata');
 chk((int)val("SELECT ok FROM webhook_log ORDER BY id DESC LIMIT 1") === 0, 'webhook log: livrare esuata -> ok=0');
-set_setting('webhook_url', '');
+
+/* ---- 29b. submit_feedback + alerta webhook la nota mica (feedback.low) ---- */
+set_setting('webhook_url', 'http://127.0.0.1:1/hook'); set_setting('webhook_events', ''); set_setting('feedback_alert_rating', '2');
+$fbBefore = (int) val("SELECT COUNT(*) FROM feedback");
+$lowWhBefore = (int) val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'");
+$fid = submit_feedback(1, 'foarte rea', null, $br);
+chk($fid > 0 && (int)val("SELECT COUNT(*) FROM feedback") === $fbBefore + 1, 'submit_feedback: randul e inserat');
+chk((int)val("SELECT rating FROM feedback WHERE id=?", [$fid]) === 1, 'submit_feedback: rating salvat');
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: nota mica declanseaza webhook');
+submit_feedback(5, 'excelent', null, $br);  // peste prag -> fara alerta
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: nota mare NU declanseaza webhook');
+set_setting('feedback_alert_rating', '0'); $fid2 = submit_feedback(1, 'rea dar alerta oprita', null, $br);  // prag 0 = oprit
+chk($fid2 > 0 && (int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: pragul 0 dezactiveaza alerta');
+set_setting('webhook_url', ''); set_setting('feedback_alert_rating', '2');
 
 /* ---- 30. Cron: operatori inactivi -> offline (statistici de prezenta corecte) ---- */
 require __DIR__ . '/../app/cron.php';

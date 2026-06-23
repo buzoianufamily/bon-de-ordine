@@ -220,9 +220,8 @@ function api_v1(array $seg, string $method): void {
             $t = one('SELECT id, branch_id FROM tickets WHERE public_token = ?', [$tok]);
             if ($t) { $ticketId = (int) $t['id']; $branchId = (int) $t['branch_id']; }
         }
-        q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (?,?,?,?)',
-          [$ticketId, $branchId, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
-        json_out(['ok' => true, 'id' => insert_id()]);
+        $fid = submit_feedback($rating, $comment, $ticketId, $branchId);
+        json_out(['ok' => true, 'id' => $fid]);
     }
 
     // GET /api/v1/stats?from&to&branch — rezumat KPI
