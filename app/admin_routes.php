@@ -1518,7 +1518,7 @@ function admin_statistics(): void {
             if (in_array($r['status'], ['available','busy','paused'], true)) $opMap[$r['name']][$r['status']] = (int)$r['secs'];
         }
         $op_rows = array_values($opMap);
-        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt);
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt, $fb_service);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
@@ -1531,7 +1531,8 @@ function admin_statistics(): void {
  */
 function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
                           array $kpi, array $per_day, array $per_service, array $per_hour,
-                          array $per_counter, string $accent, array $op_rows = [], array $appt = []): Xlsx {
+                          array $per_counter, string $accent, array $op_rows = [], array $appt = [],
+                          array $fb_service = []): Xlsx {
     $mins = fn($s) => round(((float)$s) / 60, 1);
     $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
 
@@ -1609,6 +1610,26 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
         'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
         'series' => [['name' => 'Total', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'colors' => $cols]],
     ]);
+
+    /* ---- Foaia: CSAT pe serviciu (bare cu nota medie) ---- */
+    if ($fb_service) {
+        $s = $xl->add_sheet('CSAT serviciu');
+        $s->set_col_widths([1 => 24, 2 => 12, 3 => 12]);
+        $s->row([['v' => 'Nota medie pe serviciu', 's' => Xlsx::S_TITLE]]);
+        $hdr = $s->row(['Serviciu', 'Raspunsuri', 'Nota medie'], Xlsx::S_HEAD);
+        $cats = []; $vals = []; $cols = []; $first = $hdr + 1;
+        foreach ($fb_service as $r) {
+            $s->row([$r['service_name'], (int)$r['n'], ['v' => round((float)$r['avg'], 2), 's' => Xlsx::S_NUM1]]);
+            $cats[] = $r['service_name']; $vals[] = round((float)$r['avg'], 2); $cols[] = $r['color'] ?: $accent;
+        }
+        $last = $s->row_count();
+        $s->chart([
+            'type' => 'bar', 'title' => 'Nota medie pe serviciu (1–5)',
+            'anchor' => ['col' => 4, 'row' => 1, 'col2' => 13, 'row2' => 21],
+            'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+            'series' => [['name' => 'Nota medie', 'name_ref' => '$C$' . $hdr, 'ref' => '$C$' . $first . ':$C$' . $last, 'vals' => $vals, 'colors' => $cols]],
+        ]);
+    }
 
     /* ---- Foaia 4: Pe ora (coloane) ---- */
     $s = $xl->add_sheet('Pe ora');
