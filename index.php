@@ -389,13 +389,17 @@ SWJS;
             view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '']);
             return;
         }
+        // limba paginii de login (poarta multilingva); pastrata pe redirect-uri de eroare
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        $lq = $lang !== 'ro' ? '?lang=' . $lang : '';
         if ($method === 'POST') {
             csrf_check();
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             // throttling: max 10 incercari esuate / IP in 10 minute
             $fails = 0;
             try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action IN('login_failed','login_failed_2fa') AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
-            if ($fails >= 10) { flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login'); }
+            if ($fails >= 10) { flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login' . $lq); }
             $u = verify_credentials((string)($_POST['email'] ?? ''), (string)($_POST['password'] ?? ''));
             if ($u) {
                 if (!empty($u['totp_enabled']) && !empty($u['totp_secret'])) {
@@ -408,9 +412,9 @@ SWJS;
             }
             audit('login_failed', 'auth', null, substr((string)($_POST['email'] ?? ''), 0, 120));
             flash('Email sau parola incorecte.', 'error');
-            redirect('login');
+            redirect('login' . $lq);
         }
-        view('public/login');
+        view('public/login', ['lang' => $lang]);
         return;
     }
     if ($seg[0] === 'logout') { if ($cu = current_user()) { log_user_status((int)$cu['id'],'offline'); q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); } logout(); redirect('login'); }

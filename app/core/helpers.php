@@ -462,6 +462,22 @@ function vt_i18n(string $lang): array {
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
 }
 
+/** Traduceri pentru pagina de autentificare (poarta de intrare — multilingva pentru white-label). */
+function auth_i18n(string $lang): array {
+    $ro = ['title'=>'Autentificare','subtitle'=>'Autentifica-te in cont','email'=>'Email','password'=>'Parola',
+           'signin'=>'Intra in cont','forgot'=>'Ai uitat parola?','portal'=>'← Portal'];
+    $tr = [
+        'en'=>['title'=>'Sign in','subtitle'=>'Sign in to your account','email'=>'Email','password'=>'Password','signin'=>'Sign in','forgot'=>'Forgot your password?','portal'=>'← Portal'],
+        'de'=>['title'=>'Anmeldung','subtitle'=>'Bei Ihrem Konto anmelden','email'=>'E-Mail','password'=>'Passwort','signin'=>'Anmelden','forgot'=>'Passwort vergessen?','portal'=>'← Portal'],
+        'fr'=>['title'=>'Connexion','subtitle'=>'Connectez-vous à votre compte','email'=>'E-mail','password'=>'Mot de passe','signin'=>'Se connecter','forgot'=>'Mot de passe oublié ?','portal'=>'← Portail'],
+        'hu'=>['title'=>'Bejelentkezés','subtitle'=>'Jelentkezzen be a fiókjába','email'=>'E-mail','password'=>'Jelszó','signin'=>'Belépés','forgot'=>'Elfelejtette a jelszót?','portal'=>'← Portál'],
+        'it'=>['title'=>'Accesso','subtitle'=>'Accedi al tuo account','email'=>'Email','password'=>'Password','signin'=>'Accedi','forgot'=>'Password dimenticata?','portal'=>'← Portale'],
+        'es'=>['title'=>'Iniciar sesión','subtitle'=>'Inicia sesión en tu cuenta','email'=>'Correo','password'=>'Contraseña','signin'=>'Iniciar sesión','forgot'=>'¿Olvidaste tu contraseña?','portal'=>'← Portal'],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
 /** Traduceri pentru pagina de feedback (multilingv ca biletul digital). */
 function fb_i18n(string $lang): array {
     $ro = [
