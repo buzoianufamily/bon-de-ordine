@@ -148,6 +148,17 @@ chk(array_reduce($qs['waiting'], fn($c,$w) => $c || array_key_exists('est',$w), 
 $cv = counter_view(one("SELECT * FROM counters WHERE id=$ctr")); chk(array_key_exists('no_show',$cv), 'counter_view: no_show key');
 chk(array_key_exists('no_show', branch_queue($br)), 'branch_queue: no_show key');
 
+/* ---- 9b. Estimare: imparte doar la ghiseele deschise care chiar deservesc serviciul ---- */
+q("INSERT INTO branches (name) VALUES ('CI-est')"); $brE = (int) insert_id();
+q("INSERT INTO services (branch_id,prefix,name) VALUES (?,'E','CI est E')", [$brE]); $svcE = (int) insert_id();
+q("INSERT INTO services (branch_id,prefix,name) VALUES (?,'F','CI est F')", [$brE]); $svcF = (int) insert_id();
+q("INSERT INTO counters (branch_id,code,name,all_services,status) VALUES (?,'E1','toate',1,'open')", [$brE]);          // deschis, toate serviciile
+q("INSERT INTO counters (branch_id,code,name,all_services,status) VALUES (?,'E2','doar F',0,'open')", [$brE]); $cE2=(int)insert_id();
+q("INSERT INTO counter_services (counter_id,service_id) VALUES (?,?)", [$cE2,$svcF]);                                 // E2 deserveste doar F
+q("INSERT INTO counters (branch_id,code,name,all_services,status) VALUES (?,'E3','inchis',1,'closed')", [$brE]);       // inchis -> nu se numara
+chk(open_counters_for_service($brE, $svcE) === 1, 'estimare: doar ghiseele deschise care deservesc serviciul (E -> 1)');
+chk(open_counters_for_service($brE, $svcF) === 2, 'estimare: ghiseu „toate" + ghiseu alocat (F -> 2)');
+
 /* ---- 10. Rate-limit + anunt ---- */
 $allow = 0; for ($i=0;$i<5;$i++) if (rate_limit_ok('ci:ip',3,600)) $allow++;
 chk($allow === 3, 'rate_limit: 3 of 5');
