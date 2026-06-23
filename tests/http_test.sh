@@ -108,6 +108,9 @@ tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
 tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
+# injectie de formule: un comentariu public care incepe cu '=' e neutralizat in exportul CSV
+curl -s -o /dev/null -X POST "$B/feedback?branch=$BR" --data-urlencode 'rating=3' --data-urlencode 'comment==DANGER123'
+tcontains "export feedback neutralizeaza injectia de formule" "'=DANGER123" "$(curl -s -b "$JAR" "$B/admin/feedback/export")"
 # feedback public legat de bonul servit (din biletul digital) -> apare in admin cu eticheta bonului
 if [ -n "${VTOK:-}" ]; then
   VLABEL="$(printf '%s' "$ISS" | python3 -c "import sys,json;print(json.load(sys.stdin)['ticket']['label'])" 2>/dev/null)"

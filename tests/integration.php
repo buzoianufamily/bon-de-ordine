@@ -331,6 +331,15 @@ chk(count($sbom) === 1 && $sbom[0]['prefix'] === 'Z', 'csv BOM: antetul servicii
 $ubom = parse_users_csv($bom."nume,email,rol,parola\nIon,ion@x.ro,agent,Parola123\n");
 chk(count($ubom) === 1 && $ubom[0]['email'] === 'ion@x.ro', 'csv BOM: antetul utilizatorilor e ignorat');
 
+/* ---- 26c. CSV: neutralizarea injectiei de formule (Excel/Sheets) ---- */
+chk(csv_safe_cell('=SUM(A1)') === "'=SUM(A1)", 'csv inj: = neutralizat');
+chk(csv_safe_cell('+1+1') === "'+1+1", 'csv inj: + neutralizat');
+chk(csv_safe_cell('-2+3') === "'-2+3", 'csv inj: - neutralizat');
+chk(csv_safe_cell('@cmd') === "'@cmd", 'csv inj: @ neutralizat');
+chk(csv_safe_cell('Casierie') === 'Casierie', 'csv inj: text normal neatins');
+chk(csv_safe_cell('2026-01-01 10:00') === '2026-01-01 10:00', 'csv inj: data neatinsa');
+chk(csv_safe_cell('5') === '5', 'csv inj: numar neatins');
+
 /* ---- 27. Generator QR local (SVG, fara servicii externe) ---- */
 require __DIR__ . '/../app/core/qr.php';
 $qm = QR::matrix('otpauth://totp/Test:a@b.ro?secret=ABCDEF234567&issuer=Test');

@@ -319,8 +319,8 @@ function admin_services_export(): void {
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_servicii.csv' : 'servicii_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['prefix', 'nume', 'culoare']);
-    foreach ($rows as $r) fputcsv($out, [$r['prefix'], $r['name'], $r['color']]);
+    fputcsv_safe($out, ['prefix', 'nume', 'culoare']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['prefix'], $r['name'], $r['color']]);
     fclose($out);
     exit;
 }
@@ -478,8 +478,8 @@ function admin_counters_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_ghisee.csv' : 'ghisee_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['cod', 'nume']);
-    foreach ($rows as $r) fputcsv($out, [$r['code'], $r['name']]);
+    fputcsv_safe($out, ['cod', 'nume']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['code'], $r['name']]);
     fclose($out); exit;
 }
 /** Import ghisee din CSV (cod,nume) pentru o filiala; sare peste codurile existente. */
@@ -566,8 +566,8 @@ function admin_users_export(): void {
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_utilizatori.csv' : 'utilizatori_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
     // sablonul include coloana 'parola' (necesara la import); exportul real NU contine parole/hash-uri
-    fputcsv($out, $tmpl ? ['nume', 'email', 'rol', 'parola'] : ['nume', 'email', 'rol']);
-    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['email'], $r['role']]);
+    fputcsv_safe($out, $tmpl ? ['nume', 'email', 'rol', 'parola'] : ['nume', 'email', 'rol']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['name'], $r['email'], $r['role']]);
     fclose($out); exit;
 }
 /** Import operatori din CSV (nume,email,rol,parola); sare peste emailurile deja existente. */
@@ -687,9 +687,9 @@ function admin_tickets_export(): void {
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF"); // BOM pentru diacritice corecte in Excel
     $head = ['Bon','Serviciu','Filiala','Ghiseu','Status','Prioritar','Emis','Chemat','Finalizat','Asteptare','Servire'];
-    fputcsv($out, $head, ';');
+    fputcsv_safe($out, $head, ';');
     foreach ($rows as $r) {
-        fputcsv($out, [
+        fputcsv_safe($out, [
             $r['label'],
             $r['service_name'],
             $r['branch_name'] ?? '',
@@ -773,9 +773,9 @@ function admin_feedback_export(): void {
     header('Content-Disposition: attachment; filename="feedback_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Data/ora','Nota','Comentariu','Filiala','Bon'], ';');
+    fputcsv_safe($out, ['Data/ora','Nota','Comentariu','Filiala','Bon'], ';');
     foreach ($rows as $r)
-        fputcsv($out, [$r['created_at'], $r['rating'], $r['comment'] ?? '', $r['branch_name'] ?? '', $r['ticket_label'] ?? ''], ';');
+        fputcsv_safe($out, [$r['created_at'], $r['rating'], $r['comment'] ?? '', $r['branch_name'] ?? '', $r['ticket_label'] ?? ''], ';');
     fclose($out);
     exit;
 }
@@ -930,9 +930,9 @@ function admin_audit_export(): void {
     header('Content-Disposition: attachment; filename="audit_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Data/ora','Utilizator','Actiune','Obiect','ID','Detalii','IP'], ';');
+    fputcsv_safe($out, ['Data/ora','Utilizator','Actiune','Obiect','ID','Detalii','IP'], ';');
     foreach ($rows as $r) {
-        fputcsv($out, [$r['created_at'], $r['user_name'] ?? '', $r['action'], $r['entity'] ?? '',
+        fputcsv_safe($out, [$r['created_at'], $r['user_name'] ?? '', $r['action'], $r['entity'] ?? '',
                        $r['entity_id'] ?? '', $r['details'] ?? '', $r['ip'] ?? ''], ';');
     }
     fclose($out);
@@ -970,8 +970,8 @@ function admin_webhook_log_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="webhook_log_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['data', 'eveniment', 'ok', 'cod_http', 'url', 'eroare']);
-    foreach ($rows as $r) fputcsv($out, [$r['created_at'], $r['event'], $r['ok'] ? 'da' : 'nu', $r['status_code'], $r['url'], $r['error']]);
+    fputcsv_safe($out, ['data', 'eveniment', 'ok', 'cod_http', 'url', 'eroare']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['created_at'], $r['event'], $r['ok'] ? 'da' : 'nu', $r['status_code'], $r['url'], $r['error']]);
     fclose($out); exit;
 }
 
@@ -1100,8 +1100,8 @@ function admin_branches_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_filiale.csv' : 'filiale_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['nume', 'oras', 'adresa']);
-    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['city'], $r['address']]);
+    fputcsv_safe($out, ['nume', 'oras', 'adresa']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['name'], $r['city'], $r['address']]);
     fclose($out); exit;
 }
 /** Import filiale din CSV (nume,oras,adresa); sare peste numele deja existente. */
@@ -1166,8 +1166,8 @@ function admin_closures_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_zile_inchise.csv' : 'zile_inchise_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['data', 'motiv']);
-    foreach ($rows as $r) fputcsv($out, [$r['closed_date'], $r['reason']]);
+    fputcsv_safe($out, ['data', 'motiv']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['closed_date'], $r['reason']]);
     fclose($out); exit;
 }
 /** Import zile inchise din CSV (data,motiv) pentru o filiala (0 = toate); sare peste datele deja existente in acel domeniu. */
@@ -1394,8 +1394,8 @@ function admin_statistics(): void {
         header('Content-Disposition: attachment; filename="statistici_'.$from.'_'.$to.'.csv"');
         $out = fopen('php://output', 'w');
         fwrite($out, "\xEF\xBB\xBF"); // BOM pt Excel
-        fputcsv($out, ['Bon','Serviciu','Status','Prioritar','Canal','Emis','Apelat','Finalizat','Ghiseu']);
-        foreach ($rows as $r) fputcsv($out, [$r['label'],$r['service'],$r['status'],$r['priority']?'Da':'Nu',
+        fputcsv_safe($out, ['Bon','Serviciu','Status','Prioritar','Canal','Emis','Apelat','Finalizat','Ghiseu']);
+        foreach ($rows as $r) fputcsv_safe($out, [$r['label'],$r['service'],$r['status'],$r['priority']?'Da':'Nu',
             $r['channel'],$r['issued_at'],$r['called_at'],$r['finished_at'],$r['counter']]);
         fclose($out); exit;
     }
@@ -1497,7 +1497,7 @@ function admin_statistics(): void {
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="'.$fname.'_'.$from.'_'.$to.'.csv"');
         $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF");
-        fputcsv($out,$head); foreach($data as $row) fputcsv($out,$row);
+        fputcsv_safe($out,$head); foreach($data as $row) fputcsv_safe($out,$row);
         fclose($out); exit;
     }
 
@@ -1778,9 +1778,9 @@ function admin_appointments_export(): void {
     header('Content-Disposition: attachment; filename="programari_' . $f['date'] . '.csv"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Data/ora','Status','Serviciu','Filiala','Client','Telefon','Email','Nota','Bon'], ';');
+    fputcsv_safe($out, ['Data/ora','Status','Serviciu','Filiala','Client','Telefon','Email','Nota','Bon'], ';');
     foreach ($rows as $r) {
-        fputcsv($out, [$r['slot_start'], $statusRo[$r['status']] ?? $r['status'], $r['service_name'], $r['branch_name'] ?? '',
+        fputcsv_safe($out, [$r['slot_start'], $statusRo[$r['status']] ?? $r['status'], $r['service_name'], $r['branch_name'] ?? '',
                        $r['customer_name'] ?? '', $r['customer_phone'] ?? '', $r['customer_email'] ?? '',
                        $r['note'] ?? '', $r['ticket_label'] ?? ''], ';');
     }

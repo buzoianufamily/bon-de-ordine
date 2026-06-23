@@ -17,6 +17,7 @@ Rezumatul măsurilor de securitate și recomandări de hardening.
 - **Antete de securitate**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `HSTS` pe HTTPS — setate în `.htaccess` (mod_headers) și, ca fallback, la nivel PHP în `app/core/init.php`.
 - **Foldere/fișiere sensibile blocate** prin `.htaccess`: `app/`, `config/`, `database/` și fișierele `*.sql|*.md|*.log|*.ini|*.json|*.env` (inclusiv `tenants.json`). `Options -Indexes`.
 - **Upload media**: validare MIME (finfo), extensii permise, limită 25MB, nume de fișier igienizat.
+- **Export CSV/Excel**: protecție anti-injecție de formule — celulele CSV care încep cu `=`, `+`, `-`, `@` (date introduse de public: comentarii feedback, nume/telefon clienți) sunt prefixate cu apostrof, deci nu se execută ca formule la deschiderea în Excel/Sheets; exportul Excel scrie valorile ca șiruri „inline" (niciodată formule). Importul CSV ignoră BOM-ul UTF-8 (fișiere Excel), deci antetul nu ajunge date.
 - **API public** (`/api/v1`): autentificat cu cheie (`X-Api-Key`), comparație `hash_equals`. Cheia se poate regenera.
 - **Webhooks**: semnătură `HMAC-SHA256` opțională (`X-Signature`), timeout scurt; URL configurat de admin (fără SSRF din input neîncrezut). Jurnal de livrări (ultimele 100) pentru depanare, în Admin → API & Webhooks.
 - **Email (SMTP)**: verificare hostname certificat (`verify_peer` + `verify_peer_name`) la conexiunea TLS — protecție MITM.

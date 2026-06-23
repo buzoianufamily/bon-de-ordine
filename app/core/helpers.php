@@ -160,6 +160,22 @@ function _csv_lines(string $csv): array {
 }
 
 /**
+ * Neutralizeaza injectia de formule in CSV: o celula care incepe cu = + - @ (sau TAB/CR)
+ * e interpretata ca formula la deschiderea in Excel/Sheets. Prefixam cu apostrof (text),
+ * conform recomandarii OWASP. Numerele/datele (incep cu cifra) raman neatinse.
+ */
+function csv_safe_cell($v): string {
+    $s = (string)$v;
+    if ($s !== '' && in_array($s[0], ['=', '+', '-', '@', "\t", "\r"], true)) $s = "'" . $s;
+    return $s;
+}
+
+/** fputcsv cu neutralizarea injectiei de formule pe fiecare camp. */
+function fputcsv_safe($h, array $row, string $sep = ','): void {
+    fputcsv($h, array_map('csv_safe_cell', $row), $sep);
+}
+
+/**
  * Parseaza un CSV de servicii (linii: prefix,nume,culoare?). Sare peste antet/linii goale.
  * Returneaza randuri validate: [['prefix'=>..,'name'=>..,'color'=>..], ...].
  */
