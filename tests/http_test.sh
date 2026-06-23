@@ -41,6 +41,7 @@ tcontains(){ local d="$1" needle="$2" body="$3"; if printf '%s' "$body" | grep -
 
 # --- public ---
 t "GET /health"            200 "$(code $B/health)"
+tcontains "health: schema la zi dupa instalare" '"schema_current":true' "$(curl -s $B/health)"
 t "GET / (portal)"         200 "$(code $B/)"
 t "GET /login"             200 "$(code $B/login)"
 t "GET /login/forgot"      200 "$(code $B/login/forgot)"

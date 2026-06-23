@@ -46,19 +46,25 @@ try {
     // ===================== HEALTH (monitorizare uptime) =====================
     if ($seg[0] === 'health') {
         // conexiune proprie cu timeout scurt — nu folosim db() (care ar opri procesul daca DB e picata)
-        $ok = false; $err = null;
+        $ok = false; $err = null; $schema = 0;
         try {
             $c = $GLOBALS['__config']['db'];
             $pdo = new PDO("mysql:host={$c['host']};dbname={$c['name']};charset={$c['charset']}",
                 $c['user'], $c['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 3]);
             $ok = ((int) $pdo->query('SELECT 1')->fetchColumn() === 1);
+            // versiunea schemei: detecteaza instante cu migrare esuata/in urma (monitorizare multi-tenant)
+            try { $schema = (int) ($pdo->query("SELECT v FROM settings WHERE k='schema_version'")->fetchColumn() ?: 0); } catch (Throwable $e) {}
         } catch (Throwable $e) { $err = 'db'; }
+        $expected = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 0;
         json_out([
-            'ok'      => $ok,
-            'service' => 'bon-de-ordine',
-            'db'      => $ok ? 'up' : 'down',
-            'time'    => date('c'),
-            'error'   => $err,
+            'ok'             => $ok,
+            'service'        => 'bon-de-ordine',
+            'db'             => $ok ? 'up' : 'down',
+            'schema'         => $schema,
+            'schema_expected'=> $expected,
+            'schema_current' => $ok && $schema === $expected,   // false = migrare in urma/esuata
+            'time'           => date('c'),
+            'error'          => $err,
         ], $ok ? 200 : 503);
     }
 
