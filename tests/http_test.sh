@@ -114,6 +114,9 @@ if [ -n "${VTOK:-}" ]; then
   curl -s -o /dev/null -X POST "$B/feedback?t=$VTOK" --data-urlencode 'rating=5' --data-urlencode 'comment=CI feedback legat de bon'
   tcontains "feedback public retine eticheta bonului in admin" "$VLABEL" "$(curl -s -b "$JAR" "$B/admin/feedback")"
   tcontains "pagina feedback poarta tokenul bonului (camp ascuns)" 'name="t"' "$(curl -s "$B/feedback?t=$VTOK&branch=$BR")"
+  # CSAT pe serviciu in statistici (acum ca feedback-ul e legat de bon)
+  tcontains "statistici au sectiunea CSAT pe serviciu" 'Nota medie pe serviciu' "$(curl -s -b "$JAR" "$B/admin/statistics?from=$TODAY&to=$TODAY")"
+  tcontains "export CSAT pe serviciu CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=csat&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
 fi
 XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
 [ "$XLSX_SIG" = "PK" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: stats xlsx not a zip (got '$XLSX_SIG')"; }

@@ -1449,6 +1449,10 @@ function admin_statistics(): void {
     $feedback = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback f WHERE $fbWhere", $fbArgs) ?: ['n'=>0,'avg'=>null];
     $fb_dist  = all("SELECT rating, COUNT(*) c FROM feedback f WHERE $fbWhere GROUP BY rating", $fbArgs);
     $fb_recent = all("SELECT rating, comment, created_at FROM feedback f WHERE $fbWhere AND comment IS NOT NULL AND comment<>'' ORDER BY created_at DESC LIMIT 15", $fbArgs);
+    // CSAT pe serviciu (doar feedback legat de un bon servit, deci de un serviciu)
+    $fb_service = all("SELECT s.name service_name, s.color, COUNT(*) n, AVG(f.rating) avg
+                       FROM feedback f JOIN tickets t ON t.id=f.ticket_id JOIN services s ON s.id=t.service_id
+                       WHERE $fbWhere GROUP BY s.id, s.name, s.color ORDER BY n DESC, avg DESC", $fbArgs);
 
     // activitate operatori: timp pe status in interval (clamped la interval)
     $fromDt = $from.' 00:00:00'; $toDt = $to.' 23:59:59';
@@ -1459,7 +1463,7 @@ function admin_statistics(): void {
       GROUP BY u.id, l.status", [$fromDt, $toDt, $toDt, $fromDt]);
 
     // export CSV per set de date (fiecare grafic are buton propriu de download)
-    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity'], true)) {
+    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity','csat'], true)) {
         $ds = $_GET['dataset'];
         // activitate operatori pivotata: o linie/operator cu minute pe fiecare status
         $opPivot = [];
@@ -1480,6 +1484,8 @@ function admin_statistics(): void {
                         array_map(fn($r)=>[$r['name'],(int)$r['c'],(int)$r['served'],round((float)$r['w']),round((float)$r['sv'])], $per_user)],
           'op_activity' => ['activitate_operatori', ['Operator','Disponibil (min)','Ocupat (min)','Pauza (min)','Indisponibil (min)'],
                         array_map(fn($n)=>[$n, round($opPivot[$n]['available']/60), round($opPivot[$n]['busy']/60), round($opPivot[$n]['paused']/60), round($opPivot[$n]['offline']/60)], array_keys($opPivot))],
+          'csat'    => ['csat_pe_serviciu', ['Serviciu','Raspunsuri','Nota medie'],
+                        array_map(fn($r)=>[$r['service_name'],(int)$r['n'],round((float)$r['avg'],2)], $fb_service)],
         ];
         [$fname,$head,$data] = $sets[$ds];
         header('Content-Type: text/csv; charset=utf-8');
@@ -1516,7 +1522,7 @@ function admin_statistics(): void {
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','fb_service','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
 }
 
 /**
