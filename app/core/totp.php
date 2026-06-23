@@ -36,15 +36,24 @@ function totp_at(string $secret, int $slice): string {
     return str_pad((string)($code % 1000000), 6, '0', STR_PAD_LEFT);
 }
 
-/** Verifica un cod cu toleranta +/- $window sloturi (drift de ceas). */
-function totp_verify(string $secret, string $code, int $window = 1): bool {
+/**
+ * Returneaza slotul (time-step) pentru care codul e valid, cu toleranta +/- $window (drift de ceas),
+ * sau null daca nu se potriveste. Folosit pt coduri de unica folosinta (anti-replay): apelantul
+ * accepta codul doar daca slotul e mai nou decat ultimul folosit.
+ */
+function totp_match_slice(string $secret, string $code, int $window = 1): ?int {
     $code = preg_replace('/\D/', '', $code);
-    if ($secret === '' || strlen($code) !== 6) return false;
+    if ($secret === '' || strlen($code) !== 6) return null;
     $slice = (int) floor(time() / 30);
     for ($i = -$window; $i <= $window; $i++) {
-        if (hash_equals(totp_at($secret, $slice + $i), $code)) return true;
+        if (hash_equals(totp_at($secret, $slice + $i), $code)) return $slice + $i;
     }
-    return false;
+    return null;
+}
+
+/** Verifica un cod cu toleranta +/- $window sloturi (drift de ceas). */
+function totp_verify(string $secret, string $code, int $window = 1): bool {
+    return totp_match_slice($secret, $code, $window) !== null;
 }
 
 /** URI otpauth:// pentru codul QR de configurare. */

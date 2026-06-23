@@ -327,10 +327,13 @@ SWJS;
                 $pu = one('SELECT * FROM users WHERE id=? AND active=1', [$puid]);
                 $code = (string)($_POST['code'] ?? '');
                 if ($pu && !empty($pu['totp_enabled'])) {
-                    $okTotp = totp_verify((string)$pu['totp_secret'], $code);
+                    // cod TOTP de unica folosinta: acceptat doar daca slotul e mai nou decat ultimul folosit (anti-replay)
+                    $slice = totp_match_slice((string)$pu['totp_secret'], $code);
+                    $okTotp = $slice !== null && $slice > (int)($pu['totp_last_slice'] ?? 0);
                     // fallback: cod de recuperare (de unica folosinta) — se consuma la folosire
                     $newJson = $okTotp ? null : totp_backup_consume($pu['totp_backup'] ?? null, $code);
                     if ($okTotp || $newJson !== null) {
+                        if ($okTotp) q('UPDATE users SET totp_last_slice=? WHERE id=?', [$slice, $puid]);
                         if (!$okTotp) { q('UPDATE users SET totp_backup=? WHERE id=?', [$newJson, $puid]); audit('2fa_backup_used', 'auth', $puid); }
                         unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']);
                         complete_login($puid); audit('login', 'auth');

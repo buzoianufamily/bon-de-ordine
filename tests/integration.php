@@ -172,6 +172,13 @@ chk(totp_verify($sec, '000001') === false, '2fa: reject wrong');
 [$plain,$hashes] = totp_backup_generate(); chk(count($plain) > 0, '2fa: backup generated');
 $nj = totp_backup_consume(json_encode($hashes), $plain[0]); chk($nj !== null, '2fa: backup consumed');
 chk(totp_backup_consume($nj, $plain[0]) === null, '2fa: backup not reusable');
+// anti-replay: totp_match_slice da slotul; un cod e acceptat doar daca slotul > ultimul folosit
+$slc = intdiv(time(),30);
+chk(totp_match_slice($sec, totp_at($sec,$slc)) === $slc, '2fa: match_slice -> slotul curent');
+chk(totp_match_slice($sec, '000000') === null || totp_match_slice($sec,'000000') !== $slc, '2fa: cod gresit -> null');
+$last = $slc;                                    // simuleaza ca slotul curent a fost deja folosit
+chk(!($slc > $last), '2fa anti-replay: acelasi cod (slot deja folosit) e respins');
+chk(totp_match_slice($sec, totp_at($sec,$slc+1)) === $slc+1 && ($slc+1) > $last, '2fa anti-replay: codul urmator (slot nou) e acceptat');
 
 /* ---- 12. Buildere: ESC/POS + Excel ---- */
 $t9 = issue_ticket($svc, false, 'paper');
@@ -354,16 +361,19 @@ chk(QR::matrix(str_repeat('x', 400)) === null, 'qr: peste capacitate (v1..10-L) 
 q("ALTER TABLE services DROP COLUMN max_per_day");
 q("ALTER TABLE branches DROP COLUMN open_hours");
 q("ALTER TABLE tickets DROP INDEX idx_tickets_svc_status");
+q("ALTER TABLE users DROP COLUMN totp_last_slice");
 set_setting('schema_version', '5');
 run_migrations(); // trebuie sa re-adauge coloanele/indecsii lipsa si sa urce versiunea la zi
 $hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
 $hasOh  = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='branches' AND column_name='open_hours'");
 $hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
 $hasSvcIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_svc_status'");
+$hasTls = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='totp_last_slice'");
 chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
 chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
 chk($hasSvcIdx > 0, 'migrare: idx_tickets_svc_status re-adaugat dupa upgrade');
+chk($hasTls === 1, 'migrare: users.totp_last_slice re-adaugat dupa upgrade');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
 
 /* ---- 29. Webhook de test (raporteaza rezultatul) ---- */

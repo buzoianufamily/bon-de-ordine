@@ -841,6 +841,9 @@ function run_migrations(): void {
     // si media de servire (queue_state ruleaza la fiecare tick de afisaj/dispenser)
     if (!$hasIdx('tickets','idx_tickets_svc_status')) $ddl("ALTER TABLE tickets ADD INDEX idx_tickets_svc_status (service_id, status)");
 
+    // v29: cod TOTP de unica folosinta (anti-replay) — ultimul slot 2FA folosit
+    if (!$hasCol('users','totp_last_slice')) $ddl("ALTER TABLE users ADD COLUMN totp_last_slice BIGINT NOT NULL DEFAULT 0");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -856,7 +859,7 @@ function run_migrations(): void {
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
             && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
             && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')
-            && $hasIdx('tickets','idx_tickets_svc_status')) {
+            && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}
