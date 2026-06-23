@@ -28,7 +28,7 @@ $qs = fn($p)=>e(url('admin/feedback').'?'.http_build_query(['rating'=>$rating,'p
       <td style="color:#f5b301;white-space:nowrap"><?php for($i=1;$i<=5;$i++) echo $i<=(int)$r['rating']?'★':'☆'; ?></td>
       <td><?= $r['comment']!==null && $r['comment']!=='' ? e($r['comment']) : '<span class="muted">—</span>' ?></td>
       <td class="muted"><?= e($r['branch_name'] ?? '—') ?></td>
-      <td class="muted"><?= e($r['ticket_label'] ?? '—') ?></td>
+      <td class="muted"><?= e($r['ticket_label'] ?? '—') ?><?= !empty($r['service_name']) ? '<br><span style="font-size:.78rem">'.e($r['service_name']).'</span>' : '' ?></td>
       <td style="text-align:right"><form method="post" action="<?= e(url('admin/feedback/'.$r['id'].'/delete')) ?>" data-confirm="Stergi acest feedback?" style="display:inline"><?= csrf_field() ?><button class="lnk del">Sterge</button></form></td>
     </tr>
   <?php endforeach; ?>

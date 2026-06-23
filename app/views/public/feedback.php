@@ -12,6 +12,7 @@ $title='Parerea ta · '.setting('brand_name','Bon de ordine'); require __DIR__.'
   <p class="muted" style="margin-top:0"><?= e($L['q_sub']) ?></p>
   <form method="post" action="<?= e(url('feedback')) ?>?branch=<?= (int)($branch ?? 1) ?>&amp;lang=<?= e($lang) ?>" id="fbForm">
     <input type="hidden" name="rating" id="fbRating" value="0">
+    <?php if(!empty($tok)): ?><input type="hidden" name="t" value="<?= e($tok) ?>"><?php endif; ?>
     <div class="fb-stars" style="display:flex;justify-content:center;gap:.35rem;font-size:2.6rem;margin:.6rem 0;cursor:pointer">
       <?php for($i=1;$i<=5;$i++): ?><span data-v="<?= $i ?>" class="star" style="color:#3a4151;transition:.1s">★</span><?php endfor; ?>
     </div>

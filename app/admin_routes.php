@@ -753,8 +753,9 @@ function admin_feedback_list(): void {
     $where = '1=1'; $args = [];
     if ($rating >= 1 && $rating <= 5) { $where .= ' AND f.rating=?'; $args[] = $rating; }
     $total = (int) val("SELECT COUNT(*) FROM feedback f WHERE $where", $args);
-    $rows  = all("SELECT f.*, b.name branch_name, t.label ticket_label
-                  FROM feedback f LEFT JOIN branches b ON b.id=f.branch_id LEFT JOIN tickets t ON t.id=f.ticket_id
+    $rows  = all("SELECT f.*, b.name branch_name, t.label ticket_label, s.name service_name
+                  FROM feedback f LEFT JOIN branches b ON b.id=f.branch_id
+                  LEFT JOIN tickets t ON t.id=f.ticket_id LEFT JOIN services s ON s.id=t.service_id
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));

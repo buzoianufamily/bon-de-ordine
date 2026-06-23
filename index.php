@@ -444,24 +444,29 @@ SWJS;
         $branch = (int)($_GET['branch'] ?? 1);
         $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        // daca vine din biletul digital, leaga evaluarea de bonul servit (pt CSAT pe serviciu/operator)
+        $tok = trim((string)($_GET['t'] ?? input('t', '')));
+        $ticketId = null;
+        if ($tok !== '') { $tr = one('SELECT id, branch_id FROM tickets WHERE public_token=?', [$tok]);
+            if ($tr) { $ticketId = (int)$tr['id']; $branch = (int)$tr['branch_id']; } }
         if ($method === 'POST') {
             // anti-spam: max 3 evaluari / IP / 10 minute
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             if (!rate_limit_ok('fb:' . $ip, 3, 600)) {
-                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
                 return;
             }
             $rating  = (int) input('rating', 0);
             $comment = trim((string) input('comment', ''));
             if ($rating >= 1 && $rating <= 5) {
-                q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (NULL, ?, ?, ?)',
-                  [$branch ?: null, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
-                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
+                q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (?, ?, ?, ?)',
+                  [$ticketId, $branch ?: null, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
                 return;
             }
             flash('Alege o nota de la 1 la 5.', 'error');
         }
-        view('public/feedback', ['done' => false, 'branch' => $branch, 'lang' => $lang]);
+        view('public/feedback', ['done' => false, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
         return;
     }
 
