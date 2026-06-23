@@ -154,13 +154,34 @@ function log_user_status(int $userId, string $status): void {
     } catch (Throwable $e) {}
 }
 
+/** Imparte un CSV in linii, scotand BOM-ul UTF-8 din fata (fisiere exportate/Excel). */
+function _csv_lines(string $csv): array {
+    return preg_split('/\r?\n/', preg_replace('/^\xEF\xBB\xBF/', '', $csv));
+}
+
+/**
+ * Neutralizeaza injectia de formule in CSV: o celula care incepe cu = + - @ (sau TAB/CR)
+ * e interpretata ca formula la deschiderea in Excel/Sheets. Prefixam cu apostrof (text),
+ * conform recomandarii OWASP. Numerele/datele (incep cu cifra) raman neatinse.
+ */
+function csv_safe_cell($v): string {
+    $s = (string)$v;
+    if ($s !== '' && in_array($s[0], ['=', '+', '-', '@', "\t", "\r"], true)) $s = "'" . $s;
+    return $s;
+}
+
+/** fputcsv cu neutralizarea injectiei de formule pe fiecare camp. */
+function fputcsv_safe($h, array $row, string $sep = ','): void {
+    fputcsv($h, array_map('csv_safe_cell', $row), $sep);
+}
+
 /**
  * Parseaza un CSV de servicii (linii: prefix,nume,culoare?). Sare peste antet/linii goale.
  * Returneaza randuri validate: [['prefix'=>..,'name'=>..,'color'=>..], ...].
  */
 function parse_services_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -178,7 +199,7 @@ function parse_services_csv(string $csv): array {
 /** Parseaza un CSV de zile inchise (linii: data,motiv?). data in format YYYY-MM-DD. Sare antet/linii invalide. Returneaza [['date','reason'], ...]. */
 function parse_closures_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -195,7 +216,7 @@ function parse_closures_csv(string $csv): array {
 /** Parseaza un CSV de filiale (linii: nume,oras?,adresa?). Sare antet/linii goale. Returneaza [['name','city','address'], ...]. */
 function parse_branches_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -210,7 +231,7 @@ function parse_branches_csv(string $csv): array {
 /** Parseaza un CSV de ghisee (linii: cod,nume). Sare peste antet/linii goale. Returneaza [['code'=>..,'name'=>..], ...]. */
 function parse_counters_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -230,7 +251,7 @@ function parse_counters_csv(string $csv): array {
  */
 function parse_users_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -327,6 +348,55 @@ function log_webhook(string $event, string $url, ?int $status, bool $ok, ?string
 }
 
 /**
+ * Inregistreaza o evaluare (feedback) si declanseaza alerta de nota mica daca e cazul.
+ * Sursa unica de adevar pentru pagina publica si API v1. Returneaza id-ul randului.
+ * La rating <= pragul `feedback_alert_rating` (0 = dezactivat) trimite webhook `feedback.low`
+ * imbogatit cu serviciul/operatorul bonului (cand evaluarea e legata de un bon servit).
+ */
+function submit_feedback(int $rating, ?string $comment, ?int $ticketId, ?int $branchId): int {
+    $comment = ($comment !== null && trim($comment) !== '') ? mb_substr(trim($comment), 0, 500) : null;
+    q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (?,?,?,?)',
+      [$ticketId ?: null, $branchId ?: null, $rating, $comment]);
+    $id = (int) insert_id();
+    $thr = (int) setting('feedback_alert_rating', '2');
+    if ($thr > 0 && $rating <= $thr) {
+        $ctx = ['feedback_id' => $id, 'rating' => $rating, 'comment' => $comment, 'branch_id' => $branchId];
+        if ($ticketId) {
+            $t = one('SELECT t.label, s.name service, u.name agent, b.name branch
+                      FROM tickets t LEFT JOIN services s ON s.id=t.service_id
+                      LEFT JOIN users u ON u.id=t.agent_id LEFT JOIN branches b ON b.id=t.branch_id
+                      WHERE t.id=?', [$ticketId]);
+            if ($t) $ctx += ['ticket' => $t['label'], 'service' => $t['service'], 'agent' => $t['agent'], 'branch' => $t['branch']];
+        }
+        if (function_exists('fire_webhook')) fire_webhook('feedback.low', $ctx);
+        feedback_low_email($rating, $comment, $ctx);   // best-effort, doar daca emailul e activ
+    }
+    return $id;
+}
+
+/** Trimite (best-effort) alerta de feedback slab catre manageri — acelasi tipar ca alerta SLA. */
+function feedback_low_email(int $rating, ?string $comment, array $ctx): void {
+    if (!function_exists('mail_enabled') || !mail_enabled()) return;
+    $to = trim((string) setting('sla_alert_to', '')) ?: trim((string) setting('daily_report_to', ''));
+    if ($to === '') $to = implode(',', array_column(all("SELECT email FROM users WHERE role='admin' AND active=1"), 'email'));
+    $recipients = array_filter(array_map('trim', explode(',', $to)));
+    if (!$recipients) return;
+    $stars = str_repeat('★', max(0, $rating)) . str_repeat('☆', max(0, 5 - $rating));
+    $li = '';
+    if (!empty($ctx['service'])) $li .= '<li>Serviciu: <strong>' . e($ctx['service']) . '</strong></li>';
+    if (!empty($ctx['agent']))   $li .= '<li>Operator: <strong>' . e($ctx['agent']) . '</strong></li>';
+    if (!empty($ctx['ticket']))  $li .= '<li>Bon: <strong>' . e($ctx['ticket']) . '</strong></li>';
+    if (!empty($ctx['branch']))  $li .= '<li>Filiala: ' . e($ctx['branch']) . '</li>';
+    $body = '<p>Un client a lasat o nota mica: <strong style="font-size:18px;color:#b91c1c">' . $stars . '</strong> (' . (int)$rating . '/5)</p>'
+          . ($li ? '<ul>' . $li . '</ul>' : '')
+          . ($comment !== null && $comment !== '' ? '<p>Comentariu: <em>' . e($comment) . '</em></p>' : '')
+          . '<p style="color:#6b7280;font-size:13px">Verifica si, daca e cazul, urmareste cu operatorul / clientul.</p>';
+    foreach ($recipients as $addr)
+        send_mail($addr, '⚠ Feedback slab (' . (int)$rating . '/5) · ' . setting('brand_name', 'Bon de ordine'),
+            mail_template('Feedback cu nota mica', $body, 'Vezi feedback', url('admin/feedback')));
+}
+
+/**
  * Trimite un webhook de test ('ping') catre URL-ul configurat si RAPORTEAZA rezultatul
  * (cod HTTP / eroare), pentru butonul de test din admin. Ignora filtrul de evenimente.
  * Returneaza ['ok'=>bool, 'status'=>int|null, 'signed'=>bool, 'error'=>string|null].
@@ -392,20 +462,37 @@ function vt_i18n(string $lang): array {
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
 }
 
+/** Traduceri pentru pagina de autentificare (poarta de intrare — multilingva pentru white-label). */
+function auth_i18n(string $lang): array {
+    $ro = ['title'=>'Autentificare','subtitle'=>'Autentifica-te in cont','email'=>'Email','password'=>'Parola',
+           'signin'=>'Intra in cont','forgot'=>'Ai uitat parola?','portal'=>'← Portal'];
+    $tr = [
+        'en'=>['title'=>'Sign in','subtitle'=>'Sign in to your account','email'=>'Email','password'=>'Password','signin'=>'Sign in','forgot'=>'Forgot your password?','portal'=>'← Portal'],
+        'de'=>['title'=>'Anmeldung','subtitle'=>'Bei Ihrem Konto anmelden','email'=>'E-Mail','password'=>'Passwort','signin'=>'Anmelden','forgot'=>'Passwort vergessen?','portal'=>'← Portal'],
+        'fr'=>['title'=>'Connexion','subtitle'=>'Connectez-vous à votre compte','email'=>'E-mail','password'=>'Mot de passe','signin'=>'Se connecter','forgot'=>'Mot de passe oublié ?','portal'=>'← Portail'],
+        'hu'=>['title'=>'Bejelentkezés','subtitle'=>'Jelentkezzen be a fiókjába','email'=>'E-mail','password'=>'Jelszó','signin'=>'Belépés','forgot'=>'Elfelejtette a jelszót?','portal'=>'← Portál'],
+        'it'=>['title'=>'Accesso','subtitle'=>'Accedi al tuo account','email'=>'Email','password'=>'Password','signin'=>'Accedi','forgot'=>'Password dimenticata?','portal'=>'← Portale'],
+        'es'=>['title'=>'Iniciar sesión','subtitle'=>'Inicia sesión en tu cuenta','email'=>'Correo','password'=>'Contraseña','signin'=>'Iniciar sesión','forgot'=>'¿Olvidaste tu contraseña?','portal'=>'← Portal'],
+    ];
+    $lang = strtolower($lang);
+    return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
+}
+
 /** Traduceri pentru pagina de feedback (multilingv ca biletul digital). */
 function fb_i18n(string $lang): array {
     $ro = [
         'thanks_title'=>'Multumim!', 'thanks_sub'=>'Parerea ta ne ajuta sa imbunatatim serviciile.',
         'q_title'=>'Cum a fost experienta?', 'q_sub'=>'Acorda o nota de la 1 la 5.',
         'comment_ph'=>'Comentariu (optional)', 'send'=>'Trimite',
+        'rate_group'=>'Nota (1–5 stele)', 'rate_n'=>'{n} din 5',
     ];
     $tr = [
-        'en'=>['thanks_title'=>'Thank you!','thanks_sub'=>'Your feedback helps us improve our service.','q_title'=>'How was your experience?','q_sub'=>'Give a rating from 1 to 5.','comment_ph'=>'Comment (optional)','send'=>'Send'],
-        'de'=>['thanks_title'=>'Danke!','thanks_sub'=>'Ihr Feedback hilft uns, unseren Service zu verbessern.','q_title'=>'Wie war Ihre Erfahrung?','q_sub'=>'Geben Sie eine Bewertung von 1 bis 5.','comment_ph'=>'Kommentar (optional)','send'=>'Senden'],
-        'fr'=>['thanks_title'=>'Merci !','thanks_sub'=>'Votre avis nous aide à améliorer nos services.','q_title'=>'Comment s\'est passée votre expérience ?','q_sub'=>'Donnez une note de 1 à 5.','comment_ph'=>'Commentaire (facultatif)','send'=>'Envoyer'],
-        'hu'=>['thanks_title'=>'Köszönjük!','thanks_sub'=>'Visszajelzése segít javítani a szolgáltatásunkon.','q_title'=>'Milyen volt az élmény?','q_sub'=>'Adjon 1-től 5-ig értékelést.','comment_ph'=>'Megjegyzés (opcionális)','send'=>'Küldés'],
-        'it'=>['thanks_title'=>'Grazie!','thanks_sub'=>'Il tuo parere ci aiuta a migliorare il servizio.','q_title'=>'Com\'è stata la tua esperienza?','q_sub'=>'Dai un voto da 1 a 5.','comment_ph'=>'Commento (facoltativo)','send'=>'Invia'],
-        'es'=>['thanks_title'=>'¡Gracias!','thanks_sub'=>'Tu opinión nos ayuda a mejorar el servicio.','q_title'=>'¿Cómo fue tu experiencia?','q_sub'=>'Da una valoración de 1 a 5.','comment_ph'=>'Comentario (opcional)','send'=>'Enviar'],
+        'en'=>['thanks_title'=>'Thank you!','thanks_sub'=>'Your feedback helps us improve our service.','q_title'=>'How was your experience?','q_sub'=>'Give a rating from 1 to 5.','comment_ph'=>'Comment (optional)','send'=>'Send','rate_group'=>'Rating (1–5 stars)','rate_n'=>'{n} of 5'],
+        'de'=>['thanks_title'=>'Danke!','thanks_sub'=>'Ihr Feedback hilft uns, unseren Service zu verbessern.','q_title'=>'Wie war Ihre Erfahrung?','q_sub'=>'Geben Sie eine Bewertung von 1 bis 5.','comment_ph'=>'Kommentar (optional)','send'=>'Senden','rate_group'=>'Bewertung (1–5 Sterne)','rate_n'=>'{n} von 5'],
+        'fr'=>['thanks_title'=>'Merci !','thanks_sub'=>'Votre avis nous aide à améliorer nos services.','q_title'=>'Comment s\'est passée votre expérience ?','q_sub'=>'Donnez une note de 1 à 5.','comment_ph'=>'Commentaire (facultatif)','send'=>'Envoyer','rate_group'=>'Note (1–5 étoiles)','rate_n'=>'{n} sur 5'],
+        'hu'=>['thanks_title'=>'Köszönjük!','thanks_sub'=>'Visszajelzése segít javítani a szolgáltatásunkon.','q_title'=>'Milyen volt az élmény?','q_sub'=>'Adjon 1-től 5-ig értékelést.','comment_ph'=>'Megjegyzés (opcionális)','send'=>'Küldés','rate_group'=>'Értékelés (1–5 csillag)','rate_n'=>'{n} / 5'],
+        'it'=>['thanks_title'=>'Grazie!','thanks_sub'=>'Il tuo parere ci aiuta a migliorare il servizio.','q_title'=>'Com\'è stata la tua esperienza?','q_sub'=>'Dai un voto da 1 a 5.','comment_ph'=>'Commento (facoltativo)','send'=>'Invia','rate_group'=>'Voto (1–5 stelle)','rate_n'=>'{n} su 5'],
+        'es'=>['thanks_title'=>'¡Gracias!','thanks_sub'=>'Tu opinión nos ayuda a mejorar el servicio.','q_title'=>'¿Cómo fue tu experiencia?','q_sub'=>'Da una valoración de 1 a 5.','comment_ph'=>'Comentario (opcional)','send'=>'Enviar','rate_group'=>'Valoración (1–5 estrellas)','rate_n'=>'{n} de 5'],
     ];
     $lang = strtolower($lang);
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
@@ -509,6 +596,21 @@ function disp_strings(): array {
       'policy_cancel'   => ['en'=>'Cancel','de'=>'Abbrechen','fr'=>'Annuler','hu'=>'Mégse','it'=>'Annulla','es'=>'Cancelar'],
       'policy_ok'       => ['en'=>'Continue','de'=>'Weiter','fr'=>'Continuer','hu'=>'Tovább','it'=>'Continua','es'=>'Continuar'],
     ];
+}
+
+/**
+ * Poate utilizatorul opera ghiseul dat? `allowed_counters` (CSV de id-uri) gol/absent = toate.
+ * Aceeasi semantica folosita la deschiderea terminalului (/counter), aplicata si pe API
+ * ca sa nu poata fi ocolita prin apeluri directe (call-next/pause/open pe alt ghiseu).
+ */
+function user_counter_allowed(int $userId, int $counterId): bool {
+    static $cache = [];
+    if (!array_key_exists($userId, $cache)) {
+        $csv = (string) (val('SELECT allowed_counters FROM users WHERE id=?', [$userId]) ?? '');
+        $cache[$userId] = array_values(array_filter(array_map('intval', explode(',', $csv))));
+    }
+    $ids = $cache[$userId];
+    return empty($ids) || in_array($counterId, $ids, true);
 }
 
 /** Render view cu layout. $view relativ la app/views. */
@@ -752,6 +854,13 @@ function run_migrations(): void {
     // v27: orar de functionare la nivel de filiala (JSON, plic peste orarele serviciilor)
     if (!$hasCol('branches','open_hours')) $ddl("ALTER TABLE branches ADD COLUMN open_hours TEXT NULL");
 
+    // v28: index pe (service_id, status) — accelereaza pozitia in coada, numaratoarea pe serviciu
+    // si media de servire (queue_state ruleaza la fiecare tick de afisaj/dispenser)
+    if (!$hasIdx('tickets','idx_tickets_svc_status')) $ddl("ALTER TABLE tickets ADD INDEX idx_tickets_svc_status (service_id, status)");
+
+    // v29: cod TOTP de unica folosinta (anti-replay) — ultimul slot 2FA folosit
+    if (!$hasCol('users','totp_last_slice')) $ddl("ALTER TABLE users ADD COLUMN totp_last_slice BIGINT NOT NULL DEFAULT 0");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -766,7 +875,8 @@ function run_migrations(): void {
             && $hasTable('password_resets') && $hasTable('branch_closures') && $hasCol('services','paused')
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
             && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
-            && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')) {
+            && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')
+            && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

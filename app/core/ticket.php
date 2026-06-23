@@ -185,7 +185,20 @@ function ticket_position(array $t): int {
     );
 }
 
-/** Timp estimat de asteptare (secunde) = pozitie x timp mediu servire / nr. ghisee deschise. */
+/**
+ * Cate ghisee DESCHISE chiar deservesc un serviciu (all_services sau alocate explicit).
+ * Minim 1, ca sa nu impartim la zero in estimari (cand niciun ghiseu deschis nu-l deserveste,
+ * estimarea presupune 1 server — mai sincer decat sa imparta la toate ghiseele deschise).
+ */
+function open_counters_for_service(int $branchId, int $serviceId): int {
+    $n = (int) val("SELECT COUNT(*) FROM counters c
+                    WHERE c.branch_id=? AND c.status='open'
+                      AND (c.all_services=1 OR EXISTS (SELECT 1 FROM counter_services cs
+                           WHERE cs.counter_id=c.id AND cs.service_id=?))", [$branchId, $serviceId]);
+    return max(1, $n);
+}
+
+/** Timp estimat de asteptare (secunde) = pozitie x timp mediu servire / nr. ghisee care deservesc serviciul. */
 function est_wait_seconds(array $t): int {
     $pos = ticket_position($t);
     if ($pos <= 0) return 0;
@@ -193,7 +206,7 @@ function est_wait_seconds(array $t): int {
                        WHERE service_id = ? AND status = 'served' AND called_at IS NOT NULL
                          AND finished_at >= NOW() - INTERVAL 7 DAY", [$t['service_id']]) ?? 0);
     if ($avg <= 0) { $svc = one('SELECT kpi_service_sec FROM services WHERE id=?', [$t['service_id']]); $avg = (int)($svc['kpi_service_sec'] ?? 0) ?: 300; }
-    $open = max(1, (int) val("SELECT COUNT(*) FROM counters WHERE branch_id=? AND status='open'", [$t['branch_id']]));
+    $open = open_counters_for_service((int)$t['branch_id'], (int)$t['service_id']);
     return (int) round($pos * $avg / $open);
 }
 
@@ -207,8 +220,10 @@ function call_next(int $counter_id, int $user_id, int $service_id = 0): ?array {
     $svcIds = counter_service_ids($counter);
 
     if ($service_id > 0) {
-        // urmatorul dintr-un serviciu anume (din filiala ghiseului)
-        $cond = "t.service_id = ? AND t.branch_id = ?"; $args = [$service_id, (int)$counter['branch_id']];
+        // urmatorul dintr-un serviciu anume (din filiala ghiseului); nu fura biletele
+        // directionate exclusiv catre alt ghiseu (doar nedirectionate sau directionate spre acest ghiseu)
+        $cond = "t.service_id = ? AND t.branch_id = ? AND (t.target_counter_id IS NULL OR t.target_counter_id = ?)";
+        $args = [$service_id, (int)$counter['branch_id'], $counter_id];
     } else {
         // bilete eligibile: directionate catre acest ghiseu (prioritar) + serviciile ghiseului
         $cond = "t.target_counter_id = ?"; $args = [$counter_id];
@@ -404,7 +419,6 @@ function queue_state(int $branch_id, bool $withEstimates = false): array {
 
     // (optional) timp estimat de asteptare per serviciu — calculat doar la cerere (nu pe fiecare tick SSE)
     if ($withEstimates) {
-        $open = max(1, (int) val("SELECT COUNT(*) FROM counters WHERE branch_id=? AND status='open'", [$branch_id]));
         $avgBySvc = [];
         foreach (all("SELECT service_id, AVG(TIMESTAMPDIFF(SECOND, called_at, finished_at)) a
                       FROM tickets WHERE branch_id=? AND status='served' AND called_at IS NOT NULL
@@ -413,6 +427,8 @@ function queue_state(int $branch_id, bool $withEstimates = false): array {
         foreach ($waiting as &$w) {
             $cnt = (int)$w['cnt'];
             $avg = $avgBySvc[(int)$w['id']] ?? 0; if ($avg <= 0) $avg = 300; // fallback 5 min
+            // impartim doar la ghiseele deschise care chiar deservesc acest serviciu
+            $open = $cnt > 0 ? open_counters_for_service($branch_id, (int)$w['id']) : 1;
             $w['est'] = $cnt > 0 ? (int) round($cnt * $avg / $open) : 0;
         }
         unset($w);

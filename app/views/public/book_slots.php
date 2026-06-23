@@ -26,9 +26,9 @@ $dts=strtotime($date); $dateLabel=$L['days'][(int)date('w',$dts)].', '.date('d.m
         <p class="muted" style="text-align:center;padding:1rem"><?= e($L['closed_day']) ?></p>
       <?php endif; ?>
     <?php else: ?>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem">
+      <div role="group" aria-label="<?= e($L['day']) ?> <?= e($dateLabel) ?>" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem">
         <?php foreach($slots as $sl): $wlSlot=$sl['full'] && !$sl['past'] && !empty($wlOn); $dis=$sl['past'] || ($sl['full'] && !$wlSlot); ?>
-          <button type="button" class="btn slot" <?= $dis?'disabled':'' ?> data-slot="<?= e($sl['start']) ?>" data-full="<?= $sl['full']?'1':'0' ?>" title="<?= $sl['full']?e($L['full']):'' ?>" style="<?= $dis?'opacity:.4':($wlSlot?'opacity:.6':'') ?>"><?= e($sl['time']) ?></button>
+          <button type="button" class="btn slot" <?= $dis?'disabled':'' ?> data-slot="<?= e($sl['start']) ?>" data-full="<?= $sl['full']?'1':'0' ?>" aria-label="<?= e($sl['time'].($sl['full']?', '.$L['full']:'')) ?>" title="<?= $sl['full']?e($L['full']):'' ?>" style="<?= $dis?'opacity:.4':($wlSlot?'opacity:.6':'') ?>"><?= e($sl['time']) ?></button>
         <?php endforeach; ?>
       </div>
       <form method="post" action="<?= e(url('book/'.$svc['id']).($lang!=='ro'?'?lang='.$lang:'')) ?>" id="bookForm" style="display:none;margin-top:1.2rem">

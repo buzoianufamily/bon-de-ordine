@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS users (
   totp_secret   VARCHAR(64) NULL,                  -- secret 2FA (base32)
   totp_enabled  TINYINT(1) NOT NULL DEFAULT 0,     -- 2FA activ
   totp_backup   TEXT NULL,                         -- coduri de recuperare (hash-uri JSON)
+  totp_last_slice BIGINT NOT NULL DEFAULT 0,        -- ultimul slot TOTP folosit (cod 2FA de unica folosinta)
   allowed_counters TEXT NULL,                      -- ghisee permise (CSV id-uri; gol = toate)
   active        TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -181,6 +182,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   CONSTRAINT fk_tickets_agent   FOREIGN KEY (agent_id)   REFERENCES users(id)     ON DELETE SET NULL,
   INDEX idx_tickets_status (branch_id, status),
   INDEX idx_tickets_service_day (service_id, issued_at),
+  INDEX idx_tickets_svc_status (service_id, status),
   INDEX idx_tickets_token (public_token),
   INDEX idx_tickets_called (branch_id, called_at),
   INDEX idx_tickets_counter (counter_id, called_at)

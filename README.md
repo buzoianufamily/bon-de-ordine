@@ -18,9 +18,9 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Afișaj de ghișeu** | Tabletă la birou: codul ghișeului + bonul curent, live (sau mesajul de pauză). | `…/cd/{id}` |
 | **Bilet digital** | Clientul urmărește pe telefon (**multilingv** RO/EN/DE/FR/HU/IT/ES): status, poziție, **timp estimat**, ghișeu, alerte configurabile, **alertă „aproape la rând"**, **notificări în browser** (locale, fără server de push — merg și cu fila în fundal, pe Android prin service worker), **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
 | **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; **pagină de status live** (numărătoare inversă până la programare, butonul de check‑in apare automat când se deschide fereastra, se actualizează singură dacă recepția schimbă starea); în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
-| **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. | `…/feedback` |
+| **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. Când vine din biletul digital, evaluarea se **leagă de bonul servit** (serviciu/ghișeu), vizibil în Admin → Feedback pentru CSAT pe serviciu. | `…/feedback` |
 | **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
-| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
+| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, **CSAT pe serviciu**, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
 | **Landlord** | Panoul TĂU multi‑tenant: instanțele tuturor clienților, cu **health‑check** (funcționează / eroare / suspendată), adăugare/suspendare clienți. | `…/landlord` |
 
 ### Funcționalități cheie
@@ -40,7 +40,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Email integrat** (SMTP propriu sau `mail()` de pe cPanel): confirmări + remindere programări, raport zilnic, **alerte SLA** (când cozile depășesc ținta, cu prag + pauză anti‑spam); **cron** inclus (curățare automată a biletelor vechi + închiderea automată a biletelor uitate „în servire"/„chemat").
 - **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set; pagina **Bilete** are **export CSV** al listei filtrate.
 - **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit** (cu filtrare + export CSV), **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
-- **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, ghișee, statistici, **programări online** — sloturi/rezervare/status) — documentate în Admin → API & Webhooks. Evenimente webhook pentru tot ciclul biletului + **`sla.breach`** (cozi peste țintă). Endpoint **`/health`** (JSON) pentru monitorizare uptime.
+- **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, ghișee, statistici, **programări online** — sloturi/rezervare/status) — documentate în Admin → API & Webhooks. Evenimente webhook pentru tot ciclul biletului + **`sla.breach`** (cozi peste țintă) + **`feedback.low`** (notă mică de la client, cu serviciul/operatorul bonului). Endpoint **`/health`** (JSON) pentru monitorizare uptime.
 - **Multi‑tenant**: subdomeniu + bază de date per client, panou **landlord** cu health‑check și suspendare instanțe.
 - **Temă deschisă/închisă** (cu auto după sistemul de operare), admin **responsive pe mobil**, căutare globală **Ctrl+K**, checklist de onboarding.
 - **White‑label**: nume, logo, culoare, texte — din Setări (pe taburi).
@@ -129,7 +129,7 @@ Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeni
 ---
 
 ## Dezvoltare & teste
-Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială — ~135 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1, status programare live — ~90 verificări).
+Acoperire pe o bază reală MySQL/MariaDB (instalare la zero, autentificare, ciclu bilet, no‑show/requeue, transferuri, închideri, pauză, programări, 2FA, ESC/POS, Excel, API v1, audit, parsere CSV, generator QR, orar de filială, injecție CSV, indecși — ~165 aserțiuni de integrare) plus un test HTTP end‑to‑end al rutării (login/CSRF, emitere bon, exporturi, import/export CSV, endpoint `/qr`, API v1, status programare live, IDOR ghișee — ~108 verificări).
 
 Rulare locală (cu o bază de test):
 ```bash

@@ -11,7 +11,7 @@ require __DIR__.'/_head.php'; ?>
   <button id="vNotify" class="btn btn-ghost" style="display:none;margin-top:1rem"><?= e($L['notify_enable']) ?></button>
   <div class="muted" id="vStep" style="display:none;margin-top:.6rem;font-size:.85rem"><?= e($L['step_away']) ?></div>
   <?php if (setting('mod_feedback','1')==='1'): ?>
-  <a id="vRate" href="<?= e(url('feedback')) ?>?branch=<?= (int)$t['branch_id'] ?>&amp;lang=<?= e($lang) ?>" class="btn btn-primary" style="display:none;margin-top:1rem">⭐ <?= e($L['rate']) ?></a>
+  <a id="vRate" href="<?= e(url('feedback')) ?>?branch=<?= (int)$t['branch_id'] ?>&amp;lang=<?= e($lang) ?>&amp;t=<?= e($token) ?>" class="btn btn-primary" style="display:none;margin-top:1rem">⭐ <?= e($L['rate']) ?></a>
   <?php endif; ?>
   <button id="vCancel" class="btn btn-ghost" style="display:none;margin-top:1rem"><?= e($L['cancel']) ?></button>
   <p class="muted" style="font-size:.78rem;margin-top:1.4rem"><?= e($L['auto']) ?></p>

@@ -67,6 +67,17 @@ if ($svc2) { $t3 = issue_ticket($svc, false, 'paper'); transfer_ticket((int)$t3[
     if ($ctr2) { transfer_to_counter((int)$t3['id'], $ctr2); chk((int)val("SELECT target_counter_id FROM tickets WHERE id=".(int)$t3['id']) === $ctr2, 'transfer: to counter'); }
 }
 
+/* ---- 5b. Bilet directionat la un ghiseu nu e furat de „urmatorul pe serviciu" de la alt ghiseu ---- */
+q("INSERT INTO counters (branch_id, code, name, all_services, status) VALUES (?, 'CIX', 'CI dir', 1, 'open')", [$br]);
+$ctrX = (int) insert_id();
+$td = issue_ticket($svc, false, 'paper');
+transfer_to_counter((int)$td['id'], $ctrX);   // directionat exclusiv catre ctrX
+call_next($ctr, $adminId, $svc);              // alt ghiseu cere „urmatorul pe serviciu"
+chk((int)val("SELECT 1 FROM tickets WHERE id=? AND status='waiting' AND target_counter_id=?", [(int)$td['id'], $ctrX]) === 1,
+    'call_next(serviciu): nu fura biletul directionat catre alt ghiseu');
+$pulledX = call_next($ctrX, $adminId, $svc);  // ghiseul tinta il poate ridica
+chk($pulledX !== null && (int)$pulledX['id'] === (int)$td['id'], 'call_next(serviciu) la ghiseul tinta ridica biletul directionat');
+
 /* ---- 6. Inchideri (logica, prin data viitoare ca sa nu interfereze cu cache-ul pe "azi") ---- */
 $future = date('Y-m-d', strtotime('+30 days')); $futTs = strtotime($future . ' 12:00:00');
 q("DELETE FROM branch_closures WHERE branch_id=? AND closed_date=?", [$br, $future]);
@@ -107,12 +118,25 @@ $pb = false; try { issue_ticket($svc, false, 'paper'); } catch (Throwable $e) { 
 chk($pb, 'pause: blocks issuance');
 q("UPDATE services SET paused=0 WHERE id=$svc");
 
+/* ---- 7b. Autorizare ghiseu (allowed_counters aplicat si pe API, nu doar in UI) ---- */
+chk(user_counter_allowed($adminId, $ctr) === true, 'authz: utilizator fara restrictie -> orice ghiseu');
+q("INSERT INTO users (name,email,role,active,allowed_counters,password_hash) VALUES ('Pinned CI','pinned@ci.ro','agent',1,?,?)", [(string)$ctr, password_hash('x', PASSWORD_DEFAULT)]);
+$pinId = (int) insert_id();
+chk(user_counter_allowed($pinId, $ctr) === true, 'authz: ghiseu permis -> ok');
+chk(user_counter_allowed($pinId, $ctr + 99999) === false, 'authz: ghiseu nepermis -> blocat');
+
 /* ---- 8. Programari ---- */
 q("UPDATE services SET appt_enabled=1, appt_slot_min=15, appt_capacity=2 WHERE id=$svc");
 $svcRow = one("SELECT * FROM services WHERE id=$svc"); $day = date('Y-m-d', strtotime('+1 day'));
 $slots = appt_slots($svcRow, $day); chk(count($slots) > 0, 'appt: slots generated');
 $appt = appt_book($svc, $slots[0]['start'], 'Ion', '0712', ''); chk(!empty($appt['id']) && $appt['status'] === 'booked', 'appt: booked');
 $tk = appt_checkin($appt); chk(!empty($tk['id']) && val("SELECT status FROM appointments WHERE id=".(int)$appt['id']) === 'checked_in', 'appt: checkin -> ticket');
+// dublu check-in (acelasi snapshot vechi 'booked', ca la dublu-tap) -> acelasi bilet, nu se emite al doilea
+$appt9 = appt_book($svc, $slots[1]['start'], 'Dub', '0719', '');
+$snap9 = $appt9;                       // snapshot 'booked' refolosit
+$tkA = appt_checkin($snap9); $tkB = appt_checkin($snap9);
+chk(!empty($tkA['id']) && (int)$tkA['id'] === (int)$tkB['id'], 'appt: dublu check-in -> acelasi bilet (idempotent)');
+chk((int)val("SELECT ticket_id FROM appointments WHERE id=".(int)$appt9['id']) === (int)$tkA['id'], 'appt: programarea ramane legata de un singur bilet');
 // next_open_day: dintr-o zi din trecut, prima zi cu sloturi e azi+? (serviciul are program zilnic implicit 09-17)
 $nd = appt_next_open_day($svcRow, date('Y-m-d', strtotime('-3 day')));
 chk($nd !== null && $nd > date('Y-m-d', strtotime('-3 day')), 'appt: next_open_day gaseste o zi disponibila');
@@ -123,6 +147,17 @@ chk(isset($qs['waiting'], $qs['counters'], $qs['notice']), 'queue_state: shape')
 chk(array_reduce($qs['waiting'], fn($c,$w) => $c || array_key_exists('est',$w), false), 'queue_state: estimates present');
 $cv = counter_view(one("SELECT * FROM counters WHERE id=$ctr")); chk(array_key_exists('no_show',$cv), 'counter_view: no_show key');
 chk(array_key_exists('no_show', branch_queue($br)), 'branch_queue: no_show key');
+
+/* ---- 9b. Estimare: imparte doar la ghiseele deschise care chiar deservesc serviciul ---- */
+q("INSERT INTO branches (name) VALUES ('CI-est')"); $brE = (int) insert_id();
+q("INSERT INTO services (branch_id,prefix,name) VALUES (?,'E','CI est E')", [$brE]); $svcE = (int) insert_id();
+q("INSERT INTO services (branch_id,prefix,name) VALUES (?,'F','CI est F')", [$brE]); $svcF = (int) insert_id();
+q("INSERT INTO counters (branch_id,code,name,all_services,status) VALUES (?,'E1','toate',1,'open')", [$brE]);          // deschis, toate serviciile
+q("INSERT INTO counters (branch_id,code,name,all_services,status) VALUES (?,'E2','doar F',0,'open')", [$brE]); $cE2=(int)insert_id();
+q("INSERT INTO counter_services (counter_id,service_id) VALUES (?,?)", [$cE2,$svcF]);                                 // E2 deserveste doar F
+q("INSERT INTO counters (branch_id,code,name,all_services,status) VALUES (?,'E3','inchis',1,'closed')", [$brE]);       // inchis -> nu se numara
+chk(open_counters_for_service($brE, $svcE) === 1, 'estimare: doar ghiseele deschise care deservesc serviciul (E -> 1)');
+chk(open_counters_for_service($brE, $svcF) === 2, 'estimare: ghiseu „toate" + ghiseu alocat (F -> 2)');
 
 /* ---- 10. Rate-limit + anunt ---- */
 $allow = 0; for ($i=0;$i<5;$i++) if (rate_limit_ok('ci:ip',3,600)) $allow++;
@@ -137,6 +172,13 @@ chk(totp_verify($sec, '000001') === false, '2fa: reject wrong');
 [$plain,$hashes] = totp_backup_generate(); chk(count($plain) > 0, '2fa: backup generated');
 $nj = totp_backup_consume(json_encode($hashes), $plain[0]); chk($nj !== null, '2fa: backup consumed');
 chk(totp_backup_consume($nj, $plain[0]) === null, '2fa: backup not reusable');
+// anti-replay: totp_match_slice da slotul; un cod e acceptat doar daca slotul > ultimul folosit
+$slc = intdiv(time(),30);
+chk(totp_match_slice($sec, totp_at($sec,$slc)) === $slc, '2fa: match_slice -> slotul curent');
+chk(totp_match_slice($sec, '000000') === null || totp_match_slice($sec,'000000') !== $slc, '2fa: cod gresit -> null');
+$last = $slc;                                    // simuleaza ca slotul curent a fost deja folosit
+chk(!($slc > $last), '2fa anti-replay: acelasi cod (slot deja folosit) e respins');
+chk(totp_match_slice($sec, totp_at($sec,$slc+1)) === $slc+1 && ($slc+1) > $last, '2fa anti-replay: codul urmator (slot nou) e acceptat');
 
 /* ---- 12. Buildere: ESC/POS + Excel ---- */
 $t9 = issue_ticket($svc, false, 'paper');
@@ -148,8 +190,10 @@ $xl = build_stats_xlsx('CI','Toate','2026-01-01','2026-01-31',
     [['name'=>'Casierie','color'=>'#2563eb','kpi_wait_sec'=>600,'c'=>5,'served'=>3,'w'=>120,'sv'=>90,'called_cnt'=>4,'kpi_ok'=>3]],
     [['h'=>9,'c'=>5]], [['code'=>'G1','name'=>'B1','cnt'=>5]], '#2563eb',
     [['name'=>'Ana','c'=>5,'served'=>3,'w'=>120,'sv'=>90]],
-    ['total'=>8,'booked'=>2,'checked_in'=>4,'no_show'=>1,'cancelled'=>1]);
-chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip (cu sectiune programari)');
+    ['total'=>8,'booked'=>2,'checked_in'=>4,'no_show'=>1,'cancelled'=>1],
+    [['service_name'=>'Casierie','color'=>'#2563eb','n'=>4,'avg'=>4.5]],
+    [['name'=>'Ana','n'=>3,'avg'=>4.7]]);
+chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip (cu sectiuni programari + CSAT serviciu/operator)');
 
 /* ---- 13. API v1 + denylist ---- */
 chk(in_array('api_key', settings_export_denylist(), true) && in_array('cron_token', settings_export_denylist(), true), 'settings: denylist excludes secrets');
@@ -285,6 +329,24 @@ chk(count($ucsv) === 2, 'csv useri: 2 randuri valide (sare antet/email invalid/p
 chk($ucsv[0]['email'] === 'ion@firma.ro' && $ucsv[0]['role'] === 'manager', 'csv useri: rol valid pastrat');
 chk($ucsv[1]['role'] === 'agent', 'csv useri: rol necunoscut -> agent implicit');
 
+/* ---- 26b. CSV cu BOM (fisiere Excel/export reimportat) — antetul nu devine date ---- */
+$bom = "\xEF\xBB\xBF";
+$bbom = parse_branches_csv($bom."nume,oras,adresa\nFiliala BOM,Cluj,Str X\n");
+chk(count($bbom) === 1 && $bbom[0]['name'] === 'Filiala BOM', 'csv BOM: antetul filialelor e ignorat, nu importat ca date');
+$sbom = parse_services_csv($bom."prefix,nume,culoare\nZ,Serviciu Z,#123456\n");
+chk(count($sbom) === 1 && $sbom[0]['prefix'] === 'Z', 'csv BOM: antetul serviciilor e ignorat');
+$ubom = parse_users_csv($bom."nume,email,rol,parola\nIon,ion@x.ro,agent,Parola123\n");
+chk(count($ubom) === 1 && $ubom[0]['email'] === 'ion@x.ro', 'csv BOM: antetul utilizatorilor e ignorat');
+
+/* ---- 26c. CSV: neutralizarea injectiei de formule (Excel/Sheets) ---- */
+chk(csv_safe_cell('=SUM(A1)') === "'=SUM(A1)", 'csv inj: = neutralizat');
+chk(csv_safe_cell('+1+1') === "'+1+1", 'csv inj: + neutralizat');
+chk(csv_safe_cell('-2+3') === "'-2+3", 'csv inj: - neutralizat');
+chk(csv_safe_cell('@cmd') === "'@cmd", 'csv inj: @ neutralizat');
+chk(csv_safe_cell('Casierie') === 'Casierie', 'csv inj: text normal neatins');
+chk(csv_safe_cell('2026-01-01 10:00') === '2026-01-01 10:00', 'csv inj: data neatinsa');
+chk(csv_safe_cell('5') === '5', 'csv inj: numar neatins');
+
 /* ---- 27. Generator QR local (SVG, fara servicii externe) ---- */
 require __DIR__ . '/../app/core/qr.php';
 $qm = QR::matrix('otpauth://totp/Test:a@b.ro?secret=ABCDEF234567&issuer=Test');
@@ -298,14 +360,20 @@ chk(QR::matrix(str_repeat('x', 400)) === null, 'qr: peste capacitate (v1..10-L) 
 // simuleaza o baza mai veche: scoate o coloana recenta si da inapoi schema_version
 q("ALTER TABLE services DROP COLUMN max_per_day");
 q("ALTER TABLE branches DROP COLUMN open_hours");
+q("ALTER TABLE tickets DROP INDEX idx_tickets_svc_status");
+q("ALTER TABLE users DROP COLUMN totp_last_slice");
 set_setting('schema_version', '5');
-run_migrations(); // trebuie sa re-adauge coloanele lipsa si sa urce versiunea la zi
+run_migrations(); // trebuie sa re-adauge coloanele/indecsii lipsa si sa urce versiunea la zi
 $hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
 $hasOh  = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='branches' AND column_name='open_hours'");
 $hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
+$hasSvcIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_svc_status'");
+$hasTls = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='totp_last_slice'");
 chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
 chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
+chk($hasSvcIdx > 0, 'migrare: idx_tickets_svc_status re-adaugat dupa upgrade');
+chk($hasTls === 1, 'migrare: users.totp_last_slice re-adaugat dupa upgrade');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
 
 /* ---- 29. Webhook de test (raporteaza rezultatul) ---- */
@@ -318,7 +386,25 @@ chk($tw2['ok'] === false, 'webhook test: endpoint inaccesibil -> ok=false');
 // incercarea de livrare e inregistrata in jurnal
 chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='ping'") >= 1, 'webhook log: incercarea de test e inregistrata');
 chk((int)val("SELECT ok FROM webhook_log ORDER BY id DESC LIMIT 1") === 0, 'webhook log: livrare esuata -> ok=0');
-set_setting('webhook_url', '');
+
+/* ---- 29b. submit_feedback + alerta webhook la nota mica (feedback.low) ---- */
+set_setting('webhook_url', 'http://127.0.0.1:1/hook'); set_setting('webhook_events', ''); set_setting('feedback_alert_rating', '2');
+$fbBefore = (int) val("SELECT COUNT(*) FROM feedback");
+$lowWhBefore = (int) val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'");
+$fid = submit_feedback(1, 'foarte rea', null, $br);
+chk($fid > 0 && (int)val("SELECT COUNT(*) FROM feedback") === $fbBefore + 1, 'submit_feedback: randul e inserat');
+chk((int)val("SELECT rating FROM feedback WHERE id=?", [$fid]) === 1, 'submit_feedback: rating salvat');
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: nota mica declanseaza webhook');
+submit_feedback(5, 'excelent', null, $br);  // peste prag -> fara alerta
+chk((int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: nota mare NU declanseaza webhook');
+set_setting('feedback_alert_rating', '0'); $fid2 = submit_feedback(1, 'rea dar alerta oprita', null, $br);  // prag 0 = oprit
+chk($fid2 > 0 && (int)val("SELECT COUNT(*) FROM webhook_log WHERE event='feedback.low'") === $lowWhBefore + 1, 'feedback.low: pragul 0 dezactiveaza alerta');
+// alerta pe email (best-effort): cu email activ, calea de email ruleaza fara erori (fara MTA -> send_mail=false)
+set_setting('feedback_alert_rating', '2'); set_setting('mail_enabled', '1'); set_setting('smtp_host', ''); set_setting('sla_alert_to', 'manager@ci.ro');
+$fid3 = submit_feedback(1, 'rea cu email activ', null, $br);
+chk($fid3 > 0, 'feedback.low: calea de email ruleaza fara erori (mail activ)');
+set_setting('mail_enabled', '0'); set_setting('sla_alert_to', '');
+set_setting('webhook_url', ''); set_setting('feedback_alert_rating', '2');
 
 /* ---- 30. Cron: operatori inactivi -> offline (statistici de prezenta corecte) ---- */
 require __DIR__ . '/../app/cron.php';

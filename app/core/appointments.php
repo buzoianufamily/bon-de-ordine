@@ -202,15 +202,35 @@ function appt_reschedule(int $id, string $newSlot): ?array {
     return one('SELECT * FROM appointments WHERE id=?', [$id]);
 }
 
-/** Check-in: genereaza biletul si leaga programarea. */
+/** Check-in: genereaza biletul si leaga programarea. Idempotent + sigur la dublu check-in. */
 function appt_checkin(array $appt): array {
-    if ($appt['status'] === 'checked_in' && $appt['ticket_id']) {
+    $id = (int)$appt['id'];
+    // cale rapida: deja are bilet
+    if ($appt['status'] === 'checked_in' && !empty($appt['ticket_id'])) {
         $t = one('SELECT * FROM tickets WHERE id=?', [$appt['ticket_id']]);
         if ($t) return $t;
     }
     if ($appt['status'] === 'cancelled') throw new RuntimeException('Programare anulata');
-    $t = issue_ticket((int)$appt['service_id'], false, 'appointment', $appt['customer_phone']);
-    q("UPDATE appointments SET status='checked_in', ticket_id=? WHERE id=?", [$t['id'], $appt['id']]);
+    // revendicare ATOMICA: o singura cerere trece 'booked' -> 'checked_in' (anti dublu check-in / dublu bilet).
+    // Nu putem folosi o tranzactie cu lock peste issue_ticket (acesta isi deschide propria tranzactie).
+    $claimed = q("UPDATE appointments SET status='checked_in' WHERE id=? AND status='booked'", [$id])->rowCount();
+    if ($claimed === 0) {
+        // alta cerere a revendicat deja (sau programarea e anulata) — intoarce biletul existent
+        $a = one('SELECT status, ticket_id FROM appointments WHERE id=?', [$id]);
+        if (!$a) throw new RuntimeException('Programare inexistenta');
+        if ($a['status'] === 'cancelled') throw new RuntimeException('Programare anulata');
+        for ($i = 0; $i < 20 && empty($a['ticket_id']); $i++) { usleep(50000); $a = one('SELECT ticket_id FROM appointments WHERE id=?', [$id]); }
+        if (!empty($a['ticket_id']) && ($t = one('SELECT * FROM tickets WHERE id=?', [$a['ticket_id']]))) return $t;
+        throw new RuntimeException('Check-in deja in curs. Reincarca pagina.');
+    }
+    // am revendicat: emite biletul si leaga-l (cu revenire la 'booked' daca emiterea esueaza)
+    try {
+        $t = issue_ticket((int)$appt['service_id'], false, 'appointment', $appt['customer_phone']);
+    } catch (Throwable $e) {
+        q("UPDATE appointments SET status='booked' WHERE id=? AND status='checked_in' AND ticket_id IS NULL", [$id]);
+        throw $e;
+    }
+    q("UPDATE appointments SET ticket_id=? WHERE id=?", [$t['id'], $id]);
     if (function_exists('fire_webhook')) {
         $appt['status'] = 'checked_in'; $appt['ticket_id'] = $t['id'];
         fire_webhook('appointment.checked_in', webhook_appointment($appt) + ['ticket_label' => $t['label']]);

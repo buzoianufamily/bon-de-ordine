@@ -46,19 +46,25 @@ try {
     // ===================== HEALTH (monitorizare uptime) =====================
     if ($seg[0] === 'health') {
         // conexiune proprie cu timeout scurt — nu folosim db() (care ar opri procesul daca DB e picata)
-        $ok = false; $err = null;
+        $ok = false; $err = null; $schema = 0;
         try {
             $c = $GLOBALS['__config']['db'];
             $pdo = new PDO("mysql:host={$c['host']};dbname={$c['name']};charset={$c['charset']}",
                 $c['user'], $c['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 3]);
             $ok = ((int) $pdo->query('SELECT 1')->fetchColumn() === 1);
+            // versiunea schemei: detecteaza instante cu migrare esuata/in urma (monitorizare multi-tenant)
+            try { $schema = (int) ($pdo->query("SELECT v FROM settings WHERE k='schema_version'")->fetchColumn() ?: 0); } catch (Throwable $e) {}
         } catch (Throwable $e) { $err = 'db'; }
+        $expected = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 0;
         json_out([
-            'ok'      => $ok,
-            'service' => 'bon-de-ordine',
-            'db'      => $ok ? 'up' : 'down',
-            'time'    => date('c'),
-            'error'   => $err,
+            'ok'             => $ok,
+            'service'        => 'bon-de-ordine',
+            'db'             => $ok ? 'up' : 'down',
+            'schema'         => $schema,
+            'schema_expected'=> $expected,
+            'schema_current' => $ok && $schema === $expected,   // false = migrare in urma/esuata
+            'time'           => date('c'),
+            'error'          => $err,
         ], $ok ? 200 : 503);
     }
 
@@ -225,6 +231,11 @@ SWJS;
         $u = require_login();
         if ($method === 'POST') csrf_check();
         q('UPDATE users SET last_seen = NOW() WHERE id = ?', [(int)$u['id']]); // prezenta
+        // un operator legat de anumite ghisee nu poate opera (call/pauza) alt ghiseu nici prin API
+        $guardCounter = function (int $cid) use ($u) {
+            if (!user_counter_allowed((int)$u['id'], $cid))
+                json_out(['ok' => false, 'error' => 'Nu ai acces la acest ghiseu.'], 403);
+        };
 
         switch ($action) {
             case 'user-status': {
@@ -252,9 +263,11 @@ SWJS;
                 json_out(['ok' => true, 'name' => $nu['name']]);
             }
             case 'call-next':
+                $guardCounter((int)input('counter_id', 0));
                 $t = call_next((int)input('counter_id', 0), (int)$u['id'], (int)input('service_id', 0));
                 json_out(['ok' => true, 'ticket' => $t]);
             case 'call-specific':
+                $guardCounter((int)input('counter_id', 0));
                 $t = call_specific((int)input('ticket_id', 0), (int)input('counter_id', 0), (int)$u['id']);
                 json_out(['ok' => (bool)$t, 'ticket' => $t] + ($t ? [] : ['error' => 'Biletul nu mai este la rand']));
             case 'recall':    json_out(['ok' => true, 'status' => recall_ticket((int)input('ticket_id', 0))]);
@@ -268,6 +281,7 @@ SWJS;
             case 'transfer-counter': transfer_to_counter((int)input('ticket_id', 0), (int)input('target_counter', 0)); json_out(['ok' => true]);
             case 'counter-pause': {
                 $cid = (int) input('counter_id', 0);
+                $guardCounter($cid);
                 $note = mb_substr(trim((string) input('note', '')), 0, 120);
                 q("UPDATE counters SET status='paused', pause_note=? WHERE id=?", [$note !== '' ? $note : null, $cid]);
                 // elibereaza biletele directionate catre acest ghiseu, ca sa nu ramana blocate (optional)
@@ -275,6 +289,7 @@ SWJS;
                 json_out(['ok' => true, 'released' => $released]);
             }
             case 'counter-open':
+                $guardCounter((int) input('counter_id', 0));
                 q("UPDATE counters SET status='open', pause_note=NULL WHERE id=?", [(int) input('counter_id', 0)]);
                 json_out(['ok' => true]);
             case 'counter-state':
@@ -318,10 +333,13 @@ SWJS;
                 $pu = one('SELECT * FROM users WHERE id=? AND active=1', [$puid]);
                 $code = (string)($_POST['code'] ?? '');
                 if ($pu && !empty($pu['totp_enabled'])) {
-                    $okTotp = totp_verify((string)$pu['totp_secret'], $code);
+                    // cod TOTP de unica folosinta: acceptat doar daca slotul e mai nou decat ultimul folosit (anti-replay)
+                    $slice = totp_match_slice((string)$pu['totp_secret'], $code);
+                    $okTotp = $slice !== null && $slice > (int)($pu['totp_last_slice'] ?? 0);
                     // fallback: cod de recuperare (de unica folosinta) — se consuma la folosire
                     $newJson = $okTotp ? null : totp_backup_consume($pu['totp_backup'] ?? null, $code);
                     if ($okTotp || $newJson !== null) {
+                        if ($okTotp) q('UPDATE users SET totp_last_slice=? WHERE id=?', [$slice, $puid]);
                         if (!$okTotp) { q('UPDATE users SET totp_backup=? WHERE id=?', [$newJson, $puid]); audit('2fa_backup_used', 'auth', $puid); }
                         unset($_SESSION['2fa_uid'], $_SESSION['2fa_time']);
                         complete_login($puid); audit('login', 'auth');
@@ -371,13 +389,17 @@ SWJS;
             view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '']);
             return;
         }
+        // limba paginii de login (poarta multilingva); pastrata pe redirect-uri de eroare
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        $lq = $lang !== 'ro' ? '?lang=' . $lang : '';
         if ($method === 'POST') {
             csrf_check();
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             // throttling: max 10 incercari esuate / IP in 10 minute
             $fails = 0;
             try { $fails = (int) val("SELECT COUNT(*) FROM audit_log WHERE action IN('login_failed','login_failed_2fa') AND ip=? AND created_at > NOW() - INTERVAL 10 MINUTE", [$ip]); } catch (Throwable $e) {}
-            if ($fails >= 10) { flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login'); }
+            if ($fails >= 10) { flash('Prea multe incercari esuate. Reincearca peste cateva minute.', 'error'); redirect('login' . $lq); }
             $u = verify_credentials((string)($_POST['email'] ?? ''), (string)($_POST['password'] ?? ''));
             if ($u) {
                 if (!empty($u['totp_enabled']) && !empty($u['totp_secret'])) {
@@ -390,9 +412,9 @@ SWJS;
             }
             audit('login_failed', 'auth', null, substr((string)($_POST['email'] ?? ''), 0, 120));
             flash('Email sau parola incorecte.', 'error');
-            redirect('login');
+            redirect('login' . $lq);
         }
-        view('public/login');
+        view('public/login', ['lang' => $lang]);
         return;
     }
     if ($seg[0] === 'logout') { if ($cu = current_user()) { log_user_status((int)$cu['id'],'offline'); q('UPDATE users SET work_status="offline" WHERE id=?', [(int)$cu['id']]); } logout(); redirect('login'); }
@@ -435,24 +457,28 @@ SWJS;
         $branch = (int)($_GET['branch'] ?? 1);
         $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        // daca vine din biletul digital, leaga evaluarea de bonul servit (pt CSAT pe serviciu/operator)
+        $tok = trim((string)($_GET['t'] ?? input('t', '')));
+        $ticketId = null;
+        if ($tok !== '') { $tr = one('SELECT id, branch_id FROM tickets WHERE public_token=?', [$tok]);
+            if ($tr) { $ticketId = (int)$tr['id']; $branch = (int)$tr['branch_id']; } }
         if ($method === 'POST') {
             // anti-spam: max 3 evaluari / IP / 10 minute
             $ip = $_SERVER['REMOTE_ADDR'] ?? '';
             if (!rate_limit_ok('fb:' . $ip, 3, 600)) {
-                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
                 return;
             }
             $rating  = (int) input('rating', 0);
             $comment = trim((string) input('comment', ''));
             if ($rating >= 1 && $rating <= 5) {
-                q('INSERT INTO feedback (ticket_id, branch_id, rating, comment) VALUES (NULL, ?, ?, ?)',
-                  [$branch ?: null, $rating, $comment !== '' ? mb_substr($comment, 0, 500) : null]);
-                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang]);
+                submit_feedback($rating, $comment, $ticketId, $branch ?: null);
+                view('public/feedback', ['done' => true, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
                 return;
             }
             flash('Alege o nota de la 1 la 5.', 'error');
         }
-        view('public/feedback', ['done' => false, 'branch' => $branch, 'lang' => $lang]);
+        view('public/feedback', ['done' => false, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
         return;
     }
 

@@ -319,8 +319,8 @@ function admin_services_export(): void {
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_servicii.csv' : 'servicii_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['prefix', 'nume', 'culoare']);
-    foreach ($rows as $r) fputcsv($out, [$r['prefix'], $r['name'], $r['color']]);
+    fputcsv_safe($out, ['prefix', 'nume', 'culoare']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['prefix'], $r['name'], $r['color']]);
     fclose($out);
     exit;
 }
@@ -478,8 +478,8 @@ function admin_counters_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_ghisee.csv' : 'ghisee_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['cod', 'nume']);
-    foreach ($rows as $r) fputcsv($out, [$r['code'], $r['name']]);
+    fputcsv_safe($out, ['cod', 'nume']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['code'], $r['name']]);
     fclose($out); exit;
 }
 /** Import ghisee din CSV (cod,nume) pentru o filiala; sare peste codurile existente. */
@@ -566,8 +566,8 @@ function admin_users_export(): void {
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_utilizatori.csv' : 'utilizatori_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
     // sablonul include coloana 'parola' (necesara la import); exportul real NU contine parole/hash-uri
-    fputcsv($out, $tmpl ? ['nume', 'email', 'rol', 'parola'] : ['nume', 'email', 'rol']);
-    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['email'], $r['role']]);
+    fputcsv_safe($out, $tmpl ? ['nume', 'email', 'rol', 'parola'] : ['nume', 'email', 'rol']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['name'], $r['email'], $r['role']]);
     fclose($out); exit;
 }
 /** Import operatori din CSV (nume,email,rol,parola); sare peste emailurile deja existente. */
@@ -687,9 +687,9 @@ function admin_tickets_export(): void {
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF"); // BOM pentru diacritice corecte in Excel
     $head = ['Bon','Serviciu','Filiala','Ghiseu','Status','Prioritar','Emis','Chemat','Finalizat','Asteptare','Servire'];
-    fputcsv($out, $head, ';');
+    fputcsv_safe($out, $head, ';');
     foreach ($rows as $r) {
-        fputcsv($out, [
+        fputcsv_safe($out, [
             $r['label'],
             $r['service_name'],
             $r['branch_name'] ?? '',
@@ -753,8 +753,9 @@ function admin_feedback_list(): void {
     $where = '1=1'; $args = [];
     if ($rating >= 1 && $rating <= 5) { $where .= ' AND f.rating=?'; $args[] = $rating; }
     $total = (int) val("SELECT COUNT(*) FROM feedback f WHERE $where", $args);
-    $rows  = all("SELECT f.*, b.name branch_name, t.label ticket_label
-                  FROM feedback f LEFT JOIN branches b ON b.id=f.branch_id LEFT JOIN tickets t ON t.id=f.ticket_id
+    $rows  = all("SELECT f.*, b.name branch_name, t.label ticket_label, s.name service_name
+                  FROM feedback f LEFT JOIN branches b ON b.id=f.branch_id
+                  LEFT JOIN tickets t ON t.id=f.ticket_id LEFT JOIN services s ON s.id=t.service_id
                   WHERE $where ORDER BY f.created_at DESC LIMIT $per OFFSET $off", $args);
     $stat = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback") ?: ['n'=>0,'avg'=>null];
     view('admin/feedback', compact('rows','page','per','total','rating','stat'));
@@ -772,9 +773,9 @@ function admin_feedback_export(): void {
     header('Content-Disposition: attachment; filename="feedback_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Data/ora','Nota','Comentariu','Filiala','Bon'], ';');
+    fputcsv_safe($out, ['Data/ora','Nota','Comentariu','Filiala','Bon'], ';');
     foreach ($rows as $r)
-        fputcsv($out, [$r['created_at'], $r['rating'], $r['comment'] ?? '', $r['branch_name'] ?? '', $r['ticket_label'] ?? ''], ';');
+        fputcsv_safe($out, [$r['created_at'], $r['rating'], $r['comment'] ?? '', $r['branch_name'] ?? '', $r['ticket_label'] ?? ''], ';');
     fclose($out);
     exit;
 }
@@ -929,9 +930,9 @@ function admin_audit_export(): void {
     header('Content-Disposition: attachment; filename="audit_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Data/ora','Utilizator','Actiune','Obiect','ID','Detalii','IP'], ';');
+    fputcsv_safe($out, ['Data/ora','Utilizator','Actiune','Obiect','ID','Detalii','IP'], ';');
     foreach ($rows as $r) {
-        fputcsv($out, [$r['created_at'], $r['user_name'] ?? '', $r['action'], $r['entity'] ?? '',
+        fputcsv_safe($out, [$r['created_at'], $r['user_name'] ?? '', $r['action'], $r['entity'] ?? '',
                        $r['entity_id'] ?? '', $r['details'] ?? '', $r['ip'] ?? ''], ';');
     }
     fclose($out);
@@ -950,7 +951,7 @@ function admin_api_save(): void {
     set_setting('webhook_url', trim((string)($_POST['webhook_url'] ?? '')));
     set_setting('webhook_secret', trim((string)($_POST['webhook_secret'] ?? '')));
     $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled',
-              'appointment.created','appointment.cancelled','appointment.checked_in','appointment.rescheduled','appointment.no_show','sla.breach'];
+              'appointment.created','appointment.cancelled','appointment.checked_in','appointment.rescheduled','appointment.no_show','sla.breach','feedback.low'];
     $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
     set_setting('webhook_events', implode(',', $evs));
     audit('update','webhook');
@@ -969,8 +970,8 @@ function admin_webhook_log_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="webhook_log_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['data', 'eveniment', 'ok', 'cod_http', 'url', 'eroare']);
-    foreach ($rows as $r) fputcsv($out, [$r['created_at'], $r['event'], $r['ok'] ? 'da' : 'nu', $r['status_code'], $r['url'], $r['error']]);
+    fputcsv_safe($out, ['data', 'eveniment', 'ok', 'cod_http', 'url', 'eroare']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['created_at'], $r['event'], $r['ok'] ? 'da' : 'nu', $r['status_code'], $r['url'], $r['error']]);
     fclose($out); exit;
 }
 
@@ -1023,7 +1024,7 @@ function admin_settings_save(): void {
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size','priority_escalate_min','max_recalls',
              'alert_called','alert_transfer','alert_delay','near_turn_alert','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
-             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min'];
+             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min','feedback_alert_rating'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
@@ -1099,8 +1100,8 @@ function admin_branches_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_filiale.csv' : 'filiale_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['nume', 'oras', 'adresa']);
-    foreach ($rows as $r) fputcsv($out, [$r['name'], $r['city'], $r['address']]);
+    fputcsv_safe($out, ['nume', 'oras', 'adresa']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['name'], $r['city'], $r['address']]);
     fclose($out); exit;
 }
 /** Import filiale din CSV (nume,oras,adresa); sare peste numele deja existente. */
@@ -1165,8 +1166,8 @@ function admin_closures_export(): void {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . ($tmpl ? 'sablon_zile_inchise.csv' : 'zile_inchise_' . date('Ymd_His') . '.csv') . '"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['data', 'motiv']);
-    foreach ($rows as $r) fputcsv($out, [$r['closed_date'], $r['reason']]);
+    fputcsv_safe($out, ['data', 'motiv']);
+    foreach ($rows as $r) fputcsv_safe($out, [$r['closed_date'], $r['reason']]);
     fclose($out); exit;
 }
 /** Import zile inchise din CSV (data,motiv) pentru o filiala (0 = toate); sare peste datele deja existente in acel domeniu. */
@@ -1393,8 +1394,8 @@ function admin_statistics(): void {
         header('Content-Disposition: attachment; filename="statistici_'.$from.'_'.$to.'.csv"');
         $out = fopen('php://output', 'w');
         fwrite($out, "\xEF\xBB\xBF"); // BOM pt Excel
-        fputcsv($out, ['Bon','Serviciu','Status','Prioritar','Canal','Emis','Apelat','Finalizat','Ghiseu']);
-        foreach ($rows as $r) fputcsv($out, [$r['label'],$r['service'],$r['status'],$r['priority']?'Da':'Nu',
+        fputcsv_safe($out, ['Bon','Serviciu','Status','Prioritar','Canal','Emis','Apelat','Finalizat','Ghiseu']);
+        foreach ($rows as $r) fputcsv_safe($out, [$r['label'],$r['service'],$r['status'],$r['priority']?'Da':'Nu',
             $r['channel'],$r['issued_at'],$r['called_at'],$r['finished_at'],$r['counter']]);
         fclose($out); exit;
     }
@@ -1448,6 +1449,14 @@ function admin_statistics(): void {
     $feedback = one("SELECT COUNT(*) n, AVG(rating) avg FROM feedback f WHERE $fbWhere", $fbArgs) ?: ['n'=>0,'avg'=>null];
     $fb_dist  = all("SELECT rating, COUNT(*) c FROM feedback f WHERE $fbWhere GROUP BY rating", $fbArgs);
     $fb_recent = all("SELECT rating, comment, created_at FROM feedback f WHERE $fbWhere AND comment IS NOT NULL AND comment<>'' ORDER BY created_at DESC LIMIT 15", $fbArgs);
+    // CSAT pe serviciu (doar feedback legat de un bon servit, deci de un serviciu)
+    $fb_service = all("SELECT s.name service_name, s.color, COUNT(*) n, AVG(f.rating) avg
+                       FROM feedback f JOIN tickets t ON t.id=f.ticket_id JOIN services s ON s.id=t.service_id
+                       WHERE $fbWhere GROUP BY s.id, s.name, s.color ORDER BY n DESC, avg DESC", $fbArgs);
+    // CSAT pe operator (feedback legat de un bon care a fost servit de cineva)
+    $fb_operator = all("SELECT u.name, COUNT(*) n, AVG(f.rating) avg
+                        FROM feedback f JOIN tickets t ON t.id=f.ticket_id JOIN users u ON u.id=t.agent_id
+                        WHERE $fbWhere GROUP BY t.agent_id, u.name ORDER BY n DESC, avg DESC", $fbArgs);
 
     // activitate operatori: timp pe status in interval (clamped la interval)
     $fromDt = $from.' 00:00:00'; $toDt = $to.' 23:59:59';
@@ -1458,7 +1467,7 @@ function admin_statistics(): void {
       GROUP BY u.id, l.status", [$fromDt, $toDt, $toDt, $fromDt]);
 
     // export CSV per set de date (fiecare grafic are buton propriu de download)
-    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity'], true)) {
+    if (($_GET['export'] ?? '') === 'csv' && in_array($_GET['dataset'] ?? '', ['day','service','counter','hour','user','op_activity','csat','csat_op'], true)) {
         $ds = $_GET['dataset'];
         // activitate operatori pivotata: o linie/operator cu minute pe fiecare status
         $opPivot = [];
@@ -1479,12 +1488,16 @@ function admin_statistics(): void {
                         array_map(fn($r)=>[$r['name'],(int)$r['c'],(int)$r['served'],round((float)$r['w']),round((float)$r['sv'])], $per_user)],
           'op_activity' => ['activitate_operatori', ['Operator','Disponibil (min)','Ocupat (min)','Pauza (min)','Indisponibil (min)'],
                         array_map(fn($n)=>[$n, round($opPivot[$n]['available']/60), round($opPivot[$n]['busy']/60), round($opPivot[$n]['paused']/60), round($opPivot[$n]['offline']/60)], array_keys($opPivot))],
+          'csat'    => ['csat_pe_serviciu', ['Serviciu','Raspunsuri','Nota medie'],
+                        array_map(fn($r)=>[$r['service_name'],(int)$r['n'],round((float)$r['avg'],2)], $fb_service)],
+          'csat_op' => ['csat_pe_operator', ['Operator','Raspunsuri','Nota medie'],
+                        array_map(fn($r)=>[$r['name'],(int)$r['n'],round((float)$r['avg'],2)], $fb_operator)],
         ];
         [$fname,$head,$data] = $sets[$ds];
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="'.$fname.'_'.$from.'_'.$to.'.csv"');
         $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF");
-        fputcsv($out,$head); foreach($data as $row) fputcsv($out,$row);
+        fputcsv_safe($out,$head); foreach($data as $row) fputcsv_safe($out,$row);
         fclose($out); exit;
     }
 
@@ -1511,11 +1524,11 @@ function admin_statistics(): void {
             if (in_array($r['status'], ['available','busy','paused'], true)) $opMap[$r['name']][$r['status']] = (int)$r['secs'];
         }
         $op_rows = array_values($opMap);
-        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt);
+        $xl = build_stats_xlsx($brand, $branchLabel, $from, $to, $kpi, $per_day, $per_service, $per_hour, $per_counter, $accent, $op_rows, $appt, $fb_service, $fb_operator);
         $xl->download('statistici_' . $from . '_' . $to . '.xlsx');
     }
 
-    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
+    view('admin/statistics', compact('from','to','branch','branches','kpi','per_day','per_service','per_hour','per_counter','per_user','feedback','fb_dist','fb_recent','fb_service','fb_operator','op_activity','heat','kpiPrev','prevFrom','prevTo','appt'));
 }
 
 /**
@@ -1524,7 +1537,8 @@ function admin_statistics(): void {
  */
 function build_stats_xlsx(string $brand, string $branchLabel, string $from, string $to,
                           array $kpi, array $per_day, array $per_service, array $per_hour,
-                          array $per_counter, string $accent, array $op_rows = [], array $appt = []): Xlsx {
+                          array $per_counter, string $accent, array $op_rows = [], array $appt = [],
+                          array $fb_service = [], array $fb_operator = []): Xlsx {
     $mins = fn($s) => round(((float)$s) / 60, 1);
     $served = (int)($kpi['served'] ?? 0); $noshow = (int)($kpi['no_show'] ?? 0); $canc = (int)($kpi['cancelled'] ?? 0);
 
@@ -1602,6 +1616,36 @@ function build_stats_xlsx(string $brand, string $branchLabel, string $from, stri
         'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
         'series' => [['name' => 'Total', 'name_ref' => '$B$' . $hdr, 'ref' => '$B$' . $first . ':$B$' . $last, 'vals' => $vals, 'colors' => $cols]],
     ]);
+
+    /* ---- Foaia: CSAT pe serviciu / operator (bare cu nota medie) ---- */
+    if ($fb_service || $fb_operator) {
+        $s = $xl->add_sheet('CSAT');
+        $s->set_col_widths([1 => 26, 2 => 12, 3 => 12]);
+        if ($fb_service) {
+            $s->row([['v' => 'Nota medie pe serviciu', 's' => Xlsx::S_TITLE]]);
+            $hdr = $s->row(['Serviciu', 'Raspunsuri', 'Nota medie'], Xlsx::S_HEAD);
+            $cats = []; $vals = []; $cols = []; $first = $hdr + 1;
+            foreach ($fb_service as $r) {
+                $s->row([$r['service_name'], (int)$r['n'], ['v' => round((float)$r['avg'], 2), 's' => Xlsx::S_NUM1]]);
+                $cats[] = $r['service_name']; $vals[] = round((float)$r['avg'], 2); $cols[] = $r['color'] ?: $accent;
+            }
+            $last = $s->row_count();
+            $s->chart([
+                'type' => 'bar', 'title' => 'Nota medie pe serviciu (1–5)',
+                'anchor' => ['col' => 5, 'row' => 1, 'col2' => 14, 'row2' => 18],
+                'cat' => ['ref' => '$A$' . $first . ':$A$' . $last, 'vals' => $cats],
+                'series' => [['name' => 'Nota medie', 'name_ref' => '$C$' . $hdr, 'ref' => '$C$' . $first . ':$C$' . $last, 'vals' => $vals, 'colors' => $cols]],
+            ]);
+        }
+        if ($fb_operator) {
+            $s->blank();
+            $s->row([['v' => 'Nota medie pe operator', 's' => Xlsx::S_TITLE]]);
+            $s->row(['Operator', 'Raspunsuri', 'Nota medie'], Xlsx::S_HEAD);
+            foreach ($fb_operator as $r) {
+                $s->row([$r['name'], (int)$r['n'], ['v' => round((float)$r['avg'], 2), 's' => Xlsx::S_NUM1]]);
+            }
+        }
+    }
 
     /* ---- Foaia 4: Pe ora (coloane) ---- */
     $s = $xl->add_sheet('Pe ora');
@@ -1734,9 +1778,9 @@ function admin_appointments_export(): void {
     header('Content-Disposition: attachment; filename="programari_' . $f['date'] . '.csv"');
     $out = fopen('php://output', 'w');
     fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Data/ora','Status','Serviciu','Filiala','Client','Telefon','Email','Nota','Bon'], ';');
+    fputcsv_safe($out, ['Data/ora','Status','Serviciu','Filiala','Client','Telefon','Email','Nota','Bon'], ';');
     foreach ($rows as $r) {
-        fputcsv($out, [$r['slot_start'], $statusRo[$r['status']] ?? $r['status'], $r['service_name'], $r['branch_name'] ?? '',
+        fputcsv_safe($out, [$r['slot_start'], $statusRo[$r['status']] ?? $r['status'], $r['service_name'], $r['branch_name'] ?? '',
                        $r['customer_name'] ?? '', $r['customer_phone'] ?? '', $r['customer_email'] ?? '',
                        $r['note'] ?? '', $r['ticket_label'] ?? ''], ';');
     }

@@ -239,6 +239,40 @@ $delta = function($cur, $prev, bool $invert=false): string {
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
+    <?php if(!empty($fb_service)): ?>
+      <div style="margin-top:1.2rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+          <div class="muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Nota medie pe serviciu</div>
+          <?= $dlcsv('csat') ?>
+        </div>
+        <table style="width:100%"><thead><tr><th>Serviciu</th><th style="text-align:right">Raspunsuri</th><th style="text-align:right">Nota medie</th></tr></thead><tbody>
+        <?php foreach($fb_service as $r): $av=round((float)$r['avg'],2); ?>
+          <tr>
+            <td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:<?= e($r['color']) ?>;vertical-align:middle;margin-right:.4rem"></span><?= e($r['service_name']) ?></td>
+            <td style="text-align:right"><?= (int)$r['n'] ?></td>
+            <td style="text-align:right;white-space:nowrap"><strong><?= e(number_format($av,2)) ?></strong> <span style="color:#f5b301"><?php for($i=1;$i<=5;$i++) echo $i<=round($av)?'★':'☆'; ?></span></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody></table>
+      </div>
+    <?php endif; ?>
+    <?php if(!empty($fb_operator)): ?>
+      <div style="margin-top:1.2rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+          <div class="muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Nota medie pe operator</div>
+          <?= $dlcsv('csat_op') ?>
+        </div>
+        <table style="width:100%"><thead><tr><th>Operator</th><th style="text-align:right">Raspunsuri</th><th style="text-align:right">Nota medie</th></tr></thead><tbody>
+        <?php foreach($fb_operator as $r): $av=round((float)$r['avg'],2); ?>
+          <tr>
+            <td><?= e($r['name']) ?></td>
+            <td style="text-align:right"><?= (int)$r['n'] ?></td>
+            <td style="text-align:right;white-space:nowrap"><strong><?= e(number_format($av,2)) ?></strong> <span style="color:#f5b301"><?php for($i=1;$i<=5;$i++) echo $i<=round($av)?'★':'☆'; ?></span></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody></table>
+      </div>
+    <?php endif; ?>
   <?php endif; ?>
 </div>
 

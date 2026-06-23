@@ -41,13 +41,18 @@ tcontains(){ local d="$1" needle="$2" body="$3"; if printf '%s' "$body" | grep -
 
 # --- public ---
 t "GET /health"            200 "$(code $B/health)"
+tcontains "health: schema la zi dupa instalare" '"schema_current":true' "$(curl -s $B/health)"
 t "GET / (portal)"         200 "$(code $B/)"
 t "GET /login"             200 "$(code $B/login)"
+tcontains "login multilingv EN (?lang=en)" 'Sign in to your account' "$(curl -s "$B/login?lang=en")"
+tcontains "login RO implicit" 'Autentifica-te in cont' "$(curl -s "$B/login")"
 t "GET /login/forgot"      200 "$(code $B/login/forgot)"
 t "GET /concierge anon->redirect" 302 "$(code $B/concierge)"
 # feedback multilingv (ca biletul digital)
 tcontains "feedback RO implicit" 'Cum a fost experienta' "$(curl -s "$B/feedback")"
 tcontains "feedback EN (?lang=en)" 'How was your experience' "$(curl -s "$B/feedback?lang=en")"
+tcontains "feedback a11y: rating e radiogroup" 'role="radiogroup"' "$(curl -s "$B/feedback")"
+tcontains "feedback a11y: stelele sunt butoane (operabile cu tastatura)" '<button type="button" data-v="1" class="star"' "$(curl -s "$B/feedback")"
 # programare publica multilingva
 tcontains "book RO implicit" 'Programare online' "$(curl -s "$B/book")"
 tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
@@ -108,6 +113,27 @@ tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
 tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
+# injectie de formule: un comentariu public care incepe cu '=' e neutralizat in exportul CSV
+curl -s -o /dev/null -X POST "$B/feedback?branch=$BR" --data-urlencode 'rating=3' --data-urlencode 'comment==DANGER123'
+tcontains "export feedback neutralizeaza injectia de formule" "'=DANGER123" "$(curl -s -b "$JAR" "$B/admin/feedback/export")"
+# feedback public legat de bonul servit (din biletul digital) -> apare in admin cu eticheta bonului
+if [ -n "${VTOK:-}" ]; then
+  VLABEL="$(printf '%s' "$ISS" | python3 -c "import sys,json;print(json.load(sys.stdin)['ticket']['label'])" 2>/dev/null)"
+  VID="$(printf '%s' "$ISS" | python3 -c "import sys,json;print(json.load(sys.stdin)['ticket']['id'])" 2>/dev/null)"
+  # serveste bonul (admin la ghiseul CTR) ca sa aiba operator -> activeaza CSAT pe operator
+  ACSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+  curl -s -o /dev/null -b "$JAR" -X POST $B/api/call-specific -H "X-CSRF: $ACSRF" -H 'Content-Type: application/json' -d "{\"ticket_id\":$VID,\"counter_id\":$CTR}"
+  curl -s -o /dev/null -b "$JAR" -X POST $B/api/finish -H "X-CSRF: $ACSRF" -H 'Content-Type: application/json' -d "{\"ticket_id\":$VID}"
+  curl -s -o /dev/null -X POST "$B/feedback?t=$VTOK" --data-urlencode 'rating=5' --data-urlencode 'comment=CI feedback legat de bon'
+  tcontains "feedback public retine eticheta bonului in admin" "$VLABEL" "$(curl -s -b "$JAR" "$B/admin/feedback")"
+  tcontains "pagina feedback poarta tokenul bonului (camp ascuns)" 'name="t"' "$(curl -s "$B/feedback?t=$VTOK&branch=$BR")"
+  # CSAT pe serviciu + pe operator in statistici (feedback legat de bon servit de un operator)
+  STAT_PAGE="$(curl -s -b "$JAR" "$B/admin/statistics?from=$TODAY&to=$TODAY")"
+  tcontains "statistici au sectiunea CSAT pe serviciu" 'Nota medie pe serviciu' "$STAT_PAGE"
+  tcontains "statistici au sectiunea CSAT pe operator" 'Nota medie pe operator' "$STAT_PAGE"
+  tcontains "export CSAT pe serviciu CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=csat&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
+  tcontains "export CSAT pe operator CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=csat_op&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
+fi
 XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
 [ "$XLSX_SIG" = "PK" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: stats xlsx not a zip (got '$XLSX_SIG')"; }
 CT_OPA="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=op_activity" | grep -i 'content-type')"
@@ -136,7 +162,9 @@ tcontains "grupuri: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JA
 WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
 tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
 tcontains "test-webhook mesaj despre URL" 'URL' "$WHT"
-tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$(curl -s -b "$JAR" "$B/admin/api")"
+API_PAGE="$(curl -s -b "$JAR" "$B/admin/api")"
+tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$API_PAGE"
+tcontains "pagina API listeaza evenimentul feedback.low" 'feedback.low' "$API_PAGE"
 tcontains "export jurnal webhook CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/api/webhook-log-export" | grep -i 'content-type')"
 
 # --- export/import ghisee din CSV (autentificat) ---
@@ -231,6 +259,20 @@ if [ -n "$SLOT" ]; then
 else
   echo "WARN: niciun slot liber maine (skip booking via API)"
 fi
+
+# --- IDOR: allowed_counters aplicat si pe API, nu doar in UI ---
+# agent legat de un ghiseu inexistent (999999) => orice ghiseu real ii e interzis
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/users --data-urlencode "_csrf=$ICSRF" \
+  --data-urlencode "name=Pinned CI" --data-urlencode "email=pinnedci@firma.ro" \
+  --data-urlencode "role=agent" --data-urlencode "active=1" \
+  --data-urlencode "password=PinnedCI123" --data-urlencode "allowed_counters[]=999999"
+PJAR="$(mktemp)"
+PCSRF="$(curl -s -c "$PJAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
+curl -s -o /dev/null -b "$PJAR" -c "$PJAR" -X POST $B/login -d "_csrf=$PCSRF&email=pinnedci@firma.ro&password=PinnedCI123"
+PACSRF="$(curl -s -b "$PJAR" "$B/counter" | grep -oE 'name="csrf" content="[^"]+"' | head -1 | sed -E 's/.*content="([^"]+)".*/\1/')"
+t "API call-next pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/call-next -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
+t "API counter-pause pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/counter-pause -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
+rm -f "$PJAR"
 
 # --- logout ---
 t "GET /logout -> 302"   302 "$(code -b "$JAR" $B/logout)"
