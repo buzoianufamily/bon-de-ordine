@@ -67,6 +67,17 @@ if ($svc2) { $t3 = issue_ticket($svc, false, 'paper'); transfer_ticket((int)$t3[
     if ($ctr2) { transfer_to_counter((int)$t3['id'], $ctr2); chk((int)val("SELECT target_counter_id FROM tickets WHERE id=".(int)$t3['id']) === $ctr2, 'transfer: to counter'); }
 }
 
+/* ---- 5b. Bilet directionat la un ghiseu nu e furat de „urmatorul pe serviciu" de la alt ghiseu ---- */
+q("INSERT INTO counters (branch_id, code, name, all_services, status) VALUES (?, 'CIX', 'CI dir', 1, 'open')", [$br]);
+$ctrX = (int) insert_id();
+$td = issue_ticket($svc, false, 'paper');
+transfer_to_counter((int)$td['id'], $ctrX);   // directionat exclusiv catre ctrX
+call_next($ctr, $adminId, $svc);              // alt ghiseu cere „urmatorul pe serviciu"
+chk((int)val("SELECT 1 FROM tickets WHERE id=? AND status='waiting' AND target_counter_id=?", [(int)$td['id'], $ctrX]) === 1,
+    'call_next(serviciu): nu fura biletul directionat catre alt ghiseu');
+$pulledX = call_next($ctrX, $adminId, $svc);  // ghiseul tinta il poate ridica
+chk($pulledX !== null && (int)$pulledX['id'] === (int)$td['id'], 'call_next(serviciu) la ghiseul tinta ridica biletul directionat');
+
 /* ---- 6. Inchideri (logica, prin data viitoare ca sa nu interfereze cu cache-ul pe "azi") ---- */
 $future = date('Y-m-d', strtotime('+30 days')); $futTs = strtotime($future . ' 12:00:00');
 q("DELETE FROM branch_closures WHERE branch_id=? AND closed_date=?", [$br, $future]);

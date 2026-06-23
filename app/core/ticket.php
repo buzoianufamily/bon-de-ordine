@@ -207,8 +207,10 @@ function call_next(int $counter_id, int $user_id, int $service_id = 0): ?array {
     $svcIds = counter_service_ids($counter);
 
     if ($service_id > 0) {
-        // urmatorul dintr-un serviciu anume (din filiala ghiseului)
-        $cond = "t.service_id = ? AND t.branch_id = ?"; $args = [$service_id, (int)$counter['branch_id']];
+        // urmatorul dintr-un serviciu anume (din filiala ghiseului); nu fura biletele
+        // directionate exclusiv catre alt ghiseu (doar nedirectionate sau directionate spre acest ghiseu)
+        $cond = "t.service_id = ? AND t.branch_id = ? AND (t.target_counter_id IS NULL OR t.target_counter_id = ?)";
+        $args = [$service_id, (int)$counter['branch_id'], $counter_id];
     } else {
         // bilete eligibile: directionate catre acest ghiseu (prioritar) + serviciile ghiseului
         $cond = "t.target_counter_id = ?"; $args = [$counter_id];
