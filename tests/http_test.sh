@@ -49,6 +49,8 @@ t "GET /concierge anon->redirect" 302 "$(code $B/concierge)"
 # feedback multilingv (ca biletul digital)
 tcontains "feedback RO implicit" 'Cum a fost experienta' "$(curl -s "$B/feedback")"
 tcontains "feedback EN (?lang=en)" 'How was your experience' "$(curl -s "$B/feedback?lang=en")"
+tcontains "feedback a11y: rating e radiogroup" 'role="radiogroup"' "$(curl -s "$B/feedback")"
+tcontains "feedback a11y: stelele sunt butoane (operabile cu tastatura)" '<button type="button" data-v="1" class="star"' "$(curl -s "$B/feedback")"
 # programare publica multilingva
 tcontains "book RO implicit" 'Programare online' "$(curl -s "$B/book")"
 tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
