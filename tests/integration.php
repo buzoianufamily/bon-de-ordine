@@ -322,6 +322,15 @@ chk(count($ucsv) === 2, 'csv useri: 2 randuri valide (sare antet/email invalid/p
 chk($ucsv[0]['email'] === 'ion@firma.ro' && $ucsv[0]['role'] === 'manager', 'csv useri: rol valid pastrat');
 chk($ucsv[1]['role'] === 'agent', 'csv useri: rol necunoscut -> agent implicit');
 
+/* ---- 26b. CSV cu BOM (fisiere Excel/export reimportat) — antetul nu devine date ---- */
+$bom = "\xEF\xBB\xBF";
+$bbom = parse_branches_csv($bom."nume,oras,adresa\nFiliala BOM,Cluj,Str X\n");
+chk(count($bbom) === 1 && $bbom[0]['name'] === 'Filiala BOM', 'csv BOM: antetul filialelor e ignorat, nu importat ca date');
+$sbom = parse_services_csv($bom."prefix,nume,culoare\nZ,Serviciu Z,#123456\n");
+chk(count($sbom) === 1 && $sbom[0]['prefix'] === 'Z', 'csv BOM: antetul serviciilor e ignorat');
+$ubom = parse_users_csv($bom."nume,email,rol,parola\nIon,ion@x.ro,agent,Parola123\n");
+chk(count($ubom) === 1 && $ubom[0]['email'] === 'ion@x.ro', 'csv BOM: antetul utilizatorilor e ignorat');
+
 /* ---- 27. Generator QR local (SVG, fara servicii externe) ---- */
 require __DIR__ . '/../app/core/qr.php';
 $qm = QR::matrix('otpauth://totp/Test:a@b.ro?secret=ABCDEF234567&issuer=Test');

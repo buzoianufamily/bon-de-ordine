@@ -154,13 +154,18 @@ function log_user_status(int $userId, string $status): void {
     } catch (Throwable $e) {}
 }
 
+/** Imparte un CSV in linii, scotand BOM-ul UTF-8 din fata (fisiere exportate/Excel). */
+function _csv_lines(string $csv): array {
+    return preg_split('/\r?\n/', preg_replace('/^\xEF\xBB\xBF/', '', $csv));
+}
+
 /**
  * Parseaza un CSV de servicii (linii: prefix,nume,culoare?). Sare peste antet/linii goale.
  * Returneaza randuri validate: [['prefix'=>..,'name'=>..,'color'=>..], ...].
  */
 function parse_services_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -178,7 +183,7 @@ function parse_services_csv(string $csv): array {
 /** Parseaza un CSV de zile inchise (linii: data,motiv?). data in format YYYY-MM-DD. Sare antet/linii invalide. Returneaza [['date','reason'], ...]. */
 function parse_closures_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -195,7 +200,7 @@ function parse_closures_csv(string $csv): array {
 /** Parseaza un CSV de filiale (linii: nume,oras?,adresa?). Sare antet/linii goale. Returneaza [['name','city','address'], ...]. */
 function parse_branches_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -210,7 +215,7 @@ function parse_branches_csv(string $csv): array {
 /** Parseaza un CSV de ghisee (linii: cod,nume). Sare peste antet/linii goale. Returneaza [['code'=>..,'name'=>..], ...]. */
 function parse_counters_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
@@ -230,7 +235,7 @@ function parse_counters_csv(string $csv): array {
  */
 function parse_users_csv(string $csv): array {
     $out = [];
-    foreach (preg_split('/\r?\n/', $csv) as $ln) {
+    foreach (_csv_lines($csv) as $ln) {
         $ln = trim($ln);
         if ($ln === '') continue;
         $p = array_map('trim', explode(',', $ln));
