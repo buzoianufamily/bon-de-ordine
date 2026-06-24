@@ -6,7 +6,7 @@
 --  toate folosesc aceasta schema identica.
 -- =====================================================================
 SET NAMES utf8mb4;
-SET time_zone = '+00:00';
+-- (fusul orar al sesiunii e setat de aplicatie in db() ca sa coincida cu PHP; nu-l fixam aici)
 
 -- ---------- Setari (chei-valoare: branding, limba, voce TTS, etc.) ----------
 CREATE TABLE IF NOT EXISTS settings (

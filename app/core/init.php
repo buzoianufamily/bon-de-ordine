@@ -8,6 +8,10 @@ declare(strict_types=1);
 define('APP_ROOT', dirname(__DIR__, 2));
 define('APP_START', microtime(true));
 
+// prinde erorile fatale/neprinse din toata aplicatia si afiseaza o pagina prietenoasa (fara DB)
+require APP_ROOT . '/app/core/errors.php';
+bdo_install_error_handlers();
+
 define('APP_SCHEMA_VERSION', 29);   // versiunea curenta a schemei (folosita de migrari si landlord)
 
 // Config: din config/config.php; testele de integrare pot injecta prin $GLOBALS['__config_override'].
@@ -22,20 +26,42 @@ function qms_tenants_load(): array {
     $j = json_decode((string)@file_get_contents($f), true);
     return is_array($j['tenants'] ?? null) ? $j['tenants'] : [];
 }
+/**
+ * Starea de acces a unei instante (abonament): 'ok' | 'suspended' | 'expired'.
+ * Suspendare manuala (active=0) sau abonament expirat (azi > paid_until + grace_days).
+ */
+function bdo_tenant_state(array $t, int $now): string {
+    if (empty($t['active'])) return 'suspended';
+    $pu = trim((string)($t['paid_until'] ?? ''));
+    if ($pu !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $pu)) {
+        $grace = max(0, (int)($t['grace_days'] ?? 0));
+        $deadline = strtotime($pu . ' +' . $grace . ' days 23:59:59');
+        if ($deadline !== false && $now > $deadline) return 'expired';
+    }
+    return 'ok';
+}
 $GLOBALS['__tenant'] = null;
 $__host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
 $__hostNoWww = preg_replace('/^www\./', '', $__host);
-foreach (qms_tenants_load() as $__t) {
+$__tenants = qms_tenants_load();
+$__matched = false;
+foreach ($__tenants as $__t) {
     $__th = strtolower(trim((string)($__t['host'] ?? '')));
     if ($__th === '' || ($__th !== $__host && $__th !== $__hostNoWww)) continue;
-    if (empty($__t['active'])) {                       // instanta suspendata
-        http_response_code(503);
-        header('Content-Type: text/html; charset=utf-8');
-        echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Instanta suspendata</title>'
-           . '<body style="margin:0;font-family:system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0d12;color:#e8eaef">'
-           . '<div style="text-align:center;padding:2rem"><div style="font-size:3rem">⏸</div><h1 style="margin:.3em 0">Instanta este suspendata</h1>'
-           . '<p style="color:#8a93a3">Contactati administratorul platformei.</p></div>';
-        exit;
+    $__matched = true;
+    $__state = bdo_tenant_state($__t, time());
+    if ($__state === 'suspended') {
+        $c = trim((string)($config['support_email'] ?? ''));
+        fail_page(503, 'Cont suspendat',
+            'Acest cont a fost suspendat temporar. Contactați administratorul platformei' . ($c !== '' ? ' (' . $c . ')' : '') . '.',
+            null, false);
+    }
+    if ($__state === 'expired') {
+        $c = trim((string)($config['support_email'] ?? ''));
+        $renew = trim((string)($config['renew_url'] ?? ''));
+        fail_page(402, 'Abonament expirat',
+            'Abonamentul a expirat. Reînnoiește-l pentru a reactiva accesul' . ($c !== '' ? '. Contact: ' . $c : '') . ($renew !== '' ? ' · ' . $renew : '') . '.',
+            null, false);
     }
     if (!empty($__t['db']['name'])) {                   // foloseste baza de date a clientului
         $config['db'] = array_merge($config['db'], $__t['db']);
@@ -44,7 +70,13 @@ foreach (qms_tenants_load() as $__t) {
     $GLOBALS['__tenant'] = $__t;
     break;
 }
-unset($__host, $__hostNoWww, $__t, $__th);
+// host neinregistrat: daca exista un registru de tenanti si un primary_host configurat,
+// nu servi pe baza de date principala un domeniu necunoscut (anti-configurare gresita/spoof)
+$__primary = strtolower(trim((string)($config['primary_host'] ?? '')));
+if (!$__matched && $__primary !== '' && $__host !== $__primary && $__hostNoWww !== $__primary && $__tenants) {
+    fail_page(404, 'Domeniu neconfigurat', 'Acest domeniu nu este configurat pe platformă.', null, false);
+}
+unset($__host, $__hostNoWww, $__t, $__th, $__tenants, $__matched, $__state, $__primary);
 
 // Erori in functie de mediu
 if (($config['app']['env'] ?? 'production') === 'dev') {

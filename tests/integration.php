@@ -35,6 +35,12 @@ foreach (['users','tickets','feedback','counter_sessions','password_resets','bra
 foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id'],['branches','open_hours']] as $c)
     chk((int)val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?", $c) === 1, "install: column {$c[0]}.{$c[1]}");
 
+/* ---- 1b. Fus orar: sesiunea MySQL aliniata cu PHP (NOW()/CURDATE() = date()) ---- */
+$dbTz = (string) val("SELECT @@session.time_zone");
+chk($dbTz === date('P'), 'tz: fus orar sesiune MySQL = offset PHP ('.$dbTz.' vs '.date('P').')');
+$dbNow = (string) val("SELECT DATE(NOW())");
+chk($dbNow === date('Y-m-d'), 'tz: DATE(NOW()) MySQL = data PHP');
+
 /* ---- 2. Autentificare + parola ---- */
 $adminId = (int)val("SELECT id FROM users WHERE email='admin@example.ro'");
 chk(verify_credentials('admin@example.ro','123456') !== null, 'auth: correct creds');
@@ -474,6 +480,18 @@ appt_cancel((int)$b1['id']); // elibereaza slotul -> anunta primul de pe lista
 chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='c2@ci.ro' AND notified_at IS NOT NULL")===1, 'wl: la anulare, primul de pe lista e anuntat');
 $wlFail=false; try { appt_waitlist_add($svc, $slotWl, 'X', 'not-an-email'); } catch (Throwable $e) { $wlFail=true; }
 chk($wlFail, 'wl: email invalid -> respins');
+
+/* ---- 36. Ciclu de abonament (bdo_tenant_state): ok / suspendat / expirat + gratie ---- */
+$now = strtotime('2026-06-24 12:00:00');
+chk(bdo_tenant_state(['active'=>0], $now) === 'suspended', 'abonament: active=0 -> suspendat');
+chk(bdo_tenant_state(['active'=>1], $now) === 'ok', 'abonament: fara data -> ok (fara expirare)');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-12-31'], $now) === 'ok', 'abonament: platit in viitor -> ok');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-24'], $now) === 'ok', 'abonament: platit pana azi -> ok (in ziua curenta)');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23'], $now) === 'expired', 'abonament: expirat ieri, fara gratie -> expirat');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23', 'grace_days'=>5], $now) === 'ok', 'abonament: expirat ieri dar in gratie -> ok');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-10', 'grace_days'=>5], $now) === 'expired', 'abonament: dincolo de gratie -> expirat');
+chk(bdo_tenant_state(['active'=>0, 'paid_until'=>'2026-12-31'], $now) === 'suspended', 'abonament: suspendarea manuala bate abonamentul valid');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'data-gresita'], $now) === 'ok', 'abonament: data invalida ignorata -> ok');
 
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }

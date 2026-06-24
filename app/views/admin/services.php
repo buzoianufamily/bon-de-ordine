@@ -41,7 +41,7 @@
       <span>
         <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/pause')) ?>" style="display:inline" data-pause="<?= empty($r['paused'])?'1':'0' ?>"><?= csrf_field() ?><input type="hidden" name="note" value=""><button class="lnk" style="background:none;border:none;cursor:pointer;color:#d97706;font-weight:700;font:inherit"><?= !empty($r['paused']) ? '▶ Reia' : '⏸ Pauza' ?></button></form>
         <a class="lnk" href="<?= e(url('admin/services/'.$r['id'])) ?>" style="margin-left:.7rem">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi serviciul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Ștergi serviciul? Se șterg DEFINITIV și toate biletele și statisticile lui. Ca să-l ascunzi fără pierdere de date, setează-l mai bine Inactiv."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>

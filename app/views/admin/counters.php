@@ -35,7 +35,7 @@
       <span>
         <a class="lnk" target="_blank" href="<?= e(url('cd/'.$r['id'])) ?>">Afisaj</a>
         <a class="lnk" href="<?= e(url('admin/counters/'.$r['id'])) ?>" style="margin-left:.7rem">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/counters/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi ghiseul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <form method="post" action="<?= e(url('admin/counters/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Ștergi ghișeul? Biletele istorice servite la el rămân, dar legătura cu ghișeul se pierde. Continui?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>

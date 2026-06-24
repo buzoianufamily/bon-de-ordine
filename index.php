@@ -3,6 +3,15 @@
  * Front controller - Sistem de Bon de Ordine
  * Toate cererile (cu exceptia fisierelor reale) trec prin acest fisier.
  */
+// Garda versiune PHP (cod compatibil 7.x ca sa ruleze inainte de a include bootstrap-ul 8.x).
+if (PHP_VERSION_ID < 80000) {
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    exit('<!doctype html><meta charset="utf-8"><title>PHP 8 necesar</title>'
+        . '<body style="font-family:system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;line-height:1.6">'
+        . '<h1>Este necesar PHP 8.0 sau mai nou</h1>'
+        . '<p>Aplicația rulează pe PHP ' . PHP_VERSION . '. Selectează PHP 8.0+ în panoul de hosting (cPanel → Select PHP Version).</p>');
+}
 require __DIR__ . '/app/core/init.php';
 
 // ---- determina ruta relativa la directorul aplicatiei ----
@@ -354,6 +363,7 @@ SWJS;
         }
         // ---- am uitat parola: cere link pe email ----
         if (($seg[1] ?? '') === 'forgot') {
+            $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro'))); if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
             if ($method === 'POST') {
                 csrf_check();
                 $ip = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -364,14 +374,16 @@ SWJS;
                     password_reset_request($email);                 // best-effort, fara a divulga existenta contului
                     audit('pwreset_request', 'auth', null, substr($email, 0, 120));
                 }
-                view('public/forgot', ['sent' => true]);
+                view('public/forgot', ['sent' => true, 'lang' => $lang]);
                 return;
             }
-            view('public/forgot', ['sent' => false]);
+            view('public/forgot', ['sent' => false, 'lang' => $lang]);
             return;
         }
         // ---- resetare parola din link (token) ----
         if (($seg[1] ?? '') === 'reset') {
+            $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro'))); if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+            $lq = $lang !== 'ro' ? '?lang=' . $lang : '';
             $token = (string) ($_GET['token'] ?? input('token', ''));
             if ($method === 'POST') {
                 csrf_check();
@@ -379,14 +391,14 @@ SWJS;
                 if ($res['ok']) {
                     audit('pwreset_done', 'auth', $res['uid']);
                     flash('Parola a fost schimbata. Te poti autentifica acum.');
-                    redirect('login');
+                    redirect('login' . $lq);
                 }
                 // daca tokenul a expirat/devenit invalid intre afisare si trimitere, arata panoul „link invalid"
-                view('public/reset', ['token' => $token, 'valid' => password_reset_lookup($token) !== null, 'error' => $res['error']]);
+                view('public/reset', ['token' => $token, 'valid' => password_reset_lookup($token) !== null, 'error' => $res['error'], 'lang' => $lang]);
                 return;
             }
             $valid = password_reset_lookup($token) !== null;
-            view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '']);
+            view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '', 'lang' => $lang]);
             return;
         }
         // limba paginii de login (poarta multilingva); pastrata pe redirect-uri de eroare
@@ -422,15 +434,17 @@ SWJS;
     // contul propriu (orice utilizator autentificat — util mai ales operatorilor care nu intra in backoffice)
     if ($seg[0] === 'account') {
         $u = require_login();
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro'))); if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        $lq = $lang !== 'ro' ? '?lang=' . $lang : '';
         if ($method === 'POST') {
             csrf_check();
             $res = change_own_password((int)$u['id'], (string) input('cur_pass', ''),
                 (string) input('new_pass', ''), (string) input('new_pass2', ''));
             if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
             else { flash($res['error'], 'error'); }
-            redirect('account');
+            redirect('account' . $lq);
         }
-        view('public/account', compact('u'));
+        view('public/account', compact('u', 'lang'));
         return;
     }
 
@@ -453,7 +467,7 @@ SWJS;
 
     // feedback client (anonim, prin QR pe afisaj):  /feedback
     if ($seg[0] === 'feedback') {
-        if (setting('mod_feedback', '1') !== '1') { http_response_code(404); echo 'Modulul de feedback este dezactivat.'; return; }
+        if (setting('mod_feedback', '1') !== '1') { fail_page(404, 'Indisponibil', 'Modulul de feedback este dezactivat.'); }
         $branch = (int)($_GET['branch'] ?? 1);
         $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
@@ -484,10 +498,10 @@ SWJS;
 
     // status public al cozii (fara cheie de dispozitiv) — pentru site-ul clientului:  /status?branch=ID
     if ($seg[0] === 'status') {
-        if (setting('mod_public_status', '0') !== '1') { http_response_code(404); echo 'Pagina de status public este dezactivata.'; return; }
+        if (setting('mod_public_status', '0') !== '1') { fail_page(404, 'Indisponibil', 'Pagina de status public este dezactivata.'); }
         $branchId = (int)($seg[1] ?? $_GET['branch'] ?? 1);
         $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: one('SELECT * FROM branches ORDER BY id LIMIT 1');
-        if (!$branch) { http_response_code(404); echo 'Filiala inexistenta.'; return; }
+        if (!$branch) { fail_page(404, 'Indisponibil', 'Filiala inexistenta.'); }
         view('public/status', ['branch' => $branch] + queue_state((int)$branch['id'], true));
         return;
     }
@@ -496,7 +510,7 @@ SWJS;
     if ($seg[0] === 't' && !empty($seg[1])) {
         $t = one('SELECT t.*, s.name AS service_name, s.color FROM tickets t
                   JOIN services s ON s.id=t.service_id WHERE t.public_token = ?', [$seg[1]]);
-        if (!$t) { http_response_code(404); echo 'Bilet inexistent.'; return; }
+        if (!$t) { fail_page(404, 'Indisponibil', 'Bilet inexistent.'); }
         $lang = strtolower((string)($_GET['lang'] ?? 'ro'));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
         view('public/virtual_ticket', ['t' => $t, 'token' => $seg[1], 'lang' => $lang]);
@@ -505,13 +519,13 @@ SWJS;
 
     // ===================== PROGRAMARI (public) =====================
     if ($seg[0] === 'book') {
-        if (setting('mod_booking', '1') !== '1') { http_response_code(404); echo 'Modulul de programari este dezactivat.'; return; }
+        if (setting('mod_booking', '1') !== '1') { fail_page(404, 'Indisponibil', 'Modulul de programari este dezactivat.'); }
         $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
         if (!empty($seg[1]) && ctype_digit($seg[1])) {
             $svc = one('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                         WHERE s.id=? AND s.status="active" AND s.appt_enabled=1', [(int)$seg[1]]);
-            if (!$svc) { http_response_code(404); echo 'Serviciu indisponibil pentru programari.'; return; }
+            if (!$svc) { fail_page(404, 'Indisponibil', 'Serviciu indisponibil pentru programari.'); }
             if ($method === 'POST' && ($seg[2] ?? '') === 'waitlist') {
                 $slot = (string)input('slot_start', '');
                 if (!rate_limit_ok('wl:' . ($_SERVER['REMOTE_ADDR'] ?? ''), 6, 600)) { flash('Prea multe cereri. Reincearca mai tarziu.', 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d'))); }
@@ -552,7 +566,7 @@ SWJS;
         $appt = one('SELECT a.*, s.name service_name, s.color, b.name branch_name, b.address, b.city, t.public_token AS ticket_token
                      FROM appointments a JOIN services s ON s.id=a.service_id JOIN branches b ON b.id=a.branch_id
                      LEFT JOIN tickets t ON t.id=a.ticket_id WHERE a.public_token=?', [$seg[1]]);
-        if (!$appt) { http_response_code(404); echo 'Programare inexistenta.'; return; }
+        if (!$appt) { fail_page(404, 'Indisponibil', 'Programare inexistenta.'); }
         $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
         $lq = $lang !== 'ro' ? '?lang='.$lang : '';
@@ -590,7 +604,7 @@ SWJS;
     // ===================== AFISAJ DE GHISEU (tableta la birou):  /cd/{counter_id} =====================
     if ($seg[0] === 'cd' && !empty($seg[1]) && ctype_digit((string)$seg[1])) {
         $counter = one('SELECT * FROM counters WHERE id = ?', [(int)$seg[1]]);
-        if (!$counter) { http_response_code(404); echo 'Ghiseu inexistent.'; return; }
+        if (!$counter) { fail_page(404, 'Indisponibil', 'Ghiseu inexistent.'); }
         $branch = one('SELECT * FROM branches WHERE id = ?', [$counter['branch_id']]);
         view('public/counter_display', compact('counter', 'branch'));
         return;
@@ -598,7 +612,7 @@ SWJS;
 
     // ===================== CONCIERGE (receptie: cheama pentru orice ghiseu) =====================
     if ($seg[0] === 'concierge') {
-        if (setting('mod_concierge', '1') !== '1') { http_response_code(404); echo 'Modulul Concierge este dezactivat.'; return; }
+        if (setting('mod_concierge', '1') !== '1') { fail_page(404, 'Indisponibil', 'Modulul Concierge este dezactivat.'); }
         $u = require_login();
         $branches = all('SELECT id,name FROM branches ORDER BY name');
         $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));
@@ -617,7 +631,7 @@ SWJS;
         $allowedIds = array_filter(array_map('intval', explode(',', $allowedCsv)));
         if (!empty($seg[1])) {
             $c = one('SELECT * FROM counters WHERE id = ?', [(int)$seg[1]]);
-            if (!$c) { http_response_code(404); die('Ghiseu inexistent'); }
+            if (!$c) { fail_page(404, 'Indisponibil', 'Ghiseu inexistent.'); }
             if ($allowedIds && !in_array((int)$c['id'], $allowedIds, true)) {
                 flash('Nu ai acces la acest ghiseu. Alege unul dintre ghiseele atribuite tie.', 'error');
                 redirect('counter');
@@ -640,18 +654,13 @@ SWJS;
         return;
     }
 
-    http_response_code(404);
-    echo '<h1>404</h1><p>Pagina nu a fost gasita.</p><p><a href="' . e(url('/')) . '">Acasa</a></p>';
+    fail_page(404, 'Pagină negăsită', 'Pagina căutată nu există sau a fost mutată.');
 
 } catch (Throwable $ex) {
-    if (cfg('app.env') === 'dev') {
-        http_response_code(500);
-        echo '<pre>' . e($ex->getMessage() . "\n\n" . $ex->getTraceAsString()) . '</pre>';
-    } else {
-        if (want_json()) json_out(['ok' => false, 'error' => 'Eroare interna'], 500);
-        http_response_code(500);
-        echo 'A aparut o eroare. Incercati din nou.';
-    }
+    @error_log('[bon-de-ordine] ' . get_class($ex) . ': ' . $ex->getMessage() . ' in ' . $ex->getFile() . ':' . $ex->getLine());
+    if (want_json()) json_out(['ok' => false, 'error' => 'Eroare interna'], 500);
+    fail_page(500, 'Eroare internă', 'A apărut o eroare. Te rugăm reîncearcă în câteva momente.',
+        $ex->getMessage() . "\n\n" . $ex->getTraceAsString());
 }
 
 // ---------- helpers locale ----------
