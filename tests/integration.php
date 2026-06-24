@@ -447,11 +447,16 @@ set_setting('appt_noshow_min', '0'); set_setting('webhook_url', '');
 q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','x', NOW() - INTERVAL 5 MONTH)");
 q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','y', NOW())");
 q("INSERT INTO user_status_log (user_id, status, started_at) VALUES (?, 'available', NOW() - INTERVAL 5 MONTH)", [$sid]);
+// lista de asteptare veche (contine email/telefon) trebuie sa intre si ea in retentie
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_email) VALUES (?, NOW() - INTERVAL 5 MONTH, 'old-wl@ci.ro')", [$svc]);
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_email) VALUES (?, NOW() + INTERVAL 5 DAY, 'new-wl@ci.ro')", [$svc]);
 set_setting('retention_months', '3');
 run_cron_jobs();
 chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='x'") === 0, 'retentie: audit_log vechi sters');
 chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='y'") === 1, 'retentie: audit_log recent pastrat');
 chk((int)val("SELECT COUNT(*) FROM user_status_log WHERE started_at < NOW() - INTERVAL 4 MONTH") === 0, 'retentie: user_status_log vechi sters');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='old-wl@ci.ro'") === 0, 'retentie: waitlist vechi sters (PII)');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='new-wl@ci.ro'") === 1, 'retentie: waitlist recent pastrat');
 set_setting('retention_months', '0');
 
 /* ---- 33. Plafon zilnic serviciu (service_cap_reached) ---- */
@@ -548,6 +553,14 @@ chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$gTkId]) === null, 'gd
 $f2 = gdpr_find($gEmail, $gPhone);
 chk(array_sum(array_map('count', $f2)) === 0, 'gdpr: dupa anonimizare nu mai exista date personale');
 chk(array_sum(gdpr_erase('', '')) === 0, 'gdpr: fara criterii -> nu se sterge nimic');
+// stergere DUPA EMAIL trebuie sa curete si biletul LEGAT de programare (tickets n-are coloana email)
+$lEmail = 'gdpr-linked@ci.ro';
+q("INSERT INTO tickets (branch_id,service_id,number,label,customer_phone,form_data,status) VALUES (?,?,?,?,?,?,'served')", [$br,$svc,9992,'GDPRL9992','0744999000','{\"cnp\":\"123\"}']);
+$lTk = (int) insert_id();
+q("INSERT INTO appointments (branch_id,service_id,customer_email,slot_start,status,ticket_id) VALUES (?,?,?, NOW()+INTERVAL 1 DAY, 'checked_in', ?)", [$br,$svc,$lEmail,$lTk]);
+$erL = gdpr_erase($lEmail, '');   // doar email, fara telefon
+chk($erL['tickets'] >= 1, 'gdpr: stergerea dupa email raporteaza biletul legat curatat');
+chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$lTk]) === null && val("SELECT form_data FROM tickets WHERE id=?", [$lTk]) === null, 'gdpr: biletul legat de programare e curatat la stergerea dupa email (nu mai ramane PII)');
 
 /* ---- 40. Backup baza de date (dump reutilizabil + retentie) ---- */
 foreach (glob(backup_dir().'/backup_*.sql') ?: [] as $f) @unlink($f);   // start curat

@@ -1029,14 +1029,19 @@ function gdpr_erase(string $email, string $phone): array {
     $apW = []; $apA = [];
     if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
     if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
-    $cond = implode(' OR ', $apW);
-    // programari: anonimizeaza campurile de identificare, inclusiv IP-ul de consimtamant (PII)
-    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL, consent_ip=NULL WHERE $cond", $apA)->rowCount();
+    $cond  = implode(' OR ', $apW);
+    $condA = implode(' OR ', array_map(fn($c) => 'a.' . $c, $apW));   // acelasi filtru, calificat pentru JOIN
+    // biletele LEGATE de programarile vizate (acopera cautarea doar dupa email, fiindca tickets n-are email)
+    $linked = q("UPDATE tickets t JOIN appointments a ON a.ticket_id = t.id
+                 SET t.customer_phone=NULL, t.form_data=NULL WHERE $condA", $apA)->rowCount();
+    // programari: anonimizeaza identificarea + IP-ul de consimtamant + jetonul public (PII)
+    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL, consent_ip=NULL, public_token=NULL WHERE $cond", $apA)->rowCount();
     // lista de asteptare: efemera (customer_email e NOT NULL) -> stergem randurile
     $n['waitlist'] = q("DELETE FROM appointment_waitlist WHERE $cond", $apA)->rowCount();
-    // bilete: anonimizeaza telefonul + raspunsurile de formular (pot contine date personale)
+    // bilete dupa telefon: anonimizeaza telefonul + raspunsurile de formular
     if ($phone !== '')
         $n['tickets'] = q("UPDATE tickets SET customer_phone=NULL, form_data=NULL WHERE customer_phone = ?", [$phone])->rowCount();
+    $n['tickets'] += $linked;
     return $n;
 }
 function admin_gdpr_page(): void {

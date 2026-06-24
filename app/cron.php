@@ -13,9 +13,13 @@ function run_cron_jobs(): array {
     $months = (int) setting('retention_months', '0');
     if ($months > 0) {
         try {
-            $out['cleaned'] = q("DELETE FROM tickets WHERE issued_at < NOW() - INTERVAL $months MONTH LIMIT 1000")->rowCount();
+            // sterge in loturi pana se goleste restanta (altfel >1000 bilete vechi raman pe loc -> PII nepurjat)
+            $out['cleaned'] = 0;
+            do { $d = q("DELETE FROM tickets WHERE issued_at < NOW() - INTERVAL $months MONTH LIMIT 1000")->rowCount(); $out['cleaned'] += $d; } while ($d >= 1000);
             q("DELETE FROM ticket_sequences WHERE seq_date < CURDATE() - INTERVAL $months MONTH");
             q("DELETE FROM appointments WHERE slot_start < NOW() - INTERVAL $months MONTH AND status <> 'booked'");
+            // lista de asteptare (contine email/telefon) — aceeasi perioada de retentie
+            q("DELETE FROM appointment_waitlist WHERE slot_start < NOW() - INTERVAL $months MONTH");
             // jurnale operationale (cresc nelimitat altfel) — aceeasi perioada de retentie
             q("DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL $months MONTH");
             q("DELETE FROM user_status_log WHERE started_at < NOW() - INTERVAL $months MONTH");
