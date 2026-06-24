@@ -37,6 +37,7 @@ $dts=strtotime($date); $dateLabel=$L['days'][(int)date('w',$dts)].', '.date('d.m
         <div class="field"><label><?= e($L['name']) ?></label><input name="name" required></div>
         <div class="field"><label><?= e($L['phone']) ?></label><input name="phone" type="tel"></div>
         <div class="field"><label><?= e($L['email']) ?></label><input name="email" type="email"></div>
+        <label style="display:flex;gap:.5rem;align-items:flex-start;font-size:.84rem;text-align:left;margin:.2rem 0 .9rem"><input type="checkbox" name="consent" value="1" required style="width:auto;margin-top:.2rem"><span><?= e($L['consent']) ?> <a href="<?= e(url('legal/privacy').($lang!=='ro'?'?lang='.$lang:'')) ?>" target="_blank" rel="noopener"><?= e($L['privacy']) ?></a>.</span></label>
         <button class="btn btn-primary btn-lg" style="width:100%"><?= e($L['confirm']) ?></button>
       </form>
       <?php if(!empty($wlOn)): ?>
@@ -50,6 +51,7 @@ $dts=strtotime($date); $dateLabel=$L['days'][(int)date('w',$dts)].', '.date('d.m
       <?php endif; ?>
     <?php endif; ?>
   </div>
+  <?= public_legal_footer($lang) ?>
 </div></div>
 <script>
 document.querySelectorAll('.slot').forEach(function(b){ b.addEventListener('click',function(){

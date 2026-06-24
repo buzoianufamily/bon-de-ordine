@@ -63,6 +63,23 @@ tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
 t "POST /book/{id}/waitlist -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC/waitlist --data-urlencode 'slot_start=2030-01-01 10:00:00' --data-urlencode 'email=wl@ci.ro')"
 # rezervarea publica (slot in trecut -> respinsa cu redirect, dar calea cu rate-limit nu da 500)
 t "POST /book/{id} (slot trecut) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode 'slot_start=2000-01-01 10:00:00' --data-urlencode 'name=CI')"
+# consimtamant GDPR la programare: checkbox in formular + respins fara acord
+tcontains "book: checkbox de consimtamant in formular" 'name="consent"' "$(curl -s "$B/book/$SVC")"
+t "POST /book/{id} fara consimtamant -> 302 (respins)" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode "slot_start=$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F) 10:00:00" --data-urlencode 'name=CI')"
+# pagini legale (GDPR): confidentialitate + termeni + aliasuri + footer
+tcontains "GET /legal/privacy -> politica" 'Politica de confiden' "$(curl -s "$B/legal/privacy")"
+tcontains "GET /legal/terms -> termeni" 'Termeni' "$(curl -s "$B/legal/terms")"
+tcontains "GET /confidentialitate (alias)" 'confiden' "$(curl -s "$B/confidentialitate")"
+tcontains "GET /termeni (alias)" 'Termeni' "$(curl -s "$B/termeni")"
+tcontains "legal: referinta ANSPDCP (drept de plangere)" 'ANSPDCP' "$(curl -s "$B/legal/privacy")"
+tcontains "footer public: link confidentialitate pe portal" 'legal/privacy' "$(curl -s "$B/")"
+# fonturi gazduite local (fara Google Fonts) — GDPR + offline. /assets/ e servit de Apache in
+# productie (nu de routerul PHP), deci verificam fisierele pe disc + referintele din HTML.
+if [ -f assets/fonts.css ] && grep -q '@font-face' assets/fonts.css; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: assets/fonts.css lipsa sau fara @font-face"; fi
+if [ -f assets/fonts/manrope-latin.woff2 ]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: woff2 local lipsa"; fi
+tcontains "portal refera fonts.css local" 'fonts.css' "$(curl -s "$B/")"
+if curl -s "$B/" | grep -q 'fonts.googleapis.com'; then FAIL=$((FAIL+1)); echo "FAIL: portalul inca refera googleapis"; else PASS=$((PASS+1)); fi
+if grep -rq 'fonts.googleapis.com' app/views/; then FAIL=$((FAIL+1)); echo "FAIL: views inca refera Google Fonts"; else PASS=$((PASS+1)); fi
 # cod QR local (SVG) — inlocuieste serviciul extern qrserver
 tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
 tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"

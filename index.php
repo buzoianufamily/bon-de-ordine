@@ -540,6 +540,11 @@ SWJS;
                     flash('Prea multe cereri. Reincearca mai tarziu.', 'error');
                     redirect('book/'.$svc['id'].($lang!=='ro'?'?lang='.$lang:''));
                 }
+                // consimtamant GDPR obligatoriu (programarea colecteaza date personale)
+                if (!input('consent')) {
+                    flash('Pentru a continua, bifeaza acordul privind prelucrarea datelor.', 'error');
+                    redirect('book/'.$svc['id'].'?date='.urlencode(substr((string)input('slot_start',''),0,10) ?: date('Y-m-d')).($lang!=='ro'?'&lang='.$lang:''));
+                }
                 $slot = (string)input('slot_start', '');
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }
@@ -598,6 +603,19 @@ SWJS;
             redirect('a/'.$seg[1].$lq);
         }
         view('public/appointment', ['a' => $appt, 'lang' => $lang]);
+        return;
+    }
+
+    // ===================== PAGINI LEGALE (GDPR): confidentialitate + termeni =====================
+    if ($seg[0] === 'legal' || $seg[0] === 'confidentialitate' || $seg[0] === 'termeni') {
+        $sub = strtolower((string)($seg[1] ?? ''));
+        $kind = ($seg[0] === 'termeni' || $sub === 'terms' || $sub === 'termeni') ? 'terms' : 'privacy';
+        // daca operatorul a publicat politici proprii pe alt URL, redirectioneaza acolo
+        $ext = trim((string) setting($kind === 'terms' ? 'terms_url' : 'privacy_url', ''));
+        if ($ext !== '' && preg_match('#^https?://#i', $ext)) { redirect($ext); }
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        view('public/legal', ['kind' => $kind, 'lang' => $lang]);
         return;
     }
 

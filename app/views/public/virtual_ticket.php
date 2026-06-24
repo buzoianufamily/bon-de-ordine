@@ -15,7 +15,7 @@ require __DIR__.'/_head.php'; ?>
   <?php endif; ?>
   <button id="vCancel" class="btn btn-ghost" style="display:none;margin-top:1rem"><?= e($L['cancel']) ?></button>
   <p class="muted" style="font-size:.78rem;margin-top:1.4rem"><?= e($L['auto']) ?></p>
-</div></div>
+</div><?= public_legal_footer($lang) ?></div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 const token = <?= jsenc($token) ?>;

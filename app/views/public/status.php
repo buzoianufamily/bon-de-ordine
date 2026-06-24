@@ -73,6 +73,7 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
     </div>
   </div>
   <div class="stfoot">Se actualizeaza automat · <?= e(date('d.m.Y H:i')) ?></div>
+  <?= public_legal_footer('ro') ?>
 </div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>

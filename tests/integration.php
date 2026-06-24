@@ -493,6 +493,15 @@ chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-10', 'grace_days'=>5],
 chk(bdo_tenant_state(['active'=>0, 'paid_until'=>'2026-12-31'], $now) === 'suspended', 'abonament: suspendarea manuala bate abonamentul valid');
 chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'data-gresita'], $now) === 'ok', 'abonament: data invalida ignorata -> ok');
 
+/* ---- 37. Subsol legal public (linkuri confidentialitate/termeni, multilingv) ---- */
+set_setting('brand_name', 'CI Brand');
+$footRo = public_legal_footer('ro');
+chk(strpos($footRo, 'legal/privacy') !== false && strpos($footRo, 'legal/terms') !== false, 'footer: linkuri privacy + terms');
+chk(strpos($footRo, 'Confidentialitate') !== false && strpos($footRo, 'CI Brand') !== false, 'footer: eticheta RO + brand');
+$footEn = public_legal_footer('en');
+chk(strpos($footEn, 'Privacy') !== false && strpos($footEn, '?lang=en') !== false, 'footer: eticheta EN + lang in URL');
+chk(strpos(public_legal_footer('ro'), '?lang=') === false, 'footer: RO nu adauga param lang (URL curat)');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

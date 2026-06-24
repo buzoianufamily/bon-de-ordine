@@ -8,6 +8,7 @@
   <a data-tab="email"><span class="ic">✉️</span>Email</a>
   <a data-tab="auto"><span class="ic">⏱</span>Automatizări</a>
   <a data-tab="module"><span class="ic">🧩</span>Module</a>
+  <a data-tab="legal"><span class="ic">⚖️</span>Legal &amp; GDPR</a>
 </div>
 <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
 
@@ -179,6 +180,22 @@
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_concierge" <?= setting('mod_concierge','1')==='1'?'checked':'' ?> style="width:auto"> <strong>Concierge</strong> — receptia cheama orice bilet la orice ghiseu</label>
       <label style="margin:.55rem 0;display:block"><input type="checkbox" name="mod_public_status" <?= setting('mod_public_status','0')==='1'?'checked':'' ?> style="width:auto"> <strong>Status public coada</strong> — pagina <code><?= e(url('status')) ?></code> (fara cheie), de pus pe site-ul clientului</label>
       <p class="muted" style="font-size:.8rem;margin-bottom:0">Module care necesita conturi externe (SMS / WhatsApp / Telegram) nu sunt incluse; pot fi integrate prin <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>.</p>
+    </div>
+  </div>
+
+  <div class="settab dv-hidden" data-pane="legal">
+    <div class="card pad" style="max-width:640px">
+      <h3 style="margin-top:0">Date operator (pentru paginile legale)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Aceste date completeaza paginile publice <a href="<?= e(url('legal/privacy')) ?>" target="_blank">Confidențialitate</a> și <a href="<?= e(url('legal/terms')) ?>" target="_blank">Termeni</a> (linkuri afișate în subsolul paginilor publice). Necesare pentru conformitatea GDPR atunci când colectezi date (programări, feedback).</p>
+      <div class="field"><label>Operator / entitate juridică (controlor de date)</label><input name="legal_operator" value="<?= $s('legal_operator') ?>" placeholder="ex: Primăria Orașului X / SC Firma SRL"><p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se folosește numele de brand.</p></div>
+      <div class="field"><label>Adresă</label><input name="legal_address" value="<?= $s('legal_address') ?>" placeholder="Str. Exemplu nr. 1, Oraș, Județ"></div>
+      <div class="field"><label>Email de contact pentru cereri privind datele</label><input name="legal_email" type="email" value="<?= $s('legal_email') ?>" placeholder="date@exemplu.ro"><p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se folosește adresa „expeditor" de la Email.</p></div>
+      <div class="field"><label>Text suplimentar (opțional, apare la finalul ambelor pagini)</label><textarea name="legal_extra" rows="3" placeholder="ex: Responsabil cu protecția datelor (DPO): ..."><?= $s('legal_extra') ?></textarea></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Politici proprii (opțional)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Dacă ai deja politici publicate pe site-ul tău, pune aici adresele lor — paginile legale vor redirecționa acolo în loc să afișeze șablonul implicit.</p>
+      <div class="field"><label>URL Politică de confidențialitate</label><input name="privacy_url" type="url" value="<?= $s('privacy_url') ?>" placeholder="https://site-ul-tau.ro/confidentialitate"></div>
+      <div class="field"><label>URL Termeni și condiții</label><input name="terms_url" type="url" value="<?= $s('terms_url') ?>" placeholder="https://site-ul-tau.ro/termeni"></div>
     </div>
   </div>
 
