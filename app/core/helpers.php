@@ -1012,6 +1012,22 @@ function tenant_limit(string $what): int {
     if (!is_array($t) || empty($t['limits']) || !is_array($t['limits'])) return 0;
     return max(0, (int)($t['limits'][$what] ?? 0));
 }
+/**
+ * Script de auto-delogare la inactivitate (PC-uri partajate la ghisee/backoffice).
+ * Returneaza '' daca e dezactivat (setarea admin_idle_min = 0). Urmareste activitatea
+ * reala a utilizatorului (mouse/tastatura), nu traficul de retea.
+ */
+function idle_logout_script(): string {
+    $min = (int) setting('admin_idle_min', '0');
+    if ($min <= 0) return '';
+    $ms = $min * 60000;
+    $url = url('logout');
+    return '<script>(function(){var t,L=' . $ms . ',U=' . json_encode($url) . ';'
+         . 'function r(){clearTimeout(t);t=setTimeout(function(){location.href=U;},L);}'
+         . "['mousemove','keydown','mousedown','touchstart','scroll'].forEach(function(e){document.addEventListener(e,r,{passive:true});});"
+         . 'r();})();</script>';
+}
+
 /** A atins instanta limita de plan pentru $what? (numara randurile din tabelul corespunzator) */
 function tenant_limit_reached(string $what): bool {
     $lim = tenant_limit($what);

@@ -631,6 +631,15 @@ chk(count(landlord_invoices_load()) === 3, 'factura: facturile persista');
 @unlink($GLOBALS['__billing_file']); @unlink($GLOBALS['__invoices_file']);
 unset($GLOBALS['__billing_file'], $GLOBALS['__invoices_file']);
 
+/* ---- 44. Auto-delogare la inactivitate (script gated pe setare) ---- */
+set_setting('admin_idle_min', '0');
+chk(idle_logout_script() === '', 'idle: dezactivat (0) -> niciun script');
+set_setting('admin_idle_min', '15');
+$idleJs = idle_logout_script();
+chk(strpos($idleJs, '<script>') === 0 && strpos($idleJs, '900000') !== false, 'idle: 15 min -> script cu 900000 ms');
+chk(strpos($idleJs, 'logout') !== false && strpos($idleJs, 'mousemove') !== false, 'idle: redirect la logout pe activitate mouse/tastatura');
+set_setting('admin_idle_min', '0');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
