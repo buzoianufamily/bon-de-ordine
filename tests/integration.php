@@ -35,6 +35,12 @@ foreach (['users','tickets','feedback','counter_sessions','password_resets','bra
 foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id'],['branches','open_hours']] as $c)
     chk((int)val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?", $c) === 1, "install: column {$c[0]}.{$c[1]}");
 
+/* ---- 1b. Fus orar: sesiunea MySQL aliniata cu PHP (NOW()/CURDATE() = date()) ---- */
+$dbTz = (string) val("SELECT @@session.time_zone");
+chk($dbTz === date('P'), 'tz: fus orar sesiune MySQL = offset PHP ('.$dbTz.' vs '.date('P').')');
+$dbNow = (string) val("SELECT DATE(NOW())");
+chk($dbNow === date('Y-m-d'), 'tz: DATE(NOW()) MySQL = data PHP');
+
 /* ---- 2. Autentificare + parola ---- */
 $adminId = (int)val("SELECT id FROM users WHERE email='admin@example.ro'");
 chk(verify_credentials('admin@example.ro','123456') !== null, 'auth: correct creds');
