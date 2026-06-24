@@ -132,6 +132,11 @@ case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((F
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
+# GDPR: pagina drepturilor persoanei vizate (export/anonimizare) — doar admin
+t "GET /admin/gdpr -> 200" 200 "$(code -b "$JAR" $B/admin/gdpr)"
+tcontains "gdpr: formular de cautare email" 'name="q_email"' "$(curl -s -b "$JAR" "$B/admin/gdpr")"
+GDPR_EXPORT_CT="$(curl -s -b "$JAR" -D - -o /dev/null -X POST "$B/admin/gdpr/export" -d "_csrf=$CSRF&q_email=nobody@ci.ro" | grep -i 'content-type')"
+tcontains "gdpr export -> JSON" 'application/json' "$GDPR_EXPORT_CT"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
 tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
 # injectie de formule: un comentariu public care incepe cu '=' e neutralizat in exportul CSV

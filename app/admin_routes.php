@@ -179,6 +179,12 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
 
+        case 'gdpr':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST' && $a === 'export') { admin_gdpr_export(); return; }
+            if ($method === 'POST' && $a === 'erase')  { admin_gdpr_erase(); return; }
+            admin_gdpr_page(); return;
+
         case 'help':
             view('admin/help', []); return;
     }
@@ -880,6 +886,85 @@ function admin_security_save(): void {
         flash('Politica de securitate salvata.');
     }
     redirect('admin/security');
+}
+
+/* ----------------------- GDPR: drepturile persoanei vizate ----------------------- */
+/**
+ * Cauta toate datele personale legate de un email si/sau telefon, pe toate
+ * tabelele care contin asa ceva (programari, lista de asteptare, bilete).
+ * Returneaza ['appointments'=>[...], 'waitlist'=>[...], 'tickets'=>[...]].
+ */
+function gdpr_find(string $email, string $phone): array {
+    $email = trim($email); $phone = trim($phone);
+    $out = ['appointments' => [], 'waitlist' => [], 'tickets' => []];
+    if ($email === '' && $phone === '') return $out;
+    $apW = []; $apA = [];
+    if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
+    if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
+    $cond = implode(' OR ', $apW);
+    $out['appointments'] = all("SELECT id, branch_id, service_id, customer_name, customer_phone, customer_email, slot_start, status, created_at
+                                FROM appointments WHERE $cond ORDER BY id DESC", $apA);
+    $out['waitlist'] = all("SELECT id, service_id, customer_name, customer_email, customer_phone, slot_start, created_at
+                            FROM appointment_waitlist WHERE $cond ORDER BY id DESC", $apA);
+    if ($phone !== '')
+        $out['tickets'] = all("SELECT id, branch_id, service_id, label, customer_phone, status, issued_at
+                               FROM tickets WHERE customer_phone = ? ORDER BY id DESC", [$phone]);
+    return $out;
+}
+/**
+ * Anonimizeaza datele personale legate de email/telefon (dreptul de a fi uitat).
+ * Pastreaza randurile pentru statistici, dar fara date de identificare.
+ * Returneaza numarul de inregistrari afectate pe categorie.
+ */
+function gdpr_erase(string $email, string $phone): array {
+    $email = trim($email); $phone = trim($phone);
+    $n = ['appointments' => 0, 'waitlist' => 0, 'tickets' => 0];
+    if ($email === '' && $phone === '') return $n;
+    $apW = []; $apA = [];
+    if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
+    if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
+    $cond = implode(' OR ', $apW);
+    // programari: anonimizeaza campurile de identificare (pastreaza statistica)
+    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL WHERE $cond", $apA)->rowCount();
+    // lista de asteptare: efemera (customer_email e NOT NULL) -> stergem randurile
+    $n['waitlist'] = q("DELETE FROM appointment_waitlist WHERE $cond", $apA)->rowCount();
+    // bilete: anonimizeaza telefonul + raspunsurile de formular (pot contine date personale)
+    if ($phone !== '')
+        $n['tickets'] = q("UPDATE tickets SET customer_phone=NULL, form_data=NULL WHERE customer_phone = ?", [$phone])->rowCount();
+    return $n;
+}
+function admin_gdpr_page(): void {
+    $email = trim((string)($_GET['q_email'] ?? ''));
+    $phone = trim((string)($_GET['q_phone'] ?? ''));
+    $found = ($email !== '' || $phone !== '') ? gdpr_find($email, $phone) : null;
+    if ($found !== null) audit('gdpr_search', 'subject', null, trim($email . ' ' . $phone));
+    view('admin/gdpr', compact('email', 'phone', 'found'));
+}
+function admin_gdpr_export(): void {
+    csrf_check();
+    $email = trim((string)($_POST['q_email'] ?? ''));
+    $phone = trim((string)($_POST['q_phone'] ?? ''));
+    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('admin/gdpr'); }
+    $data = gdpr_find($email, $phone);
+    audit('gdpr_export', 'subject', null, trim($email . ' ' . $phone));
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="date-personale_' . date('Ymd_His') . '.json"');
+    echo json_encode(['subject' => ['email' => $email, 'phone' => $phone], 'exported_at' => date('c'), 'data' => $data],
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+function admin_gdpr_erase(): void {
+    csrf_check();
+    $email = trim((string)($_POST['q_email'] ?? ''));
+    $phone = trim((string)($_POST['q_phone'] ?? ''));
+    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('admin/gdpr'); }
+    $n = gdpr_erase($email, $phone);
+    audit('gdpr_erase', 'subject', null, trim($email . ' ' . $phone) . ' → ' . json_encode($n));
+    $total = array_sum($n);
+    flash($total > 0
+        ? "Date anonimizate: {$n['appointments']} programari, {$n['waitlist']} lista de asteptare, {$n['tickets']} bilete."
+        : 'Nicio inregistrare gasita pentru aceste date.', $total > 0 ? 'info' : 'error');
+    redirect('admin/gdpr');
 }
 
 /* ----------------------- BACKUP BAZA DE DATE ----------------------- */

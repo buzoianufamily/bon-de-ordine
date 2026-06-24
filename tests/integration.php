@@ -522,6 +522,28 @@ chk((int)val("SELECT must_change_pw FROM users WHERE id=?", [$fcid]) === 1, 'for
 $rc = change_own_password($fcid, 'initpass', 'parolanoua1', 'parolanoua1');
 chk($rc['ok'] === true && (int)val("SELECT must_change_pw FROM users WHERE id=?", [$fcid]) === 0, 'forcepw: schimbarea parolei sterge flag-ul');
 
+/* ---- 39. GDPR: cautare + anonimizare date personale (drepturi persoana vizata) ---- */
+require_once __DIR__ . '/../app/admin_routes.php';
+$gEmail = 'gdpr-test@ci.ro'; $gPhone = '0744111222';
+q("INSERT INTO appointments (branch_id,service_id,customer_name,customer_phone,customer_email,slot_start,status) VALUES (?,?,?,?,?, NOW()+INTERVAL 1 DAY, 'booked')", [$br,$svc,'GDPR Ion',$gPhone,$gEmail]);
+$gAppt = (int) insert_id();
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_name, customer_email, customer_phone) VALUES (?, NOW()+INTERVAL 1 DAY, 'GDPR Ion', ?, ?)", [$svc,$gEmail,$gPhone]);
+q("INSERT INTO tickets (branch_id,service_id,number,label,customer_phone,status) VALUES (?,?,?,?,?,'waiting')", [$br,$svc,9991,'GDPR9991',$gPhone]);
+$gTkId = (int) insert_id();
+$fE = gdpr_find($gEmail, '');
+chk(count($fE['appointments']) >= 1 && count($fE['waitlist']) >= 1, 'gdpr: cautare dupa email gaseste programare + waitlist');
+chk(count($fE['tickets']) === 0, 'gdpr: cautare doar dupa email nu atinge biletele (fara coloana email)');
+$fP = gdpr_find('', $gPhone);
+chk(count($fP['tickets']) >= 1, 'gdpr: cautare dupa telefon gaseste biletul');
+$er = gdpr_erase($gEmail, $gPhone);
+chk($er['appointments'] >= 1 && $er['waitlist'] >= 1 && $er['tickets'] >= 1, 'gdpr: anonimizare raporteaza pe categorii');
+chk(val("SELECT customer_email FROM appointments WHERE id=?", [$gAppt]) === null && val("SELECT customer_phone FROM appointments WHERE id=?", [$gAppt]) === null, 'gdpr: programarea e anonimizata (email/telefon NULL)');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email=?", [$gEmail]) === 0, 'gdpr: intrarile din waitlist sunt sterse');
+chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$gTkId]) === null, 'gdpr: telefonul biletului e anonimizat');
+$f2 = gdpr_find($gEmail, $gPhone);
+chk(array_sum(array_map('count', $f2)) === 0, 'gdpr: dupa anonimizare nu mai exista date personale');
+chk(array_sum(gdpr_erase('', '')) === 0, 'gdpr: fara criterii -> nu se sterge nimic');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
