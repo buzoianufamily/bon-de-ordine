@@ -130,6 +130,11 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 
 ---
 
+## Vânzare pe abonament (pentru furnizor)
+- **Verificare „pregătit de producție":** Admin → **Verificare** (`/admin/checkup`) — listă de control automată (parolă implicită, HTTPS, email, backup, cron, 2FA, retenție, date legale). Rezolvă avertismentele înainte de a preda instanța clientului.
+- **Limite de plan:** în `/landlord`, la fiecare client poți seta limite (filiale/ghișee/utilizatori/servicii) — aplicația le impune automat. `0 = nelimitat`.
+- **Documente contractuale (modele):** vezi `docs/contracte/` — `DPA-model.md` (acord de prelucrare a datelor, GDPR art. 28) și `contract-abonament-SLA-model.md`. **Sunt modele orientative — validează‑le cu un jurist.**
+
 ## Monitorizare & parole
 - **Monitorizare uptime:** configurează serviciul de monitorizare (UptimeRobot, BetterStack etc.) pe `https://coada.firma-ta.ro/health`. Răspunde cu JSON `{"ok":true,"db":"up",…}` și cod **200** când totul e funcțional, sau **503** dacă baza de date e picată.
 - **Alerte SLA pe email:** Admin → Setări → tab **Automatizări** → bifează „alertă SLA". Când există bilete care așteaptă peste ținta serviciului (Servicii → „timp așteptare"), managerii primesc un email (cu prag minim și pauză configurabilă între alerte). Necesită cron + email configurat. Tot aici se activează reminderele de programări, raportul zilnic, curățarea automată a biletelor vechi și închiderea biletelor uitate.
