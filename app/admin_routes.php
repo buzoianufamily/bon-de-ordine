@@ -172,17 +172,117 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'backup':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($a === 'download') { admin_backup_download(); return; }
+            if ($method === 'POST' && $a === 'run')    { admin_backup_run(); return; }
+            if ($method === 'POST' && $a === 'delete') { admin_backup_delete(); return; }
             if ($method === 'POST') { admin_db_backup(); return; }
-            redirect('admin/api');
+            redirect('admin/settings');
 
         case 'security':
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
 
+        case 'gdpr':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST' && $a === 'export') { admin_gdpr_export(); return; }
+            if ($method === 'POST' && $a === 'erase')  { admin_gdpr_erase(); return; }
+            admin_gdpr_page(); return;
+
+        case 'checkup':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            view('admin/checkup', ['checks' => system_checkup()]); return;
+
         case 'help':
             view('admin/help', []); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
+}
+
+/* ----------------------- VERIFICARE PRODUCTIE (readiness) ----------------------- */
+/**
+ * Diagnoza „pregatit de productie?": semnaleaza proactiv configurari gresite
+ * inainte sa devina reclamatii. Returneaza o lista de [level, title, detail],
+ * level in 'ok' | 'warn' | 'crit'.
+ */
+function system_checkup(): array {
+    $c = [];
+    $add = function (string $level, string $title, string $detail) use (&$c) { $c[] = compact('level', 'title', 'detail'); };
+    $cfg = $GLOBALS['__config'] ?? [];
+
+    // 1) Parola implicita de admin inca activa
+    $defPw = 0;
+    try { $defPw = (int) val("SELECT COUNT(*) FROM users WHERE role='admin' AND must_change_pw=1"); } catch (Throwable $e) {}
+    $defPw > 0
+        ? $add('crit', 'Parolă de admin implicită', "$defPw cont(uri) de admin încă folosesc parola implicită. Schimbă-le din „Contul meu”.")
+        : $add('ok', 'Parole admin', 'Niciun admin nu mai folosește parola implicită.');
+
+    // 2) HTTPS
+    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        ? $add('ok', 'HTTPS', 'Conexiunea este criptată.')
+        : $add('warn', 'HTTPS', 'Pagina nu pare servită prin HTTPS. Activează un certificat (Let’s Encrypt din cPanel) și redirect HTTP→HTTPS.');
+
+    // 3) Mediu
+    (($cfg['app']['env'] ?? 'production') === 'production')
+        ? $add('ok', 'Mediu', 'env=production (erorile nu se afișează vizitatorilor).')
+        : $add('warn', 'Mediu', 'env nu este „production": detaliile erorilor pot fi afișate. Setează app.env=production în config/config.php.');
+
+    // 4) Email
+    (function_exists('mail_enabled') && mail_enabled())
+        ? $add('ok', 'Email', 'Trimiterea de emailuri este activă (reset parolă, remindere, rapoarte).')
+        : $add('warn', 'Email', 'Emailul nu este configurat: resetarea parolei, reminderele și rapoartele nu funcționează. Configurează SMTP în Setări → Email.');
+
+    // 5) Backup automat
+    (setting('backup_auto_enabled', '0') === '1')
+        ? $add('ok', 'Backup automat', 'Backup-ul automat zilnic este activ.')
+        : $add('warn', 'Backup automat', 'Backup-ul automat este oprit. Activează-l în Setări → Backup (necesită cron).');
+
+    // 6) Cron rulează?
+    $last = (int) setting('cron_last_run', '0');
+    if ($last === 0) $add('warn', 'Cron', 'Cron-ul nu a rulat încă niciodată. Configurează un Cron Job către /cron?key=… (remindere, backup, curățare).');
+    elseif (time() - $last > 7200) $add('warn', 'Cron', 'Cron-ul nu a mai rulat de peste 2 ore (ultima dată: ' . date('d.m.Y H:i', $last) . '). Verifică Cron Job-ul din cPanel.');
+    else $add('ok', 'Cron', 'Cron-ul a rulat recent (' . date('d.m.Y H:i', $last) . ').');
+
+    // 7) 2FA pe conturile de admin
+    try {
+        $admins = (int) val("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1");
+        $with2fa = (int) val("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1 AND totp_enabled=1");
+        if ($admins > 0 && $with2fa < $admins)
+            $add('warn', 'Autentificare în doi pași', "$with2fa din $admins admini au 2FA activ. Recomandat pentru toți (Securitate → 2FA; poți și impune-o).");
+        else $add('ok', 'Autentificare în doi pași', 'Toți adminii activi au 2FA.');
+    } catch (Throwable $e) {}
+
+    // 8) Webhook fara secret
+    if (trim((string) setting('webhook_url', '')) !== '' && trim((string) setting('webhook_secret', '')) === '')
+        $add('warn', 'Webhook fără secret', 'Ai un URL de webhook fără secret de semnătură. Adaugă un secret în API & Webhooks ca destinatarul să verifice autenticitatea.');
+
+    // 9) Retentie date (minimizare GDPR)
+    ((int) setting('retention_months', '0') > 0)
+        ? $add('ok', 'Retenție date', 'Datele vechi se șterg automat (minimizarea datelor).')
+        : $add('warn', 'Retenție date', 'Nu este setată ștergerea automată a datelor vechi (Setări → Automatizări). GDPR cere păstrarea doar cât e necesar.');
+
+    // 10) Date operator pentru paginile legale
+    (trim((string) setting('legal_operator', '')) !== '' || trim((string) setting('legal_email', '')) !== '')
+        ? $add('ok', 'Date legale', 'Datele operatorului pentru paginile legale sunt completate.')
+        : $add('warn', 'Date legale', 'Completează datele operatorului (Setări → Legal & GDPR) pentru paginile de confidențialitate/termeni.');
+
+    // 11) Foldere scriibile
+    $root = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__);
+    $unwritable = [];
+    if (!is_writable($root . '/config')) $unwritable[] = 'config/';
+    if (is_dir($root . '/assets/uploads') && !is_writable($root . '/assets/uploads')) $unwritable[] = 'assets/uploads/';
+    $unwritable
+        ? $add('warn', 'Permisiuni foldere', 'Nu sunt scriibile: ' . implode(', ', $unwritable) . '. Setează 755/775 pe ele.')
+        : $add('ok', 'Permisiuni foldere', 'Folderele necesare sunt scriibile.');
+
+    // 12) Limite de plan (doar pe instante-client cu limite setate de furnizor)
+    foreach (['branches' => 'filiale', 'counters' => 'ghișee', 'users' => 'utilizatori', 'services' => 'servicii'] as $w => $lbl) {
+        $lim = tenant_limit($w);
+        if ($lim <= 0) continue;
+        $used = (int) val("SELECT COUNT(*) FROM `$w`");          // $w din whitelist fix
+        $add($used >= $lim ? 'warn' : 'ok', 'Plan: ' . $lbl, "$used / $lim folosite" . ($used >= $lim ? ' — ai atins limita planului.' : '.'));
+    }
+
+    return $c;
 }
 
 /* ----------------------- DASHBOARD ----------------------- */
@@ -417,6 +517,7 @@ function admin_service_save(): void {
         q("UPDATE services SET $set WHERE id=?", array_merge(array_values($f), [$id]));
         flash('Serviciu actualizat.');
     } else {
+        if (tenant_limit_reached('services')) { flash('Ai atins limita planului pentru servicii ('.tenant_limit('services').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/services'); }
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO services ($cols) VALUES ($ph)", array_values($f));
         flash('Serviciu creat.');
@@ -535,6 +636,7 @@ function admin_counter_save(): void {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE counters SET $set WHERE id=?", array_merge(array_values($f), [$id]));
     } else {
+        if (tenant_limit_reached('counters')) { flash('Ai atins limita planului pentru ghișee ('.tenant_limit('counters').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/counters'); }
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO counters ($cols) VALUES ($ph)", array_values($f)); $id = insert_id();
     }
@@ -564,6 +666,7 @@ function admin_user_save(): void {
             [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT),$id]);
         else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$pin,$id]);
     } else {
+        if (tenant_limit_reached('users')) { flash('Ai atins limita planului pentru utilizatori ('.tenant_limit('users').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/users'); }
         if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
         try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,pin,password_hash) VALUES (?,?,?,?,?,?,?,?)',
             [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT)]); }
@@ -882,32 +985,129 @@ function admin_security_save(): void {
     redirect('admin/security');
 }
 
+/* ----------------------- GDPR: drepturile persoanei vizate ----------------------- */
+/**
+ * Cauta toate datele personale legate de un email si/sau telefon, pe toate
+ * tabelele care contin asa ceva (programari, lista de asteptare, bilete).
+ * Returneaza ['appointments'=>[...], 'waitlist'=>[...], 'tickets'=>[...]].
+ */
+function gdpr_find(string $email, string $phone): array {
+    $email = trim($email); $phone = trim($phone);
+    $out = ['appointments' => [], 'waitlist' => [], 'tickets' => []];
+    if ($email === '' && $phone === '') return $out;
+    $apW = []; $apA = [];
+    if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
+    if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
+    $cond = implode(' OR ', $apW);
+    $out['appointments'] = all("SELECT id, branch_id, service_id, customer_name, customer_phone, customer_email, slot_start, status, consent_at, consent_ip, created_at
+                                FROM appointments WHERE $cond ORDER BY id DESC", $apA);
+    $out['waitlist'] = all("SELECT id, service_id, customer_name, customer_email, customer_phone, slot_start, created_at
+                            FROM appointment_waitlist WHERE $cond ORDER BY id DESC", $apA);
+    if ($phone !== '')
+        $out['tickets'] = all("SELECT id, branch_id, service_id, label, customer_phone, status, issued_at
+                               FROM tickets WHERE customer_phone = ? ORDER BY id DESC", [$phone]);
+    return $out;
+}
+/**
+ * Anonimizeaza datele personale legate de email/telefon (dreptul de a fi uitat).
+ * Pastreaza randurile pentru statistici, dar fara date de identificare.
+ * Returneaza numarul de inregistrari afectate pe categorie.
+ */
+function gdpr_erase(string $email, string $phone): array {
+    $email = trim($email); $phone = trim($phone);
+    $n = ['appointments' => 0, 'waitlist' => 0, 'tickets' => 0];
+    if ($email === '' && $phone === '') return $n;
+    $apW = []; $apA = [];
+    if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
+    if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
+    $cond = implode(' OR ', $apW);
+    // programari: anonimizeaza campurile de identificare, inclusiv IP-ul de consimtamant (PII)
+    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL, consent_ip=NULL WHERE $cond", $apA)->rowCount();
+    // lista de asteptare: efemera (customer_email e NOT NULL) -> stergem randurile
+    $n['waitlist'] = q("DELETE FROM appointment_waitlist WHERE $cond", $apA)->rowCount();
+    // bilete: anonimizeaza telefonul + raspunsurile de formular (pot contine date personale)
+    if ($phone !== '')
+        $n['tickets'] = q("UPDATE tickets SET customer_phone=NULL, form_data=NULL WHERE customer_phone = ?", [$phone])->rowCount();
+    return $n;
+}
+function admin_gdpr_page(): void {
+    $email = trim((string)($_GET['q_email'] ?? ''));
+    $phone = trim((string)($_GET['q_phone'] ?? ''));
+    $found = ($email !== '' || $phone !== '') ? gdpr_find($email, $phone) : null;
+    if ($found !== null) audit('gdpr_search', 'subject', null, trim($email . ' ' . $phone));
+    view('admin/gdpr', compact('email', 'phone', 'found'));
+}
+function admin_gdpr_export(): void {
+    csrf_check();
+    $email = trim((string)($_POST['q_email'] ?? ''));
+    $phone = trim((string)($_POST['q_phone'] ?? ''));
+    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('admin/gdpr'); }
+    $data = gdpr_find($email, $phone);
+    audit('gdpr_export', 'subject', null, trim($email . ' ' . $phone));
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="date-personale_' . date('Ymd_His') . '.json"');
+    echo json_encode(['subject' => ['email' => $email, 'phone' => $phone], 'exported_at' => date('c'), 'data' => $data],
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+function admin_gdpr_erase(): void {
+    csrf_check();
+    $email = trim((string)($_POST['q_email'] ?? ''));
+    $phone = trim((string)($_POST['q_phone'] ?? ''));
+    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('admin/gdpr'); }
+    $n = gdpr_erase($email, $phone);
+    audit('gdpr_erase', 'subject', null, trim($email . ' ' . $phone) . ' → ' . json_encode($n));
+    $total = array_sum($n);
+    flash($total > 0
+        ? "Date anonimizate: {$n['appointments']} programari, {$n['waitlist']} lista de asteptare, {$n['tickets']} bilete."
+        : 'Nicio inregistrare gasita pentru aceste date.', $total > 0 ? 'info' : 'error');
+    redirect('admin/gdpr');
+}
+
 /* ----------------------- BACKUP BAZA DE DATE ----------------------- */
 function admin_db_backup(): void {
     csrf_check();
     audit('backup', 'database');
-    $pdo = db();
-    @set_time_limit(300);
+    while (ob_get_level() > 0) @ob_end_clean();    // dump direct, fara buffering (fisiere mari)
     header('Content-Type: application/sql; charset=utf-8');
     header('Content-Disposition: attachment; filename="backup_' . date('Ymd_His') . '.sql"');
-    echo "-- Backup Bon de ordine · " . date('c') . "\n";
-    echo "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
-    $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
-    foreach ($tables as $t) {
-        $create = one("SHOW CREATE TABLE `$t`");
-        echo "DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n\n";
-        $stmt = $pdo->query("SELECT * FROM `$t`");
-        $batch = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string)$v), array_values($row));
-            $batch[] = '(' . implode(',', $vals) . ')';
-            if (count($batch) >= 200) { echo "INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n"; $batch = []; }
-        }
-        if ($batch) echo "INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n";
-        echo "\n";
-    }
-    echo "SET FOREIGN_KEY_CHECKS=1;\n-- Gata.\n";
+    db_dump_write(function (string $s) { echo $s; });
     exit;
+}
+/** Ruleaza un backup pe server (scris in backups/) + curata vechile copii. */
+function admin_backup_run(): void {
+    csrf_check();
+    $name = backup_to_file();
+    if ($name === '') { flash('Backup eșuat: nu pot scrie în folderul backups/ (verifică permisiunile).', 'error'); redirect('admin/settings'); }
+    $pruned = backup_prune((int) setting('backup_keep', '14'));
+    audit('backup', 'database', null, $name . ($pruned ? " (sterse $pruned vechi)" : ''));
+    flash("Backup creat pe server: $name" . ($pruned ? " · $pruned copii vechi șterse" : ''));
+    redirect('admin/settings');
+}
+/** Descarca un backup existent din backups/ (nume validat strict, fara traversare de cai). */
+function admin_backup_download(): void {
+    $name = basename((string)($_GET['file'] ?? ''));
+    if (!preg_match('/^backup_\d{8}_\d{6}\.sql$/', $name)) { http_response_code(404); echo 'Fisier inexistent.'; return; }
+    $path = backup_dir() . '/' . $name;
+    if (!is_file($path)) { http_response_code(404); echo 'Fisier inexistent.'; return; }
+    audit('download', 'backup', null, $name);
+    while (ob_get_level() > 0) @ob_end_clean();
+    header('Content-Type: application/sql; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $name . '"');
+    header('Content-Length: ' . (string)filesize($path));
+    readfile($path);
+    exit;
+}
+/** Sterge un backup existent (nume validat strict). */
+function admin_backup_delete(): void {
+    csrf_check();
+    $name = basename((string)($_POST['file'] ?? ''));
+    if (preg_match('/^backup_\d{8}_\d{6}\.sql$/', $name)) {
+        $path = backup_dir() . '/' . $name;
+        if (is_file($path) && @unlink($path)) { audit('delete', 'backup', null, $name); flash('Backup șters.'); }
+        else flash('Nu am putut șterge fișierul.', 'error');
+    }
+    redirect('admin/settings');
 }
 
 /* ----------------------- AUDIT LOG ----------------------- */
@@ -995,7 +1195,7 @@ function admin_settings_form(): void { view('admin/settings'); }
 /** Chei excluse la export/import config (specifice instantei / sensibile / runtime). */
 function settings_export_denylist(): array {
     return ['schema_version','api_key','cron_token','webhook_secret','onboarding_dismissed',
-            'last_daily_report','sla_alert_last'];
+            'last_daily_report','sla_alert_last','backup_last','cron_last_run'];
 }
 /** Export config (settings) ca JSON — pentru backup sau clonare pe alta instanta. */
 function admin_settings_export(): void {
@@ -1039,8 +1239,10 @@ function admin_settings_save(): void {
              'ticket_footer','ticket_header','dispenser_title','org_name','ticket_num_size','priority_escalate_min','max_recalls',
              'alert_called','alert_transfer','alert_delay','near_turn_alert','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
-             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min','feedback_alert_rating'];
+             'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min','feedback_alert_rating',
+             'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra','backup_keep','admin_idle_min'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
+    set_setting('backup_auto_enabled', isset($_POST['backup_auto_enabled']) ? '1' : '0');
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
     set_setting('reminder_enabled', isset($_POST['reminder_enabled']) ? '1' : '0');
@@ -1233,6 +1435,7 @@ function admin_branch_save(): void {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE branches SET $set WHERE id=?", array_merge(array_values($f), [$id]));
     } else {
+        if (tenant_limit_reached('branches')) { flash('Ai atins limita planului pentru filiale ('.tenant_limit('branches').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/branches'); }
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO branches ($cols) VALUES ($ph)", array_values($f));
     }

@@ -8,6 +8,7 @@
   <a data-tab="email"><span class="ic">✉️</span>Email</a>
   <a data-tab="auto"><span class="ic">⏱</span>Automatizări</a>
   <a data-tab="module"><span class="ic">🧩</span>Module</a>
+  <a data-tab="legal"><span class="ic">⚖️</span>Legal &amp; GDPR</a>
 </div>
 <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
 
@@ -44,6 +45,8 @@
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="release_on_pause" <?= setting('release_on_pause','1')==='1'?'checked':'' ?> style="width:auto"> Când un ghișeu intră în pauză, eliberează biletele direcționate către el înapoi în coada generală (evită biletele blocate)</label>
       <div class="field"><label>Marchează automat „neprezentat" după … rechemări (0 = oprit)</label><input type="number" name="max_recalls" min="0" max="20" value="<?= $s('max_recalls','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Dacă operatorul recheamă un bilet de mai multe ori și clientul nu se prezintă, biletul devine automat „neprezentat" și coada avansează.</p></div>
+      <div class="field"><label>Auto-delogare la inactivitate după … minute (0 = oprit)</label><input type="number" name="admin_idle_min" min="0" max="240" value="<?= $s('admin_idle_min','0') ?>">
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Securitate pentru PC-uri partajate (backoffice + terminal operator): după atâtea minute fără activitate (mouse/tastatură), sesiunea se închide automat. Recomandat 15–30 la ghișee publice.</p></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Bilet tiparit &amp; dispenser</h3>
       <div class="field"><label>Titlu dispenser</label><input name="dispenser_title" value="<?= $s('dispenser_title','ALEGE SERVICIUL') ?>"></div>
@@ -182,6 +185,22 @@
     </div>
   </div>
 
+  <div class="settab dv-hidden" data-pane="legal">
+    <div class="card pad" style="max-width:640px">
+      <h3 style="margin-top:0">Date operator (pentru paginile legale)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Aceste date completeaza paginile publice <a href="<?= e(url('legal/privacy')) ?>" target="_blank">Confidențialitate</a> și <a href="<?= e(url('legal/terms')) ?>" target="_blank">Termeni</a> (linkuri afișate în subsolul paginilor publice). Necesare pentru conformitatea GDPR atunci când colectezi date (programări, feedback).</p>
+      <div class="field"><label>Operator / entitate juridică (controlor de date)</label><input name="legal_operator" value="<?= $s('legal_operator') ?>" placeholder="ex: Primăria Orașului X / SC Firma SRL"><p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se folosește numele de brand.</p></div>
+      <div class="field"><label>Adresă</label><input name="legal_address" value="<?= $s('legal_address') ?>" placeholder="Str. Exemplu nr. 1, Oraș, Județ"></div>
+      <div class="field"><label>Email de contact pentru cereri privind datele</label><input name="legal_email" type="email" value="<?= $s('legal_email') ?>" placeholder="date@exemplu.ro"><p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se folosește adresa „expeditor" de la Email.</p></div>
+      <div class="field"><label>Text suplimentar (opțional, apare la finalul ambelor pagini)</label><textarea name="legal_extra" rows="3" placeholder="ex: Responsabil cu protecția datelor (DPO): ..."><?= $s('legal_extra') ?></textarea></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Politici proprii (opțional)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Dacă ai deja politici publicate pe site-ul tău, pune aici adresele lor — paginile legale vor redirecționa acolo în loc să afișeze șablonul implicit.</p>
+      <div class="field"><label>URL Politică de confidențialitate</label><input name="privacy_url" type="url" value="<?= $s('privacy_url') ?>" placeholder="https://site-ul-tau.ro/confidentialitate"></div>
+      <div class="field"><label>URL Termeni și condiții</label><input name="terms_url" type="url" value="<?= $s('terms_url') ?>" placeholder="https://site-ul-tau.ro/termeni"></div>
+    </div>
+  </div>
+
   <button class="btn btn-primary btn-lg" style="margin-top:1.2rem">Salveaza setarile</button>
 </form>
 
@@ -202,6 +221,33 @@
   <form method="post" action="<?= e(url('admin/backup')) ?>"><?= csrf_field() ?>
     <button class="btn btn-primary">⬇ Descarcă backup SQL</button>
   </form>
+  <hr style="border:none;border-top:1px solid var(--line);margin:1.1rem 0">
+  <h3 style="margin-top:0">Backup automat (pe server)</h3>
+  <p class="muted" style="font-size:.82rem;margin-top:0">Prin cron, o dată pe zi, sistemul scrie automat un backup în folderul <code>backups/</code> (protejat de acces web) și păstrează ultimele câteva copii. Descarcă-le periodic în afara serverului.</p>
+  <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
+    <label style="display:block;margin:.4rem 0"><input type="checkbox" name="backup_auto_enabled" <?= setting('backup_auto_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Activează backup-ul automat zilnic (necesită cron)</label>
+    <div class="field"><label>Câte copii păstrez</label><input type="number" name="backup_keep" min="1" max="365" value="<?= $s('backup_keep','14') ?>" style="max-width:120px"></div>
+    <button class="btn">Salvează</button>
+  </form>
+  <form method="post" action="<?= e(url('admin/backup/run')) ?>" style="margin-top:.6rem"><?= csrf_field() ?>
+    <button class="btn">⟳ Rulează un backup acum</button>
+  </form>
+  <?php $bks = function_exists('backup_list') ? backup_list() : []; if ($bks): ?>
+    <div style="overflow-x:auto;margin-top:1rem"><table style="min-width:420px">
+      <thead><tr><th>Fișier</th><th>Dimensiune</th><th>Data</th><th></th></tr></thead>
+      <tbody><?php foreach ($bks as $bk): ?>
+        <tr>
+          <td><code><?= e($bk['name']) ?></code></td>
+          <td><?= number_format($bk['size']/1024, 0) ?> KB</td>
+          <td class="muted"><?= e(date('d.m.Y H:i', $bk['mtime'])) ?></td>
+          <td style="text-align:right;white-space:nowrap">
+            <a class="lnk" href="<?= e(url('admin/backup/download').'?file='.rawurlencode($bk['name'])) ?>">⬇ Descarcă</a>
+            <form method="post" action="<?= e(url('admin/backup/delete')) ?>" style="display:inline;margin-left:.6rem" data-confirm="Ștergi acest backup?"><?= csrf_field() ?><input type="hidden" name="file" value="<?= e($bk['name']) ?>"><button class="lnk del" style="background:none;border:none;cursor:pointer;color:#dc2626;font:inherit">Șterge</button></form>
+          </td>
+        </tr>
+      <?php endforeach; ?></tbody>
+    </table></div>
+  <?php endif; ?>
 </div>
 <script>
 /* tab-uri setari */

@@ -34,7 +34,7 @@ $stLabel=$L['st_'.$a['status']] ?? '—'; $stCol=$statusColor[$a['status']] ?? '
     <a class="btn btn-ghost" style="margin-top:.6rem;width:100%" href="<?= e(url('a/'.$a['public_token'].'/ics')) ?>"><?= e($L['add_cal']) ?></a>
   <?php endif; ?>
   <p class="muted" style="font-size:.76rem;margin-top:1.2rem"><?= e($L['keep']) ?></p>
-</div></div>
+</div><?= public_legal_footer($lang) ?></div>
 <?php if(in_array($a['status'],['booked'],true)): ?>
 <script>
 (function(){

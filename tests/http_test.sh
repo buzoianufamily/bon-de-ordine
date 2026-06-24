@@ -21,7 +21,7 @@ cat > config/config.php <<EOF
 EOF
 
 SRV=""
-cleanup(){ [ -n "$SRV" ] && kill "$SRV" 2>/dev/null; [ -f "$CFGBAK" ] && mv "$CFGBAK" config/config.php; rm -f "$JAR" "$SRVLOG"; }
+cleanup(){ [ -n "$SRV" ] && kill "$SRV" 2>/dev/null; [ -f "$CFGBAK" ] && mv "$CFGBAK" config/config.php; rm -f "$JAR" "$SRVLOG" config/billing.json config/invoices.json; }
 trap cleanup EXIT
 
 # instaleaza schema + ia id-uri necesare (foloseste env, nu config.php)
@@ -38,6 +38,15 @@ B="http://$HOST:$PORT"
 code(){ curl -s -o /dev/null -w '%{http_code}' "$@"; }
 t(){ local d="$1" want="$2" got="$3"; if [ "$got" = "$want" ]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: $d (want $want, got $got)"; fi; }
 tcontains(){ local d="$1" needle="$2" body="$3"; if printf '%s' "$body" | grep -q "$needle"; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: $d (missing '$needle')"; fi; }
+
+# --- antete de securitate + igiena crawler ---
+HDRS="$(curl -s -D - -o /dev/null "$B/")"
+tcontains "CSP: antet prezent" 'Content-Security-Policy:' "$HDRS"
+tcontains "CSP: default-src self" "default-src 'self'" "$HDRS"
+tcontains "CSP: object-src none" "object-src 'none'" "$HDRS"
+tcontains "noindex: X-Robots-Tag pe raspunsuri" 'X-Robots-Tag: noindex' "$HDRS"
+t "GET /robots.txt -> 200" 200 "$(code $B/robots.txt)"
+tcontains "robots.txt interzice indexarea" 'Disallow: /' "$(curl -s $B/robots.txt)"
 
 # --- public ---
 t "GET /health"            200 "$(code $B/health)"
@@ -63,6 +72,23 @@ tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
 t "POST /book/{id}/waitlist -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC/waitlist --data-urlencode 'slot_start=2030-01-01 10:00:00' --data-urlencode 'email=wl@ci.ro')"
 # rezervarea publica (slot in trecut -> respinsa cu redirect, dar calea cu rate-limit nu da 500)
 t "POST /book/{id} (slot trecut) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode 'slot_start=2000-01-01 10:00:00' --data-urlencode 'name=CI')"
+# consimtamant GDPR la programare: checkbox in formular + respins fara acord
+tcontains "book: checkbox de consimtamant in formular" 'name="consent"' "$(curl -s "$B/book/$SVC")"
+t "POST /book/{id} fara consimtamant -> 302 (respins)" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode "slot_start=$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F) 10:00:00" --data-urlencode 'name=CI')"
+# pagini legale (GDPR): confidentialitate + termeni + aliasuri + footer
+tcontains "GET /legal/privacy -> politica" 'Politica de confiden' "$(curl -s "$B/legal/privacy")"
+tcontains "GET /legal/terms -> termeni" 'Termeni' "$(curl -s "$B/legal/terms")"
+tcontains "GET /confidentialitate (alias)" 'confiden' "$(curl -s "$B/confidentialitate")"
+tcontains "GET /termeni (alias)" 'Termeni' "$(curl -s "$B/termeni")"
+tcontains "legal: referinta ANSPDCP (drept de plangere)" 'ANSPDCP' "$(curl -s "$B/legal/privacy")"
+tcontains "footer public: link confidentialitate pe portal" 'legal/privacy' "$(curl -s "$B/")"
+# fonturi gazduite local (fara Google Fonts) — GDPR + offline. /assets/ e servit de Apache in
+# productie (nu de routerul PHP), deci verificam fisierele pe disc + referintele din HTML.
+if [ -f assets/fonts.css ] && grep -q '@font-face' assets/fonts.css; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: assets/fonts.css lipsa sau fara @font-face"; fi
+if [ -f assets/fonts/manrope-latin.woff2 ]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: woff2 local lipsa"; fi
+tcontains "portal refera fonts.css local" 'fonts.css' "$(curl -s "$B/")"
+if curl -s "$B/" | grep -q 'fonts.googleapis.com'; then FAIL=$((FAIL+1)); echo "FAIL: portalul inca refera googleapis"; else PASS=$((PASS+1)); fi
+if grep -rq 'fonts.googleapis.com' app/views/; then FAIL=$((FAIL+1)); echo "FAIL: views inca refera Google Fonts"; else PASS=$((PASS+1)); fi
 # cod QR local (SVG) — inlocuieste serviciul extern qrserver
 tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
 tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"
@@ -112,9 +138,26 @@ SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
 tcontains "Setari are backup baza de date (mutat din API)" 'Backup bază de date' "$SET_PAGE"
 tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
 case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((FAIL+1)); echo "FAIL: API inca are backup DB";; *) PASS=$((PASS+1));; esac
+# backup pe server: ruleaza -> apare in lista -> se descarca; traversare de cale respinsa
+t "POST /admin/backup/run -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
+BKFILE="$(curl -s -b "$JAR" "$B/admin/settings" | grep -oE 'backup_[0-9]{8}_[0-9]{6}\.sql' | head -1)"
+if [ -n "$BKFILE" ]; then
+  PASS=$((PASS+1))
+  CT_BK="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/backup/download?file=$BKFILE" | grep -i 'content-type')"
+  tcontains "download backup pe server -> application/sql" 'application/sql' "$CT_BK"
+else FAIL=$((FAIL+1)); echo "FAIL: backup pe server nu apare in lista"; fi
+t "backup download: traversare de cale respinsa -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=../config/config.php")"
+# verificare productie (readiness): pagina de diagnoza, doar admin
+t "GET /admin/checkup -> 200" 200 "$(code -b "$JAR" $B/admin/checkup)"
+tcontains "checkup: pagina de verificare productie" 'Verificare producție' "$(curl -s -b "$JAR" "$B/admin/checkup")"
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
+# GDPR: pagina drepturilor persoanei vizate (export/anonimizare) — doar admin
+t "GET /admin/gdpr -> 200" 200 "$(code -b "$JAR" $B/admin/gdpr)"
+tcontains "gdpr: formular de cautare email" 'name="q_email"' "$(curl -s -b "$JAR" "$B/admin/gdpr")"
+GDPR_EXPORT_CT="$(curl -s -b "$JAR" -D - -o /dev/null -X POST "$B/admin/gdpr/export" -d "_csrf=$CSRF&q_email=nobody@ci.ro" | grep -i 'content-type')"
+tcontains "gdpr export -> JSON" 'application/json' "$GDPR_EXPORT_CT"
 CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
 tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
 # injectie de formule: un comentariu public care incepe cu '=' e neutralizat in exportul CSV
@@ -272,6 +315,18 @@ else
   echo "WARN: niciun slot liber maine (skip booking via API)"
 fi
 
+# --- consimtamant GDPR: rezervare prin formularul public CU acord -> dovada in export ---
+DAT="$(date -d '+2 day' +%F 2>/dev/null || date -v+2d +%F)"
+CSLOT="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$DAT" | python3 -c "import sys,json;d=json.load(sys.stdin);s=[x['start'] for x in d.get('slots',[]) if not x['full'] and not x['past']];print(s[0] if s else '')" 2>/dev/null)"
+if [ -n "$CSLOT" ]; then
+  t "POST /book/{id} cu consimtamant -> 302 (succes)" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode "slot_start=$CSLOT" --data-urlencode 'name=Consent CI' --data-urlencode 'email=consent-ci@ci.ro' --data-urlencode 'consent=1')"
+  GEXP="$(curl -s -b "$JAR" -X POST "$B/admin/gdpr/export" -d "_csrf=$CSRF&q_email=consent-ci@ci.ro")"
+  tcontains "consent: dovada (consent_at) in exportul GDPR" 'consent_at' "$GEXP"
+  tcontains "consent: emailul rezervarii apare in export" 'consent-ci@ci.ro' "$GEXP"
+else
+  echo "WARN: niciun slot liber peste 2 zile (skip test consimtamant)"
+fi
+
 # --- IDOR: allowed_counters aplicat si pe API, nu doar in UI ---
 # agent legat de un ghiseu inexistent (999999) => orice ghiseu real ii e interzis
 curl -s -o /dev/null -b "$JAR" -X POST $B/admin/users --data-urlencode "_csrf=$ICSRF" \
@@ -285,6 +340,24 @@ PACSRF="$(curl -s -b "$PJAR" "$B/counter" | grep -oE 'name="csrf" content="[^"]+
 t "API call-next pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/call-next -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
 t "API counter-pause pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/counter-pause -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
 rm -f "$PJAR"
+
+# --- facturare landlord (login separat, emitere factura, pagina printabila) ---
+LJAR="$(mktemp)"
+LCSRF="$(curl -s -c "$LJAR" "$B/landlord" | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
+curl -s -o /dev/null -b "$LJAR" -c "$LJAR" -X POST "$B/landlord" -d "_csrf=$LCSRF&password=httppass"
+LCSRF2="$(curl -s -b "$LJAR" "$B/landlord/billing" | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
+t "GET /landlord/billing (autentificat) -> 200" 200 "$(code -b "$LJAR" "$B/landlord/billing")"
+tcontains "landlord billing: formular emitent" 'name="b_name"' "$(curl -s -b "$LJAR" "$B/landlord/billing")"
+curl -s -o /dev/null -b "$LJAR" -X POST "$B/landlord/billing-settings" -d "_csrf=$LCSRF2&b_name=Firma+CI&b_series=BDO&b_currency=RON&b_vat=19"
+INV_LOC="$(curl -s -b "$LJAR" -o /dev/null -D - -X POST "$B/landlord/invoice-save" --data-urlencode "_csrf=$LCSRF2" --data-urlencode "client_name=Client CI" --data-urlencode "amount=49" --data-urlencode "vat_percent=19" | grep -i '^location:' | tr -d '\r')"
+INV_ID="$(printf '%s' "$INV_LOC" | grep -oE 'id=[a-f0-9]+' | head -1 | cut -d= -f2)"
+if [ -n "$INV_ID" ]; then
+  INV_HTML="$(curl -s -b "$LJAR" "$B/landlord/invoice?id=$INV_ID")"
+  tcontains "factura printabila: total cu TVA 19% (49 -> 58.31)" '58.31' "$INV_HTML"
+  tcontains "factura printabila: serie/numar BDO 00001" 'BDO 00001' "$INV_HTML"
+  tcontains "factura printabila: buton print" 'window.print()' "$INV_HTML"
+else FAIL=$((FAIL+1)); echo "FAIL: factura nu a fost creata (fara id in redirect)"; fi
+rm -f "$LJAR"
 
 # --- logout ---
 t "GET /logout -> 302"   302 "$(code -b "$JAR" $B/logout)"

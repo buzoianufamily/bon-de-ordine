@@ -506,14 +506,15 @@ function fb_i18n(string $lang): array {
         'q_title'=>'Cum a fost experienta?', 'q_sub'=>'Acorda o nota de la 1 la 5.',
         'comment_ph'=>'Comentariu (optional)', 'send'=>'Trimite',
         'rate_group'=>'Nota (1–5 stele)', 'rate_n'=>'{n} din 5',
+        'privacy_note'=>'Trimitand, esti de acord cu', 'privacy'=>'Politica de confidentialitate',
     ];
     $tr = [
-        'en'=>['thanks_title'=>'Thank you!','thanks_sub'=>'Your feedback helps us improve our service.','q_title'=>'How was your experience?','q_sub'=>'Give a rating from 1 to 5.','comment_ph'=>'Comment (optional)','send'=>'Send','rate_group'=>'Rating (1–5 stars)','rate_n'=>'{n} of 5'],
-        'de'=>['thanks_title'=>'Danke!','thanks_sub'=>'Ihr Feedback hilft uns, unseren Service zu verbessern.','q_title'=>'Wie war Ihre Erfahrung?','q_sub'=>'Geben Sie eine Bewertung von 1 bis 5.','comment_ph'=>'Kommentar (optional)','send'=>'Senden','rate_group'=>'Bewertung (1–5 Sterne)','rate_n'=>'{n} von 5'],
-        'fr'=>['thanks_title'=>'Merci !','thanks_sub'=>'Votre avis nous aide à améliorer nos services.','q_title'=>'Comment s\'est passée votre expérience ?','q_sub'=>'Donnez une note de 1 à 5.','comment_ph'=>'Commentaire (facultatif)','send'=>'Envoyer','rate_group'=>'Note (1–5 étoiles)','rate_n'=>'{n} sur 5'],
-        'hu'=>['thanks_title'=>'Köszönjük!','thanks_sub'=>'Visszajelzése segít javítani a szolgáltatásunkon.','q_title'=>'Milyen volt az élmény?','q_sub'=>'Adjon 1-től 5-ig értékelést.','comment_ph'=>'Megjegyzés (opcionális)','send'=>'Küldés','rate_group'=>'Értékelés (1–5 csillag)','rate_n'=>'{n} / 5'],
-        'it'=>['thanks_title'=>'Grazie!','thanks_sub'=>'Il tuo parere ci aiuta a migliorare il servizio.','q_title'=>'Com\'è stata la tua esperienza?','q_sub'=>'Dai un voto da 1 a 5.','comment_ph'=>'Commento (facoltativo)','send'=>'Invia','rate_group'=>'Voto (1–5 stelle)','rate_n'=>'{n} su 5'],
-        'es'=>['thanks_title'=>'¡Gracias!','thanks_sub'=>'Tu opinión nos ayuda a mejorar el servicio.','q_title'=>'¿Cómo fue tu experiencia?','q_sub'=>'Da una valoración de 1 a 5.','comment_ph'=>'Comentario (opcional)','send'=>'Enviar','rate_group'=>'Valoración (1–5 estrellas)','rate_n'=>'{n} de 5'],
+        'en'=>['thanks_title'=>'Thank you!','thanks_sub'=>'Your feedback helps us improve our service.','q_title'=>'How was your experience?','q_sub'=>'Give a rating from 1 to 5.','comment_ph'=>'Comment (optional)','send'=>'Send','rate_group'=>'Rating (1–5 stars)','rate_n'=>'{n} of 5','privacy_note'=>'By submitting, you agree to the','privacy'=>'Privacy Policy'],
+        'de'=>['thanks_title'=>'Danke!','thanks_sub'=>'Ihr Feedback hilft uns, unseren Service zu verbessern.','q_title'=>'Wie war Ihre Erfahrung?','q_sub'=>'Geben Sie eine Bewertung von 1 bis 5.','comment_ph'=>'Kommentar (optional)','send'=>'Senden','rate_group'=>'Bewertung (1–5 Sterne)','rate_n'=>'{n} von 5','privacy_note'=>'Mit dem Absenden stimmen Sie der','privacy'=>'Datenschutzerklärung zu'],
+        'fr'=>['thanks_title'=>'Merci !','thanks_sub'=>'Votre avis nous aide à améliorer nos services.','q_title'=>'Comment s\'est passée votre expérience ?','q_sub'=>'Donnez une note de 1 à 5.','comment_ph'=>'Commentaire (facultatif)','send'=>'Envoyer','rate_group'=>'Note (1–5 étoiles)','rate_n'=>'{n} sur 5','privacy_note'=>'En envoyant, vous acceptez la','privacy'=>'Politique de confidentialité'],
+        'hu'=>['thanks_title'=>'Köszönjük!','thanks_sub'=>'Visszajelzése segít javítani a szolgáltatásunkon.','q_title'=>'Milyen volt az élmény?','q_sub'=>'Adjon 1-től 5-ig értékelést.','comment_ph'=>'Megjegyzés (opcionális)','send'=>'Küldés','rate_group'=>'Értékelés (1–5 csillag)','rate_n'=>'{n} / 5','privacy_note'=>'A küldéssel elfogadja az','privacy'=>'Adatvédelmi szabályzatot'],
+        'it'=>['thanks_title'=>'Grazie!','thanks_sub'=>'Il tuo parere ci aiuta a migliorare il servizio.','q_title'=>'Com\'è stata la tua esperienza?','q_sub'=>'Dai un voto da 1 a 5.','comment_ph'=>'Commento (facoltativo)','send'=>'Invia','rate_group'=>'Voto (1–5 stelle)','rate_n'=>'{n} su 5','privacy_note'=>'Inviando, accetti l\'','privacy'=>'Informativa sulla privacy'],
+        'es'=>['thanks_title'=>'¡Gracias!','thanks_sub'=>'Tu opinión nos ayuda a mejorar el servicio.','q_title'=>'¿Cómo fue tu experiencia?','q_sub'=>'Da una valoración de 1 a 5.','comment_ph'=>'Comentario (opcional)','send'=>'Enviar','rate_group'=>'Valoración (1–5 estrellas)','rate_n'=>'{n} de 5','privacy_note'=>'Al enviar, aceptas la','privacy'=>'Política de privacidad'],
     ];
     $lang = strtolower($lang);
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
@@ -532,15 +533,16 @@ function book_i18n(string $lang): array {
         'confirm'=>'Confirma programarea',
         'full'=>'complet', 'wl_join'=>'Anunta-ma daca se elibereaza un loc', 'wl_for'=>'Lista de asteptare pentru:',
         'wl_email'=>'Email (te anuntam aici)', 'wl_submit'=>'Adauga-ma pe lista',
+        'consent'=>'Sunt de acord cu prelucrarea datelor pentru gestionarea programarii, conform', 'privacy'=>'Politicii de confidentialitate',
         'days'=>['Dum','Lun','Mar','Mie','Joi','Vin','Sam'],
     ];
     $tr = [
-        'en'=>['title'=>'Online booking','choose'=>'Choose the service you want to book','none'=>'No services are currently available for booking.','all_services'=>'← All services','day'=>'Day','closed_day'=>'Closed on this day. Choose another date.','closed_named'=>'🚫 Closed on this day','pick_other'=>'Choose another date.','next_avail'=>'Next available day:','chosen_time'=>'Chosen time:','name'=>'Name','phone'=>'Phone','email'=>'Email (optional)','confirm'=>'Confirm booking','full'=>'full','wl_join'=>'Notify me if a spot frees up','wl_for'=>'Waitlist for:','wl_email'=>'Email (we notify you here)','wl_submit'=>'Add me to the waitlist','days'=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat']],
-        'de'=>['title'=>'Online-Termin','choose'=>'Wählen Sie die gewünschte Dienstleistung','none'=>'Derzeit sind keine Dienste für Termine verfügbar.','all_services'=>'← Alle Dienste','day'=>'Tag','closed_day'=>'An diesem Tag geschlossen. Wählen Sie ein anderes Datum.','closed_named'=>'🚫 An diesem Tag geschlossen','pick_other'=>'Wählen Sie ein anderes Datum.','next_avail'=>'Nächster freier Tag:','chosen_time'=>'Gewählte Zeit:','name'=>'Name','phone'=>'Telefon','email'=>'E-Mail (optional)','confirm'=>'Termin bestätigen','full'=>'belegt','wl_join'=>'Benachrichtigen, wenn ein Platz frei wird','wl_for'=>'Warteliste für:','wl_email'=>'E-Mail (wir benachrichtigen Sie hier)','wl_submit'=>'Zur Warteliste hinzufügen','days'=>['So','Mo','Di','Mi','Do','Fr','Sa']],
-        'fr'=>['title'=>'Rendez-vous en ligne','choose'=>'Choisissez le service souhaité','none'=>'Aucun service disponible pour le moment.','all_services'=>'← Tous les services','day'=>'Jour','closed_day'=>'Fermé ce jour-là. Choisissez une autre date.','closed_named'=>'🚫 Fermé ce jour-là','pick_other'=>'Choisissez une autre date.','next_avail'=>'Premier jour disponible :','chosen_time'=>'Heure choisie :','name'=>'Nom','phone'=>'Téléphone','email'=>'E-mail (facultatif)','confirm'=>'Confirmer le rendez-vous','full'=>'complet','wl_join'=>'Me prévenir si une place se libère','wl_for'=>'Liste d\'attente pour :','wl_email'=>'E-mail (nous vous prévenons ici)','wl_submit'=>'M\'ajouter à la liste','days'=>['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']],
-        'hu'=>['title'=>'Online időpont','choose'=>'Válassza ki a kívánt szolgáltatást','none'=>'Jelenleg nincs foglalható szolgáltatás.','all_services'=>'← Összes szolgáltatás','day'=>'Nap','closed_day'=>'Ezen a napon zárva. Válasszon másik dátumot.','closed_named'=>'🚫 Ezen a napon zárva','pick_other'=>'Válasszon másik dátumot.','next_avail'=>'Következő szabad nap:','chosen_time'=>'Választott időpont:','name'=>'Név','phone'=>'Telefon','email'=>'E-mail (opcionális)','confirm'=>'Időpont megerősítése','full'=>'megtelt','wl_join'=>'Értesítsen, ha felszabadul egy hely','wl_for'=>'Várólista erre:','wl_email'=>'E-mail (ide értesítjük)','wl_submit'=>'Felveszem a listára','days'=>['Vas','Hét','Ked','Sze','Csü','Pén','Szo']],
-        'it'=>['title'=>'Prenotazione online','choose'=>'Scegli il servizio da prenotare','none'=>'Nessun servizio disponibile al momento.','all_services'=>'← Tutti i servizi','day'=>'Giorno','closed_day'=>'Chiuso in questo giorno. Scegli un\'altra data.','closed_named'=>'🚫 Chiuso in questo giorno','pick_other'=>'Scegli un\'altra data.','next_avail'=>'Primo giorno disponibile:','chosen_time'=>'Orario scelto:','name'=>'Nome','phone'=>'Telefono','email'=>'Email (facoltativo)','confirm'=>'Conferma prenotazione','full'=>'completo','wl_join'=>'Avvisami se si libera un posto','wl_for'=>'Lista d\'attesa per:','wl_email'=>'Email (ti avvisiamo qui)','wl_submit'=>'Aggiungimi alla lista','days'=>['Dom','Lun','Mar','Mer','Gio','Ven','Sab']],
-        'es'=>['title'=>'Reserva en línea','choose'=>'Elige el servicio que quieres reservar','none'=>'No hay servicios disponibles por el momento.','all_services'=>'← Todos los servicios','day'=>'Día','closed_day'=>'Cerrado este día. Elige otra fecha.','closed_named'=>'🚫 Cerrado este día','pick_other'=>'Elige otra fecha.','next_avail'=>'Próximo día disponible:','chosen_time'=>'Hora elegida:','name'=>'Nombre','phone'=>'Teléfono','email'=>'Correo (opcional)','confirm'=>'Confirmar la reserva','full'=>'completo','wl_join'=>'Avísame si se libera una plaza','wl_for'=>'Lista de espera para:','wl_email'=>'Correo (te avisamos aquí)','wl_submit'=>'Añadirme a la lista','days'=>['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']],
+        'en'=>['title'=>'Online booking','choose'=>'Choose the service you want to book','none'=>'No services are currently available for booking.','all_services'=>'← All services','day'=>'Day','closed_day'=>'Closed on this day. Choose another date.','closed_named'=>'🚫 Closed on this day','pick_other'=>'Choose another date.','next_avail'=>'Next available day:','chosen_time'=>'Chosen time:','name'=>'Name','phone'=>'Phone','email'=>'Email (optional)','confirm'=>'Confirm booking','full'=>'full','wl_join'=>'Notify me if a spot frees up','wl_for'=>'Waitlist for:','wl_email'=>'Email (we notify you here)','wl_submit'=>'Add me to the waitlist','consent'=>'I agree to the processing of my data for managing this booking, per the','privacy'=>'Privacy Policy','days'=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat']],
+        'de'=>['title'=>'Online-Termin','choose'=>'Wählen Sie die gewünschte Dienstleistung','none'=>'Derzeit sind keine Dienste für Termine verfügbar.','all_services'=>'← Alle Dienste','day'=>'Tag','closed_day'=>'An diesem Tag geschlossen. Wählen Sie ein anderes Datum.','closed_named'=>'🚫 An diesem Tag geschlossen','pick_other'=>'Wählen Sie ein anderes Datum.','next_avail'=>'Nächster freier Tag:','chosen_time'=>'Gewählte Zeit:','name'=>'Name','phone'=>'Telefon','email'=>'E-Mail (optional)','confirm'=>'Termin bestätigen','full'=>'belegt','wl_join'=>'Benachrichtigen, wenn ein Platz frei wird','wl_for'=>'Warteliste für:','wl_email'=>'E-Mail (wir benachrichtigen Sie hier)','wl_submit'=>'Zur Warteliste hinzufügen','consent'=>'Ich stimme der Verarbeitung meiner Daten zur Verwaltung dieses Termins zu, gemäß der','privacy'=>'Datenschutzerklärung','days'=>['So','Mo','Di','Mi','Do','Fr','Sa']],
+        'fr'=>['title'=>'Rendez-vous en ligne','choose'=>'Choisissez le service souhaité','none'=>'Aucun service disponible pour le moment.','all_services'=>'← Tous les services','day'=>'Jour','closed_day'=>'Fermé ce jour-là. Choisissez une autre date.','closed_named'=>'🚫 Fermé ce jour-là','pick_other'=>'Choisissez une autre date.','next_avail'=>'Premier jour disponible :','chosen_time'=>'Heure choisie :','name'=>'Nom','phone'=>'Téléphone','email'=>'E-mail (facultatif)','confirm'=>'Confirmer le rendez-vous','full'=>'complet','wl_join'=>'Me prévenir si une place se libère','wl_for'=>'Liste d\'attente pour :','wl_email'=>'E-mail (nous vous prévenons ici)','wl_submit'=>'M\'ajouter à la liste','consent'=>'J\'accepte le traitement de mes données pour la gestion de ce rendez-vous, conformément à la','privacy'=>'Politique de confidentialité','days'=>['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']],
+        'hu'=>['title'=>'Online időpont','choose'=>'Válassza ki a kívánt szolgáltatást','none'=>'Jelenleg nincs foglalható szolgáltatás.','all_services'=>'← Összes szolgáltatás','day'=>'Nap','closed_day'=>'Ezen a napon zárva. Válasszon másik dátumot.','closed_named'=>'🚫 Ezen a napon zárva','pick_other'=>'Válasszon másik dátumot.','next_avail'=>'Következő szabad nap:','chosen_time'=>'Választott időpont:','name'=>'Név','phone'=>'Telefon','email'=>'E-mail (opcionális)','confirm'=>'Időpont megerősítése','full'=>'megtelt','wl_join'=>'Értesítsen, ha felszabadul egy hely','wl_for'=>'Várólista erre:','wl_email'=>'E-mail (ide értesítjük)','wl_submit'=>'Felveszem a listára','consent'=>'Hozzájárulok adataim kezeléséhez az időpont kezelése céljából, az','privacy'=>'Adatvédelmi szabályzat szerint','days'=>['Vas','Hét','Ked','Sze','Csü','Pén','Szo']],
+        'it'=>['title'=>'Prenotazione online','choose'=>'Scegli il servizio da prenotare','none'=>'Nessun servizio disponibile al momento.','all_services'=>'← Tutti i servizi','day'=>'Giorno','closed_day'=>'Chiuso in questo giorno. Scegli un\'altra data.','closed_named'=>'🚫 Chiuso in questo giorno','pick_other'=>'Scegli un\'altra data.','next_avail'=>'Primo giorno disponibile:','chosen_time'=>'Orario scelto:','name'=>'Nome','phone'=>'Telefono','email'=>'Email (facoltativo)','confirm'=>'Conferma prenotazione','full'=>'completo','wl_join'=>'Avvisami se si libera un posto','wl_for'=>'Lista d\'attesa per:','wl_email'=>'Email (ti avvisiamo qui)','wl_submit'=>'Aggiungimi alla lista','consent'=>'Acconsento al trattamento dei dati per la gestione di questa prenotazione, secondo l\'','privacy'=>'Informativa sulla privacy','days'=>['Dom','Lun','Mar','Mer','Gio','Ven','Sab']],
+        'es'=>['title'=>'Reserva en línea','choose'=>'Elige el servicio que quieres reservar','none'=>'No hay servicios disponibles por el momento.','all_services'=>'← Todos los servicios','day'=>'Día','closed_day'=>'Cerrado este día. Elige otra fecha.','closed_named'=>'🚫 Cerrado este día','pick_other'=>'Elige otra fecha.','next_avail'=>'Próximo día disponible:','chosen_time'=>'Hora elegida:','name'=>'Nombre','phone'=>'Teléfono','email'=>'Correo (opcional)','confirm'=>'Confirmar la reserva','full'=>'completo','wl_join'=>'Avísame si se libera una plaza','wl_for'=>'Lista de espera para:','wl_email'=>'Correo (te avisamos aquí)','wl_submit'=>'Añadirme a la lista','consent'=>'Acepto el tratamiento de mis datos para gestionar esta reserva, según la','privacy'=>'Política de privacidad','days'=>['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']],
     ];
     $lang = strtolower($lang);
     return ($lang !== 'ro' && isset($tr[$lang])) ? array_merge($ro, $tr[$lang]) : $ro;
@@ -588,6 +590,28 @@ function public_lang_bar(string $current, string $base): string {
             . $meta[$c][1] . ' ' . e(strtoupper($c)) . '</a>';
     }
     return $h . '</div>';
+}
+
+/**
+ * Subsol public cu linkuri legale (confidentialitate + termeni) si brand.
+ * $lang threadeaza limba in URL ca restul paginii ramana coerenta.
+ */
+function public_legal_footer(string $lang = 'ro'): string {
+    $brand = e(setting('brand_name', 'Bon de ordine'));
+    $lq = ($lang !== '' && $lang !== 'ro') ? '?lang=' . rawurlencode($lang) : '';
+    $priv  = e(url('legal/privacy') . $lq);
+    $terms = e(url('legal/terms') . $lq);
+    $labels = [
+        'ro'=>['Confidentialitate','Termeni'], 'en'=>['Privacy','Terms'], 'de'=>['Datenschutz','AGB'],
+        'fr'=>['Confidentialité','Conditions'], 'hu'=>['Adatvédelem','Feltételek'],
+        'it'=>['Privacy','Termini'], 'es'=>['Privacidad','Términos'],
+    ];
+    [$lp, $lt] = $labels[$lang] ?? $labels['ro'];
+    return '<footer class="pub-foot" style="text-align:center;margin:1.8rem auto .6rem;font-size:.78rem;color:var(--muted,#8a93a3);line-height:1.8">'
+         . '<a href="' . $priv . '" style="color:inherit;text-decoration:underline">' . e($lp) . '</a>'
+         . ' · <a href="' . $terms . '" style="color:inherit;text-decoration:underline">' . e($lt) . '</a>'
+         . '<br>© ' . date('Y') . ' ' . $brand
+         . '</footer>';
 }
 
 /** Limbi disponibile la dispenser: cod => [nume, steag]. */
@@ -705,7 +729,8 @@ function auto_install(): void {
     try {
         $exists = (int) val("SELECT COUNT(*) FROM users WHERE email = ?", ['admin@example.ro']);
         if (!$exists) {
-            q("INSERT INTO users (name, email, password_hash, role, active) VALUES (?,?,?,'admin',1)",
+            // must_change_pw=1: in productie, adminul e obligat sa schimbe parola implicita la prima logare
+            q("INSERT INTO users (name, email, password_hash, role, active, must_change_pw) VALUES (?,?,?,'admin',1,1)",
               ['Admin', 'admin@example.ro', password_hash('123456', PASSWORD_DEFAULT)]);
         }
     } catch (Throwable $e) {}
@@ -882,6 +907,20 @@ function run_migrations(): void {
     // v29: cod TOTP de unica folosinta (anti-replay) — ultimul slot 2FA folosit
     if (!$hasCol('users','totp_last_slice')) $ddl("ALTER TABLE users ADD COLUMN totp_last_slice BIGINT NOT NULL DEFAULT 0");
 
+    // v30: schimbarea obligatorie a parolei implicite (onboarding sigur) — flag per utilizator
+    if (!$hasCol('users','must_change_pw')) {
+        $ddl("ALTER TABLE users ADD COLUMN must_change_pw TINYINT(1) NOT NULL DEFAULT 0");
+        // instalari existente: daca adminul implicit inca foloseste parola '123456', forteaza schimbarea
+        try {
+            $h = (string) val("SELECT password_hash FROM users WHERE email='admin@example.ro'");
+            if ($h !== '' && password_verify('123456', $h)) q("UPDATE users SET must_change_pw=1 WHERE email='admin@example.ro'");
+        } catch (Throwable $e) {}
+    }
+
+    // v31: dovada consimtamantului GDPR la programarea online (data + IP)
+    if (!$hasCol('appointments','consent_at')) $ddl("ALTER TABLE appointments ADD COLUMN consent_at DATETIME NULL");
+    if (!$hasCol('appointments','consent_ip')) $ddl("ALTER TABLE appointments ADD COLUMN consent_ip VARCHAR(45) NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -897,8 +936,104 @@ function run_migrations(): void {
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
             && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
             && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')
-            && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')) {
+            && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')
+            && $hasCol('users','must_change_pw')
+            && $hasCol('appointments','consent_at') && $hasCol('appointments','consent_ip')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}
+}
+
+/* ----------------------- Backup baza de date (manual + automat) ----------------------- */
+/** Directorul de backup-uri (creat la nevoie, protejat de acces web prin .htaccess). */
+function backup_dir(): string {
+    $d = (defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2)) . '/backups';
+    if (!is_dir($d)) @mkdir($d, 0750, true);
+    $ht = $d . '/.htaccess';                          // blocheaza accesul direct prin web (Apache)
+    if (!is_file($ht)) @file_put_contents($ht, "Require all denied\nDeny from all\n");
+    return $d;
+}
+/** Genereaza un dump SQL complet, apeland $emit(string) pentru fiecare bucata (stream sau fisier). */
+function db_dump_write(callable $emit): void {
+    $pdo = db();
+    @set_time_limit(300);
+    $emit("-- Backup Bon de ordine · " . date('c') . "\n");
+    $emit("SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
+    $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($tables as $t) {
+        $create = one("SHOW CREATE TABLE `$t`");
+        $emit("DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n\n");
+        $stmt = $pdo->query("SELECT * FROM `$t`");
+        $batch = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string)$v), array_values($row));
+            $batch[] = '(' . implode(',', $vals) . ')';
+            if (count($batch) >= 200) { $emit("INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n"); $batch = []; }
+        }
+        if ($batch) $emit("INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n");
+        $emit("\n");
+    }
+    $emit("SET FOREIGN_KEY_CHECKS=1;\n-- Gata.\n");
+}
+/** Scrie un backup intr-un fisier in backup_dir() si returneaza numele fisierului (sau '' la esec). */
+function backup_to_file(): string {
+    $name = 'backup_' . date('Ymd_His') . '.sql';
+    $path = backup_dir() . '/' . $name;
+    $fh = @fopen($path, 'w');
+    if (!$fh) return '';
+    try { db_dump_write(function (string $s) use ($fh) { fwrite($fh, $s); }); }
+    finally { fclose($fh); }
+    return $name;
+}
+/** Lista backup-urilor existente (nume + dimensiune + data), cel mai nou primul. */
+function backup_list(): array {
+    $out = [];
+    foreach (glob(backup_dir() . '/backup_*.sql') ?: [] as $f)
+        $out[] = ['name' => basename($f), 'size' => (int)@filesize($f), 'mtime' => (int)@filemtime($f)];
+    usort($out, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
+    return $out;
+}
+/** Pastreaza doar cele mai noi $keep backup-uri; sterge restul. Returneaza cate a sters. */
+function backup_prune(int $keep): int {
+    $keep = max(1, $keep);
+    $del = 0;
+    foreach (array_slice(backup_list(), $keep) as $b) if (@unlink(backup_dir() . '/' . $b['name'])) $del++;
+    return $del;
+}
+
+/* ----------------------- Limite de plan per instanta (abonament) ----------------------- */
+/**
+ * Limita planului pentru un tip de resursa (branches/counters/users/services); 0 = nelimitat.
+ * Limitele se seteaza per client in panoul landlord (config/tenants.json). Instanta principala
+ * (fara tenant) e mereu nelimitata.
+ */
+function tenant_limit(string $what): int {
+    $t = $GLOBALS['__tenant'] ?? null;
+    if (!is_array($t) || empty($t['limits']) || !is_array($t['limits'])) return 0;
+    return max(0, (int)($t['limits'][$what] ?? 0));
+}
+/**
+ * Script de auto-delogare la inactivitate (PC-uri partajate la ghisee/backoffice).
+ * Returneaza '' daca e dezactivat (setarea admin_idle_min = 0). Urmareste activitatea
+ * reala a utilizatorului (mouse/tastatura), nu traficul de retea.
+ */
+function idle_logout_script(): string {
+    $min = (int) setting('admin_idle_min', '0');
+    if ($min <= 0) return '';
+    $ms = $min * 60000;
+    $url = url('logout');
+    return '<script>(function(){var t,L=' . $ms . ',U=' . json_encode($url) . ';'
+         . 'function r(){clearTimeout(t);t=setTimeout(function(){location.href=U;},L);}'
+         . "['mousemove','keydown','mousedown','touchstart','scroll'].forEach(function(e){document.addEventListener(e,r,{passive:true});});"
+         . 'r();})();</script>';
+}
+
+/** A atins instanta limita de plan pentru $what? (numara randurile din tabelul corespunzator) */
+function tenant_limit_reached(string $what): bool {
+    $lim = tenant_limit($what);
+    if ($lim <= 0) return false;
+    $tables = ['branches' => 'branches', 'counters' => 'counters', 'users' => 'users', 'services' => 'services'];
+    if (!isset($tables[$what])) return false;                 // whitelist tabel (fara interpolare nesigura)
+    try { return (int) val("SELECT COUNT(*) FROM `{$tables[$what]}`") >= $lim; }
+    catch (Throwable $e) { return false; }
 }

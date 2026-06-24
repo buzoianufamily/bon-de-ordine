@@ -6,6 +6,9 @@ $home = ($u['role'] ?? '') === 'agent' ? 'counter' : 'admin'; ?>
     <div class="auth-dot">👤</div>
     <h1 style="text-align:center;margin:0 0 .2rem;font-size:1.45rem"><?= e($L['ac_title']) ?></h1>
     <p class="muted" style="text-align:center;margin:0 0 1.2rem"><?= e($u['name'] ?? '') ?> · <?= e($u['email'] ?? '') ?></p>
+    <?php if (function_exists('must_change_pw_now') && must_change_pw_now($u)): ?>
+      <div class="pill" style="display:block;text-align:center;background:#fef3c7;color:#92400e;margin-bottom:.8rem">🔒 Folosești parola implicită. Setează o parolă nouă pentru a continua.</div>
+    <?php endif; ?>
     <?php foreach (get_flashes() as $f): ?>
       <div class="pill" style="display:block;text-align:center;background:<?= $f['type']==='error'?'#fee2e2':'#dcfce7' ?>;color:<?= $f['type']==='error'?'#b91c1c':'#166534' ?>;margin-bottom:.8rem"><?= e($f['msg']) ?></div>
     <?php endforeach; ?>

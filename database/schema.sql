@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS users (
   totp_backup   TEXT NULL,                         -- coduri de recuperare (hash-uri JSON)
   totp_last_slice BIGINT NOT NULL DEFAULT 0,        -- ultimul slot TOTP folosit (cod 2FA de unica folosinta)
   allowed_counters TEXT NULL,                      -- ghisee permise (CSV id-uri; gol = toate)
+  must_change_pw TINYINT(1) NOT NULL DEFAULT 0,     -- forteaza schimbarea parolei implicite la prima logare (productie)
   active        TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -277,6 +278,8 @@ CREATE TABLE IF NOT EXISTS appointments (
   public_token  VARCHAR(40) NULL,
   note          VARCHAR(255) NULL,
   reminded_at   DATETIME NULL,                          -- email reminder trimis
+  consent_at    DATETIME NULL,                          -- dovada consimtamant GDPR (formular public)
+  consent_ip    VARCHAR(45) NULL,                       -- IP la momentul consimtamantului
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_appt_branch  FOREIGN KEY (branch_id)  REFERENCES branches(id) ON DELETE CASCADE,
   CONSTRAINT fk_appt_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,

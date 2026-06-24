@@ -30,6 +30,7 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
     <h1 style="margin:0">🏢 Landlord</h1>
     <span class="muted">instante: <?= count($rows) ?> · <span style="color:#16a34a">✔ <?= $okCnt ?> ok</span><?= $errCnt ? ' · <span style="color:#dc2626">✖ '.$errCnt.' cu erori</span>' : '' ?><?= $suspCnt ? ' · ⏸ '.$suspCnt.' suspendate' : '' ?></span>
     <span style="margin-left:auto;display:flex;gap:.5rem">
+      <a class="btn" href="<?= e(url('landlord/billing')) ?>">🧾 Facturare</a>
       <a class="btn" href="<?= e(url('landlord')) ?>">↻ Reverifica</a>
       <a class="btn" href="<?= e(url('landlord/logout')) ?>">Iesire</a>
     </span>
@@ -119,6 +120,15 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
       <div class="row">
         <div class="field"><label>Abonament platit pana la</label><input type="date" name="paid_until" value="<?= e($edit['paid_until'] ?? '') ?>"><span class="muted" style="font-size:.74rem">Gol = fara expirare. Dupa data + gratie, accesul se suspenda automat.</span></div>
         <div class="field"><label>Zile de gratie</label><input type="number" name="grace_days" min="0" max="90" value="<?= e((string)($edit['grace_days'] ?? 0)) ?>"><span class="muted" style="font-size:.74rem">Acces tolerat dupa expirare.</span></div>
+      </div>
+      <label style="color:#aab1bd;font-size:.85rem;display:block;margin-top:.4rem">Limite de plan <span class="muted">(0 = nelimitat)</span></label>
+      <div class="row">
+        <div class="field" style="margin-top:.2rem"><label>Filiale</label><input type="number" name="lim_branches" min="0" max="9999" value="<?= e((string)($edit['limits']['branches'] ?? 0)) ?>"></div>
+        <div class="field" style="margin-top:.2rem"><label>Ghisee</label><input type="number" name="lim_counters" min="0" max="9999" value="<?= e((string)($edit['limits']['counters'] ?? 0)) ?>"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="margin-top:.2rem"><label>Utilizatori</label><input type="number" name="lim_users" min="0" max="9999" value="<?= e((string)($edit['limits']['users'] ?? 0)) ?>"></div>
+        <div class="field" style="margin-top:.2rem"><label>Servicii</label><input type="number" name="lim_services" min="0" max="9999" value="<?= e((string)($edit['limits']['services'] ?? 0)) ?>"></div>
       </div>
       <label style="display:block;margin:.4rem 0"><input type="checkbox" name="active" <?= ($edit === null || !empty($edit['active'])) ? 'checked' : '' ?> style="width:auto"> Activa</label>
       <div style="display:flex;gap:.5rem;margin-top:.6rem">

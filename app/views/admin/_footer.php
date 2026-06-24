@@ -128,4 +128,5 @@ document.addEventListener('click',function(e){
   });
 })();
 </script>
+<?= idle_logout_script() ?>
 </body></html>

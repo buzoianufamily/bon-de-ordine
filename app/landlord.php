@@ -13,6 +13,48 @@ function landlord_tenants_save(array $tenants): bool {
     return @file_put_contents(qms_tenants_file(), $json, LOCK_EX) !== false;
 }
 
+/* ----------------------- Facturare (landlord, fara DB: in fisiere JSON) ----------------------- */
+function landlord_billing_file(): string { return $GLOBALS['__billing_file'] ?? (APP_ROOT . '/config/billing.json'); }
+function landlord_invoices_file(): string { return $GLOBALS['__invoices_file'] ?? (APP_ROOT . '/config/invoices.json'); }
+/** Datele emitentului (firma ta). */
+function landlord_billing_load(): array {
+    $j = json_decode((string)@file_get_contents(landlord_billing_file()), true);
+    return is_array($j) ? $j : [];
+}
+function landlord_billing_save(array $b): bool {
+    return @file_put_contents(landlord_billing_file(),
+        json_encode($b, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) !== false;
+}
+/** Lista facturilor emise. */
+function landlord_invoices_load(): array {
+    $j = json_decode((string)@file_get_contents(landlord_invoices_file()), true);
+    return is_array($j['invoices'] ?? null) ? $j['invoices'] : [];
+}
+function landlord_invoices_save(array $inv): bool {
+    return @file_put_contents(landlord_invoices_file(),
+        json_encode(['invoices' => array_values($inv)], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) !== false;
+}
+/** Totalul unei facturi: net + TVA. Returneaza ['net','vat','total']. */
+function landlord_invoice_total(array $inv): array {
+    $net = round((float)($inv['amount'] ?? 0), 2);
+    $vatp = max(0.0, (float)($inv['vat_percent'] ?? 0));
+    $vat = round($net * $vatp / 100, 2);
+    return ['net' => $net, 'vat' => $vat, 'total' => round($net + $vat, 2)];
+}
+/** Urmatorul numar de factura pentru o serie + an (continuu, pe baza celor existente). */
+function landlord_next_invoice_number(array $invoices, string $series, int $year): int {
+    $max = 0;
+    foreach ($invoices as $iv)
+        if (($iv['series'] ?? '') === $series && (int)($iv['year'] ?? 0) === $year)
+            $max = max($max, (int)($iv['number'] ?? 0));
+    return $max + 1;
+}
+/** Eticheta afisata a unei facturi, ex: BDO 00007 / 2026 (PF = proforma). */
+function landlord_invoice_label(array $inv): string {
+    return ($inv['proforma'] ?? false ? 'PF ' : '') . ($inv['series'] ?? '') . ' '
+         . sprintf('%05d', (int)($inv['number'] ?? 0)) . ' / ' . (int)($inv['year'] ?? 0);
+}
+
 /** Verifica sanatatea unei instante: conexiune + cativa indicatori cheie. */
 function landlord_health(array $db): array {
     $out = ['ok' => false, 'error' => '', 'brand' => '', 'schema' => 0,
@@ -110,6 +152,10 @@ function landlord_dispatch(array $seg, string $method): void {
                 'active'      => isset($_POST['active']),
                 'paid_until'  => preg_match('/^\d{4}-\d{2}-\d{2}$/', $puIn) ? $puIn : '',  // abonament: data pana la care e platit
                 'grace_days'  => max(0, min(90, (int)($_POST['grace_days'] ?? 0))),         // zile de gratie dupa expirare
+                'limits'  => ['branches' => max(0, (int)($_POST['lim_branches'] ?? 0)),     // limite de plan (0 = nelimitat)
+                              'counters' => max(0, (int)($_POST['lim_counters'] ?? 0)),
+                              'users'    => max(0, (int)($_POST['lim_users'] ?? 0)),
+                              'services' => max(0, (int)($_POST['lim_services'] ?? 0))],
                 'note'    => trim((string)($_POST['note'] ?? '')),
                 'created' => $prev['created'] ?? date('Y-m-d'),
             ];
@@ -140,7 +186,98 @@ function landlord_dispatch(array $seg, string $method): void {
             redirect('landlord');
         }
 
+        // ---- facturare ----
+        if ($a === 'billing-settings') {
+            $b = [
+                'name'    => trim((string)($_POST['b_name'] ?? '')),
+                'cui'     => trim((string)($_POST['b_cui'] ?? '')),
+                'regcom'  => trim((string)($_POST['b_regcom'] ?? '')),
+                'address' => trim((string)($_POST['b_address'] ?? '')),
+                'iban'    => trim((string)($_POST['b_iban'] ?? '')),
+                'bank'    => trim((string)($_POST['b_bank'] ?? '')),
+                'email'   => trim((string)($_POST['b_email'] ?? '')),
+                'series'  => strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)($_POST['b_series'] ?? 'BDO'))) ?: 'BDO',
+                'currency'=> strtoupper(preg_replace('/[^A-Za-z]/', '', (string)($_POST['b_currency'] ?? 'RON'))) ?: 'RON',
+                'vat_percent' => max(0, min(100, (int)($_POST['b_vat'] ?? 0))),
+            ];
+            landlord_billing_save($b);
+            flash('Datele de facturare au fost salvate.');
+            redirect('landlord/billing');
+        }
+
+        if ($a === 'invoice-save') {
+            $billing = landlord_billing_load();
+            if (empty($billing['name'])) { flash('Completeaza intai datele emitentului (firma ta).', 'error'); redirect('landlord/billing'); }
+            $invoices = landlord_invoices_load();
+            $series = (string)($billing['series'] ?? 'BDO');
+            $year = (int) date('Y');
+            $amount = max(0, (float)str_replace(',', '.', (string)($_POST['amount'] ?? 0)));
+            $pf = trim((string)($_POST['period_from'] ?? '')); $pt = trim((string)($_POST['period_to'] ?? ''));
+            $due = (string)($_POST['due_date'] ?? '');
+            $inv = [
+                'id'      => bin2hex(random_bytes(8)),
+                'host'    => strtolower(trim((string)($_POST['host'] ?? ''))),
+                'series'  => $series, 'number' => landlord_next_invoice_number($invoices, $series, $year), 'year' => $year,
+                'date'    => date('Y-m-d'),
+                'due_date'=> preg_match('/^\d{4}-\d{2}-\d{2}$/', $due) ? $due : date('Y-m-d', strtotime('+15 days')),
+                'client_name'    => trim((string)($_POST['client_name'] ?? '')),
+                'client_cui'     => trim((string)($_POST['client_cui'] ?? '')),
+                'client_address' => trim((string)($_POST['client_address'] ?? '')),
+                'description' => trim((string)($_POST['description'] ?? '')) ?: 'Abonament Bon de ordine',
+                'period_from' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $pf) ? $pf : '',
+                'period_to'   => preg_match('/^\d{4}-\d{2}-\d{2}$/', $pt) ? $pt : '',
+                'amount'  => round($amount, 2),
+                'vat_percent' => max(0, min(100, (int)($_POST['vat_percent'] ?? ($billing['vat_percent'] ?? 0)))),
+                'currency'=> (string)($billing['currency'] ?? 'RON'),
+                'proforma'=> isset($_POST['proforma']),
+                'paid_at' => '',
+                'note'    => trim((string)($_POST['inv_note'] ?? '')),
+            ];
+            if ($inv['client_name'] === '') { flash('Completeaza numele clientului pe factura.', 'error'); redirect('landlord/billing'); }
+            $invoices[] = $inv;
+            if (!landlord_invoices_save($invoices)) { flash('Nu am putut scrie config/invoices.json — verifica permisiunile folderului config/.', 'error'); redirect('landlord/billing'); }
+            flash('Factura ' . landlord_invoice_label($inv) . ' a fost creata.');
+            redirect('landlord/invoice?id=' . $inv['id']);
+        }
+
+        if ($a === 'invoice-paid') {
+            $id = (string)($_POST['id'] ?? '');
+            $invoices = landlord_invoices_load();
+            foreach ($invoices as &$iv) if (($iv['id'] ?? '') === $id) { $iv['paid_at'] = ($iv['paid_at'] ?? '') ? '' : date('Y-m-d'); break; }
+            unset($iv);
+            landlord_invoices_save($invoices);
+            flash('Stare plata actualizata.');
+            redirect('landlord/billing');
+        }
+
+        if ($a === 'invoice-delete') {
+            $id = (string)($_POST['id'] ?? '');
+            $invoices = array_values(array_filter(landlord_invoices_load(), fn($iv) => ($iv['id'] ?? '') !== $id));
+            landlord_invoices_save($invoices);
+            flash('Factura a fost stearsa.');
+            redirect('landlord/billing');
+        }
+
         redirect('landlord');
+    }
+
+    // ---- facturare: pagina de gestiune + factura printabila (GET) ----
+    if ($a === 'billing') {
+        view('landlord/billing', [
+            'billing'  => landlord_billing_load(),
+            'invoices' => landlord_invoices_load(),
+            'tenants'  => $tenants,
+            'prefillHost' => strtolower(trim((string)($_GET['host'] ?? ''))),
+        ]);
+        return;
+    }
+    if ($a === 'invoice') {
+        $id = (string)($_GET['id'] ?? '');
+        $inv = null;
+        foreach (landlord_invoices_load() as $iv) if (($iv['id'] ?? '') === $id) { $inv = $iv; break; }
+        if (!$inv) { http_response_code(404); echo 'Factura inexistenta.'; return; }
+        view('landlord/invoice', ['inv' => $inv, 'billing' => landlord_billing_load()]);
+        return;
     }
 
     // ---- dashboard: instanta principala + toate instantele, cu health-check ----

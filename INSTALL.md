@@ -54,15 +54,17 @@ La prima accesare, aplicația **își creează singură** baza de date (schema +
 
 1. Deschide în browser: `https://coada.firma-ta.ro/`
 2. Apare portalul cu **Backoffice** și **Terminal operator**.
-3. Intră la **Backoffice** (sau `…/login`) cu contul implicit:
-   - **Email:** `admin@example.ro`
-   - **Parolă:** `123456`
-4. **IMPORTANT:** mergi imediat la **Utilizatori** și schimbă emailul/parola adminului.
+3. Intră la **Backoffice** (sau `…/login`) cu contul de administrator implicit.
+   Datele inițiale ți le comunică furnizorul / le găsești în `database/seed.sql`.
+4. **Schimbarea parolei este obligatorie:** la prima accesare a unei zone de
+   administrare, aplicația te redirecționează automat la **Contul meu** și nu te
+   lasă să continui până nu setezi o parolă nouă. (Comportamentul este activ în
+   producție; în mediul `dev` este dezactivat ca să poată rula testele.)
 
 ---
 
 ## Pasul 5 — Verifică
-- **Admin:** `https://coada.firma-ta.ro/login` → intră cu `admin@example.ro` / `123456`.
+- **Admin:** `https://coada.firma-ta.ro/login` → intră cu contul de administrator implicit (vezi `database/seed.sql`); la prima logare ești obligat să schimbi parola.
 - **Dispenser de test:** Admin → **Dispozitive** → la „Dispenser intrare" apasă **Deschide** (cheie `DEMO01`).
   Apasă pe un serviciu → se emite un bon și (pe mod „browser") se deschide dialogul de printare.
 - **Afișaj TV de test:** Admin → Dispozitive → „TV sala asteptare" → **Deschide** (cheie `DEMO02`).
@@ -118,7 +120,7 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 1. **Subdomeniu:** cPanel → **Domains** → creează `client1.domeniul-tau.ro` cu **același document root** ca aplicația (sau creează o singură dată un subdomeniu wildcard `*`).
 2. **Bază de date:** cPanel → **MySQL Databases** → creează o bază + un utilizator noi, cu **ALL PRIVILEGES**.
 3. **Înregistrare:** în panoul `/landlord`, completează formularul (host + datele bazei) → **Salvează** (îți confirmă pe loc dacă conexiunea DB merge).
-4. **Prima accesare** a subdomeniului instalează automat schema, datele demo și adminul implicit (`admin@example.ro` / `123456`) — predă‑i clientului contul și pune‑l să‑l schimbe.
+4. **Prima accesare** a subdomeniului instalează automat schema, datele demo și adminul implicit — la prima logare clientul este obligat să schimbe parola implicită.
 5. Dacă clientul folosește emailuri (remindere/raport): adaugă în cPanel câte un **Cron Job** per instanță, cu URL‑ul de cron din **API & Webhooks** al acelei instanțe.
 
 ### Operare zilnică
@@ -128,12 +130,26 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 
 ---
 
+## Vânzare pe abonament (pentru furnizor)
+- **Verificare „pregătit de producție":** Admin → **Verificare** (`/admin/checkup`) — listă de control automată (parolă implicită, HTTPS, email, backup, cron, 2FA, retenție, date legale). Rezolvă avertismentele înainte de a preda instanța clientului.
+- **Limite de plan:** în `/landlord`, la fiecare client poți seta limite (filiale/ghișee/utilizatori/servicii) — aplicația le impune automat. `0 = nelimitat`.
+- **Documente contractuale (modele):** vezi `docs/contracte/` — `DPA-model.md` (acord de prelucrare a datelor, GDPR art. 28) și `contract-abonament-SLA-model.md`. **Sunt modele orientative — validează‑le cu un jurist.**
+
 ## Monitorizare & parole
 - **Monitorizare uptime:** configurează serviciul de monitorizare (UptimeRobot, BetterStack etc.) pe `https://coada.firma-ta.ro/health`. Răspunde cu JSON `{"ok":true,"db":"up",…}` și cod **200** când totul e funcțional, sau **503** dacă baza de date e picată.
 - **Alerte SLA pe email:** Admin → Setări → tab **Automatizări** → bifează „alertă SLA". Când există bilete care așteaptă peste ținta serviciului (Servicii → „timp așteptare"), managerii primesc un email (cu prag minim și pauză configurabilă între alerte). Necesită cron + email configurat. Tot aici se activează reminderele de programări, raportul zilnic, curățarea automată a biletelor vechi și închiderea biletelor uitate.
 - **Status public al cozii:** Admin → Setări → **Module** → activează „Status public coadă". Apoi pune linkul `…/status?branch=ID` pe site‑ul clientului — vizitatorii văd live ce se servește la ghișee și câți sunt la rând, fără cont.
+- **Backup automat:** Admin → Setări → **Backup bază de date** → activează „backup automat zilnic". Prin cron, sistemul scrie zilnic un `.sql` în folderul `backups/` (protejat de acces web prin `.htaccess`) și păstrează ultimele N copii. Descarcă‑le periodic în afara serverului. Manual: butonul „Rulează un backup acum" sau „Descarcă backup SQL".
 - **Schimbarea parolei:** orice utilizator backoffice își poate schimba parola din **Securitate → Schimbă parola**; operatorii (care nu intră în backoffice) o schimbă din **Terminal → Cont** (`…/account`).
 - **„Am uitat parola":** linkul de pe pagina de autentificare trimite un email cu un link de resetare (valabil 60 de minute). **Necesită modulul Email configurat** (Admin → Setări → Email — SMTP propriu sau `mail()` de pe cPanel). Fără email configurat, linkul nu poate fi trimis; un alt administrator poate reseta parola din **Utilizatori**.
+
+### Livrabilitate email (SPF / DKIM / DMARC)
+Pentru ca reminderele, rapoartele și emailurile de resetare să **nu ajungă la spam**,
+configurează în zona DNS a domeniului (cPanel → **Zone Editor** / **Email Deliverability**):
+- **SPF** (înregistrare TXT pe domeniu): autorizează serverul care trimite. Exemplu pentru trimitere de pe serverul de hosting: `v=spf1 +mx +a include:_spf.<hostingul-tau> ~all`. Dacă folosești un SMTP extern (relay), include domeniul lui în loc.
+- **DKIM**: în cPanel → **Email Deliverability** apasă **Manage / Repair** ca să genereze cheia DKIM și înregistrarea TXT corespunzătoare — semnează criptografic mesajele.
+- **DMARC** (TXT pe `_dmarc.domeniu`): definește politica. Început prudent: `v=DMARC1; p=none; rua=mailto:postmaster@domeniul-tau.ro` (doar monitorizare); strânge la `p=quarantine` apoi `p=reject` după ce confirmi că SPF+DKIM trec.
+- Setează **„Expeditor" (`mail_from`)** pe o adresă **de pe domeniul tău** (ex: `coada@domeniul-tau.ro`), nu pe un gmail/yahoo — altfel DMARC respinge. Testează cu butonul „Trimite email de test" din Setări → Email.
 
 ---
 

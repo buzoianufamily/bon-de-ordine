@@ -15,6 +15,8 @@ Rezumatul măsurilor de securitate și recomandări de hardening.
 - **Coduri QR fără servicii externe**: 2FA, cheile dispozitivelor și biletele digitale folosesc un generator QR propriu (`app/core/qr.php`) — funcționează offline și nu expun date unor terți.
 - **Audit log**: cine/ce/când a modificat în admin (creare/modificare/ștergere/reset/regenerare cheie). Vezi Admin → Jurnal audit.
 - **Antete de securitate**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `HSTS` pe HTTPS — setate în `.htaccess` (mod_headers) și, ca fallback, la nivel PHP în `app/core/init.php`.
+- **Content-Security-Policy**: setată la nivel PHP (toate resursele sunt locale — fonturi incluse, fără CDN-uri). `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`; blochează scripturile/stilurile/imaginile externe injectate (clasă comună de XSS). `'unsafe-inline'` rămâne necesar pentru scripturile/stilurile inline din interfață. Dezactivabilă cu `$config['app']['csp'] = false`.
+- **Fără indexare în motoarele de căutare**: `X-Robots-Tag: noindex, nofollow` pe toate răspunsurile + `robots.txt` cu `Disallow: /` — paginile cu jetoane personale (bilet/programare) nu ajung în Google.
 - **Foldere/fișiere sensibile blocate** prin `.htaccess`: `app/`, `config/`, `database/` și fișierele `*.sql|*.md|*.log|*.ini|*.json|*.env` (inclusiv `tenants.json`). `Options -Indexes`.
 - **Upload media**: validare MIME (finfo), extensii permise, limită 25MB, nume de fișier igienizat.
 - **Export CSV/Excel**: protecție anti-injecție de formule — celulele CSV care încep cu `=`, `+`, `-`, `@` (date introduse de public: comentarii feedback, nume/telefon clienți) sunt prefixate cu apostrof, deci nu se execută ca formule la deschiderea în Excel/Sheets; exportul Excel scrie valorile ca șiruri „inline" (niciodată formule). Importul CSV ignoră BOM-ul UTF-8 (fișiere Excel), deci antetul nu ajunge date.
@@ -26,13 +28,13 @@ Rezumatul măsurilor de securitate și recomandări de hardening.
 
 ## Recomandări la instalare
 1. **HTTPS obligatoriu** (Let's Encrypt din cPanel). Activează redirect HTTP→HTTPS.
-2. **Schimbă contul implicit** `admin@example.ro` / `123456` imediat, din Admin → Utilizatori.
+2. **Parola implicită** a contului de administrator trebuie schimbată — în producție aplicația o cere automat la prima logare (redirect la „Contul meu", blocând zonele de administrare până la schimbare). Emailul îl poți schimba ulterior din Admin → Utilizatori.
 3. Ține `app.env = production` în `config/config.php` (ascunde erorile).
 4. Acordă userului MySQL doar privilegii pe baza proprie.
 5. Fă backup periodic la baza de date.
 6. Pentru API/webhooks: folosește un secret pentru webhook și păstrează cheia API secretă; regenereaz-o dacă a fost expusă.
 
 ## Posibile întăriri viitoare (opțional)
-- `Content-Security-Policy` strict (atenție la scripturile inline). Widget-ul iframe de pe afișaj rulează deja `sandbox` fără `allow-same-origin` și acceptă doar URL-uri `http(s)`.
+- `Content-Security-Policy` cu **nonce** (eliminarea lui `'unsafe-inline'`) — necesită adăugarea unui nonce la fiecare script/stil inline. Acum CSP e activă cu `'unsafe-inline'`. Widget-ul iframe de pe afișaj rulează `sandbox` fără `allow-same-origin` și acceptă doar URL-uri `http(s)`.
 - Rotația periodică a cheii API.
 - Pe Nginx, replică regulile `.htaccess` (blocarea `config/`, `database/`, `app/`, `*.sql|*.json|*.env`) în configurația serverului.

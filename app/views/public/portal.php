@@ -31,4 +31,5 @@ if (setting('mod_public_status','0')==='1') $tiles[] = ['Status coada', 'Vezi li
     <code style="display:block;background:#0f1115;color:#7CFFB2;padding:.7rem;border-radius:8px;font-size:.85rem"><?= e(url('launcher?key=CHEIE')) ?></code>
     <p class="muted" style="margin-top:.5rem;font-size:.85rem">Vezi cheile in Backoffice → Dispozitive.</p>
   </div>
+  <?= public_legal_footer('ro') ?>
 </div></div></body></html>

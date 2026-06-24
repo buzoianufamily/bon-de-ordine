@@ -13,4 +13,5 @@ $title='Programari'; require __DIR__.'/_head.php'; ?>
     <?php endforeach; ?>
     <?php if(!$services): ?><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($L['none']) ?></p><?php endif; ?>
   </div>
+  <?= public_legal_footer($lang) ?>
 </div></div></body></html>

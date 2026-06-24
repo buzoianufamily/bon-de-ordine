@@ -30,6 +30,7 @@ function chk($c, $m) { global $ok, $fail, $F; if ($c) { $ok++; } else { $fail++;
 chk((int)val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()") >= 21, 'install: >=21 tables');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === (defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 0), 'install: schema_version = APP_SCHEMA_VERSION');
 chk((int)val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro' AND role='admin'") === 1, 'install: default admin');
+chk((int)val("SELECT must_change_pw FROM users WHERE email='admin@example.ro'") === 1, 'security: admin implicit are must_change_pw=1 (forteaza schimbarea parolei)');
 foreach (['users','tickets','feedback','counter_sessions','password_resets','branch_closures'] as $t)
     chk((int)val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?", [$t]) === 1, "install: table $t exists");
 foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id'],['branches','open_hours']] as $c)
@@ -368,6 +369,8 @@ q("ALTER TABLE services DROP COLUMN max_per_day");
 q("ALTER TABLE branches DROP COLUMN open_hours");
 q("ALTER TABLE tickets DROP INDEX idx_tickets_svc_status");
 q("ALTER TABLE users DROP COLUMN totp_last_slice");
+q("ALTER TABLE users DROP COLUMN must_change_pw");
+q("ALTER TABLE appointments DROP COLUMN consent_at");
 set_setting('schema_version', '5');
 run_migrations(); // trebuie sa re-adauge coloanele/indecsii lipsa si sa urce versiunea la zi
 $hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
@@ -375,6 +378,10 @@ $hasOh  = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table
 $hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
 $hasSvcIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_svc_status'");
 $hasTls = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='totp_last_slice'");
+$hasMcp = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='must_change_pw'");
+$hasConsent = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='appointments' AND column_name='consent_at'");
+chk($hasMcp === 1, 'migrare: users.must_change_pw re-adaugat dupa upgrade');
+chk($hasConsent === 1, 'migrare: appointments.consent_at re-adaugat dupa upgrade');
 chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
 chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
@@ -492,6 +499,146 @@ chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23', 'grace_days'=>5],
 chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-10', 'grace_days'=>5], $now) === 'expired', 'abonament: dincolo de gratie -> expirat');
 chk(bdo_tenant_state(['active'=>0, 'paid_until'=>'2026-12-31'], $now) === 'suspended', 'abonament: suspendarea manuala bate abonamentul valid');
 chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'data-gresita'], $now) === 'ok', 'abonament: data invalida ignorata -> ok');
+
+/* ---- 37. Subsol legal public (linkuri confidentialitate/termeni, multilingv) ---- */
+set_setting('brand_name', 'CI Brand');
+$footRo = public_legal_footer('ro');
+chk(strpos($footRo, 'legal/privacy') !== false && strpos($footRo, 'legal/terms') !== false, 'footer: linkuri privacy + terms');
+chk(strpos($footRo, 'Confidentialitate') !== false && strpos($footRo, 'CI Brand') !== false, 'footer: eticheta RO + brand');
+$footEn = public_legal_footer('en');
+chk(strpos($footEn, 'Privacy') !== false && strpos($footEn, '?lang=en') !== false, 'footer: eticheta EN + lang in URL');
+chk(strpos(public_legal_footer('ro'), '?lang=') === false, 'footer: RO nu adauga param lang (URL curat)');
+
+/* ---- 38. Schimbarea obligatorie a parolei implicite (onboarding sigur) ---- */
+// logica must_change_pw_now: dezactivata in 'dev', activa in productie
+chk(must_change_pw_now(['must_change_pw'=>1]) === false, 'forcepw: in dev -> dezactivat (testele se autentifica cu seed)');
+chk(must_change_pw_now(null) === false, 'forcepw: fara user -> false');
+$prevEnv = $GLOBALS['__config']['app']['env'] ?? 'dev';
+$GLOBALS['__config']['app']['env'] = 'production';
+chk(must_change_pw_now(['must_change_pw'=>1]) === true, 'forcepw: in productie + flag -> obligatoriu');
+chk(must_change_pw_now(['must_change_pw'=>0]) === false, 'forcepw: in productie fara flag -> false');
+$GLOBALS['__config']['app']['env'] = $prevEnv;
+// schimbarea parolei sterge flag-ul
+q("INSERT INTO users (name,email,role,active,must_change_pw,password_hash) VALUES ('Force CI','force@ci.ro','agent',1,1,?)", [password_hash('initpass', PASSWORD_DEFAULT)]);
+$fcid = (int) insert_id();
+chk((int)val("SELECT must_change_pw FROM users WHERE id=?", [$fcid]) === 1, 'forcepw: user nou cu flag setat');
+$rc = change_own_password($fcid, 'initpass', 'parolanoua1', 'parolanoua1');
+chk($rc['ok'] === true && (int)val("SELECT must_change_pw FROM users WHERE id=?", [$fcid]) === 0, 'forcepw: schimbarea parolei sterge flag-ul');
+
+/* ---- 39. GDPR: cautare + anonimizare date personale (drepturi persoana vizata) ---- */
+require_once __DIR__ . '/../app/admin_routes.php';
+$gEmail = 'gdpr-test@ci.ro'; $gPhone = '0744111222';
+q("INSERT INTO appointments (branch_id,service_id,customer_name,customer_phone,customer_email,slot_start,status,consent_at,consent_ip) VALUES (?,?,?,?,?, NOW()+INTERVAL 1 DAY, 'booked', NOW(), '203.0.113.7')", [$br,$svc,'GDPR Ion',$gPhone,$gEmail]);
+$gAppt = (int) insert_id();
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_name, customer_email, customer_phone) VALUES (?, NOW()+INTERVAL 1 DAY, 'GDPR Ion', ?, ?)", [$svc,$gEmail,$gPhone]);
+q("INSERT INTO tickets (branch_id,service_id,number,label,customer_phone,status) VALUES (?,?,?,?,?,'waiting')", [$br,$svc,9991,'GDPR9991',$gPhone]);
+$gTkId = (int) insert_id();
+$fE = gdpr_find($gEmail, '');
+chk(count($fE['appointments']) >= 1 && count($fE['waitlist']) >= 1, 'gdpr: cautare dupa email gaseste programare + waitlist');
+chk(count($fE['tickets']) === 0, 'gdpr: cautare doar dupa email nu atinge biletele (fara coloana email)');
+chk(($fE['appointments'][0]['consent_at'] ?? null) !== null && ($fE['appointments'][0]['consent_ip'] ?? '') === '203.0.113.7', 'consent: dovada (data+IP) inclusa in export');
+$fP = gdpr_find('', $gPhone);
+chk(count($fP['tickets']) >= 1, 'gdpr: cautare dupa telefon gaseste biletul');
+$er = gdpr_erase($gEmail, $gPhone);
+chk($er['appointments'] >= 1 && $er['waitlist'] >= 1 && $er['tickets'] >= 1, 'gdpr: anonimizare raporteaza pe categorii');
+chk(val("SELECT customer_email FROM appointments WHERE id=?", [$gAppt]) === null && val("SELECT customer_phone FROM appointments WHERE id=?", [$gAppt]) === null, 'gdpr: programarea e anonimizata (email/telefon NULL)');
+chk(val("SELECT consent_ip FROM appointments WHERE id=?", [$gAppt]) === null, 'consent: IP-ul de consimtamant e sters la anonimizare (PII)');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email=?", [$gEmail]) === 0, 'gdpr: intrarile din waitlist sunt sterse');
+chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$gTkId]) === null, 'gdpr: telefonul biletului e anonimizat');
+$f2 = gdpr_find($gEmail, $gPhone);
+chk(array_sum(array_map('count', $f2)) === 0, 'gdpr: dupa anonimizare nu mai exista date personale');
+chk(array_sum(gdpr_erase('', '')) === 0, 'gdpr: fara criterii -> nu se sterge nimic');
+
+/* ---- 40. Backup baza de date (dump reutilizabil + retentie) ---- */
+foreach (glob(backup_dir().'/backup_*.sql') ?: [] as $f) @unlink($f);   // start curat
+$bname = backup_to_file();
+chk($bname !== '' && is_file(backup_dir().'/'.$bname), 'backup: fisier creat in backups/');
+$bcontent = (string) file_get_contents(backup_dir().'/'.$bname);
+chk(strpos($bcontent, '-- Backup') === 0 && strpos($bcontent, 'CREATE TABLE') !== false
+    && strpos($bcontent, 'INSERT INTO `settings`') !== false, 'backup: dump contine structura + date');
+chk(is_file(backup_dir().'/.htaccess'), 'backup: folderul e protejat de acces web (.htaccess)');
+foreach (['backup_20200101_000001.sql','backup_20200102_000002.sql','backup_20200103_000003.sql'] as $i => $fn) {
+    file_put_contents(backup_dir().'/'.$fn, '-- test'); @touch(backup_dir().'/'.$fn, strtotime('2020-01-0'.($i+1)));
+}
+$pruned = backup_prune(2);
+chk($pruned >= 1 && count(backup_list()) === 2, 'backup: retentia pastreaza doar cele mai noi 2');
+foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);
+// calea prin cron: activat + nerulat azi -> creeaza un backup; nu repeta in aceeasi zi
+set_setting('backup_auto_enabled','1'); set_setting('backup_last','2000-01-01'); set_setting('backup_keep','5');
+$cr = run_cron_jobs();
+chk(!empty($cr['backup']) && count(backup_list()) === 1, 'backup: cron creeaza backup cand e activat');
+chk(setting('backup_last','') === date('Y-m-d'), 'backup: cron marcheaza ziua curenta');
+chk(run_cron_jobs()['backup'] === false, 'backup: cron nu repeta in aceeasi zi');
+set_setting('backup_auto_enabled','0');
+foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);             // curatenie test
+chk(count(backup_list()) === 0, 'backup: curatenie dupa test');
+
+/* ---- 41. Verificare productie (system_checkup) ---- */
+$lvl = function (array $checks, string $frag): string { foreach ($checks as $c) if (mb_strpos($c['title'], $frag) !== false) return $c['level']; return ''; };
+$prevEnv2 = $GLOBALS['__config']['app']['env'] ?? 'dev';
+$GLOBALS['__config']['app']['env'] = 'production';
+set_setting('backup_auto_enabled','1'); set_setting('retention_months','6'); set_setting('cron_last_run',(string)time());
+q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
+$cu1 = system_checkup();
+chk(count($cu1) >= 8, 'checkup: produce o lista de verificari');
+chk($lvl($cu1,'Mediu') === 'ok', 'checkup: env=production -> ok');
+chk($lvl($cu1,'Backup') === 'ok', 'checkup: backup activ -> ok');
+chk($lvl($cu1,'Cron') === 'ok', 'checkup: cron recent -> ok');
+chk($lvl($cu1,'Reten') === 'ok', 'checkup: retentie setata -> ok');
+$GLOBALS['__config']['app']['env'] = 'dev';
+set_setting('backup_auto_enabled','0'); set_setting('cron_last_run','0');
+$cu2 = system_checkup();
+chk($lvl($cu2,'Mediu') === 'warn', 'checkup: env=dev -> warn');
+chk($lvl($cu2,'Backup') === 'warn', 'checkup: backup oprit -> warn');
+chk($lvl($cu2,'Cron') === 'warn', 'checkup: cron nerulat -> warn');
+q("UPDATE users SET must_change_pw=1 WHERE role='admin' LIMIT 1");
+chk($lvl(system_checkup(),'Parol') === 'crit', 'checkup: admin cu parola implicita -> critic');
+q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
+$GLOBALS['__config']['app']['env'] = $prevEnv2;
+
+/* ---- 42. Limite de plan per instanta (abonament) ---- */
+$GLOBALS['__tenant'] = null;
+chk(tenant_limit('services') === 0 && tenant_limit_reached('services') === false, 'plan: fara tenant -> nelimitat');
+$svcCount = (int) val("SELECT COUNT(*) FROM services");
+$GLOBALS['__tenant'] = ['limits' => ['services' => $svcCount + 1]];
+chk(tenant_limit('services') === $svcCount + 1 && tenant_limit_reached('services') === false, 'plan: sub limita -> permis');
+$GLOBALS['__tenant'] = ['limits' => ['services' => $svcCount]];
+chk(tenant_limit_reached('services') === true, 'plan: la limita -> blocat');
+$GLOBALS['__tenant'] = ['limits' => ['services' => 0]];
+chk(tenant_limit_reached('services') === false, 'plan: limita 0 -> nelimitat');
+$GLOBALS['__tenant'] = ['limits' => ['counters' => 1]];
+chk(tenant_limit('services') === 0 && tenant_limit_reached('services') === false, 'plan: limita pe alt tip nu afecteaza serviciile');
+$GLOBALS['__tenant'] = null;   // restaureaza contextul
+
+/* ---- 43. Facturare landlord (total, numerotare, persistenta JSON) ---- */
+require_once __DIR__ . '/../app/landlord.php';
+$tt = landlord_invoice_total(['amount' => 100, 'vat_percent' => 19]);
+chk($tt['net'] === 100.0 && $tt['vat'] === 19.0 && $tt['total'] === 119.0, 'factura: total net + TVA');
+chk(landlord_invoice_total(['amount' => 49.99, 'vat_percent' => 0])['total'] === 49.99, 'factura: TVA 0 -> total = net');
+$ivs = [['series'=>'BDO','year'=>2026,'number'=>1],['series'=>'BDO','year'=>2026,'number'=>2],['series'=>'X','year'=>2026,'number'=>9]];
+chk(landlord_next_invoice_number($ivs,'BDO',2026) === 3, 'factura: urmatorul numar continua seria/anul');
+chk(landlord_next_invoice_number($ivs,'BDO',2027) === 1, 'factura: an nou -> numerotare de la 1');
+chk(landlord_next_invoice_number([],'BDO',2026) === 1, 'factura: prima factura -> numarul 1');
+chk(landlord_invoice_label(['proforma'=>true,'series'=>'BDO','number'=>7,'year'=>2026]) === 'PF BDO 00007 / 2026', 'factura: eticheta proforma');
+$GLOBALS['__billing_file'] = sys_get_temp_dir() . '/ci_billing_' . getmypid() . '.json';
+$GLOBALS['__invoices_file'] = sys_get_temp_dir() . '/ci_invoices_' . getmypid() . '.json';
+@unlink($GLOBALS['__billing_file']); @unlink($GLOBALS['__invoices_file']);
+chk(landlord_billing_load() === [] && landlord_invoices_load() === [], 'factura: fisiere goale -> liste goale');
+landlord_billing_save(['name'=>'Firma CI','series'=>'BDO','currency'=>'RON','vat_percent'=>19]);
+chk(landlord_billing_load()['name'] === 'Firma CI', 'factura: datele emitentului persista');
+landlord_invoices_save($ivs);
+chk(count(landlord_invoices_load()) === 3, 'factura: facturile persista');
+@unlink($GLOBALS['__billing_file']); @unlink($GLOBALS['__invoices_file']);
+unset($GLOBALS['__billing_file'], $GLOBALS['__invoices_file']);
+
+/* ---- 44. Auto-delogare la inactivitate (script gated pe setare) ---- */
+set_setting('admin_idle_min', '0');
+chk(idle_logout_script() === '', 'idle: dezactivat (0) -> niciun script');
+set_setting('admin_idle_min', '15');
+$idleJs = idle_logout_script();
+chk(strpos($idleJs, '<script>') === 0 && strpos($idleJs, '900000') !== false, 'idle: 15 min -> script cu 900000 ms');
+chk(strpos($idleJs, 'logout') !== false && strpos($idleJs, 'mousemove') !== false, 'idle: redirect la logout pe activitate mouse/tastatura');
+set_setting('admin_idle_min', '0');
 
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }

@@ -12,7 +12,7 @@ define('APP_START', microtime(true));
 require APP_ROOT . '/app/core/errors.php';
 bdo_install_error_handlers();
 
-define('APP_SCHEMA_VERSION', 29);   // versiunea curenta a schemei (folosita de migrari si landlord)
+define('APP_SCHEMA_VERSION', 31);   // versiunea curenta a schemei (folosita de migrari si landlord)
 
 // Config: din config/config.php; testele de integrare pot injecta prin $GLOBALS['__config_override'].
 $config = $GLOBALS['__config_override'] ?? (require APP_ROOT . '/config/config.php');
@@ -107,6 +107,17 @@ if (!headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');
     header('Referrer-Policy: strict-origin-when-cross-origin');
+    // unealta interna (cozi) + pagini cu jetoane personale (bilet/programare) => nu indexa nicaieri
+    header('X-Robots-Tag: noindex, nofollow');
+    // Content-Security-Policy: toate resursele sunt locale (fonturi incluse), deci putem restrange.
+    // 'unsafe-inline' e necesar (scripturi/stiluri inline in interfata); blocheaza totusi resursele
+    // externe injectate (clasa comuna de XSS) si limiteaza form-action / base-uri. Dezactivabil din config.
+    if (($config['app']['csp'] ?? true)) {
+        header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; "
+             . "frame-ancestors 'self'; form-action 'self'; img-src 'self' data: https:; "
+             . "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+             . "font-src 'self'; connect-src 'self'; media-src 'self'; frame-src 'self' https: http:");
+    }
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') header('Strict-Transport-Security: max-age=15552000');
 }
 

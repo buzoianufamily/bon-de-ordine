@@ -82,4 +82,5 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
 })();
 </script>
 <script src="<?= e(asset('js/counter.js')) ?>"></script>
+<?= idle_logout_script() ?>
 </body></html>

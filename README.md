@@ -75,8 +75,8 @@ android/launcher/     ← aplicația Android (kiosk WebView + printare USB ESC/P
 ---
 
 ## Cont implicit (după prima accesare)
-- **Backoffice:** `…/login` → email `admin@example.ro`, parolă `123456`.
-- **Important:** schimbă imediat emailul/parola din **Administrare → Utilizatori**.
+- **Backoffice:** `…/login` → contul de administrator implicit (vezi `database/seed.sql`).
+- **Important:** la prima logare în producție ești **obligat** să schimbi parola implicită înainte de a continua; ulterior poți schimba emailul din **Administrare → Utilizatori**.
 
 ---
 

@@ -11,8 +11,7 @@ $cb = fn($checked)=>$checked?'checked':'';
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Configurare dispenser · <?= e($dev['name']) ?></title>
 <meta name="csrf" content="<?= e(csrf_token()) ?>"><meta name="base" content="<?= e(base_url()) ?>">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="<?= e(asset('fonts.css')) ?>">
 <style>
 :root{--accent:<?= e($accent) ?>}
 *{box-sizing:border-box}

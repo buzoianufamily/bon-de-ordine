@@ -77,6 +77,13 @@ try {
         ], $ok ? 200 : 503);
     }
 
+    // ===================== robots.txt — unealta interna, fara indexare in motoare =====================
+    if ($route === '/robots.txt') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "User-agent: *\nDisallow: /\n";
+        exit;
+    }
+
     // ===================== Cod QR local (SVG) — fara servicii externe =====================
     if ($seg[0] === 'qr') {
         require_once APP_ROOT . '/app/core/qr.php';
@@ -319,6 +326,13 @@ SWJS;
         json_out(['ok' => false, 'error' => 'Endpoint necunoscut'], 404);
     }
 
+    // Onboarding sigur: inainte de zonele privilegiate, forteaza schimbarea parolei implicite
+    // (doar in productie — vezi must_change_pw_now). Pagina /account ramane accesibila ca sa o poata schimba.
+    if (in_array($seg[0], ['admin', 'counter', 'concierge'], true) && must_change_pw_now(current_user())) {
+        flash('Din motive de securitate, schimbă parola implicită înainte de a continua.', 'error');
+        redirect('account');
+    }
+
     // ===================== PAGINI PUBLICE =====================
     if ($route === '/') {
         if (current_user()) redirect('admin');
@@ -540,10 +554,18 @@ SWJS;
                     flash('Prea multe cereri. Reincearca mai tarziu.', 'error');
                     redirect('book/'.$svc['id'].($lang!=='ro'?'?lang='.$lang:''));
                 }
+                // consimtamant GDPR obligatoriu (programarea colecteaza date personale)
+                if (!input('consent')) {
+                    flash('Pentru a continua, bifeaza acordul privind prelucrarea datelor.', 'error');
+                    redirect('book/'.$svc['id'].'?date='.urlencode(substr((string)input('slot_start',''),0,10) ?: date('Y-m-d')).($lang!=='ro'?'&lang='.$lang:''));
+                }
                 $slot = (string)input('slot_start', '');
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }
                 catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).'&lang='.$lang); }
+                // dovada consimtamantului (data + IP), pentru conformitate GDPR
+                try { q("UPDATE appointments SET consent_at=NOW(), consent_ip=? WHERE id=?",
+                        [substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45), (int)$appt['id']]); } catch (Throwable $e) {}
                 redirect('a/'.$appt['public_token'].($lang!=='ro'?'?lang='.$lang:''));
             }
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
@@ -598,6 +620,19 @@ SWJS;
             redirect('a/'.$seg[1].$lq);
         }
         view('public/appointment', ['a' => $appt, 'lang' => $lang]);
+        return;
+    }
+
+    // ===================== PAGINI LEGALE (GDPR): confidentialitate + termeni =====================
+    if ($seg[0] === 'legal' || $seg[0] === 'confidentialitate' || $seg[0] === 'termeni') {
+        $sub = strtolower((string)($seg[1] ?? ''));
+        $kind = ($seg[0] === 'termeni' || $sub === 'terms' || $sub === 'termeni') ? 'terms' : 'privacy';
+        // daca operatorul a publicat politici proprii pe alt URL, redirectioneaza acolo
+        $ext = trim((string) setting($kind === 'terms' ? 'terms_url' : 'privacy_url', ''));
+        if ($ext !== '' && preg_match('#^https?://#i', $ext)) { redirect($ext); }
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
+        if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        view('public/legal', ['kind' => $kind, 'lang' => $lang]);
         return;
     }
 
