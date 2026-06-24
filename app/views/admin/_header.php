@@ -53,6 +53,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
       <a href="<?= e(url('admin/api')) ?>" class="<?= ($active??'')==='api'?'active':'' ?>"><span class="ic">🔌</span><span class="lbl">API & Webhooks</span></a>
       <a href="<?= e(url('admin/audit')) ?>" class="<?= ($active??'')==='audit'?'active':'' ?>"><span class="ic">📜</span><span class="lbl">Jurnal audit</span></a>
       <a href="<?= e(url('admin/gdpr')) ?>" class="<?= ($active??'')==='gdpr'?'active':'' ?>"><span class="ic">⚖️</span><span class="lbl">GDPR</span></a>
+      <a href="<?= e(url('admin/checkup')) ?>" class="<?= ($active??'')==='checkup'?'active':'' ?>"><span class="ic">🩺</span><span class="lbl">Verificare</span></a>
     <?php elseif (can('settings')): ?>
       <div class="grp">Acces</div>
       <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>

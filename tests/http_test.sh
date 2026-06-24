@@ -138,6 +138,9 @@ if [ -n "$BKFILE" ]; then
   tcontains "download backup pe server -> application/sql" 'application/sql' "$CT_BK"
 else FAIL=$((FAIL+1)); echo "FAIL: backup pe server nu apare in lista"; fi
 t "backup download: traversare de cale respinsa -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=../config/config.php")"
+# verificare productie (readiness): pagina de diagnoza, doar admin
+t "GET /admin/checkup -> 200" 200 "$(code -b "$JAR" $B/admin/checkup)"
+tcontains "checkup: pagina de verificare productie" 'Verificare producție' "$(curl -s -b "$JAR" "$B/admin/checkup")"
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"

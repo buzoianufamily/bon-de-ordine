@@ -573,6 +573,29 @@ set_setting('backup_auto_enabled','0');
 foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);             // curatenie test
 chk(count(backup_list()) === 0, 'backup: curatenie dupa test');
 
+/* ---- 41. Verificare productie (system_checkup) ---- */
+$lvl = function (array $checks, string $frag): string { foreach ($checks as $c) if (mb_strpos($c['title'], $frag) !== false) return $c['level']; return ''; };
+$prevEnv2 = $GLOBALS['__config']['app']['env'] ?? 'dev';
+$GLOBALS['__config']['app']['env'] = 'production';
+set_setting('backup_auto_enabled','1'); set_setting('retention_months','6'); set_setting('cron_last_run',(string)time());
+q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
+$cu1 = system_checkup();
+chk(count($cu1) >= 8, 'checkup: produce o lista de verificari');
+chk($lvl($cu1,'Mediu') === 'ok', 'checkup: env=production -> ok');
+chk($lvl($cu1,'Backup') === 'ok', 'checkup: backup activ -> ok');
+chk($lvl($cu1,'Cron') === 'ok', 'checkup: cron recent -> ok');
+chk($lvl($cu1,'Reten') === 'ok', 'checkup: retentie setata -> ok');
+$GLOBALS['__config']['app']['env'] = 'dev';
+set_setting('backup_auto_enabled','0'); set_setting('cron_last_run','0');
+$cu2 = system_checkup();
+chk($lvl($cu2,'Mediu') === 'warn', 'checkup: env=dev -> warn');
+chk($lvl($cu2,'Backup') === 'warn', 'checkup: backup oprit -> warn');
+chk($lvl($cu2,'Cron') === 'warn', 'checkup: cron nerulat -> warn');
+q("UPDATE users SET must_change_pw=1 WHERE role='admin' LIMIT 1");
+chk($lvl(system_checkup(),'Parol') === 'crit', 'checkup: admin cu parola implicita -> critic');
+q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
+$GLOBALS['__config']['app']['env'] = $prevEnv2;
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

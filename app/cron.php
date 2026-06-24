@@ -7,6 +7,7 @@
  */
 function run_cron_jobs(): array {
     $out = ['ok' => true, 'ran_at' => now(), 'reminders' => 0, 'daily_report' => false, 'cleaned' => 0];
+    try { set_setting('cron_last_run', (string) time()); } catch (Throwable $e) {}   // pentru diagnoza „cron activ?"
 
     /* 0) Curatare automata: sterge biletele mai vechi decat perioada de retentie (nu necesita email). */
     $months = (int) setting('retention_months', '0');
