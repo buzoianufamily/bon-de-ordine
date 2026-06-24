@@ -77,6 +77,13 @@ try {
         ], $ok ? 200 : 503);
     }
 
+    // ===================== robots.txt — unealta interna, fara indexare in motoare =====================
+    if ($route === '/robots.txt') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "User-agent: *\nDisallow: /\n";
+        exit;
+    }
+
     // ===================== Cod QR local (SVG) — fara servicii externe =====================
     if ($seg[0] === 'qr') {
         require_once APP_ROOT . '/app/core/qr.php';

@@ -39,6 +39,15 @@ code(){ curl -s -o /dev/null -w '%{http_code}' "$@"; }
 t(){ local d="$1" want="$2" got="$3"; if [ "$got" = "$want" ]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: $d (want $want, got $got)"; fi; }
 tcontains(){ local d="$1" needle="$2" body="$3"; if printf '%s' "$body" | grep -q "$needle"; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "FAIL: $d (missing '$needle')"; fi; }
 
+# --- antete de securitate + igiena crawler ---
+HDRS="$(curl -s -D - -o /dev/null "$B/")"
+tcontains "CSP: antet prezent" 'Content-Security-Policy:' "$HDRS"
+tcontains "CSP: default-src self" "default-src 'self'" "$HDRS"
+tcontains "CSP: object-src none" "object-src 'none'" "$HDRS"
+tcontains "noindex: X-Robots-Tag pe raspunsuri" 'X-Robots-Tag: noindex' "$HDRS"
+t "GET /robots.txt -> 200" 200 "$(code $B/robots.txt)"
+tcontains "robots.txt interzice indexarea" 'Disallow: /' "$(curl -s $B/robots.txt)"
+
 # --- public ---
 t "GET /health"            200 "$(code $B/health)"
 tcontains "health: schema la zi dupa instalare" '"schema_current":true' "$(curl -s $B/health)"
