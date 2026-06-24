@@ -729,7 +729,8 @@ function auto_install(): void {
     try {
         $exists = (int) val("SELECT COUNT(*) FROM users WHERE email = ?", ['admin@example.ro']);
         if (!$exists) {
-            q("INSERT INTO users (name, email, password_hash, role, active) VALUES (?,?,?,'admin',1)",
+            // must_change_pw=1: in productie, adminul e obligat sa schimbe parola implicita la prima logare
+            q("INSERT INTO users (name, email, password_hash, role, active, must_change_pw) VALUES (?,?,?,'admin',1,1)",
               ['Admin', 'admin@example.ro', password_hash('123456', PASSWORD_DEFAULT)]);
         }
     } catch (Throwable $e) {}
@@ -906,6 +907,16 @@ function run_migrations(): void {
     // v29: cod TOTP de unica folosinta (anti-replay) — ultimul slot 2FA folosit
     if (!$hasCol('users','totp_last_slice')) $ddl("ALTER TABLE users ADD COLUMN totp_last_slice BIGINT NOT NULL DEFAULT 0");
 
+    // v30: schimbarea obligatorie a parolei implicite (onboarding sigur) — flag per utilizator
+    if (!$hasCol('users','must_change_pw')) {
+        $ddl("ALTER TABLE users ADD COLUMN must_change_pw TINYINT(1) NOT NULL DEFAULT 0");
+        // instalari existente: daca adminul implicit inca foloseste parola '123456', forteaza schimbarea
+        try {
+            $h = (string) val("SELECT password_hash FROM users WHERE email='admin@example.ro'");
+            if ($h !== '' && password_verify('123456', $h)) q("UPDATE users SET must_change_pw=1 WHERE email='admin@example.ro'");
+        } catch (Throwable $e) {}
+    }
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -921,7 +932,8 @@ function run_migrations(): void {
             && $hasCol('services','pause_note') && $hasCol('services','max_per_day')
             && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
             && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')
-            && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')) {
+            && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')
+            && $hasCol('users','must_change_pw')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

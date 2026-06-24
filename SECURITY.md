@@ -26,7 +26,7 @@ Rezumatul măsurilor de securitate și recomandări de hardening.
 
 ## Recomandări la instalare
 1. **HTTPS obligatoriu** (Let's Encrypt din cPanel). Activează redirect HTTP→HTTPS.
-2. **Schimbă contul implicit** `admin@example.ro` / `123456` imediat, din Admin → Utilizatori.
+2. **Parola implicită** a contului de administrator trebuie schimbată — în producție aplicația o cere automat la prima logare (redirect la „Contul meu", blocând zonele de administrare până la schimbare). Emailul îl poți schimba ulterior din Admin → Utilizatori.
 3. Ține `app.env = production` în `config/config.php` (ascunde erorile).
 4. Acordă userului MySQL doar privilegii pe baza proprie.
 5. Fă backup periodic la baza de date.

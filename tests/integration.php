@@ -30,6 +30,7 @@ function chk($c, $m) { global $ok, $fail, $F; if ($c) { $ok++; } else { $fail++;
 chk((int)val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()") >= 21, 'install: >=21 tables');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === (defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 0), 'install: schema_version = APP_SCHEMA_VERSION');
 chk((int)val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro' AND role='admin'") === 1, 'install: default admin');
+chk((int)val("SELECT must_change_pw FROM users WHERE email='admin@example.ro'") === 1, 'security: admin implicit are must_change_pw=1 (forteaza schimbarea parolei)');
 foreach (['users','tickets','feedback','counter_sessions','password_resets','branch_closures'] as $t)
     chk((int)val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?", [$t]) === 1, "install: table $t exists");
 foreach ([['services','paused'],['services','pause_note'],['counters','pause_note'],['tickets','target_counter_id'],['branches','open_hours']] as $c)
@@ -368,6 +369,7 @@ q("ALTER TABLE services DROP COLUMN max_per_day");
 q("ALTER TABLE branches DROP COLUMN open_hours");
 q("ALTER TABLE tickets DROP INDEX idx_tickets_svc_status");
 q("ALTER TABLE users DROP COLUMN totp_last_slice");
+q("ALTER TABLE users DROP COLUMN must_change_pw");
 set_setting('schema_version', '5');
 run_migrations(); // trebuie sa re-adauge coloanele/indecsii lipsa si sa urce versiunea la zi
 $hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
@@ -375,6 +377,8 @@ $hasOh  = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table
 $hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_counter'");
 $hasSvcIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_svc_status'");
 $hasTls = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='totp_last_slice'");
+$hasMcp = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='must_change_pw'");
+chk($hasMcp === 1, 'migrare: users.must_change_pw re-adaugat dupa upgrade');
 chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
 chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
@@ -501,6 +505,22 @@ chk(strpos($footRo, 'Confidentialitate') !== false && strpos($footRo, 'CI Brand'
 $footEn = public_legal_footer('en');
 chk(strpos($footEn, 'Privacy') !== false && strpos($footEn, '?lang=en') !== false, 'footer: eticheta EN + lang in URL');
 chk(strpos(public_legal_footer('ro'), '?lang=') === false, 'footer: RO nu adauga param lang (URL curat)');
+
+/* ---- 38. Schimbarea obligatorie a parolei implicite (onboarding sigur) ---- */
+// logica must_change_pw_now: dezactivata in 'dev', activa in productie
+chk(must_change_pw_now(['must_change_pw'=>1]) === false, 'forcepw: in dev -> dezactivat (testele se autentifica cu seed)');
+chk(must_change_pw_now(null) === false, 'forcepw: fara user -> false');
+$prevEnv = $GLOBALS['__config']['app']['env'] ?? 'dev';
+$GLOBALS['__config']['app']['env'] = 'production';
+chk(must_change_pw_now(['must_change_pw'=>1]) === true, 'forcepw: in productie + flag -> obligatoriu');
+chk(must_change_pw_now(['must_change_pw'=>0]) === false, 'forcepw: in productie fara flag -> false');
+$GLOBALS['__config']['app']['env'] = $prevEnv;
+// schimbarea parolei sterge flag-ul
+q("INSERT INTO users (name,email,role,active,must_change_pw,password_hash) VALUES ('Force CI','force@ci.ro','agent',1,1,?)", [password_hash('initpass', PASSWORD_DEFAULT)]);
+$fcid = (int) insert_id();
+chk((int)val("SELECT must_change_pw FROM users WHERE id=?", [$fcid]) === 1, 'forcepw: user nou cu flag setat');
+$rc = change_own_password($fcid, 'initpass', 'parolanoua1', 'parolanoua1');
+chk($rc['ok'] === true && (int)val("SELECT must_change_pw FROM users WHERE id=?", [$fcid]) === 0, 'forcepw: schimbarea parolei sterge flag-ul');
 
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }

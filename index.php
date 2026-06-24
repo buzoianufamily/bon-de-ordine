@@ -319,6 +319,13 @@ SWJS;
         json_out(['ok' => false, 'error' => 'Endpoint necunoscut'], 404);
     }
 
+    // Onboarding sigur: inainte de zonele privilegiate, forteaza schimbarea parolei implicite
+    // (doar in productie — vezi must_change_pw_now). Pagina /account ramane accesibila ca sa o poata schimba.
+    if (in_array($seg[0], ['admin', 'counter', 'concierge'], true) && must_change_pw_now(current_user())) {
+        flash('Din motive de securitate, schimbă parola implicită înainte de a continua.', 'error');
+        redirect('account');
+    }
+
     // ===================== PAGINI PUBLICE =====================
     if ($route === '/') {
         if (current_user()) redirect('admin');

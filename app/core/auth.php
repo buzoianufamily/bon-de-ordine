@@ -5,7 +5,7 @@ function current_user(): ?array {
     if (empty($_SESSION['uid'])) return null;
     static $u = null;
     if ($u === null) {
-        $u = one('SELECT id, name, email, role, active FROM users WHERE id = ?', [$_SESSION['uid']]);
+        $u = one('SELECT id, name, email, role, active, must_change_pw FROM users WHERE id = ?', [$_SESSION['uid']]);
         if (!$u || (int)$u['active'] !== 1) { $u = null; logout(); }
     }
     return $u;
@@ -52,6 +52,16 @@ function require_login(): array {
     return $u;
 }
 
+/**
+ * Trebuie userul sa-si schimbe parola implicita acum? (onboarding sigur)
+ * Dezactivat in mediul 'dev' (testele se autentifica cu parola seed), activ in productie.
+ */
+function must_change_pw_now(?array $u): bool {
+    if (!$u || (int)($u['must_change_pw'] ?? 0) !== 1) return false;
+    $env = ($GLOBALS['__config']['app']['env'] ?? 'production');
+    return $env !== 'dev';
+}
+
 function require_role(array $roles): array {
     $u = require_login();
     if (!in_array($u['role'], $roles, true)) {
@@ -92,7 +102,7 @@ function change_own_password(int $uid, string $current, string $new, string $con
     if ($new !== $confirm) return ['ok' => false, 'error' => 'Confirmarea nu coincide cu parola noua.'];
     if (($e = password_policy_error($new)) !== '') return ['ok' => false, 'error' => $e];
     if (password_verify($new, $row['password_hash'])) return ['ok' => false, 'error' => 'Parola noua trebuie sa difere de cea curenta.'];
-    q('UPDATE users SET password_hash=? WHERE id=?', [password_hash($new, PASSWORD_DEFAULT), $uid]);
+    q('UPDATE users SET password_hash=?, must_change_pw=0 WHERE id=?', [password_hash($new, PASSWORD_DEFAULT), $uid]);
     return ['ok' => true, 'error' => ''];
 }
 
@@ -135,7 +145,7 @@ function password_reset_apply(string $token, string $new, string $confirm): arra
     if (!$row) return ['ok' => false, 'error' => 'Link invalid sau expirat. Cere o resetare noua.'];
     if ($new !== $confirm) return ['ok' => false, 'error' => 'Confirmarea nu coincide cu parola noua.'];
     if (($e = password_policy_error($new)) !== '') return ['ok' => false, 'error' => $e];
-    q('UPDATE users SET password_hash=? WHERE id=?', [password_hash($new, PASSWORD_DEFAULT), $row['user_id']]);
+    q('UPDATE users SET password_hash=?, must_change_pw=0 WHERE id=?', [password_hash($new, PASSWORD_DEFAULT), $row['user_id']]);
     q('UPDATE password_resets SET used_at=NOW() WHERE id=?', [$row['id']]);
     return ['ok' => true, 'error' => '', 'uid' => (int)$row['user_id']];
 }
