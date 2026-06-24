@@ -47,6 +47,7 @@ t "GET /login"             200 "$(code $B/login)"
 tcontains "login multilingv EN (?lang=en)" 'Sign in to your account' "$(curl -s "$B/login?lang=en")"
 tcontains "login RO implicit" 'Autentifica-te in cont' "$(curl -s "$B/login")"
 t "GET /login/forgot"      200 "$(code $B/login/forgot)"
+tcontains "forgot multilingv EN" 'Reset password' "$(curl -s "$B/login/forgot?lang=en")"
 t "GET /concierge anon->redirect" 302 "$(code $B/concierge)"
 # feedback multilingv (ca biletul digital)
 tcontains "feedback RO implicit" 'Cum a fost experienta' "$(curl -s "$B/feedback")"

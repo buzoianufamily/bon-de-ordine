@@ -354,6 +354,7 @@ SWJS;
         }
         // ---- am uitat parola: cere link pe email ----
         if (($seg[1] ?? '') === 'forgot') {
+            $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro'))); if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
             if ($method === 'POST') {
                 csrf_check();
                 $ip = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -364,14 +365,16 @@ SWJS;
                     password_reset_request($email);                 // best-effort, fara a divulga existenta contului
                     audit('pwreset_request', 'auth', null, substr($email, 0, 120));
                 }
-                view('public/forgot', ['sent' => true]);
+                view('public/forgot', ['sent' => true, 'lang' => $lang]);
                 return;
             }
-            view('public/forgot', ['sent' => false]);
+            view('public/forgot', ['sent' => false, 'lang' => $lang]);
             return;
         }
         // ---- resetare parola din link (token) ----
         if (($seg[1] ?? '') === 'reset') {
+            $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro'))); if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+            $lq = $lang !== 'ro' ? '?lang=' . $lang : '';
             $token = (string) ($_GET['token'] ?? input('token', ''));
             if ($method === 'POST') {
                 csrf_check();
@@ -379,14 +382,14 @@ SWJS;
                 if ($res['ok']) {
                     audit('pwreset_done', 'auth', $res['uid']);
                     flash('Parola a fost schimbata. Te poti autentifica acum.');
-                    redirect('login');
+                    redirect('login' . $lq);
                 }
                 // daca tokenul a expirat/devenit invalid intre afisare si trimitere, arata panoul „link invalid"
-                view('public/reset', ['token' => $token, 'valid' => password_reset_lookup($token) !== null, 'error' => $res['error']]);
+                view('public/reset', ['token' => $token, 'valid' => password_reset_lookup($token) !== null, 'error' => $res['error'], 'lang' => $lang]);
                 return;
             }
             $valid = password_reset_lookup($token) !== null;
-            view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '']);
+            view('public/reset', ['token' => $token, 'valid' => $valid, 'error' => '', 'lang' => $lang]);
             return;
         }
         // limba paginii de login (poarta multilingva); pastrata pe redirect-uri de eroare
@@ -422,15 +425,17 @@ SWJS;
     // contul propriu (orice utilizator autentificat — util mai ales operatorilor care nu intra in backoffice)
     if ($seg[0] === 'account') {
         $u = require_login();
+        $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro'))); if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        $lq = $lang !== 'ro' ? '?lang=' . $lang : '';
         if ($method === 'POST') {
             csrf_check();
             $res = change_own_password((int)$u['id'], (string) input('cur_pass', ''),
                 (string) input('new_pass', ''), (string) input('new_pass2', ''));
             if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
             else { flash($res['error'], 'error'); }
-            redirect('account');
+            redirect('account' . $lq);
         }
-        view('public/account', compact('u'));
+        view('public/account', compact('u', 'lang'));
         return;
     }
 
