@@ -2,3 +2,5 @@
 /config/tenants.json
 /assets/uploads/*
 !/assets/uploads/.gitkeep
+# Backup-uri ale bazei de date (contin datele clientilor) — niciodata in git
+/backups/

@@ -129,6 +129,15 @@ SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
 tcontains "Setari are backup baza de date (mutat din API)" 'Backup bază de date' "$SET_PAGE"
 tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
 case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((FAIL+1)); echo "FAIL: API inca are backup DB";; *) PASS=$((PASS+1));; esac
+# backup pe server: ruleaza -> apare in lista -> se descarca; traversare de cale respinsa
+t "POST /admin/backup/run -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
+BKFILE="$(curl -s -b "$JAR" "$B/admin/settings" | grep -oE 'backup_[0-9]{8}_[0-9]{6}\.sql' | head -1)"
+if [ -n "$BKFILE" ]; then
+  PASS=$((PASS+1))
+  CT_BK="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/backup/download?file=$BKFILE" | grep -i 'content-type')"
+  tcontains "download backup pe server -> application/sql" 'application/sql' "$CT_BK"
+else FAIL=$((FAIL+1)); echo "FAIL: backup pe server nu apare in lista"; fi
+t "backup download: traversare de cale respinsa -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=../config/config.php")"
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"

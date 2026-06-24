@@ -549,6 +549,30 @@ $f2 = gdpr_find($gEmail, $gPhone);
 chk(array_sum(array_map('count', $f2)) === 0, 'gdpr: dupa anonimizare nu mai exista date personale');
 chk(array_sum(gdpr_erase('', '')) === 0, 'gdpr: fara criterii -> nu se sterge nimic');
 
+/* ---- 40. Backup baza de date (dump reutilizabil + retentie) ---- */
+foreach (glob(backup_dir().'/backup_*.sql') ?: [] as $f) @unlink($f);   // start curat
+$bname = backup_to_file();
+chk($bname !== '' && is_file(backup_dir().'/'.$bname), 'backup: fisier creat in backups/');
+$bcontent = (string) file_get_contents(backup_dir().'/'.$bname);
+chk(strpos($bcontent, '-- Backup') === 0 && strpos($bcontent, 'CREATE TABLE') !== false
+    && strpos($bcontent, 'INSERT INTO `settings`') !== false, 'backup: dump contine structura + date');
+chk(is_file(backup_dir().'/.htaccess'), 'backup: folderul e protejat de acces web (.htaccess)');
+foreach (['backup_20200101_000001.sql','backup_20200102_000002.sql','backup_20200103_000003.sql'] as $i => $fn) {
+    file_put_contents(backup_dir().'/'.$fn, '-- test'); @touch(backup_dir().'/'.$fn, strtotime('2020-01-0'.($i+1)));
+}
+$pruned = backup_prune(2);
+chk($pruned >= 1 && count(backup_list()) === 2, 'backup: retentia pastreaza doar cele mai noi 2');
+foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);
+// calea prin cron: activat + nerulat azi -> creeaza un backup; nu repeta in aceeasi zi
+set_setting('backup_auto_enabled','1'); set_setting('backup_last','2000-01-01'); set_setting('backup_keep','5');
+$cr = run_cron_jobs();
+chk(!empty($cr['backup']) && count(backup_list()) === 1, 'backup: cron creeaza backup cand e activat');
+chk(setting('backup_last','') === date('Y-m-d'), 'backup: cron marcheaza ziua curenta');
+chk(run_cron_jobs()['backup'] === false, 'backup: cron nu repeta in aceeasi zi');
+set_setting('backup_auto_enabled','0');
+foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);             // curatenie test
+chk(count(backup_list()) === 0, 'backup: curatenie dupa test');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

@@ -110,6 +110,22 @@ function run_cron_jobs(): array {
         } catch (Throwable $e) {}
     }
 
+    /* 0f) Backup automat zilnic pe server (optional). Nu necesita email. */
+    $out['backup'] = false;
+    if (setting('backup_auto_enabled', '0') === '1') {
+        $today = date('Y-m-d');
+        if (setting('backup_last', '') !== $today) {
+            try {
+                $name = backup_to_file();
+                if ($name !== '') {
+                    set_setting('backup_last', $today);
+                    backup_prune((int) setting('backup_keep', '14'));
+                    $out['backup'] = $name;
+                }
+            } catch (Throwable $e) {}
+        }
+    }
+
     if (!function_exists('mail_enabled') || !mail_enabled()) { $out['note'] = 'Email dezactivat'; return $out; }
 
     /* 1) Remindere pentru programarile din urmatoarele 24h, inca neremindate. */

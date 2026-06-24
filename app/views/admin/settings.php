@@ -219,6 +219,33 @@
   <form method="post" action="<?= e(url('admin/backup')) ?>"><?= csrf_field() ?>
     <button class="btn btn-primary">⬇ Descarcă backup SQL</button>
   </form>
+  <hr style="border:none;border-top:1px solid var(--line);margin:1.1rem 0">
+  <h3 style="margin-top:0">Backup automat (pe server)</h3>
+  <p class="muted" style="font-size:.82rem;margin-top:0">Prin cron, o dată pe zi, sistemul scrie automat un backup în folderul <code>backups/</code> (protejat de acces web) și păstrează ultimele câteva copii. Descarcă-le periodic în afara serverului.</p>
+  <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
+    <label style="display:block;margin:.4rem 0"><input type="checkbox" name="backup_auto_enabled" <?= setting('backup_auto_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Activează backup-ul automat zilnic (necesită cron)</label>
+    <div class="field"><label>Câte copii păstrez</label><input type="number" name="backup_keep" min="1" max="365" value="<?= $s('backup_keep','14') ?>" style="max-width:120px"></div>
+    <button class="btn">Salvează</button>
+  </form>
+  <form method="post" action="<?= e(url('admin/backup/run')) ?>" style="margin-top:.6rem"><?= csrf_field() ?>
+    <button class="btn">⟳ Rulează un backup acum</button>
+  </form>
+  <?php $bks = function_exists('backup_list') ? backup_list() : []; if ($bks): ?>
+    <div style="overflow-x:auto;margin-top:1rem"><table style="min-width:420px">
+      <thead><tr><th>Fișier</th><th>Dimensiune</th><th>Data</th><th></th></tr></thead>
+      <tbody><?php foreach ($bks as $bk): ?>
+        <tr>
+          <td><code><?= e($bk['name']) ?></code></td>
+          <td><?= number_format($bk['size']/1024, 0) ?> KB</td>
+          <td class="muted"><?= e(date('d.m.Y H:i', $bk['mtime'])) ?></td>
+          <td style="text-align:right;white-space:nowrap">
+            <a class="lnk" href="<?= e(url('admin/backup/download').'?file='.rawurlencode($bk['name'])) ?>">⬇ Descarcă</a>
+            <form method="post" action="<?= e(url('admin/backup/delete')) ?>" style="display:inline;margin-left:.6rem" data-confirm="Ștergi acest backup?"><?= csrf_field() ?><input type="hidden" name="file" value="<?= e($bk['name']) ?>"><button class="lnk del" style="background:none;border:none;cursor:pointer;color:#dc2626;font:inherit">Șterge</button></form>
+          </td>
+        </tr>
+      <?php endforeach; ?></tbody>
+    </table></div>
+  <?php endif; ?>
 </div>
 <script>
 /* tab-uri setari */

@@ -943,3 +943,60 @@ function run_migrations(): void {
         }
     } catch (Throwable $e) {}
 }
+
+/* ----------------------- Backup baza de date (manual + automat) ----------------------- */
+/** Directorul de backup-uri (creat la nevoie, protejat de acces web prin .htaccess). */
+function backup_dir(): string {
+    $d = (defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2)) . '/backups';
+    if (!is_dir($d)) @mkdir($d, 0750, true);
+    $ht = $d . '/.htaccess';                          // blocheaza accesul direct prin web (Apache)
+    if (!is_file($ht)) @file_put_contents($ht, "Require all denied\nDeny from all\n");
+    return $d;
+}
+/** Genereaza un dump SQL complet, apeland $emit(string) pentru fiecare bucata (stream sau fisier). */
+function db_dump_write(callable $emit): void {
+    $pdo = db();
+    @set_time_limit(300);
+    $emit("-- Backup Bon de ordine · " . date('c') . "\n");
+    $emit("SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
+    $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($tables as $t) {
+        $create = one("SHOW CREATE TABLE `$t`");
+        $emit("DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n\n");
+        $stmt = $pdo->query("SELECT * FROM `$t`");
+        $batch = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string)$v), array_values($row));
+            $batch[] = '(' . implode(',', $vals) . ')';
+            if (count($batch) >= 200) { $emit("INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n"); $batch = []; }
+        }
+        if ($batch) $emit("INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n");
+        $emit("\n");
+    }
+    $emit("SET FOREIGN_KEY_CHECKS=1;\n-- Gata.\n");
+}
+/** Scrie un backup intr-un fisier in backup_dir() si returneaza numele fisierului (sau '' la esec). */
+function backup_to_file(): string {
+    $name = 'backup_' . date('Ymd_His') . '.sql';
+    $path = backup_dir() . '/' . $name;
+    $fh = @fopen($path, 'w');
+    if (!$fh) return '';
+    try { db_dump_write(function (string $s) use ($fh) { fwrite($fh, $s); }); }
+    finally { fclose($fh); }
+    return $name;
+}
+/** Lista backup-urilor existente (nume + dimensiune + data), cel mai nou primul. */
+function backup_list(): array {
+    $out = [];
+    foreach (glob(backup_dir() . '/backup_*.sql') ?: [] as $f)
+        $out[] = ['name' => basename($f), 'size' => (int)@filesize($f), 'mtime' => (int)@filemtime($f)];
+    usort($out, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
+    return $out;
+}
+/** Pastreaza doar cele mai noi $keep backup-uri; sterge restul. Returneaza cate a sters. */
+function backup_prune(int $keep): int {
+    $keep = max(1, $keep);
+    $del = 0;
+    foreach (array_slice(backup_list(), $keep) as $b) if (@unlink(backup_dir() . '/' . $b['name'])) $del++;
+    return $del;
+}

@@ -172,8 +172,11 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'backup':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($a === 'download') { admin_backup_download(); return; }
+            if ($method === 'POST' && $a === 'run')    { admin_backup_run(); return; }
+            if ($method === 'POST' && $a === 'delete') { admin_backup_delete(); return; }
             if ($method === 'POST') { admin_db_backup(); return; }
-            redirect('admin/api');
+            redirect('admin/settings');
 
         case 'security':
             if ($method === 'POST') { admin_security_save(); return; }
@@ -971,28 +974,46 @@ function admin_gdpr_erase(): void {
 function admin_db_backup(): void {
     csrf_check();
     audit('backup', 'database');
-    $pdo = db();
-    @set_time_limit(300);
+    while (ob_get_level() > 0) @ob_end_clean();    // dump direct, fara buffering (fisiere mari)
     header('Content-Type: application/sql; charset=utf-8');
     header('Content-Disposition: attachment; filename="backup_' . date('Ymd_His') . '.sql"');
-    echo "-- Backup Bon de ordine · " . date('c') . "\n";
-    echo "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
-    $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
-    foreach ($tables as $t) {
-        $create = one("SHOW CREATE TABLE `$t`");
-        echo "DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n\n";
-        $stmt = $pdo->query("SELECT * FROM `$t`");
-        $batch = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $vals = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string)$v), array_values($row));
-            $batch[] = '(' . implode(',', $vals) . ')';
-            if (count($batch) >= 200) { echo "INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n"; $batch = []; }
-        }
-        if ($batch) echo "INSERT INTO `$t` VALUES\n" . implode(",\n", $batch) . ";\n";
-        echo "\n";
-    }
-    echo "SET FOREIGN_KEY_CHECKS=1;\n-- Gata.\n";
+    db_dump_write(function (string $s) { echo $s; });
     exit;
+}
+/** Ruleaza un backup pe server (scris in backups/) + curata vechile copii. */
+function admin_backup_run(): void {
+    csrf_check();
+    $name = backup_to_file();
+    if ($name === '') { flash('Backup eșuat: nu pot scrie în folderul backups/ (verifică permisiunile).', 'error'); redirect('admin/settings'); }
+    $pruned = backup_prune((int) setting('backup_keep', '14'));
+    audit('backup', 'database', null, $name . ($pruned ? " (sterse $pruned vechi)" : ''));
+    flash("Backup creat pe server: $name" . ($pruned ? " · $pruned copii vechi șterse" : ''));
+    redirect('admin/settings');
+}
+/** Descarca un backup existent din backups/ (nume validat strict, fara traversare de cai). */
+function admin_backup_download(): void {
+    $name = basename((string)($_GET['file'] ?? ''));
+    if (!preg_match('/^backup_\d{8}_\d{6}\.sql$/', $name)) { http_response_code(404); echo 'Fisier inexistent.'; return; }
+    $path = backup_dir() . '/' . $name;
+    if (!is_file($path)) { http_response_code(404); echo 'Fisier inexistent.'; return; }
+    audit('download', 'backup', null, $name);
+    while (ob_get_level() > 0) @ob_end_clean();
+    header('Content-Type: application/sql; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $name . '"');
+    header('Content-Length: ' . (string)filesize($path));
+    readfile($path);
+    exit;
+}
+/** Sterge un backup existent (nume validat strict). */
+function admin_backup_delete(): void {
+    csrf_check();
+    $name = basename((string)($_POST['file'] ?? ''));
+    if (preg_match('/^backup_\d{8}_\d{6}\.sql$/', $name)) {
+        $path = backup_dir() . '/' . $name;
+        if (is_file($path) && @unlink($path)) { audit('delete', 'backup', null, $name); flash('Backup șters.'); }
+        else flash('Nu am putut șterge fișierul.', 'error');
+    }
+    redirect('admin/settings');
 }
 
 /* ----------------------- AUDIT LOG ----------------------- */
@@ -1080,7 +1101,7 @@ function admin_settings_form(): void { view('admin/settings'); }
 /** Chei excluse la export/import config (specifice instantei / sensibile / runtime). */
 function settings_export_denylist(): array {
     return ['schema_version','api_key','cron_token','webhook_secret','onboarding_dismissed',
-            'last_daily_report','sla_alert_last'];
+            'last_daily_report','sla_alert_last','backup_last'];
 }
 /** Export config (settings) ca JSON — pentru backup sau clonare pe alta instanta. */
 function admin_settings_export(): void {
@@ -1125,8 +1146,9 @@ function admin_settings_save(): void {
              'alert_called','alert_transfer','alert_delay','near_turn_alert','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
              'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min','feedback_alert_rating',
-             'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra'];
+             'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra','backup_keep'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
+    set_setting('backup_auto_enabled', isset($_POST['backup_auto_enabled']) ? '1' : '0');
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
     set_setting('reminder_enabled', isset($_POST['reminder_enabled']) ? '1' : '0');
