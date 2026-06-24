@@ -117,6 +117,10 @@ t "POST /login bad creds -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -
 t "POST /login ok -> 302"        302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=123456")"
 DASH="$(curl -s -b "$JAR" "$B/admin")"
 t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/admin)"
+# securitate: actiunile de operator care modifica starea resping GET (anti-CSRF prin GET)
+t "API mutatie (cancel) prin GET -> 405" 405 "$(code -b "$JAR" "$B/api/cancel?ticket_id=1")"
+t "API mutatie (finish) prin GET -> 405" 405 "$(code -b "$JAR" "$B/api/finish?ticket_id=1")"
+t "API counter-state read-only prin GET -> 200" 200 "$(code -b "$JAR" "$B/api/counter-state?counter_id=$CTR")"
 tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$DASH"
 tcontains "a11y: toggle grafic/tabel are aria-pressed" 'aria-pressed' "$DASH"
 tcontains "a11y: SVG-uri date au role=img" 'role="img"' "$DASH"

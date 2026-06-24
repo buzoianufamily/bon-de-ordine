@@ -245,6 +245,11 @@ SWJS;
 
         // ---- endpoint-uri ce necesita autentificare (operator) ----
         $u = require_login();
+        // actiunile care modifica starea trebuie sa fie POST (+ CSRF) — altfel un GET cross-site
+        // ar putea declansa actiuni cu sesiunea operatorului. 'counter-state'/'branch-state' sunt doar citire.
+        $readOnlyActions = ['counter-state', 'branch-state'];
+        if (!in_array($action, $readOnlyActions, true) && $method !== 'POST')
+            json_out(['ok' => false, 'error' => 'Metoda nepermisa (foloseste POST).'], 405);
         if ($method === 'POST') csrf_check();
         q('UPDATE users SET last_seen = NOW() WHERE id = ?', [(int)$u['id']]); // prezenta
         // un operator legat de anumite ghisee nu poate opera (call/pauza) alt ghiseu nici prin API

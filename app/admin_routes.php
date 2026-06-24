@@ -437,15 +437,18 @@ function admin_services_import(): void {
     $existing = array_flip($existing);
     $pos = (int) val('SELECT COALESCE(MAX(sort_order),0) FROM services WHERE branch_id=?', [$branch]);
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('services'); $cur = (int) val('SELECT COUNT(*) FROM services'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[$r['prefix']])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         q("INSERT INTO services (branch_id,prefix,name,color,status,num_from,num_to,pad_length,include_zeros,kpi_wait_sec,kpi_service_sec,sort_order)
            VALUES (?,?,?,?,'active',1,999,3,1,600,300,?)", [$branch, $r['prefix'], $r['name'], $r['color'], ++$pos]);
-        $existing[$r['prefix']] = 1; $n++;
+        $existing[$r['prefix']] = 1; $n++; $cur++;
     }
     audit('import', 'services', $branch, $n . ' servicii');
     $msg = $n > 0 ? "$n servicii importate." : 'Niciun serviciu nou de importat.';
     if ($skipped) $msg .= " $skipped sarite (prefix existent).";
+    if ($capped) $msg .= ' Limita planului pentru servicii a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/services');
 }
@@ -603,14 +606,17 @@ function admin_counters_import(): void {
     $rows = parse_counters_csv($csv);
     $existing = array_flip(array_map('strtoupper', array_column(all('SELECT code FROM counters WHERE branch_id=?', [$branch]), 'code')));
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('counters'); $cur = (int) val('SELECT COUNT(*) FROM counters'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[strtoupper($r['code'])])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         q("INSERT INTO counters (branch_id, code, name, status, all_services) VALUES (?,?,?,'closed',1)", [$branch, $r['code'], $r['name']]);
-        $existing[strtoupper($r['code'])] = 1; $n++;
+        $existing[strtoupper($r['code'])] = 1; $n++; $cur++;
     }
     audit('import', 'counters', $branch, $n . ' ghisee');
     $msg = $n > 0 ? "$n ghisee importate." : 'Niciun ghiseu nou de importat.';
     if ($skipped) $msg .= " $skipped sarite (cod existent).";
+    if ($capped) $msg .= ' Limita planului pentru ghisee a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/counters');
 }
@@ -697,17 +703,20 @@ function admin_users_import(): void {
     $rows = parse_users_csv($csv);
     $existing = array_flip(array_map('strtolower', array_column(all('SELECT email FROM users'), 'email')));
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('users'); $cur = (int) val('SELECT COUNT(*) FROM users'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[$r['email']])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         try {
             q('INSERT INTO users (name,email,role,active,password_hash) VALUES (?,?,?,1,?)',
                 [$r['name'], $r['email'], $r['role'], password_hash($r['password'], PASSWORD_DEFAULT)]);
-            $existing[$r['email']] = 1; $n++;
+            $existing[$r['email']] = 1; $n++; $cur++;
         } catch (Throwable $e) { $skipped++; }
     }
     audit('import', 'users', null, $n . ' utilizatori');
     $msg = $n > 0 ? "$n utilizatori importati." : 'Niciun utilizator nou de importat.';
     if ($skipped) $msg .= " $skipped sariti (email existent sau date invalide).";
+    if ($capped) $msg .= ' Limita planului pentru utilizatori a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/users');
 }
@@ -1330,15 +1339,18 @@ function admin_branches_import(): void {
     $rows = parse_branches_csv($csv);
     $existing = array_flip(array_map('mb_strtolower', array_column(all('SELECT name FROM branches'), 'name')));
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('branches'); $cur = (int) val('SELECT COUNT(*) FROM branches'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[mb_strtolower($r['name'])])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         q("INSERT INTO branches (name, city, country, address, timezone, active) VALUES (?,?,'Romania',?,'Europe/Bucharest',1)",
             [$r['name'], $r['city'], $r['address']]);
-        $existing[mb_strtolower($r['name'])] = 1; $n++;
+        $existing[mb_strtolower($r['name'])] = 1; $n++; $cur++;
     }
     audit('import', 'branches', null, $n . ' filiale');
     $msg = $n > 0 ? "$n filiale importate." : 'Nicio filiala noua de importat.';
     if ($skipped) $msg .= " $skipped sarite (nume existent).";
+    if ($capped) $msg .= ' Limita planului pentru filiale a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/branches');
 }
@@ -1447,6 +1459,7 @@ function admin_branch_duplicate(int $id): void {
     csrf_check();
     $src = one('SELECT * FROM branches WHERE id=?', [$id]);
     if (!$src) { flash('Filiala inexistenta.', 'error'); redirect('admin/branches'); }
+    if (tenant_limit_reached('branches')) { flash('Ai atins limita planului pentru filiale ('.tenant_limit('branches').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/branches'); }
     try {
         db()->beginTransaction();
 
