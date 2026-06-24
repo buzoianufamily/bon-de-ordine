@@ -481,6 +481,18 @@ chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='c2
 $wlFail=false; try { appt_waitlist_add($svc, $slotWl, 'X', 'not-an-email'); } catch (Throwable $e) { $wlFail=true; }
 chk($wlFail, 'wl: email invalid -> respins');
 
+/* ---- 36. Ciclu de abonament (bdo_tenant_state): ok / suspendat / expirat + gratie ---- */
+$now = strtotime('2026-06-24 12:00:00');
+chk(bdo_tenant_state(['active'=>0], $now) === 'suspended', 'abonament: active=0 -> suspendat');
+chk(bdo_tenant_state(['active'=>1], $now) === 'ok', 'abonament: fara data -> ok (fara expirare)');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-12-31'], $now) === 'ok', 'abonament: platit in viitor -> ok');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-24'], $now) === 'ok', 'abonament: platit pana azi -> ok (in ziua curenta)');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23'], $now) === 'expired', 'abonament: expirat ieri, fara gratie -> expirat');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23', 'grace_days'=>5], $now) === 'ok', 'abonament: expirat ieri dar in gratie -> ok');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-10', 'grace_days'=>5], $now) === 'expired', 'abonament: dincolo de gratie -> expirat');
+chk(bdo_tenant_state(['active'=>0, 'paid_until'=>'2026-12-31'], $now) === 'suspended', 'abonament: suspendarea manuala bate abonamentul valid');
+chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'data-gresita'], $now) === 'ok', 'abonament: data invalida ignorata -> ok');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

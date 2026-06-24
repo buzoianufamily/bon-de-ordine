@@ -100,13 +100,16 @@ function landlord_dispatch(array $seg, string $method): void {
             }
             $prev = null;
             foreach ($tenants as $t) if (strtolower((string)$t['host']) === ($orig ?: $host)) { $prev = $t; break; }
+            $puIn = trim((string)($_POST['paid_until'] ?? ''));
             $entry = [
                 'host'    => $host,
                 'name'    => trim((string)($_POST['name'] ?? '')),
                 'db'      => ['host' => trim((string)($_POST['db_host'] ?? '')) ?: 'localhost',
                               'name' => $dbName, 'user' => $dbUser,
                               'pass' => (string)($_POST['db_pass'] ?? ''), 'charset' => 'utf8mb4'],
-                'active'  => isset($_POST['active']),
+                'active'      => isset($_POST['active']),
+                'paid_until'  => preg_match('/^\d{4}-\d{2}-\d{2}$/', $puIn) ? $puIn : '',  // abonament: data pana la care e platit
+                'grace_days'  => max(0, min(90, (int)($_POST['grace_days'] ?? 0))),         // zile de gratie dupa expirare
                 'note'    => trim((string)($_POST['note'] ?? '')),
                 'created' => $prev['created'] ?? date('Y-m-d'),
             ];
@@ -143,13 +146,15 @@ function landlord_dispatch(array $seg, string $method): void {
     // ---- dashboard: instanta principala + toate instantele, cu health-check ----
     $rows = [];
     $rows[] = ['main' => true, 'host' => preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''),
-               'name' => '(instanta principala)', 'active' => true, 'note' => '',
+               'name' => '(instanta principala)', 'active' => true, 'state' => 'ok', 'paid_until' => '', 'note' => '',
                'db' => cfg('db'), 'health' => landlord_health(cfg('db'))];
     foreach ($tenants as $t) {
+        $st = function_exists('bdo_tenant_state') ? bdo_tenant_state($t, time()) : (!empty($t['active']) ? 'ok' : 'suspended');
         $rows[] = ['main' => false, 'host' => $t['host'], 'name' => $t['name'] ?? '',
-                   'active' => !empty($t['active']), 'note' => $t['note'] ?? '',
-                   'db' => $t['db'] ?? [],
-                   'health' => !empty($t['active']) ? landlord_health($t['db'] ?? []) : null];
+                   'active' => !empty($t['active']), 'state' => $st,
+                   'paid_until' => (string)($t['paid_until'] ?? ''), 'grace_days' => (int)($t['grace_days'] ?? 0),
+                   'note' => $t['note'] ?? '', 'db' => $t['db'] ?? [],
+                   'health' => $st === 'ok' ? landlord_health($t['db'] ?? []) : null];
     }
     // pre-completare formular la editare (?edit=host)
     $edit = null;

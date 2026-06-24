@@ -54,13 +54,27 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
             <?php if ($r['main']): ?><span class="muted" style="font-size:.74rem"> (principala)</span><?php endif; ?></td>
           <td><?= e($r['name'] ?: ($h['brand'] ?? '') ?: '—') ?><?= $r['note'] ? '<br><span class="muted" style="font-size:.76rem">'.e($r['note']).'</span>' : '' ?></td>
           <td>
-            <?php if (!$r['active']): ?>
+            <?php $state = $r['state'] ?? ($r['active'] ? 'ok' : 'suspended'); ?>
+            <?php if ($state === 'suspended'): ?>
               <span class="hb" style="color:#d97706"><span class="d" style="background:#d97706"></span>Suspendata</span>
+            <?php elseif ($state === 'expired'): ?>
+              <span class="hb" style="color:#dc2626"><span class="d" style="background:#dc2626"></span>Abonament expirat</span>
             <?php elseif (!empty($h['ok'])): ?>
               <span class="hb" style="color:#16a34a"><span class="d" style="background:#16a34a"></span>Functioneaza</span>
             <?php else: ?>
               <span class="hb" style="color:#dc2626"><span class="d" style="background:#dc2626"></span>EROARE</span>
               <div class="muted" style="font-size:.72rem;max-width:240px"><?= e(mb_substr((string)($h['error'] ?? ''), 0, 120)) ?></div>
+            <?php endif; ?>
+            <?php if (!$r['main'] && !empty($r['paid_until'])):
+                $days = (int)floor((strtotime($r['paid_until'].' 23:59:59') - time()) / 86400); ?>
+              <div class="muted" style="font-size:.72rem;margin-top:.2rem">
+                Platit pana: <?= e(date('d.m.Y', strtotime($r['paid_until']))) ?>
+                <?php if ($state !== 'expired'): ?>
+                  <?php if ($days < 0): ?><span style="color:#d97706"> · in gratie</span>
+                  <?php elseif ($days <= 7): ?><span style="color:#d97706"> · <?= $days ?> zile ramase</span>
+                  <?php else: ?> · <?= $days ?> zile<?php endif; ?>
+                <?php endif; ?>
+              </div>
             <?php endif; ?>
           </td>
           <td><?php if (!empty($h['ok'])): ?>
@@ -102,6 +116,10 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
         <div class="field"><label>Parola DB</label><input type="password" name="db_pass" value="<?= e($edit['db']['pass'] ?? '') ?>" autocomplete="new-password"></div>
       </div>
       <div class="field"><label>Notite (optional)</label><input name="note" value="<?= e($edit['note'] ?? '') ?>" placeholder="ex: contract pana in 2027, contact Ion 07xx"></div>
+      <div class="row">
+        <div class="field"><label>Abonament platit pana la</label><input type="date" name="paid_until" value="<?= e($edit['paid_until'] ?? '') ?>"><span class="muted" style="font-size:.74rem">Gol = fara expirare. Dupa data + gratie, accesul se suspenda automat.</span></div>
+        <div class="field"><label>Zile de gratie</label><input type="number" name="grace_days" min="0" max="90" value="<?= e((string)($edit['grace_days'] ?? 0)) ?>"><span class="muted" style="font-size:.74rem">Acces tolerat dupa expirare.</span></div>
+      </div>
       <label style="display:block;margin:.4rem 0"><input type="checkbox" name="active" <?= ($edit === null || !empty($edit['active'])) ? 'checked' : '' ?> style="width:auto"> Activa</label>
       <div style="display:flex;gap:.5rem;margin-top:.6rem">
         <button class="btn btn-primary">Salveaza instanta</button>

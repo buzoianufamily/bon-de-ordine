@@ -6,7 +6,7 @@
  */
 
 /** Randeaza o pagina de eroare auto-continuta (fara DB) si OPRESTE executia. */
-function fail_page(int $code, string $title, string $msg, ?string $detail = null): void {
+function fail_page(int $code, string $title, string $msg, ?string $detail = null, bool $home = true): void {
     $dev = (($GLOBALS['__config']['app']['env'] ?? 'production') === 'dev');
     if (!headers_sent()) {
         http_response_code($code);
@@ -26,7 +26,7 @@ function fail_page(int $code, string $title, string $msg, ?string $detail = null
        . '<h1 style="margin:.3em 0;font-size:1.4rem">' . $h($title) . '</h1>'
        . '<p style="color:#8a93a3;line-height:1.55">' . $h($msg) . '</p>'
        . ($dev && $detail ? '<pre style="text-align:left;white-space:pre-wrap;background:#11141b;color:#f87171;padding:1rem;border-radius:8px;overflow:auto;font-size:.78rem;margin-top:1rem">' . $h($detail) . '</pre>' : '')
-       . '<p style="margin-top:1.5rem"><a href="/" style="color:#7da2ff;text-decoration:none">← Acasă</a></p>'
+       . ($home ? '<p style="margin-top:1.5rem"><a href="/" style="color:#7da2ff;text-decoration:none">← Acasă</a></p>' : '')
        . '</div></body></html>';
     exit;
 }
