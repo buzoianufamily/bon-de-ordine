@@ -1,5 +1,7 @@
 # Date specifice instantei — NU se urca in git (contin secrete / fisiere incarcate)
 /config/tenants.json
+/config/billing.json
+/config/invoices.json
 /assets/uploads/*
 !/assets/uploads/.gitkeep
 # Backup-uri ale bazei de date (contin datele clientilor) — niciodata in git
