@@ -110,6 +110,10 @@ function landlord_dispatch(array $seg, string $method): void {
                 'active'      => isset($_POST['active']),
                 'paid_until'  => preg_match('/^\d{4}-\d{2}-\d{2}$/', $puIn) ? $puIn : '',  // abonament: data pana la care e platit
                 'grace_days'  => max(0, min(90, (int)($_POST['grace_days'] ?? 0))),         // zile de gratie dupa expirare
+                'limits'  => ['branches' => max(0, (int)($_POST['lim_branches'] ?? 0)),     // limite de plan (0 = nelimitat)
+                              'counters' => max(0, (int)($_POST['lim_counters'] ?? 0)),
+                              'users'    => max(0, (int)($_POST['lim_users'] ?? 0)),
+                              'services' => max(0, (int)($_POST['lim_services'] ?? 0))],
                 'note'    => trim((string)($_POST['note'] ?? '')),
                 'created' => $prev['created'] ?? date('Y-m-d'),
             ];

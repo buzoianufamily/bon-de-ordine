@@ -274,6 +274,14 @@ function system_checkup(): array {
         ? $add('warn', 'Permisiuni foldere', 'Nu sunt scriibile: ' . implode(', ', $unwritable) . '. Setează 755/775 pe ele.')
         : $add('ok', 'Permisiuni foldere', 'Folderele necesare sunt scriibile.');
 
+    // 12) Limite de plan (doar pe instante-client cu limite setate de furnizor)
+    foreach (['branches' => 'filiale', 'counters' => 'ghișee', 'users' => 'utilizatori', 'services' => 'servicii'] as $w => $lbl) {
+        $lim = tenant_limit($w);
+        if ($lim <= 0) continue;
+        $used = (int) val("SELECT COUNT(*) FROM `$w`");          // $w din whitelist fix
+        $add($used >= $lim ? 'warn' : 'ok', 'Plan: ' . $lbl, "$used / $lim folosite" . ($used >= $lim ? ' — ai atins limita planului.' : '.'));
+    }
+
     return $c;
 }
 
@@ -509,6 +517,7 @@ function admin_service_save(): void {
         q("UPDATE services SET $set WHERE id=?", array_merge(array_values($f), [$id]));
         flash('Serviciu actualizat.');
     } else {
+        if (tenant_limit_reached('services')) { flash('Ai atins limita planului pentru servicii ('.tenant_limit('services').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/services'); }
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO services ($cols) VALUES ($ph)", array_values($f));
         flash('Serviciu creat.');
@@ -627,6 +636,7 @@ function admin_counter_save(): void {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE counters SET $set WHERE id=?", array_merge(array_values($f), [$id]));
     } else {
+        if (tenant_limit_reached('counters')) { flash('Ai atins limita planului pentru ghișee ('.tenant_limit('counters').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/counters'); }
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO counters ($cols) VALUES ($ph)", array_values($f)); $id = insert_id();
     }
@@ -656,6 +666,7 @@ function admin_user_save(): void {
             [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT),$id]);
         else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$pin,$id]);
     } else {
+        if (tenant_limit_reached('users')) { flash('Ai atins limita planului pentru utilizatori ('.tenant_limit('users').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/users'); }
         if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
         try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,pin,password_hash) VALUES (?,?,?,?,?,?,?,?)',
             [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT)]); }
@@ -1424,6 +1435,7 @@ function admin_branch_save(): void {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE branches SET $set WHERE id=?", array_merge(array_values($f), [$id]));
     } else {
+        if (tenant_limit_reached('branches')) { flash('Ai atins limita planului pentru filiale ('.tenant_limit('branches').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/branches'); }
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO branches ($cols) VALUES ($ph)", array_values($f));
     }

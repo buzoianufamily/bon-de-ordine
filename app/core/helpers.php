@@ -1000,3 +1000,24 @@ function backup_prune(int $keep): int {
     foreach (array_slice(backup_list(), $keep) as $b) if (@unlink(backup_dir() . '/' . $b['name'])) $del++;
     return $del;
 }
+
+/* ----------------------- Limite de plan per instanta (abonament) ----------------------- */
+/**
+ * Limita planului pentru un tip de resursa (branches/counters/users/services); 0 = nelimitat.
+ * Limitele se seteaza per client in panoul landlord (config/tenants.json). Instanta principala
+ * (fara tenant) e mereu nelimitata.
+ */
+function tenant_limit(string $what): int {
+    $t = $GLOBALS['__tenant'] ?? null;
+    if (!is_array($t) || empty($t['limits']) || !is_array($t['limits'])) return 0;
+    return max(0, (int)($t['limits'][$what] ?? 0));
+}
+/** A atins instanta limita de plan pentru $what? (numara randurile din tabelul corespunzator) */
+function tenant_limit_reached(string $what): bool {
+    $lim = tenant_limit($what);
+    if ($lim <= 0) return false;
+    $tables = ['branches' => 'branches', 'counters' => 'counters', 'users' => 'users', 'services' => 'services'];
+    if (!isset($tables[$what])) return false;                 // whitelist tabel (fara interpolare nesigura)
+    try { return (int) val("SELECT COUNT(*) FROM `{$tables[$what]}`") >= $lim; }
+    catch (Throwable $e) { return false; }
+}

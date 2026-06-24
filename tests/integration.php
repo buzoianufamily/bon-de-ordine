@@ -596,6 +596,20 @@ chk($lvl(system_checkup(),'Parol') === 'crit', 'checkup: admin cu parola implici
 q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
 $GLOBALS['__config']['app']['env'] = $prevEnv2;
 
+/* ---- 42. Limite de plan per instanta (abonament) ---- */
+$GLOBALS['__tenant'] = null;
+chk(tenant_limit('services') === 0 && tenant_limit_reached('services') === false, 'plan: fara tenant -> nelimitat');
+$svcCount = (int) val("SELECT COUNT(*) FROM services");
+$GLOBALS['__tenant'] = ['limits' => ['services' => $svcCount + 1]];
+chk(tenant_limit('services') === $svcCount + 1 && tenant_limit_reached('services') === false, 'plan: sub limita -> permis');
+$GLOBALS['__tenant'] = ['limits' => ['services' => $svcCount]];
+chk(tenant_limit_reached('services') === true, 'plan: la limita -> blocat');
+$GLOBALS['__tenant'] = ['limits' => ['services' => 0]];
+chk(tenant_limit_reached('services') === false, 'plan: limita 0 -> nelimitat');
+$GLOBALS['__tenant'] = ['limits' => ['counters' => 1]];
+chk(tenant_limit('services') === 0 && tenant_limit_reached('services') === false, 'plan: limita pe alt tip nu afecteaza serviciile');
+$GLOBALS['__tenant'] = null;   // restaureaza contextul
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";
