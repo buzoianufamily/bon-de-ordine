@@ -902,7 +902,7 @@ function gdpr_find(string $email, string $phone): array {
     if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
     if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
     $cond = implode(' OR ', $apW);
-    $out['appointments'] = all("SELECT id, branch_id, service_id, customer_name, customer_phone, customer_email, slot_start, status, created_at
+    $out['appointments'] = all("SELECT id, branch_id, service_id, customer_name, customer_phone, customer_email, slot_start, status, consent_at, consent_ip, created_at
                                 FROM appointments WHERE $cond ORDER BY id DESC", $apA);
     $out['waitlist'] = all("SELECT id, service_id, customer_name, customer_email, customer_phone, slot_start, created_at
                             FROM appointment_waitlist WHERE $cond ORDER BY id DESC", $apA);
@@ -924,8 +924,8 @@ function gdpr_erase(string $email, string $phone): array {
     if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
     if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
     $cond = implode(' OR ', $apW);
-    // programari: anonimizeaza campurile de identificare (pastreaza statistica)
-    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL WHERE $cond", $apA)->rowCount();
+    // programari: anonimizeaza campurile de identificare, inclusiv IP-ul de consimtamant (PII)
+    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL, consent_ip=NULL WHERE $cond", $apA)->rowCount();
     // lista de asteptare: efemera (customer_email e NOT NULL) -> stergem randurile
     $n['waitlist'] = q("DELETE FROM appointment_waitlist WHERE $cond", $apA)->rowCount();
     // bilete: anonimizeaza telefonul + raspunsurile de formular (pot contine date personale)

@@ -294,6 +294,18 @@ else
   echo "WARN: niciun slot liber maine (skip booking via API)"
 fi
 
+# --- consimtamant GDPR: rezervare prin formularul public CU acord -> dovada in export ---
+DAT="$(date -d '+2 day' +%F 2>/dev/null || date -v+2d +%F)"
+CSLOT="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$DAT" | python3 -c "import sys,json;d=json.load(sys.stdin);s=[x['start'] for x in d.get('slots',[]) if not x['full'] and not x['past']];print(s[0] if s else '')" 2>/dev/null)"
+if [ -n "$CSLOT" ]; then
+  t "POST /book/{id} cu consimtamant -> 302 (succes)" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode "slot_start=$CSLOT" --data-urlencode 'name=Consent CI' --data-urlencode 'email=consent-ci@ci.ro' --data-urlencode 'consent=1')"
+  GEXP="$(curl -s -b "$JAR" -X POST "$B/admin/gdpr/export" -d "_csrf=$CSRF&q_email=consent-ci@ci.ro")"
+  tcontains "consent: dovada (consent_at) in exportul GDPR" 'consent_at' "$GEXP"
+  tcontains "consent: emailul rezervarii apare in export" 'consent-ci@ci.ro' "$GEXP"
+else
+  echo "WARN: niciun slot liber peste 2 zile (skip test consimtamant)"
+fi
+
 # --- IDOR: allowed_counters aplicat si pe API, nu doar in UI ---
 # agent legat de un ghiseu inexistent (999999) => orice ghiseu real ii e interzis
 curl -s -o /dev/null -b "$JAR" -X POST $B/admin/users --data-urlencode "_csrf=$ICSRF" \

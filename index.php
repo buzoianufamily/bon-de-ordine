@@ -556,6 +556,9 @@ SWJS;
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }
                 catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).'&lang='.$lang); }
+                // dovada consimtamantului (data + IP), pentru conformitate GDPR
+                try { q("UPDATE appointments SET consent_at=NOW(), consent_ip=? WHERE id=?",
+                        [substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45), (int)$appt['id']]); } catch (Throwable $e) {}
                 redirect('a/'.$appt['public_token'].($lang!=='ro'?'?lang='.$lang:''));
             }
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');

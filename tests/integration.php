@@ -370,6 +370,7 @@ q("ALTER TABLE branches DROP COLUMN open_hours");
 q("ALTER TABLE tickets DROP INDEX idx_tickets_svc_status");
 q("ALTER TABLE users DROP COLUMN totp_last_slice");
 q("ALTER TABLE users DROP COLUMN must_change_pw");
+q("ALTER TABLE appointments DROP COLUMN consent_at");
 set_setting('schema_version', '5');
 run_migrations(); // trebuie sa re-adauge coloanele/indecsii lipsa si sa urce versiunea la zi
 $hasMpd = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='services' AND column_name='max_per_day'");
@@ -378,7 +379,9 @@ $hasIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE ta
 $hasSvcIdx = (int) val("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tickets' AND index_name='idx_tickets_svc_status'");
 $hasTls = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='totp_last_slice'");
 $hasMcp = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='users' AND column_name='must_change_pw'");
+$hasConsent = (int) val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='appointments' AND column_name='consent_at'");
 chk($hasMcp === 1, 'migrare: users.must_change_pw re-adaugat dupa upgrade');
+chk($hasConsent === 1, 'migrare: appointments.consent_at re-adaugat dupa upgrade');
 chk($hasMpd === 1, 'migrare: max_per_day re-adaugat dupa upgrade');
 chk($hasOh === 1, 'migrare: branches.open_hours re-adaugat dupa upgrade');
 chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
@@ -525,7 +528,7 @@ chk($rc['ok'] === true && (int)val("SELECT must_change_pw FROM users WHERE id=?"
 /* ---- 39. GDPR: cautare + anonimizare date personale (drepturi persoana vizata) ---- */
 require_once __DIR__ . '/../app/admin_routes.php';
 $gEmail = 'gdpr-test@ci.ro'; $gPhone = '0744111222';
-q("INSERT INTO appointments (branch_id,service_id,customer_name,customer_phone,customer_email,slot_start,status) VALUES (?,?,?,?,?, NOW()+INTERVAL 1 DAY, 'booked')", [$br,$svc,'GDPR Ion',$gPhone,$gEmail]);
+q("INSERT INTO appointments (branch_id,service_id,customer_name,customer_phone,customer_email,slot_start,status,consent_at,consent_ip) VALUES (?,?,?,?,?, NOW()+INTERVAL 1 DAY, 'booked', NOW(), '203.0.113.7')", [$br,$svc,'GDPR Ion',$gPhone,$gEmail]);
 $gAppt = (int) insert_id();
 q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_name, customer_email, customer_phone) VALUES (?, NOW()+INTERVAL 1 DAY, 'GDPR Ion', ?, ?)", [$svc,$gEmail,$gPhone]);
 q("INSERT INTO tickets (branch_id,service_id,number,label,customer_phone,status) VALUES (?,?,?,?,?,'waiting')", [$br,$svc,9991,'GDPR9991',$gPhone]);
@@ -533,11 +536,13 @@ $gTkId = (int) insert_id();
 $fE = gdpr_find($gEmail, '');
 chk(count($fE['appointments']) >= 1 && count($fE['waitlist']) >= 1, 'gdpr: cautare dupa email gaseste programare + waitlist');
 chk(count($fE['tickets']) === 0, 'gdpr: cautare doar dupa email nu atinge biletele (fara coloana email)');
+chk(($fE['appointments'][0]['consent_at'] ?? null) !== null && ($fE['appointments'][0]['consent_ip'] ?? '') === '203.0.113.7', 'consent: dovada (data+IP) inclusa in export');
 $fP = gdpr_find('', $gPhone);
 chk(count($fP['tickets']) >= 1, 'gdpr: cautare dupa telefon gaseste biletul');
 $er = gdpr_erase($gEmail, $gPhone);
 chk($er['appointments'] >= 1 && $er['waitlist'] >= 1 && $er['tickets'] >= 1, 'gdpr: anonimizare raporteaza pe categorii');
 chk(val("SELECT customer_email FROM appointments WHERE id=?", [$gAppt]) === null && val("SELECT customer_phone FROM appointments WHERE id=?", [$gAppt]) === null, 'gdpr: programarea e anonimizata (email/telefon NULL)');
+chk(val("SELECT consent_ip FROM appointments WHERE id=?", [$gAppt]) === null, 'consent: IP-ul de consimtamant e sters la anonimizare (PII)');
 chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email=?", [$gEmail]) === 0, 'gdpr: intrarile din waitlist sunt sterse');
 chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$gTkId]) === null, 'gdpr: telefonul biletului e anonimizat');
 $f2 = gdpr_find($gEmail, $gPhone);

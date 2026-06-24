@@ -917,6 +917,10 @@ function run_migrations(): void {
         } catch (Throwable $e) {}
     }
 
+    // v31: dovada consimtamantului GDPR la programarea online (data + IP)
+    if (!$hasCol('appointments','consent_at')) $ddl("ALTER TABLE appointments ADD COLUMN consent_at DATETIME NULL");
+    if (!$hasCol('appointments','consent_ip')) $ddl("ALTER TABLE appointments ADD COLUMN consent_ip VARCHAR(45) NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -933,7 +937,8 @@ function run_migrations(): void {
             && $hasIdx('tickets','idx_tickets_counter') && $hasTable('webhook_log')
             && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')
             && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')
-            && $hasCol('users','must_change_pw')) {
+            && $hasCol('users','must_change_pw')
+            && $hasCol('appointments','consent_at') && $hasCol('appointments','consent_ip')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}
