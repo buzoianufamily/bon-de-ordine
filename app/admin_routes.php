@@ -384,16 +384,23 @@ function admin_service_save(): void {
         }
         if ($map) $i18n = json_encode($map, JSON_UNESCAPED_UNICODE);
     }
+    // limiteaza valorile numerice ca sa nu se creeze servicii „rupte"
+    // (eticheta peste 16 caractere, interval inversat, valori negative)
+    $branchId = (int)($_POST['branch_id'] ?? 1);
+    $prefix   = strtoupper(trim($_POST['prefix'] ?? 'A'));
+    $numFrom  = max(1, (int)($_POST['num_from'] ?? 1));
+    $numTo    = max($numFrom, (int)($_POST['num_to'] ?? 999));
+    $pad      = min(10, max(1, (int)($_POST['pad_length'] ?? 3)));   // tickets.label e VARCHAR(16)
     $f = [
-        'branch_id'=>(int)($_POST['branch_id'] ?? 1), 'prefix'=>strtoupper(trim($_POST['prefix'] ?? 'A')),
+        'branch_id'=>$branchId, 'prefix'=>$prefix,
         'name'=>trim($_POST['name'] ?? ''),
         'description'=>trim($_POST['description'] ?? ''), 'color'=>trim($_POST['color'] ?? '#2563eb'),
-        'status'=>($_POST['status'] ?? 'active'), 'num_from'=>(int)($_POST['num_from'] ?? 1),
-        'num_to'=>(int)($_POST['num_to'] ?? 999), 'pad_length'=>(int)($_POST['pad_length'] ?? 3),
+        'status'=>(($_POST['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active'),
+        'num_from'=>$numFrom, 'num_to'=>$numTo, 'pad_length'=>$pad,
         'include_zeros'=>isset($_POST['include_zeros'])?1:0, 'allow_priority'=>isset($_POST['allow_priority'])?1:0,
         'terminate_on_call'=>isset($_POST['terminate_on_call'])?1:0,
-        'kpi_wait_sec'=>(int)($_POST['kpi_wait_sec'] ?? 600), 'kpi_service_sec'=>(int)($_POST['kpi_service_sec'] ?? 300),
-        'max_queued'=>(int)($_POST['max_queued'] ?? 0), 'max_per_day'=>(int)($_POST['max_per_day'] ?? 0), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
+        'kpi_wait_sec'=>max(0,(int)($_POST['kpi_wait_sec'] ?? 600)), 'kpi_service_sec'=>max(0,(int)($_POST['kpi_service_sec'] ?? 300)),
+        'max_queued'=>max(0,(int)($_POST['max_queued'] ?? 0)), 'max_per_day'=>max(0,(int)($_POST['max_per_day'] ?? 0)), 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
         'active_hours'=>$ah, 'i18n'=>$i18n,
         'group_id'=>((int)($_POST['group_id'] ?? 0)) ?: null,
         'form_id'=>((int)($_POST['form_id'] ?? 0)) ?: null,
@@ -402,6 +409,9 @@ function admin_service_save(): void {
         'appt_capacity'=>max(1,(int)($_POST['appt_capacity'] ?? 1)),
     ];
     if ($f['name'] === '' || $f['prefix'] === '') { flash('Nume si prefix obligatorii.', 'error'); redirect('admin/services' . ($id ? "/$id" : '/new')); }
+    // prefix unic pe filiala (evita bilete ambigue cu acelasi prefix)
+    $dup = (int) val('SELECT COUNT(*) FROM services WHERE branch_id=? AND prefix=? AND id<>?', [$branchId, $prefix, $id]);
+    if ($dup > 0) { flash('Există deja un serviciu cu prefixul „'.$prefix.'" în această filială. Alege alt prefix.', 'error'); redirect('admin/services' . ($id ? "/$id" : '/new')); }
     if ($id) {
         $set = implode(', ', array_map(fn($k) => "$k=?", array_keys($f)));
         q("UPDATE services SET $set WHERE id=?", array_merge(array_values($f), [$id]));
@@ -514,9 +524,13 @@ function admin_counter_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
     $f = ['branch_id'=>(int)($_POST['branch_id'] ?? 1), 'code'=>trim($_POST['code'] ?? ''),
-          'name'=>trim($_POST['name'] ?? ''), 'status'=>($_POST['status'] ?? 'closed'),
+          'name'=>trim($_POST['name'] ?? ''), 'status'=>(in_array($_POST['status'] ?? 'closed', ['open','paused','closed'], true) ? $_POST['status'] : 'closed'),
           'all_services'=>isset($_POST['all_services'])?1:0, 'priority'=>(int)($_POST['priority'] ?? 0)];
     if ($f['code'] === '' || $f['name'] === '') { flash('Cod si nume obligatorii.', 'error'); redirect('admin/counters'); }
+    // cod unic pe filiala (evita ghisee ambigue)
+    if ((int) val('SELECT COUNT(*) FROM counters WHERE branch_id=? AND code=? AND id<>?', [$f['branch_id'], $f['code'], $id]) > 0) {
+        flash('Există deja un ghișeu cu codul „'.$f['code'].'" în această filială.', 'error'); redirect('admin/counters');
+    }
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE counters SET $set WHERE id=?", array_merge(array_values($f), [$id]));
@@ -539,6 +553,7 @@ function admin_user_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
     $name=trim($_POST['name']??''); $email=trim($_POST['email']??''); $role=$_POST['role']??'agent';
+    if (!in_array($role, ['admin','manager','agent'], true)) $role = 'agent';   // whitelist (defense-in-depth)
     $active=isset($_POST['active'])?1:0; $pass=(string)($_POST['password']??'');
     $notify=isset($_POST['notify_browser'])?1:0;
     $pin = preg_replace('/\D/', '', (string)($_POST['pin'] ?? '')); $pin = $pin !== '' ? substr($pin, 0, 12) : null;

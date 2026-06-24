@@ -62,11 +62,21 @@ window.QMS = {
   }
 };
 
-/* formularele cu data-confirm="mesaj" primesc automat modalul de confirmare */
+/* formularele cu data-confirm="mesaj" primesc automat modalul de confirmare;
+   plus garda anti dublu-submit pe orice formular trimis prin click (evita inregistrari duble) */
 document.addEventListener('submit', function (e) {
-  const f = e.target.closest ? e.target.closest('form[data-confirm]') : null;
-  if (!f || f.__qok) return;
-  e.preventDefault();
-  QMS.confirm(f.getAttribute('data-confirm'), { danger: !!f.querySelector('.btn-danger,.del'), ok: 'Da, continua' })
-    .then(ok => { if (ok) { f.__qok = 1; f.requestSubmit ? f.requestSubmit() : f.submit(); } });
+  const f = e.target;
+  if (!f || f.tagName !== 'FORM') return;
+  // confirmare inainte de trimitere
+  if (f.hasAttribute('data-confirm') && !f.__qok) {
+    e.preventDefault();
+    QMS.confirm(f.getAttribute('data-confirm'), { danger: !!f.querySelector('.btn-danger,.del'), ok: 'Da, continua' })
+      .then(ok => { if (ok) { f.__qok = 1; f.requestSubmit ? f.requestSubmit() : f.submit(); } });
+    return;
+  }
+  // anti dublu-submit: blocheaza al doilea submit si dezactiveaza butonul dupa ce pleaca primul
+  if (f.__submitting) { e.preventDefault(); return; }
+  f.__submitting = 1;
+  const btn = f.querySelector('button[type="submit"],button:not([type]),input[type="submit"]');
+  if (btn) setTimeout(function () { btn.disabled = true; btn.style.opacity = '.65'; }, 0);
 }, true);

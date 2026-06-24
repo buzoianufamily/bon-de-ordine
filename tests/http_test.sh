@@ -153,6 +153,10 @@ tcontains "serviciul importat apare in lista" 'Serviciu Importat CI' "$(curl -s 
 curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Duplicat,#000000'
 ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 [ "$ZZ_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat la re-import (count=$ZZ_COUNT)"; }
+# formularul manual respinge prefixul duplicat (prefix unic pe filiala)
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "prefix=ZZ" --data-urlencode "name=Manual Dup"
+ZZ_COUNT2="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
+[ "$ZZ_COUNT2" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat acceptat din formular (count=$ZZ_COUNT2)"; }
 
 # --- reordonare servicii: butoane a11y + endpoint ---
 tcontains "servicii: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/services")"
@@ -175,6 +179,10 @@ tcontains "export jurnal webhook CSV content-type" 'text/csv' "$(curl -s -b "$JA
 tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/counters/export" | grep -i 'content-type')"
 t "POST /admin/counters/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/counters/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=GCI,Ghiseu Importat CI')"
 tcontains "ghiseul importat apare in lista" 'Ghiseu Importat CI' "$(curl -s -b "$JAR" "$B/admin/counters")"
+# formularul manual respinge codul de ghiseu duplicat (cod unic pe filiala)
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/counters --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "code=GCI" --data-urlencode "name=Dup ghiseu"
+GCI_COUNT="$(curl -s -b "$JAR" "$B/admin/counters/export" | grep -c '^GCI,')"
+[ "$GCI_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: cod GCI duplicat acceptat din formular (count=$GCI_COUNT)"; }
 
 # --- export/import filiale din CSV (autentificat) ---
 tcontains "export filiale CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/branches/export" | grep -i 'content-type')"
