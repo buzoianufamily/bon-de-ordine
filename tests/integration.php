@@ -620,6 +620,14 @@ chk(landlord_next_invoice_number($ivs,'BDO',2026) === 3, 'factura: urmatorul num
 chk(landlord_next_invoice_number($ivs,'BDO',2027) === 1, 'factura: an nou -> numerotare de la 1');
 chk(landlord_next_invoice_number([],'BDO',2026) === 1, 'factura: prima factura -> numarul 1');
 chk(landlord_invoice_label(['proforma'=>true,'series'=>'BDO','number'=>7,'year'=>2026]) === 'PF BDO 00007 / 2026', 'factura: eticheta proforma');
+// proforma are pool separat de seria fiscala (seria fiscala ramane fara goluri)
+$ivmix = [['series'=>'BDO','year'=>2026,'number'=>1,'proforma'=>false],['series'=>'BDO','year'=>2026,'number'=>1,'proforma'=>true]];
+chk(landlord_next_invoice_number($ivmix,'BDO',2026,false) === 2, 'factura: numerotarea fiscala ignora proformele');
+chk(landlord_next_invoice_number($ivmix,'BDO',2026,true) === 2, 'factura: proforma are propriul pool');
+// high-water: dupa stergerea ultimei facturi, numarul NU se reutilizeaza
+chk(landlord_assign_number($ivs,[],'BDO',2026,false) === 3, 'factura: assign fara prag -> max(lista)+1');
+chk(landlord_assign_number([['series'=>'BDO','year'=>2026,'number'=>1,'proforma'=>false]], ['seq'=>['BDO|2026|F'=>2]], 'BDO',2026,false) === 3, 'factura: dupa stergerea #2, pragul previne reutilizarea (-> 3, nu 2)');
+chk(landlord_seq_key('BDO',2026,false) === 'BDO|2026|F' && landlord_seq_key('BDO',2026,true) === 'BDO|2026|P', 'factura: cheia high-water separa fiscal/proforma');
 $GLOBALS['__billing_file'] = sys_get_temp_dir() . '/ci_billing_' . getmypid() . '.json';
 $GLOBALS['__invoices_file'] = sys_get_temp_dir() . '/ci_invoices_' . getmypid() . '.json';
 @unlink($GLOBALS['__billing_file']); @unlink($GLOBALS['__invoices_file']);
