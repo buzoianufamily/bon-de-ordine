@@ -133,6 +133,7 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 ## Vânzare pe abonament (pentru furnizor)
 - **Verificare „pregătit de producție":** Admin → **Verificare** (`/admin/checkup`) — listă de control automată (parolă implicită, HTTPS, email, backup, cron, 2FA, retenție, date legale). Rezolvă avertismentele înainte de a preda instanța clientului.
 - **Limite de plan:** în `/landlord`, la fiecare client poți seta limite (filiale/ghișee/utilizatori/servicii) — aplicația le impune automat. `0 = nelimitat`.
+- **Pregătire pentru producție:** după testare, Admin → Setări → **Pregătire pentru producție** șterge datele de test (bilete/programări/feedback) păstrând toată configurația; face automat un backup de siguranță înainte. Necesită confirmarea „STERGE".
 - **Documente contractuale (modele):** vezi `docs/contracte/` — `DPA-model.md` (acord de prelucrare a datelor, GDPR art. 28) și `contract-abonament-SLA-model.md`. **Sunt modele orientative — validează‑le cu un jurist.**
 
 ## Monitorizare & parole
