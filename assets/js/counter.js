@@ -180,7 +180,7 @@
     const stLab={waiting:'la rand',called:'apelat',serving:'in servire'};
     elList.innerHTML = items.map(t=>`<label class="qrow${t.id===selId?' sel':''}" data-id="${t.id}">
       <input type="radio" name="tk" value="${t.id}" ${t.id===selId?'checked':''} tabindex="-1">
-      <span class="tag" style="background:${t.color}">${esc((t.label||'?')[0])}</span>
+      <span class="tag" style="background:${esc(t.color)}">${esc((t.label||'?')[0])}</span>
       <span class="lbl">${esc(t.label)}</span>
       ${t.priority? '<span class="pill" style="background:#fee2e2;color:#b91c1c">PRIORITAR</span>':''}
       ${t.targeted? '<span class="pill" style="background:#e0e7ff;color:#3730a3">⇆ transferat aici</span>':''}
@@ -192,7 +192,7 @@
   function renderBar(){
     const it = items.find(x=>x.id===selId);
     if(!it){ elBar.style.display='none'; elBar.innerHTML=''; return; }
-    let h = `<div class="selbar-head"><button class="selbar-x" data-a="deselect" title="Deselecteaza biletul">✕</button>Selectat: <strong style="color:${it.color||cfg.accent}">${esc(it.label)}</strong> <span class="muted">${esc(it.service_name||'')}</span></div><div class="selbar-btns">`;
+    let h = `<div class="selbar-head"><button class="selbar-x" data-a="deselect" title="Deselecteaza biletul">✕</button>Selectat: <strong style="color:${esc(it.color||cfg.accent)}">${esc(it.label)}</strong> <span class="muted">${esc(it.service_name||'')}</span></div><div class="selbar-btns">`;
     h += `<button class="btn" data-a="recall">🔁 Recheama</button>`;
     h += `<button class="btn" data-a="serving">▶️ In servire</button>`;
     h += `<button class="btn btn-primary" data-a="finish">✔️ Finalizat</button>`;

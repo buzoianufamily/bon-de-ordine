@@ -494,10 +494,12 @@ function admin_service_save(): void {
     $numFrom  = max(1, (int)($_POST['num_from'] ?? 1));
     $numTo    = max($numFrom, (int)($_POST['num_to'] ?? 999));
     $pad      = min(10, max(1, (int)($_POST['pad_length'] ?? 3)));   // tickets.label e VARCHAR(16)
+    $color    = trim($_POST['color'] ?? '#2563eb');                  // doar hex valid (anti-XSS prin culoarea afisata)
+    if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $color)) $color = '#2563eb';
     $f = [
         'branch_id'=>$branchId, 'prefix'=>$prefix,
         'name'=>trim($_POST['name'] ?? ''),
-        'description'=>trim($_POST['description'] ?? ''), 'color'=>trim($_POST['color'] ?? '#2563eb'),
+        'description'=>trim($_POST['description'] ?? ''), 'color'=>$color,
         'status'=>(($_POST['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active'),
         'num_from'=>$numFrom, 'num_to'=>$numTo, 'pad_length'=>$pad,
         'include_zeros'=>isset($_POST['include_zeros'])?1:0, 'allow_priority'=>isset($_POST['allow_priority'])?1:0,

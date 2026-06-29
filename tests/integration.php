@@ -201,6 +201,11 @@ $xl = build_stats_xlsx('CI','Toate','2026-01-01','2026-01-31',
     [['service_name'=>'Casierie','color'=>'#2563eb','n'=>4,'avg'=>4.5]],
     [['name'=>'Ana','n'=>3,'avg'=>4.7]]);
 chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip (cu sectiuni programari + CSAT serviciu/operator)');
+// Xlsx::x() elimina caracterele de control interzise in XML (altfel fisierul e corupt/neschisabil)
+chk(strpos(Xlsx::x("a\x01b\x1fc"), "\x01") === false && strpos(Xlsx::x("a\x01b\x1fc"), "\x1f") === false, 'xlsx: caracterele de control sunt eliminate');
+chk(Xlsx::x("normal & <ok>") === 'normal &amp; &lt;ok&gt;', 'xlsx: escaping XML pastrat pentru text normal');
+$xlCtrl = build_stats_xlsx("Brand\x01CI",'Toate','2026-01-01','2026-01-31',['total'=>1,'served'=>1,'no_show'=>0,'cancelled'=>0,'avg_wait'=>0,'avg_service'=>0],[],[],[],[],'#2563eb',[],['total'=>0,'booked'=>0,'checked_in'=>0,'no_show'=>0,'cancelled'=>0],[],[]);
+chk(substr($xlCtrl->build(),0,2) === 'PK', 'xlsx: raport valid chiar cu byte de control in brand (nu corupe fisierul)');
 
 /* ---- 13. API v1 + denylist ---- */
 chk(in_array('api_key', settings_export_denylist(), true) && in_array('cron_token', settings_export_denylist(), true), 'settings: denylist excludes secrets');

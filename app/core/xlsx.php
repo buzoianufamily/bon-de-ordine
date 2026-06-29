@@ -49,7 +49,12 @@ class Xlsx {
         while ($n > 0) { $m = ($n - 1) % 26; $s = chr(65 + $m) . $s; $n = intdiv($n - 1, 26); }
         return $s;
     }
-    public static function x(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_XML1, 'UTF-8'); }
+    public static function x(string $s): string {
+        // elimina caracterele de control interzise in XML 1.0 (pastreaza TAB/LF/CR) ca fisierul sa nu fie corupt
+        $s = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', $s);
+        if ($s === null) $s = '';   // input ne-UTF8: preg_replace /u esueaza -> nu lasa null
+        return htmlspecialchars($s, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
     public static function hex(string $c): string { return strtoupper(ltrim(trim($c), '#')) ?: '2563EB'; }
 
     /** Construieste binarul .xlsx in memorie (returneaza string). */
