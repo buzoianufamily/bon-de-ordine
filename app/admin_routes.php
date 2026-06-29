@@ -182,6 +182,11 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
 
+        case 'reset':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST') { admin_reset_data(); return; }
+            redirect('admin/settings');
+
         case 'gdpr':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             if ($method === 'POST' && $a === 'export') { admin_gdpr_export(); return; }
@@ -437,15 +442,18 @@ function admin_services_import(): void {
     $existing = array_flip($existing);
     $pos = (int) val('SELECT COALESCE(MAX(sort_order),0) FROM services WHERE branch_id=?', [$branch]);
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('services'); $cur = (int) val('SELECT COUNT(*) FROM services'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[$r['prefix']])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         q("INSERT INTO services (branch_id,prefix,name,color,status,num_from,num_to,pad_length,include_zeros,kpi_wait_sec,kpi_service_sec,sort_order)
            VALUES (?,?,?,?,'active',1,999,3,1,600,300,?)", [$branch, $r['prefix'], $r['name'], $r['color'], ++$pos]);
-        $existing[$r['prefix']] = 1; $n++;
+        $existing[$r['prefix']] = 1; $n++; $cur++;
     }
     audit('import', 'services', $branch, $n . ' servicii');
     $msg = $n > 0 ? "$n servicii importate." : 'Niciun serviciu nou de importat.';
     if ($skipped) $msg .= " $skipped sarite (prefix existent).";
+    if ($capped) $msg .= ' Limita planului pentru servicii a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/services');
 }
@@ -491,10 +499,12 @@ function admin_service_save(): void {
     $numFrom  = max(1, (int)($_POST['num_from'] ?? 1));
     $numTo    = max($numFrom, (int)($_POST['num_to'] ?? 999));
     $pad      = min(10, max(1, (int)($_POST['pad_length'] ?? 3)));   // tickets.label e VARCHAR(16)
+    $color    = trim($_POST['color'] ?? '#2563eb');                  // doar hex valid (anti-XSS prin culoarea afisata)
+    if (!preg_match('/^#[0-9a-fA-F]{3,8}$/', $color)) $color = '#2563eb';
     $f = [
         'branch_id'=>$branchId, 'prefix'=>$prefix,
         'name'=>trim($_POST['name'] ?? ''),
-        'description'=>trim($_POST['description'] ?? ''), 'color'=>trim($_POST['color'] ?? '#2563eb'),
+        'description'=>trim($_POST['description'] ?? ''), 'color'=>$color,
         'status'=>(($_POST['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active'),
         'num_from'=>$numFrom, 'num_to'=>$numTo, 'pad_length'=>$pad,
         'include_zeros'=>isset($_POST['include_zeros'])?1:0, 'allow_priority'=>isset($_POST['allow_priority'])?1:0,
@@ -603,14 +613,17 @@ function admin_counters_import(): void {
     $rows = parse_counters_csv($csv);
     $existing = array_flip(array_map('strtoupper', array_column(all('SELECT code FROM counters WHERE branch_id=?', [$branch]), 'code')));
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('counters'); $cur = (int) val('SELECT COUNT(*) FROM counters'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[strtoupper($r['code'])])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         q("INSERT INTO counters (branch_id, code, name, status, all_services) VALUES (?,?,?,'closed',1)", [$branch, $r['code'], $r['name']]);
-        $existing[strtoupper($r['code'])] = 1; $n++;
+        $existing[strtoupper($r['code'])] = 1; $n++; $cur++;
     }
     audit('import', 'counters', $branch, $n . ' ghisee');
     $msg = $n > 0 ? "$n ghisee importate." : 'Niciun ghiseu nou de importat.';
     if ($skipped) $msg .= " $skipped sarite (cod existent).";
+    if ($capped) $msg .= ' Limita planului pentru ghisee a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/counters');
 }
@@ -697,17 +710,20 @@ function admin_users_import(): void {
     $rows = parse_users_csv($csv);
     $existing = array_flip(array_map('strtolower', array_column(all('SELECT email FROM users'), 'email')));
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('users'); $cur = (int) val('SELECT COUNT(*) FROM users'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[$r['email']])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         try {
             q('INSERT INTO users (name,email,role,active,password_hash) VALUES (?,?,?,1,?)',
                 [$r['name'], $r['email'], $r['role'], password_hash($r['password'], PASSWORD_DEFAULT)]);
-            $existing[$r['email']] = 1; $n++;
+            $existing[$r['email']] = 1; $n++; $cur++;
         } catch (Throwable $e) { $skipped++; }
     }
     audit('import', 'users', null, $n . ' utilizatori');
     $msg = $n > 0 ? "$n utilizatori importati." : 'Niciun utilizator nou de importat.';
     if ($skipped) $msg .= " $skipped sariti (email existent sau date invalide).";
+    if ($capped) $msg .= ' Limita planului pentru utilizatori a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/users');
 }
@@ -951,10 +967,13 @@ function admin_security_save(): void {
     $act = $_POST['act'] ?? '';
     if ($act === 'enable') {
         $secret = (string)($_SESSION['2fa_setup_secret'] ?? '');
-        if ($secret !== '' && totp_verify($secret, (string)($_POST['code'] ?? ''))) {
+        // foloseste totp_match_slice (nu doar verify) ca sa CONSUMAM slotul codului de setup:
+        // altfel acelasi cod ar fi acceptat inca o data la prima logare (anti-replay).
+        $slice = $secret !== '' ? totp_match_slice($secret, (string)($_POST['code'] ?? '')) : null;
+        if ($slice !== null) {
             [$plain, $hashes] = totp_backup_generate();
-            q('UPDATE users SET totp_secret=?, totp_enabled=1, totp_backup=? WHERE id=?',
-              [$secret, json_encode($hashes), $u['id']]);
+            q('UPDATE users SET totp_secret=?, totp_enabled=1, totp_backup=?, totp_last_slice=? WHERE id=?',
+              [$secret, json_encode($hashes), $slice, $u['id']]);
             unset($_SESSION['2fa_setup_secret']);
             $_SESSION['2fa_new_codes'] = $plain;
             audit('2fa_enabled', 'user', $u['id']);
@@ -1020,14 +1039,19 @@ function gdpr_erase(string $email, string $phone): array {
     $apW = []; $apA = [];
     if ($email !== '') { $apW[] = 'customer_email = ?'; $apA[] = $email; }
     if ($phone !== '') { $apW[] = 'customer_phone = ?'; $apA[] = $phone; }
-    $cond = implode(' OR ', $apW);
-    // programari: anonimizeaza campurile de identificare, inclusiv IP-ul de consimtamant (PII)
-    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL, consent_ip=NULL WHERE $cond", $apA)->rowCount();
+    $cond  = implode(' OR ', $apW);
+    $condA = implode(' OR ', array_map(fn($c) => 'a.' . $c, $apW));   // acelasi filtru, calificat pentru JOIN
+    // biletele LEGATE de programarile vizate (acopera cautarea doar dupa email, fiindca tickets n-are email)
+    $linked = q("UPDATE tickets t JOIN appointments a ON a.ticket_id = t.id
+                 SET t.customer_phone=NULL, t.form_data=NULL WHERE $condA", $apA)->rowCount();
+    // programari: anonimizeaza identificarea + IP-ul de consimtamant + jetonul public (PII)
+    $n['appointments'] = q("UPDATE appointments SET customer_name=NULL, customer_phone=NULL, customer_email=NULL, consent_ip=NULL, public_token=NULL WHERE $cond", $apA)->rowCount();
     // lista de asteptare: efemera (customer_email e NOT NULL) -> stergem randurile
     $n['waitlist'] = q("DELETE FROM appointment_waitlist WHERE $cond", $apA)->rowCount();
-    // bilete: anonimizeaza telefonul + raspunsurile de formular (pot contine date personale)
+    // bilete dupa telefon: anonimizeaza telefonul + raspunsurile de formular
     if ($phone !== '')
         $n['tickets'] = q("UPDATE tickets SET customer_phone=NULL, form_data=NULL WHERE customer_phone = ?", [$phone])->rowCount();
+    $n['tickets'] += $linked;
     return $n;
 }
 function admin_gdpr_page(): void {
@@ -1107,6 +1131,40 @@ function admin_backup_delete(): void {
         if (is_file($path) && @unlink($path)) { audit('delete', 'backup', null, $name); flash('Backup șters.'); }
         else flash('Nu am putut șterge fișierul.', 'error');
     }
+    redirect('admin/settings');
+}
+
+/* ----------------------- PREGATIRE PRODUCTIE: stergerea datelor de test ----------------------- */
+/**
+ * Sterge datele OPERATIONALE (de test) la trecerea in productie, pastrand TOATA configuratia
+ * (filiale, servicii, ghisee, utilizatori, dispozitive, setari, formulare, zile inchise, media).
+ * Returneaza numarul de randuri sterse pe tabel. Tabelele sunt o lista alba (fara interpolare nesigura).
+ */
+function reset_operational_data(): array {
+    $pdo = db();
+    $tables = ['tickets','ticket_sequences','appointments','appointment_waitlist',
+               'feedback','counter_sessions','user_status_log','webhook_log'];   // audit_log se pastreaza (jurnal de securitate)
+    $n = [];
+    try { $pdo->exec('SET FOREIGN_KEY_CHECKS=0'); } catch (Throwable $e) {}
+    foreach ($tables as $t) { try { $n[$t] = (int) $pdo->exec("DELETE FROM `$t`"); } catch (Throwable $e) { $n[$t] = 0; } }
+    try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (Throwable $e) {}
+    // toti operatorii devin offline (sesiunile/biletele au disparut)
+    try { $pdo->exec("UPDATE users SET work_status='offline', last_seen=NULL"); } catch (Throwable $e) {}
+    return $n;
+}
+function admin_reset_data(): void {
+    csrf_check();
+    if (mb_strtoupper(trim((string)($_POST['confirm'] ?? ''))) !== 'STERGE') {
+        flash('Confirmare incorecta. Scrie STERGE (cu majuscule) pentru a continua.', 'error'); redirect('admin/settings');
+    }
+    $bk = '';
+    try { $bk = backup_to_file(); backup_prune((int) setting('backup_keep', '14')); } catch (Throwable $e) {}
+    $n = reset_operational_data();
+    $total = array_sum($n);
+    audit('reset', 'operational_data', null, ($bk !== '' ? "backup=$bk; " : 'fara backup; ') . json_encode($n));
+    flash("Date de test sterse: $total inregistrari (bilete, programari, feedback, sesiuni)."
+        . ($bk !== '' ? " Backup de siguranta creat: $bk." : ' ATENTIE: nu am putut crea backup automat — verifica permisiunile folderului backups/.'),
+        $bk !== '' ? 'info' : 'error');
     redirect('admin/settings');
 }
 
@@ -1330,15 +1388,18 @@ function admin_branches_import(): void {
     $rows = parse_branches_csv($csv);
     $existing = array_flip(array_map('mb_strtolower', array_column(all('SELECT name FROM branches'), 'name')));
     $n = 0; $skipped = 0;
+    $lim = tenant_limit('branches'); $cur = (int) val('SELECT COUNT(*) FROM branches'); $capped = false;
     foreach ($rows as $r) {
         if (isset($existing[mb_strtolower($r['name'])])) { $skipped++; continue; }
+        if ($lim > 0 && $cur >= $lim) { $capped = true; break; }   // respecta limita de plan si la import
         q("INSERT INTO branches (name, city, country, address, timezone, active) VALUES (?,?,'Romania',?,'Europe/Bucharest',1)",
             [$r['name'], $r['city'], $r['address']]);
-        $existing[mb_strtolower($r['name'])] = 1; $n++;
+        $existing[mb_strtolower($r['name'])] = 1; $n++; $cur++;
     }
     audit('import', 'branches', null, $n . ' filiale');
     $msg = $n > 0 ? "$n filiale importate." : 'Nicio filiala noua de importat.';
     if ($skipped) $msg .= " $skipped sarite (nume existent).";
+    if ($capped) $msg .= ' Limita planului pentru filiale a fost atinsa.';
     flash($msg, $n > 0 ? 'info' : 'error');
     redirect('admin/branches');
 }
@@ -1447,6 +1508,7 @@ function admin_branch_duplicate(int $id): void {
     csrf_check();
     $src = one('SELECT * FROM branches WHERE id=?', [$id]);
     if (!$src) { flash('Filiala inexistenta.', 'error'); redirect('admin/branches'); }
+    if (tenant_limit_reached('branches')) { flash('Ai atins limita planului pentru filiale ('.tenant_limit('branches').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/branches'); }
     try {
         db()->beginTransaction();
 
@@ -1539,7 +1601,8 @@ function admin_media_list(): void {
 function admin_media_upload(): void {
     csrf_check();
     if (empty($_FILES['file']) || !is_array($_FILES['file']['name'])) { flash('Niciun fisier selectat.', 'error'); redirect('admin/media'); }
-    $allowed = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp','image/svg+xml'=>'svg',
+    // SVG exclus intentionat: poate contine <script> si, servit same-origin, ar permite XSS stocat
+    $allowed = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp',
                 'video/mp4'=>'mp4','video/webm'=>'webm'];
     $dir = APP_ROOT . '/assets/uploads';
     if (!is_dir($dir)) @mkdir($dir, 0755, true);
@@ -1548,8 +1611,8 @@ function admin_media_upload(): void {
         if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
         $tmp = $files['tmp_name'][$i];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->file($tmp) ?: ($files['type'][$i] ?? '');
-        if (!isset($allowed[$mime])) { flash('Tip de fisier neacceptat: '.e($mime), 'error'); continue; }
+        $mime = (string) $finfo->file($tmp);   // tipul real (NU ne increddem in $_FILES['type'] de la client)
+        if (!isset($allowed[$mime])) { flash('Tip de fisier neacceptat: '.e($mime ?: 'necunoscut'), 'error'); continue; }
         if ($files['size'][$i] > 25 * 1024 * 1024) { flash('Fisier prea mare (max 25MB).', 'error'); continue; }
         $ext = $allowed[$mime];
         $base = preg_replace('/[^a-zA-Z0-9_-]+/', '_', pathinfo($files['name'][$i], PATHINFO_FILENAME));

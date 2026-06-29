@@ -87,8 +87,9 @@ try {
     // ===================== Cod QR local (SVG) — fara servicii externe =====================
     if ($seg[0] === 'qr') {
         require_once APP_ROOT . '/app/core/qr.php';
-        $data = (string) input('data', '');
-        $size = max(80, min(600, (int) input('size', 200)));
+        // cerut prin <img src="/qr?data=...&size=..."> (GET) — input() citeste doar body, deci folosim $_GET
+        $data = (string) ($_GET['data'] ?? input('data', ''));
+        $size = max(80, min(600, (int) ($_GET['size'] ?? input('size', 200))));
         header('Content-Type: image/svg+xml; charset=utf-8');
         header('Cache-Control: public, max-age=86400');
         $svg = $data !== '' ? QR::svg($data, $size) : '';
@@ -245,6 +246,11 @@ SWJS;
 
         // ---- endpoint-uri ce necesita autentificare (operator) ----
         $u = require_login();
+        // actiunile care modifica starea trebuie sa fie POST (+ CSRF) — altfel un GET cross-site
+        // ar putea declansa actiuni cu sesiunea operatorului. 'counter-state'/'branch-state' sunt doar citire.
+        $readOnlyActions = ['counter-state', 'branch-state'];
+        if (!in_array($action, $readOnlyActions, true) && $method !== 'POST')
+            json_out(['ok' => false, 'error' => 'Metoda nepermisa (foloseste POST).'], 405);
         if ($method === 'POST') csrf_check();
         q('UPDATE users SET last_seen = NOW() WHERE id = ?', [(int)$u['id']]); // prezenta
         // un operator legat de anumite ghisee nu poate opera (call/pauza) alt ghiseu nici prin API

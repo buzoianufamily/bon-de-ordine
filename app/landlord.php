@@ -41,13 +41,37 @@ function landlord_invoice_total(array $inv): array {
     $vat = round($net * $vatp / 100, 2);
     return ['net' => $net, 'vat' => $vat, 'total' => round($net + $vat, 2)];
 }
-/** Urmatorul numar de factura pentru o serie + an (continuu, pe baza celor existente). */
-function landlord_next_invoice_number(array $invoices, string $series, int $year): int {
+/**
+ * Urmatorul numar pentru o serie + an, separat pe tip (factura fiscala vs proforma)
+ * ca seria fiscala sa ramana fara goluri (cerinta legala RO). Proformele au pool propriu.
+ */
+function landlord_next_invoice_number(array $invoices, string $series, int $year, bool $proforma = false): int {
     $max = 0;
     foreach ($invoices as $iv)
-        if (($iv['series'] ?? '') === $series && (int)($iv['year'] ?? 0) === $year)
+        if (($iv['series'] ?? '') === $series && (int)($iv['year'] ?? 0) === $year
+            && (bool)($iv['proforma'] ?? false) === $proforma)
             $max = max($max, (int)($iv['number'] ?? 0));
     return $max + 1;
+}
+/** Cheia pragului de numerotare (high-water) pe serie+an+tip — nu coboara la stergere. */
+function landlord_seq_key(string $series, int $year, bool $proforma): string {
+    return $series . '|' . $year . '|' . ($proforma ? 'P' : 'F');
+}
+/**
+ * Numarul de atribuit: max(urmatorul din lista, pragul high-water + 1). Pragul (billing['seq'])
+ * nu coboara cand se sterge o factura, deci doua facturi distincte nu pot primi acelasi numar.
+ */
+function landlord_assign_number(array $invoices, array $billing, string $series, int $year, bool $proforma): int {
+    $key = landlord_seq_key($series, $year, $proforma);
+    return max(landlord_next_invoice_number($invoices, $series, $year, $proforma),
+               (int)($billing['seq'][$key] ?? 0) + 1);
+}
+/** Executa o sectiune critica sub lock exclusiv (serializeaza scrierile concurente in JSON). */
+function landlord_with_lock(callable $fn) {
+    $lf = @fopen(landlord_invoices_file() . '.lock', 'c');
+    if ($lf) flock($lf, LOCK_EX);
+    try { return $fn(); }
+    finally { if ($lf) { flock($lf, LOCK_UN); fclose($lf); } }
 }
 /** Eticheta afisata a unei facturi, ex: BDO 00007 / 2026 (PF = proforma). */
 function landlord_invoice_label(array $inv): string {
@@ -208,34 +232,44 @@ function landlord_dispatch(array $seg, string $method): void {
         if ($a === 'invoice-save') {
             $billing = landlord_billing_load();
             if (empty($billing['name'])) { flash('Completeaza intai datele emitentului (firma ta).', 'error'); redirect('landlord/billing'); }
-            $invoices = landlord_invoices_load();
+            if (trim((string)($_POST['client_name'] ?? '')) === '') { flash('Completeaza numele clientului pe factura.', 'error'); redirect('landlord/billing'); }
             $series = (string)($billing['series'] ?? 'BDO');
             $year = (int) date('Y');
+            $isPro = isset($_POST['proforma']);
             $amount = max(0, (float)str_replace(',', '.', (string)($_POST['amount'] ?? 0)));
             $pf = trim((string)($_POST['period_from'] ?? '')); $pt = trim((string)($_POST['period_to'] ?? ''));
             $due = (string)($_POST['due_date'] ?? '');
-            $inv = [
-                'id'      => bin2hex(random_bytes(8)),
-                'host'    => strtolower(trim((string)($_POST['host'] ?? ''))),
-                'series'  => $series, 'number' => landlord_next_invoice_number($invoices, $series, $year), 'year' => $year,
-                'date'    => date('Y-m-d'),
-                'due_date'=> preg_match('/^\d{4}-\d{2}-\d{2}$/', $due) ? $due : date('Y-m-d', strtotime('+15 days')),
-                'client_name'    => trim((string)($_POST['client_name'] ?? '')),
-                'client_cui'     => trim((string)($_POST['client_cui'] ?? '')),
-                'client_address' => trim((string)($_POST['client_address'] ?? '')),
-                'description' => trim((string)($_POST['description'] ?? '')) ?: 'Abonament Bon de ordine',
-                'period_from' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $pf) ? $pf : '',
-                'period_to'   => preg_match('/^\d{4}-\d{2}-\d{2}$/', $pt) ? $pt : '',
-                'amount'  => round($amount, 2),
-                'vat_percent' => max(0, min(100, (int)($_POST['vat_percent'] ?? ($billing['vat_percent'] ?? 0)))),
-                'currency'=> (string)($billing['currency'] ?? 'RON'),
-                'proforma'=> isset($_POST['proforma']),
-                'paid_at' => '',
-                'note'    => trim((string)($_POST['inv_note'] ?? '')),
-            ];
-            if ($inv['client_name'] === '') { flash('Completeaza numele clientului pe factura.', 'error'); redirect('landlord/billing'); }
-            $invoices[] = $inv;
-            if (!landlord_invoices_save($invoices)) { flash('Nu am putut scrie config/invoices.json — verifica permisiunile folderului config/.', 'error'); redirect('landlord/billing'); }
+            // sectiune critica: calcul numar + scriere, sub lock (evita numere duplicate la cereri concurente)
+            $inv = landlord_with_lock(function () use ($series, $year, $isPro, $amount, $pf, $pt, $due, $billing) {
+                $invoices = landlord_invoices_load();
+                $key = landlord_seq_key($series, $year, $isPro);
+                $num = landlord_assign_number($invoices, $billing, $series, $year, $isPro);  // high-water: fara reutilizare
+                $inv = [
+                    'id'      => bin2hex(random_bytes(8)),
+                    'host'    => strtolower(trim((string)($_POST['host'] ?? ''))),
+                    'series'  => $series, 'number' => $num, 'year' => $year,
+                    'date'    => date('Y-m-d'),
+                    'due_date'=> preg_match('/^\d{4}-\d{2}-\d{2}$/', $due) ? $due : date('Y-m-d', strtotime('+15 days')),
+                    'client_name'    => trim((string)($_POST['client_name'] ?? '')),
+                    'client_cui'     => trim((string)($_POST['client_cui'] ?? '')),
+                    'client_address' => trim((string)($_POST['client_address'] ?? '')),
+                    'description' => trim((string)($_POST['description'] ?? '')) ?: 'Abonament Bon de ordine',
+                    'period_from' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $pf) ? $pf : '',
+                    'period_to'   => preg_match('/^\d{4}-\d{2}-\d{2}$/', $pt) ? $pt : '',
+                    'amount'  => round($amount, 2),
+                    'vat_percent' => max(0, min(100, (int)($_POST['vat_percent'] ?? ($billing['vat_percent'] ?? 0)))),
+                    'currency'=> (string)($billing['currency'] ?? 'RON'),
+                    'proforma'=> $isPro,
+                    'paid_at' => '',
+                    'note'    => trim((string)($_POST['inv_note'] ?? '')),
+                ];
+                $invoices[] = $inv;
+                if (!landlord_invoices_save($invoices)) return null;
+                $billing['seq'][$key] = $num;                  // urca pragul (persista chiar daca factura e stearsa)
+                landlord_billing_save($billing);
+                return $inv;
+            });
+            if (!$inv) { flash('Nu am putut scrie config/invoices.json — verifica permisiunile folderului config/.', 'error'); redirect('landlord/billing'); }
             flash('Factura ' . landlord_invoice_label($inv) . ' a fost creata.');
             redirect('landlord/invoice?id=' . $inv['id']);
         }

@@ -160,6 +160,25 @@ function _csv_lines(string $csv): array {
 }
 
 /**
+ * Parseaza un CSV in randuri de campuri respectand ghilimelele (RFC 4180): un camp poate
+ * contine virgule, ghilimele escape-uite ("") si chiar newline-uri. Scoate BOM-ul; sare
+ * peste liniile complet goale. Campurile sunt trim-uite. Round-trip sigur cu fputcsv_safe.
+ */
+function _csv_rows(string $csv): array {
+    $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
+    $fh = fopen('php://temp', 'r+');
+    fwrite($fh, $csv);
+    rewind($fh);
+    $rows = [];
+    while (($r = fgetcsv($fh, 0, ',', '"', '\\')) !== false) {
+        if ($r === [null]) continue;                          // linie goala
+        $rows[] = array_map(fn($v) => trim((string)$v), $r);
+    }
+    fclose($fh);
+    return $rows;
+}
+
+/**
  * Neutralizeaza injectia de formule in CSV: o celula care incepe cu = + - @ (sau TAB/CR)
  * e interpretata ca formula la deschiderea in Excel/Sheets. Prefixam cu apostrof (text),
  * conform recomandarii OWASP. Numerele/datele (incep cu cifra) raman neatinse.
@@ -172,7 +191,7 @@ function csv_safe_cell($v): string {
 
 /** fputcsv cu neutralizarea injectiei de formule pe fiecare camp. */
 function fputcsv_safe($h, array $row, string $sep = ','): void {
-    fputcsv($h, array_map('csv_safe_cell', $row), $sep);
+    fputcsv($h, array_map('csv_safe_cell', $row), $sep, '"', '\\');   // escape explicit (deprecat implicit in PHP 8.4)
 }
 
 /**
@@ -181,10 +200,7 @@ function fputcsv_safe($h, array $row, string $sep = ','): void {
  */
 function parse_services_csv(string $csv): array {
     $out = [];
-    foreach (_csv_lines($csv) as $ln) {
-        $ln = trim($ln);
-        if ($ln === '') continue;
-        $p = array_map('trim', explode(',', $ln));
+    foreach (_csv_rows($csv) as $p) {
         if (strcasecmp((string)($p[0] ?? ''), 'prefix') === 0) continue;   // antet (inainte de trunchiere)
         $prefix = strtoupper(substr($p[0] ?? '', 0, 3));
         $name   = (string)($p[1] ?? '');
@@ -199,10 +215,7 @@ function parse_services_csv(string $csv): array {
 /** Parseaza un CSV de zile inchise (linii: data,motiv?). data in format YYYY-MM-DD. Sare antet/linii invalide. Returneaza [['date','reason'], ...]. */
 function parse_closures_csv(string $csv): array {
     $out = [];
-    foreach (_csv_lines($csv) as $ln) {
-        $ln = trim($ln);
-        if ($ln === '') continue;
-        $p = array_map('trim', explode(',', $ln));
+    foreach (_csv_rows($csv) as $p) {
         $date = (string)($p[0] ?? '');
         if (strcasecmp($date, 'data') === 0 || strcasecmp($date, 'date') === 0) continue; // antet
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) continue;                          // data invalida
@@ -216,10 +229,7 @@ function parse_closures_csv(string $csv): array {
 /** Parseaza un CSV de filiale (linii: nume,oras?,adresa?). Sare antet/linii goale. Returneaza [['name','city','address'], ...]. */
 function parse_branches_csv(string $csv): array {
     $out = [];
-    foreach (_csv_lines($csv) as $ln) {
-        $ln = trim($ln);
-        if ($ln === '') continue;
-        $p = array_map('trim', explode(',', $ln));
+    foreach (_csv_rows($csv) as $p) {
         if (strcasecmp((string)($p[0] ?? ''), 'nume') === 0 || strcasecmp((string)($p[0] ?? ''), 'name') === 0) continue; // antet
         $name = (string)($p[0] ?? '');
         if ($name === '') continue;
@@ -231,10 +241,7 @@ function parse_branches_csv(string $csv): array {
 /** Parseaza un CSV de ghisee (linii: cod,nume). Sare peste antet/linii goale. Returneaza [['code'=>..,'name'=>..], ...]. */
 function parse_counters_csv(string $csv): array {
     $out = [];
-    foreach (_csv_lines($csv) as $ln) {
-        $ln = trim($ln);
-        if ($ln === '') continue;
-        $p = array_map('trim', explode(',', $ln));
+    foreach (_csv_rows($csv) as $p) {
         if (strcasecmp((string)($p[0] ?? ''), 'cod') === 0 || strcasecmp((string)($p[0] ?? ''), 'code') === 0) continue; // antet
         $code = substr($p[0] ?? '', 0, 10);
         if ($code === '') continue;
@@ -251,10 +258,7 @@ function parse_counters_csv(string $csv): array {
  */
 function parse_users_csv(string $csv): array {
     $out = [];
-    foreach (_csv_lines($csv) as $ln) {
-        $ln = trim($ln);
-        if ($ln === '') continue;
-        $p = array_map('trim', explode(',', $ln));
+    foreach (_csv_rows($csv) as $p) {
         $first = strtolower((string)($p[0] ?? ''));
         if ($first === 'nume' || $first === 'name') continue;          // antet
         $name  = (string)($p[0] ?? '');

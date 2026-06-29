@@ -47,7 +47,9 @@ $__tenants = qms_tenants_load();
 $__matched = false;
 foreach ($__tenants as $__t) {
     $__th = strtolower(trim((string)($__t['host'] ?? '')));
-    if ($__th === '' || ($__th !== $__host && $__th !== $__hostNoWww)) continue;
+    if ($__th === '') continue;
+    // normalizeaza www. pe AMBELE parti: un tenant salvat ca www.client.ro raspunde si pe client.ro
+    if (preg_replace('/^www\./', '', $__th) !== $__hostNoWww) continue;
     $__matched = true;
     $__state = bdo_tenant_state($__t, time());
     if ($__state === 'suspended') {

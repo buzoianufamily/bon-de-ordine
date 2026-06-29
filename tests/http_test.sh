@@ -92,6 +92,8 @@ if grep -rq 'fonts.googleapis.com' app/views/; then FAIL=$((FAIL+1)); echo "FAIL
 # cod QR local (SVG) — inlocuieste serviciul extern qrserver
 tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
 tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"
+# QR-ul TREBUIE sa contina module reale (regresie: /qr citea body in loc de query => cod gol)
+tcontains "GET /qr genereaza module (nu SVG gol)" '<rect' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc123&size=160")"
 
 # --- emitere bon prin API public (dispenser) ---
 ISS="$(curl -s -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"service_id\":$SVC,\"channel\":\"paper\"}")"
@@ -117,6 +119,10 @@ t "POST /login bad creds -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -
 t "POST /login ok -> 302"        302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=123456")"
 DASH="$(curl -s -b "$JAR" "$B/admin")"
 t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/admin)"
+# securitate: actiunile de operator care modifica starea resping GET (anti-CSRF prin GET)
+t "API mutatie (cancel) prin GET -> 405" 405 "$(code -b "$JAR" "$B/api/cancel?ticket_id=1")"
+t "API mutatie (finish) prin GET -> 405" 405 "$(code -b "$JAR" "$B/api/finish?ticket_id=1")"
+t "API counter-state read-only prin GET -> 200" 200 "$(code -b "$JAR" "$B/api/counter-state?counter_id=$CTR")"
 tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$DASH"
 tcontains "a11y: toggle grafic/tabel are aria-pressed" 'aria-pressed' "$DASH"
 tcontains "a11y: SVG-uri date au role=img" 'role="img"' "$DASH"
@@ -150,6 +156,14 @@ t "backup download: traversare de cale respinsa -> 404" 404 "$(code -b "$JAR" "$
 # verificare productie (readiness): pagina de diagnoza, doar admin
 t "GET /admin/checkup -> 200" 200 "$(code -b "$JAR" $B/admin/checkup)"
 tcontains "checkup: pagina de verificare productie" 'Verificare producție' "$(curl -s -b "$JAR" "$B/admin/checkup")"
+# securitate media: SVG (poate contine <script>) e RESPINS la upload -> anti-XSS stocat
+SVGF="$(mktemp)"; printf '%s' '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' > "$SVGF"
+curl -s -o /dev/null -b "$JAR" -X POST "$B/admin/media" -F "_csrf=$CSRF" -F "file[]=@$SVGF;type=image/svg+xml;filename=evil.svg"
+case "$(curl -s -b "$JAR" "$B/admin/media")" in *.svg*) FAIL=$((FAIL+1)); echo "FAIL: SVG acceptat la upload media (risc XSS stocat)";; *) PASS=$((PASS+1));; esac
+rm -f "$SVGF"
+# pregatire productie: resetul cere confirmarea exacta „STERGE" (altfel respins, fara stergere)
+t "POST /admin/reset confirmare gresita -> 302 (respins)" 302 "$(code -b "$JAR" -X POST "$B/admin/reset" -d "_csrf=$CSRF&confirm=nu")"
+tcontains "settings: card de pregatire productie (admin)" 'Pregătire pentru producție' "$(curl -s -b "$JAR" "$B/admin/settings")"
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
@@ -290,7 +304,11 @@ if [ -n "$SLOT" ]; then
   if [ -n "$ATOK" ]; then
     tcontains "GET /api/v1/appointments/{token}" '"status"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
     # lista programarilor (sincronizare integratori)
-    tcontains "GET /api/v1/appointments (lista)" '"appointments"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F)")"
+    TMW="$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F)"
+    tcontains "GET /api/v1/appointments (lista)" '"appointments"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$TMW")"
+    # filtrul service_id din query string e respectat (regresie: se citea body-ul, deci era ignorat)
+    tcontains "GET /api/v1/appointments?service_id corect -> include programarea" "$ATOK" "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$TMW&service_id=$SVC")"
+    case "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$TMW&service_id=999999")" in *"$ATOK"*) FAIL=$((FAIL+1)); echo "FAIL: filtru service_id ignorat (token aparut pe alt serviciu)";; *) PASS=$((PASS+1));; esac
     # „Adauga in calendar" — fisier iCalendar (public, fara servicii externe)
     tcontains "GET a/{token}/ics -> text/calendar" 'text/calendar' "$(curl -s -D - -o /dev/null "$B/a/$ATOK/ics" | grep -i 'content-type')"
     tcontains "ics contine VEVENT" 'BEGIN:VEVENT' "$(curl -s "$B/a/$ATOK/ics")"
@@ -313,6 +331,16 @@ if [ -n "$SLOT" ]; then
   fi
 else
   echo "WARN: niciun slot liber maine (skip booking via API)"
+fi
+
+# nume foarte lung NU trebuie sa scurga eroarea bruta de DB (se limiteaza la dimensiunea coloanei)
+DAT5="$(date -d '+5 day' +%F 2>/dev/null || date -v+5d +%F)"
+LSLOT="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$DAT5" | python3 -c "import sys,json;d=json.load(sys.stdin);s=[x['start'] for x in d.get('slots',[]) if not x['full'] and not x['past']];print(s[0] if s else '')" 2>/dev/null)"
+if [ -n "$LSLOT" ]; then
+  LONGNAME="$(printf 'X%.0s' $(seq 1 300))"
+  LRESP="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"slot_start\":\"$LSLOT\",\"name\":\"$LONGNAME\"}" "$B/api/v1/appointments")"
+  tcontains "API: nume lung -> rezervare reusita (limitat, nu eroare)" '"public_token"' "$LRESP"
+  case "$LRESP" in *SQLSTATE*|*"Data too long"*) FAIL=$((FAIL+1)); echo "FAIL: API scurge eroarea bruta de DB la nume lung";; *) PASS=$((PASS+1));; esac
 fi
 
 # --- consimtamant GDPR: rezervare prin formularul public CU acord -> dovada in export ---

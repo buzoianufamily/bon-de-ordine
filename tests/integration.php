@@ -201,6 +201,11 @@ $xl = build_stats_xlsx('CI','Toate','2026-01-01','2026-01-31',
     [['service_name'=>'Casierie','color'=>'#2563eb','n'=>4,'avg'=>4.5]],
     [['name'=>'Ana','n'=>3,'avg'=>4.7]]);
 chk(substr($xl->build(),0,2) === 'PK', 'xlsx: valid zip (cu sectiuni programari + CSAT serviciu/operator)');
+// Xlsx::x() elimina caracterele de control interzise in XML (altfel fisierul e corupt/neschisabil)
+chk(strpos(Xlsx::x("a\x01b\x1fc"), "\x01") === false && strpos(Xlsx::x("a\x01b\x1fc"), "\x1f") === false, 'xlsx: caracterele de control sunt eliminate');
+chk(Xlsx::x("normal & <ok>") === 'normal &amp; &lt;ok&gt;', 'xlsx: escaping XML pastrat pentru text normal');
+$xlCtrl = build_stats_xlsx("Brand\x01CI",'Toate','2026-01-01','2026-01-31',['total'=>1,'served'=>1,'no_show'=>0,'cancelled'=>0,'avg_wait'=>0,'avg_service'=>0],[],[],[],[],'#2563eb',[],['total'=>0,'booked'=>0,'checked_in'=>0,'no_show'=>0,'cancelled'=>0],[],[]);
+chk(substr($xlCtrl->build(),0,2) === 'PK', 'xlsx: raport valid chiar cu byte de control in brand (nu corupe fisierul)');
 
 /* ---- 13. API v1 + denylist ---- */
 chk(in_array('api_key', settings_export_denylist(), true) && in_array('cron_token', settings_export_denylist(), true), 'settings: denylist excludes secrets');
@@ -354,6 +359,20 @@ chk(csv_safe_cell('Casierie') === 'Casierie', 'csv inj: text normal neatins');
 chk(csv_safe_cell('2026-01-01 10:00') === '2026-01-01 10:00', 'csv inj: data neatinsa');
 chk(csv_safe_cell('5') === '5', 'csv inj: numar neatins');
 
+/* ---- 26d. CSV cu campuri intre ghilimele (virgula/ghilimele in valoare) — round-trip corect ---- */
+$qsvc = parse_services_csv("prefix,nume,culoare\nA,\"Acte, taxe si impozite\",#123456\n");
+chk(count($qsvc) === 1 && $qsvc[0]['name'] === 'Acte, taxe si impozite', 'csv ghilimele: virgula in nume pastrata (nu trunchiata)');
+$qbr = parse_branches_csv("nume,oras\n\"Filiala \"\"Centru\"\"\",Cluj\n");
+chk(count($qbr) === 1 && $qbr[0]['name'] === 'Filiala "Centru"', 'csv ghilimele: ghilimele escape-uite ("") decodate corect');
+$qbr2 = parse_branches_csv("nume,oras,adresa\n\"Filiala Nord\",Cluj,\"Str. A, nr. 1\"\n");
+chk(count($qbr2) === 1 && $qbr2[0]['address'] === 'Str. A, nr. 1', 'csv ghilimele: virgula in adresa pastrata');
+// round-trip real: ce scrie fputcsv_safe se citeste inapoi identic
+$tmpf = fopen('php://temp', 'r+'); fwrite($tmpf, "nume,oras,adresa\n");
+$rt = fopen('php://temp','r+'); fputcsv_safe($rt, ['Acte, taxe', 'Cluj', 'Bd. X, 2']);
+rewind($rt); $rtline = stream_get_contents($rt);
+$qrt = parse_branches_csv("nume,oras,adresa\n" . $rtline);
+chk(count($qrt) === 1 && $qrt[0]['name'] === 'Acte, taxe' && $qrt[0]['address'] === 'Bd. X, 2', 'csv round-trip: export fputcsv_safe -> import identic');
+
 /* ---- 27. Generator QR local (SVG, fara servicii externe) ---- */
 require __DIR__ . '/../app/core/qr.php';
 $qm = QR::matrix('otpauth://totp/Test:a@b.ro?secret=ABCDEF234567&issuer=Test');
@@ -447,11 +466,16 @@ set_setting('appt_noshow_min', '0'); set_setting('webhook_url', '');
 q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','x', NOW() - INTERVAL 5 MONTH)");
 q("INSERT INTO audit_log (action, entity, created_at) VALUES ('test','y', NOW())");
 q("INSERT INTO user_status_log (user_id, status, started_at) VALUES (?, 'available', NOW() - INTERVAL 5 MONTH)", [$sid]);
+// lista de asteptare veche (contine email/telefon) trebuie sa intre si ea in retentie
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_email) VALUES (?, NOW() - INTERVAL 5 MONTH, 'old-wl@ci.ro')", [$svc]);
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_email) VALUES (?, NOW() + INTERVAL 5 DAY, 'new-wl@ci.ro')", [$svc]);
 set_setting('retention_months', '3');
 run_cron_jobs();
 chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='x'") === 0, 'retentie: audit_log vechi sters');
 chk((int)val("SELECT COUNT(*) FROM audit_log WHERE entity='y'") === 1, 'retentie: audit_log recent pastrat');
 chk((int)val("SELECT COUNT(*) FROM user_status_log WHERE started_at < NOW() - INTERVAL 4 MONTH") === 0, 'retentie: user_status_log vechi sters');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='old-wl@ci.ro'") === 0, 'retentie: waitlist vechi sters (PII)');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='new-wl@ci.ro'") === 1, 'retentie: waitlist recent pastrat');
 set_setting('retention_months', '0');
 
 /* ---- 33. Plafon zilnic serviciu (service_cap_reached) ---- */
@@ -548,6 +572,14 @@ chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$gTkId]) === null, 'gd
 $f2 = gdpr_find($gEmail, $gPhone);
 chk(array_sum(array_map('count', $f2)) === 0, 'gdpr: dupa anonimizare nu mai exista date personale');
 chk(array_sum(gdpr_erase('', '')) === 0, 'gdpr: fara criterii -> nu se sterge nimic');
+// stergere DUPA EMAIL trebuie sa curete si biletul LEGAT de programare (tickets n-are coloana email)
+$lEmail = 'gdpr-linked@ci.ro';
+q("INSERT INTO tickets (branch_id,service_id,number,label,customer_phone,form_data,status) VALUES (?,?,?,?,?,?,'served')", [$br,$svc,9992,'GDPRL9992','0744999000','{\"cnp\":\"123\"}']);
+$lTk = (int) insert_id();
+q("INSERT INTO appointments (branch_id,service_id,customer_email,slot_start,status,ticket_id) VALUES (?,?,?, NOW()+INTERVAL 1 DAY, 'checked_in', ?)", [$br,$svc,$lEmail,$lTk]);
+$erL = gdpr_erase($lEmail, '');   // doar email, fara telefon
+chk($erL['tickets'] >= 1, 'gdpr: stergerea dupa email raporteaza biletul legat curatat');
+chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$lTk]) === null && val("SELECT form_data FROM tickets WHERE id=?", [$lTk]) === null, 'gdpr: biletul legat de programare e curatat la stergerea dupa email (nu mai ramane PII)');
 
 /* ---- 40. Backup baza de date (dump reutilizabil + retentie) ---- */
 foreach (glob(backup_dir().'/backup_*.sql') ?: [] as $f) @unlink($f);   // start curat
@@ -620,6 +652,14 @@ chk(landlord_next_invoice_number($ivs,'BDO',2026) === 3, 'factura: urmatorul num
 chk(landlord_next_invoice_number($ivs,'BDO',2027) === 1, 'factura: an nou -> numerotare de la 1');
 chk(landlord_next_invoice_number([],'BDO',2026) === 1, 'factura: prima factura -> numarul 1');
 chk(landlord_invoice_label(['proforma'=>true,'series'=>'BDO','number'=>7,'year'=>2026]) === 'PF BDO 00007 / 2026', 'factura: eticheta proforma');
+// proforma are pool separat de seria fiscala (seria fiscala ramane fara goluri)
+$ivmix = [['series'=>'BDO','year'=>2026,'number'=>1,'proforma'=>false],['series'=>'BDO','year'=>2026,'number'=>1,'proforma'=>true]];
+chk(landlord_next_invoice_number($ivmix,'BDO',2026,false) === 2, 'factura: numerotarea fiscala ignora proformele');
+chk(landlord_next_invoice_number($ivmix,'BDO',2026,true) === 2, 'factura: proforma are propriul pool');
+// high-water: dupa stergerea ultimei facturi, numarul NU se reutilizeaza
+chk(landlord_assign_number($ivs,[],'BDO',2026,false) === 3, 'factura: assign fara prag -> max(lista)+1');
+chk(landlord_assign_number([['series'=>'BDO','year'=>2026,'number'=>1,'proforma'=>false]], ['seq'=>['BDO|2026|F'=>2]], 'BDO',2026,false) === 3, 'factura: dupa stergerea #2, pragul previne reutilizarea (-> 3, nu 2)');
+chk(landlord_seq_key('BDO',2026,false) === 'BDO|2026|F' && landlord_seq_key('BDO',2026,true) === 'BDO|2026|P', 'factura: cheia high-water separa fiscal/proforma');
 $GLOBALS['__billing_file'] = sys_get_temp_dir() . '/ci_billing_' . getmypid() . '.json';
 $GLOBALS['__invoices_file'] = sys_get_temp_dir() . '/ci_invoices_' . getmypid() . '.json';
 @unlink($GLOBALS['__billing_file']); @unlink($GLOBALS['__invoices_file']);
@@ -639,6 +679,27 @@ $idleJs = idle_logout_script();
 chk(strpos($idleJs, '<script>') === 0 && strpos($idleJs, '900000') !== false, 'idle: 15 min -> script cu 900000 ms');
 chk(strpos($idleJs, 'logout') !== false && strpos($idleJs, 'mousemove') !== false, 'idle: redirect la logout pe activitate mouse/tastatura');
 set_setting('admin_idle_min', '0');
+
+/* ---- 45. Pregatire productie: reset_operational_data sterge datele de test, pastreaza configul ---- */
+$cfgBranches = (int) val("SELECT COUNT(*) FROM branches");
+$cfgServices = (int) val("SELECT COUNT(*) FROM services");
+$cfgUsers    = (int) val("SELECT COUNT(*) FROM users");
+$cfgCounters = (int) val("SELECT COUNT(*) FROM counters");
+q("INSERT INTO tickets (branch_id,service_id,number,label,status) VALUES (?,?,?,?,'waiting')", [$br,$svc,7777,'RST7777']);
+q("INSERT INTO feedback (rating, comment, branch_id) VALUES (3,'reset test',?)", [$br]);
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_email) VALUES (?, NOW()+INTERVAL 1 DAY, 'rst@ci.ro')", [$svc]);
+chk((int)val("SELECT COUNT(*) FROM tickets") > 0, 'reset: exista bilete inainte');
+$rn = reset_operational_data();
+chk((int)val("SELECT COUNT(*) FROM tickets") === 0, 'reset: biletele sterse');
+chk((int)val("SELECT COUNT(*) FROM appointments") === 0, 'reset: programarile sterse');
+chk((int)val("SELECT COUNT(*) FROM feedback") === 0, 'reset: feedback sters');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist") === 0, 'reset: waitlist stearsa');
+chk((int)val("SELECT COUNT(*) FROM branches") === $cfgBranches, 'reset: filialele (config) pastrate');
+chk((int)val("SELECT COUNT(*) FROM services") === $cfgServices, 'reset: serviciile (config) pastrate');
+chk((int)val("SELECT COUNT(*) FROM users") === $cfgUsers, 'reset: utilizatorii (config) pastrati');
+chk((int)val("SELECT COUNT(*) FROM counters") === $cfgCounters, 'reset: ghiseele (config) pastrate');
+chk(($rn['tickets'] ?? 0) >= 1, 'reset: raporteaza numarul de bilete sterse');
+chk((int)val("SELECT COUNT(*) FROM users WHERE work_status<>'offline'") === 0, 'reset: operatorii trecuti pe offline');
 
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }

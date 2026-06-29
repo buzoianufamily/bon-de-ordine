@@ -2,7 +2,9 @@
 /config/tenants.json
 /config/billing.json
 /config/invoices.json
+/config/*.lock
 /assets/uploads/*
 !/assets/uploads/.gitkeep
+!/assets/uploads/.htaccess
 # Backup-uri ale bazei de date (contin datele clientilor) — niciodata in git
 /backups/
