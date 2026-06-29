@@ -680,6 +680,27 @@ chk(strpos($idleJs, '<script>') === 0 && strpos($idleJs, '900000') !== false, 'i
 chk(strpos($idleJs, 'logout') !== false && strpos($idleJs, 'mousemove') !== false, 'idle: redirect la logout pe activitate mouse/tastatura');
 set_setting('admin_idle_min', '0');
 
+/* ---- 45. Pregatire productie: reset_operational_data sterge datele de test, pastreaza configul ---- */
+$cfgBranches = (int) val("SELECT COUNT(*) FROM branches");
+$cfgServices = (int) val("SELECT COUNT(*) FROM services");
+$cfgUsers    = (int) val("SELECT COUNT(*) FROM users");
+$cfgCounters = (int) val("SELECT COUNT(*) FROM counters");
+q("INSERT INTO tickets (branch_id,service_id,number,label,status) VALUES (?,?,?,?,'waiting')", [$br,$svc,7777,'RST7777']);
+q("INSERT INTO feedback (rating, comment, branch_id) VALUES (3,'reset test',?)", [$br]);
+q("INSERT INTO appointment_waitlist (service_id, slot_start, customer_email) VALUES (?, NOW()+INTERVAL 1 DAY, 'rst@ci.ro')", [$svc]);
+chk((int)val("SELECT COUNT(*) FROM tickets") > 0, 'reset: exista bilete inainte');
+$rn = reset_operational_data();
+chk((int)val("SELECT COUNT(*) FROM tickets") === 0, 'reset: biletele sterse');
+chk((int)val("SELECT COUNT(*) FROM appointments") === 0, 'reset: programarile sterse');
+chk((int)val("SELECT COUNT(*) FROM feedback") === 0, 'reset: feedback sters');
+chk((int)val("SELECT COUNT(*) FROM appointment_waitlist") === 0, 'reset: waitlist stearsa');
+chk((int)val("SELECT COUNT(*) FROM branches") === $cfgBranches, 'reset: filialele (config) pastrate');
+chk((int)val("SELECT COUNT(*) FROM services") === $cfgServices, 'reset: serviciile (config) pastrate');
+chk((int)val("SELECT COUNT(*) FROM users") === $cfgUsers, 'reset: utilizatorii (config) pastrati');
+chk((int)val("SELECT COUNT(*) FROM counters") === $cfgCounters, 'reset: ghiseele (config) pastrate');
+chk(($rn['tickets'] ?? 0) >= 1, 'reset: raporteaza numarul de bilete sterse');
+chk((int)val("SELECT COUNT(*) FROM users WHERE work_status<>'offline'") === 0, 'reset: operatorii trecuti pe offline');
+
 echo "INTEGRATION: PASS=$ok FAIL=$fail\n";
 if ($F) { echo "FAILURES:\n - " . implode("\n - ", $F) . "\n"; exit(1); }
 echo "ALL GREEN\n";

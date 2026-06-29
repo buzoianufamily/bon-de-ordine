@@ -161,6 +161,9 @@ SVGF="$(mktemp)"; printf '%s' '<?xml version="1.0"?><svg xmlns="http://www.w3.or
 curl -s -o /dev/null -b "$JAR" -X POST "$B/admin/media" -F "_csrf=$CSRF" -F "file[]=@$SVGF;type=image/svg+xml;filename=evil.svg"
 case "$(curl -s -b "$JAR" "$B/admin/media")" in *.svg*) FAIL=$((FAIL+1)); echo "FAIL: SVG acceptat la upload media (risc XSS stocat)";; *) PASS=$((PASS+1));; esac
 rm -f "$SVGF"
+# pregatire productie: resetul cere confirmarea exacta „STERGE" (altfel respins, fara stergere)
+t "POST /admin/reset confirmare gresita -> 302 (respins)" 302 "$(code -b "$JAR" -X POST "$B/admin/reset" -d "_csrf=$CSRF&confirm=nu")"
+tcontains "settings: card de pregatire productie (admin)" 'Pregătire pentru producție' "$(curl -s -b "$JAR" "$B/admin/settings")"
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"

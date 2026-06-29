@@ -182,6 +182,11 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
 
+        case 'reset':
+            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
+            if ($method === 'POST') { admin_reset_data(); return; }
+            redirect('admin/settings');
+
         case 'gdpr':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             if ($method === 'POST' && $a === 'export') { admin_gdpr_export(); return; }
@@ -1126,6 +1131,40 @@ function admin_backup_delete(): void {
         if (is_file($path) && @unlink($path)) { audit('delete', 'backup', null, $name); flash('Backup șters.'); }
         else flash('Nu am putut șterge fișierul.', 'error');
     }
+    redirect('admin/settings');
+}
+
+/* ----------------------- PREGATIRE PRODUCTIE: stergerea datelor de test ----------------------- */
+/**
+ * Sterge datele OPERATIONALE (de test) la trecerea in productie, pastrand TOATA configuratia
+ * (filiale, servicii, ghisee, utilizatori, dispozitive, setari, formulare, zile inchise, media).
+ * Returneaza numarul de randuri sterse pe tabel. Tabelele sunt o lista alba (fara interpolare nesigura).
+ */
+function reset_operational_data(): array {
+    $pdo = db();
+    $tables = ['tickets','ticket_sequences','appointments','appointment_waitlist',
+               'feedback','counter_sessions','user_status_log','webhook_log'];   // audit_log se pastreaza (jurnal de securitate)
+    $n = [];
+    try { $pdo->exec('SET FOREIGN_KEY_CHECKS=0'); } catch (Throwable $e) {}
+    foreach ($tables as $t) { try { $n[$t] = (int) $pdo->exec("DELETE FROM `$t`"); } catch (Throwable $e) { $n[$t] = 0; } }
+    try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (Throwable $e) {}
+    // toti operatorii devin offline (sesiunile/biletele au disparut)
+    try { $pdo->exec("UPDATE users SET work_status='offline', last_seen=NULL"); } catch (Throwable $e) {}
+    return $n;
+}
+function admin_reset_data(): void {
+    csrf_check();
+    if (mb_strtoupper(trim((string)($_POST['confirm'] ?? ''))) !== 'STERGE') {
+        flash('Confirmare incorecta. Scrie STERGE (cu majuscule) pentru a continua.', 'error'); redirect('admin/settings');
+    }
+    $bk = '';
+    try { $bk = backup_to_file(); backup_prune((int) setting('backup_keep', '14')); } catch (Throwable $e) {}
+    $n = reset_operational_data();
+    $total = array_sum($n);
+    audit('reset', 'operational_data', null, ($bk !== '' ? "backup=$bk; " : 'fara backup; ') . json_encode($n));
+    flash("Date de test sterse: $total inregistrari (bilete, programari, feedback, sesiuni)."
+        . ($bk !== '' ? " Backup de siguranta creat: $bk." : ' ATENTIE: nu am putut crea backup automat — verifica permisiunile folderului backups/.'),
+        $bk !== '' ? 'info' : 'error');
     redirect('admin/settings');
 }
 
