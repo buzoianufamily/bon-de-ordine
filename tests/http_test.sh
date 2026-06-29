@@ -296,7 +296,11 @@ if [ -n "$SLOT" ]; then
   if [ -n "$ATOK" ]; then
     tcontains "GET /api/v1/appointments/{token}" '"status"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments/$ATOK")"
     # lista programarilor (sincronizare integratori)
-    tcontains "GET /api/v1/appointments (lista)" '"appointments"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F)")"
+    TMW="$(date -d tomorrow +%F 2>/dev/null || date -v+1d +%F)"
+    tcontains "GET /api/v1/appointments (lista)" '"appointments"' "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$TMW")"
+    # filtrul service_id din query string e respectat (regresie: se citea body-ul, deci era ignorat)
+    tcontains "GET /api/v1/appointments?service_id corect -> include programarea" "$ATOK" "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$TMW&service_id=$SVC")"
+    case "$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/appointments?date=$TMW&service_id=999999")" in *"$ATOK"*) FAIL=$((FAIL+1)); echo "FAIL: filtru service_id ignorat (token aparut pe alt serviciu)";; *) PASS=$((PASS+1));; esac
     # „Adauga in calendar" — fisier iCalendar (public, fara servicii externe)
     tcontains "GET a/{token}/ics -> text/calendar" 'text/calendar' "$(curl -s -D - -o /dev/null "$B/a/$ATOK/ics" | grep -i 'content-type')"
     tcontains "ics contine VEVENT" 'BEGIN:VEVENT' "$(curl -s "$B/a/$ATOK/ics")"
@@ -319,6 +323,16 @@ if [ -n "$SLOT" ]; then
   fi
 else
   echo "WARN: niciun slot liber maine (skip booking via API)"
+fi
+
+# nume foarte lung NU trebuie sa scurga eroarea bruta de DB (se limiteaza la dimensiunea coloanei)
+DAT5="$(date -d '+5 day' +%F 2>/dev/null || date -v+5d +%F)"
+LSLOT="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$DAT5" | python3 -c "import sys,json;d=json.load(sys.stdin);s=[x['start'] for x in d.get('slots',[]) if not x['full'] and not x['past']];print(s[0] if s else '')" 2>/dev/null)"
+if [ -n "$LSLOT" ]; then
+  LONGNAME="$(printf 'X%.0s' $(seq 1 300))"
+  LRESP="$(curl -s -X POST -H "X-Api-Key: $AKEY" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"slot_start\":\"$LSLOT\",\"name\":\"$LONGNAME\"}" "$B/api/v1/appointments")"
+  tcontains "API: nume lung -> rezervare reusita (limitat, nu eroare)" '"public_token"' "$LRESP"
+  case "$LRESP" in *SQLSTATE*|*"Data too long"*) FAIL=$((FAIL+1)); echo "FAIL: API scurge eroarea bruta de DB la nume lung";; *) PASS=$((PASS+1));; esac
 fi
 
 # --- consimtamant GDPR: rezervare prin formularul public CU acord -> dovada in export ---

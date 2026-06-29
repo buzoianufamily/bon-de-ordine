@@ -134,7 +134,8 @@ function api_v1(array $seg, string $method): void {
             $a = appt_book((int) input('service_id', 0), (string) input('slot_start', ''),
                 (trim((string) input('name', '')) ?: null), (trim((string) input('phone', '')) ?: null),
                 (trim((string) input('email', '')) ?: null));
-        } catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+        } catch (PDOException $ex) { @error_log('[bon-de-ordine] api_v1 appointments: ' . $ex->getMessage()); json_out(['ok' => false, 'error' => 'Cerere invalida'], 422); }
+        catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
         json_out(['ok' => true, 'appointment' => [
             'id' => (int)$a['id'], 'public_token' => $a['public_token'], 'slot_start' => $a['slot_start'],
             'status' => $a['status'], 'follow_url' => url('a/' . $a['public_token']),
@@ -144,11 +145,12 @@ function api_v1(array $seg, string $method): void {
     // GET /api/v1/appointments?date=&service_id=&branch= — lista programari (pt sincronizare)
     if ($res === 'appointments' && $arg === null && $method === 'GET') {
         if (!$apptOn) json_out(['ok' => false, 'error' => 'Programarile sunt dezactivate'], 404);
-        $date = (string) input('date', date('Y-m-d'));
+        // GET: filtrele vin din query string (input() citeste doar body POST/JSON)
+        $date = (string) ($_GET['date'] ?? date('Y-m-d'));
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) $date = date('Y-m-d');
         $w = 'DATE(a.slot_start) = ?'; $args = [$date];
-        $sid = (int) input('service_id', 0); if ($sid) { $w .= ' AND a.service_id = ?'; $args[] = $sid; }
-        $bid = (int) input('branch', 0);     if ($bid) { $w .= ' AND a.branch_id = ?';  $args[] = $bid; }
+        $sid = (int) ($_GET['service_id'] ?? 0); if ($sid) { $w .= ' AND a.service_id = ?'; $args[] = $sid; }
+        $bid = (int) ($_GET['branch'] ?? 0);     if ($bid) { $w .= ' AND a.branch_id = ?';  $args[] = $bid; }
         $rows = all("SELECT a.public_token, a.status, a.slot_start, a.slot_end, a.service_id, a.branch_id,
                      a.customer_name, a.customer_phone, a.customer_email, s.name service_name
                      FROM appointments a JOIN services s ON s.id = a.service_id
@@ -167,6 +169,7 @@ function api_v1(array $seg, string $method): void {
         $a = one('SELECT * FROM appointments WHERE public_token = ?', [$arg]);
         if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
         try { $t = appt_checkin($a); }
+        catch (PDOException $ex) { @error_log('[bon-de-ordine] api_v1 checkin: ' . $ex->getMessage()); json_out(['ok' => false, 'error' => 'Cerere invalida'], 422); }
         catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
         json_out(['ok' => true, 'ticket' => [
             'label' => $t['label'], 'public_token' => $t['public_token'],
@@ -180,6 +183,7 @@ function api_v1(array $seg, string $method): void {
         $a = one('SELECT id FROM appointments WHERE public_token = ?', [$arg]);
         if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
         try { $na = appt_reschedule((int)$a['id'], (string) input('slot_start', '')); }
+        catch (PDOException $ex) { @error_log('[bon-de-ordine] api_v1 reschedule: ' . $ex->getMessage()); json_out(['ok' => false, 'error' => 'Cerere invalida'], 422); }
         catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
         if (!$na) json_out(['ok' => false, 'error' => 'Programarea nu mai poate fi reprogramata'], 409);
         json_out(['ok' => true, 'appointment' => [

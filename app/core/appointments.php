@@ -80,6 +80,11 @@ function appt_book(int $service_id, string $slot_start, ?string $name, ?string $
     $cap = max(1, (int)$svc['appt_capacity']);
     $len = max(5, (int)$svc['appt_slot_min']);
     $token = gen_token(16);
+    // limiteaza la dimensiunile coloanelor (altfel MySQL strict arunca PDOException pe input lung)
+    $name  = $name  !== null ? mb_substr($name, 0, 120) : null;
+    $phone = $phone !== null ? mb_substr($phone, 0, 32) : null;
+    $email = $email !== null ? mb_substr($email, 0, 160) : null;
+    $note  = $note  !== null ? mb_substr($note, 0, 255) : null;
     // verificare capacitate + inserare ATOMICA (tranzactie + lock pe slot via idx_appt_slot)
     // — fara asta, doua rezervari simultane pot trece amandoua de verificare si suprarezerva slotul
     $pdo = db();
