@@ -359,6 +359,20 @@ chk(csv_safe_cell('Casierie') === 'Casierie', 'csv inj: text normal neatins');
 chk(csv_safe_cell('2026-01-01 10:00') === '2026-01-01 10:00', 'csv inj: data neatinsa');
 chk(csv_safe_cell('5') === '5', 'csv inj: numar neatins');
 
+/* ---- 26d. CSV cu campuri intre ghilimele (virgula/ghilimele in valoare) — round-trip corect ---- */
+$qsvc = parse_services_csv("prefix,nume,culoare\nA,\"Acte, taxe si impozite\",#123456\n");
+chk(count($qsvc) === 1 && $qsvc[0]['name'] === 'Acte, taxe si impozite', 'csv ghilimele: virgula in nume pastrata (nu trunchiata)');
+$qbr = parse_branches_csv("nume,oras\n\"Filiala \"\"Centru\"\"\",Cluj\n");
+chk(count($qbr) === 1 && $qbr[0]['name'] === 'Filiala "Centru"', 'csv ghilimele: ghilimele escape-uite ("") decodate corect');
+$qbr2 = parse_branches_csv("nume,oras,adresa\n\"Filiala Nord\",Cluj,\"Str. A, nr. 1\"\n");
+chk(count($qbr2) === 1 && $qbr2[0]['address'] === 'Str. A, nr. 1', 'csv ghilimele: virgula in adresa pastrata');
+// round-trip real: ce scrie fputcsv_safe se citeste inapoi identic
+$tmpf = fopen('php://temp', 'r+'); fwrite($tmpf, "nume,oras,adresa\n");
+$rt = fopen('php://temp','r+'); fputcsv_safe($rt, ['Acte, taxe', 'Cluj', 'Bd. X, 2']);
+rewind($rt); $rtline = stream_get_contents($rt);
+$qrt = parse_branches_csv("nume,oras,adresa\n" . $rtline);
+chk(count($qrt) === 1 && $qrt[0]['name'] === 'Acte, taxe' && $qrt[0]['address'] === 'Bd. X, 2', 'csv round-trip: export fputcsv_safe -> import identic');
+
 /* ---- 27. Generator QR local (SVG, fara servicii externe) ---- */
 require __DIR__ . '/../app/core/qr.php';
 $qm = QR::matrix('otpauth://totp/Test:a@b.ro?secret=ABCDEF234567&issuer=Test');

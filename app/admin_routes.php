@@ -962,10 +962,13 @@ function admin_security_save(): void {
     $act = $_POST['act'] ?? '';
     if ($act === 'enable') {
         $secret = (string)($_SESSION['2fa_setup_secret'] ?? '');
-        if ($secret !== '' && totp_verify($secret, (string)($_POST['code'] ?? ''))) {
+        // foloseste totp_match_slice (nu doar verify) ca sa CONSUMAM slotul codului de setup:
+        // altfel acelasi cod ar fi acceptat inca o data la prima logare (anti-replay).
+        $slice = $secret !== '' ? totp_match_slice($secret, (string)($_POST['code'] ?? '')) : null;
+        if ($slice !== null) {
             [$plain, $hashes] = totp_backup_generate();
-            q('UPDATE users SET totp_secret=?, totp_enabled=1, totp_backup=? WHERE id=?',
-              [$secret, json_encode($hashes), $u['id']]);
+            q('UPDATE users SET totp_secret=?, totp_enabled=1, totp_backup=?, totp_last_slice=? WHERE id=?',
+              [$secret, json_encode($hashes), $slice, $u['id']]);
             unset($_SESSION['2fa_setup_secret']);
             $_SESSION['2fa_new_codes'] = $plain;
             audit('2fa_enabled', 'user', $u['id']);
