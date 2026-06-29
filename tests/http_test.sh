@@ -92,6 +92,8 @@ if grep -rq 'fonts.googleapis.com' app/views/; then FAIL=$((FAIL+1)); echo "FAIL
 # cod QR local (SVG) — inlocuieste serviciul extern qrserver
 tcontains "GET /qr -> image/svg+xml" 'image/svg+xml' "$(curl -s -D - -o /dev/null "$B/qr?data=hello&size=120" | grep -i content-type)"
 tcontains "GET /qr body contine <svg" '<svg' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc")"
+# QR-ul TREBUIE sa contina module reale (regresie: /qr citea body in loc de query => cod gol)
+tcontains "GET /qr genereaza module (nu SVG gol)" '<rect' "$(curl -s "$B/qr?data=https://exemplu.ro/t/abc123&size=160")"
 
 # --- emitere bon prin API public (dispenser) ---
 ISS="$(curl -s -X POST $B/api/ticket -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"service_id\":$SVC,\"channel\":\"paper\"}")"

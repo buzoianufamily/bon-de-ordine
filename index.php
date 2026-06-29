@@ -87,8 +87,9 @@ try {
     // ===================== Cod QR local (SVG) — fara servicii externe =====================
     if ($seg[0] === 'qr') {
         require_once APP_ROOT . '/app/core/qr.php';
-        $data = (string) input('data', '');
-        $size = max(80, min(600, (int) input('size', 200)));
+        // cerut prin <img src="/qr?data=...&size=..."> (GET) — input() citeste doar body, deci folosim $_GET
+        $data = (string) ($_GET['data'] ?? input('data', ''));
+        $size = max(80, min(600, (int) ($_GET['size'] ?? input('size', 200))));
         header('Content-Type: image/svg+xml; charset=utf-8');
         header('Cache-Control: public, max-age=86400');
         $svg = $data !== '' ? QR::svg($data, $size) : '';
