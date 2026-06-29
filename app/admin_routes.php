@@ -1562,7 +1562,8 @@ function admin_media_list(): void {
 function admin_media_upload(): void {
     csrf_check();
     if (empty($_FILES['file']) || !is_array($_FILES['file']['name'])) { flash('Niciun fisier selectat.', 'error'); redirect('admin/media'); }
-    $allowed = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp','image/svg+xml'=>'svg',
+    // SVG exclus intentionat: poate contine <script> si, servit same-origin, ar permite XSS stocat
+    $allowed = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp',
                 'video/mp4'=>'mp4','video/webm'=>'webm'];
     $dir = APP_ROOT . '/assets/uploads';
     if (!is_dir($dir)) @mkdir($dir, 0755, true);
@@ -1571,8 +1572,8 @@ function admin_media_upload(): void {
         if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
         $tmp = $files['tmp_name'][$i];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->file($tmp) ?: ($files['type'][$i] ?? '');
-        if (!isset($allowed[$mime])) { flash('Tip de fisier neacceptat: '.e($mime), 'error'); continue; }
+        $mime = (string) $finfo->file($tmp);   // tipul real (NU ne increddem in $_FILES['type'] de la client)
+        if (!isset($allowed[$mime])) { flash('Tip de fisier neacceptat: '.e($mime ?: 'necunoscut'), 'error'); continue; }
         if ($files['size'][$i] > 25 * 1024 * 1024) { flash('Fisier prea mare (max 25MB).', 'error'); continue; }
         $ext = $allowed[$mime];
         $base = preg_replace('/[^a-zA-Z0-9_-]+/', '_', pathinfo($files['name'][$i], PATHINFO_FILENAME));

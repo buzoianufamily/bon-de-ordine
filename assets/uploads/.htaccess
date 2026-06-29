@@ -1,0 +1,21 @@
+# Continut incarcat de utilizatori — niciodata executabil, fara script in SVG/HTML.
+# Aparare in adancime (upload-ul respinge deja SVG/HTML).
+
+# Nu interpreta nimic ca script pe server
+php_flag engine off
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps .pl .py .cgi .asp .aspx .sh
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .phps
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  # blocheaza executia de script la deschiderea directa a fisierelor incarcate
+  Header set Content-Security-Policy "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox"
+</IfModule>
+
+# Forteaza descarcarea (nu randarea) pentru tipuri ce pot contine script activ
+<FilesMatch "(?i)\.(svg|svgz|html?|xhtml|xml|js|mjs|php.*|phtml|pht|htm)$">
+  <IfModule mod_headers.c>
+    Header set Content-Disposition "attachment"
+    Header set Content-Type "text/plain; charset=utf-8"
+  </IfModule>
+</FilesMatch>
