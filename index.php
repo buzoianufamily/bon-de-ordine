@@ -578,6 +578,9 @@ SWJS;
         if (setting('mod_booking', '1') !== '1') { fail_page(404, 'Indisponibil', 'Modulul de programari este dezactivat.'); }
         $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        // lista de servicii (panoul din stanga, mereu prezent — layout master-detail)
+        $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
+                         WHERE s.status="active" AND s.appt_enabled=1 ORDER BY b.name, s.sort_order');
         if (!empty($seg[1]) && ctype_digit($seg[1])) {
             $svc = one('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                         WHERE s.id=? AND s.status="active" AND s.appt_enabled=1', [(int)$seg[1]]);
@@ -616,12 +619,10 @@ SWJS;
             $wlOn = function_exists('mail_enabled') && mail_enabled();  // lista de asteptare necesita email
             $hasFree = false; foreach ($slots as $sl) { if (empty($sl['past']) && empty($sl['full'])) { $hasFree = true; break; } }
             $nextDay = $hasFree ? null : appt_next_open_day($svc, $date);  // sugereaza prima zi libera
-            view('public/book_slots', compact('svc','date','slots','closed','lang','wlOn','nextDay'));
+            view('public/book', compact('services','svc','date','slots','closed','lang','wlOn','nextDay'));
             return;
         }
-        $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
-                         WHERE s.status="active" AND s.appt_enabled=1 ORDER BY b.name, s.sort_order');
-        view('public/book_services', ['services' => $services, 'lang' => $lang]);
+        view('public/book', ['services' => $services, 'svc' => null, 'lang' => $lang]);
         return;
     }
 

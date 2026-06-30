@@ -69,6 +69,11 @@ tcontains "feedback a11y: stelele sunt butoane (operabile cu tastatura)" '<butto
 # programare publica multilingva
 tcontains "book RO implicit" 'Programare online' "$(curl -s "$B/book")"
 tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
+# layout master-detail (lista servicii in stanga, mereu prezenta + cautare)
+BOOK_HOME="$(curl -s "$B/book")"
+tcontains "book: layout master-detail (lista servicii)" 'class="booklist"' "$BOOK_HOME"
+tcontains "book: cautare serviciu in panoul stang"      'id="svcSearch"'   "$BOOK_HOME"
+tcontains "book/{id}: lista servicii ramane (master-detail)" 'class="booklist"' "$(curl -s "$B/book/$SVC")"
 t "POST /book/{id}/waitlist -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC/waitlist --data-urlencode 'slot_start=2030-01-01 10:00:00' --data-urlencode 'email=wl@ci.ro')"
 # rezervarea publica (slot in trecut -> respinsa cu redirect, dar calea cu rate-limit nu da 500)
 t "POST /book/{id} (slot trecut) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode 'slot_start=2000-01-01 10:00:00' --data-urlencode 'name=CI')"
