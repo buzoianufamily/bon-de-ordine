@@ -6,7 +6,7 @@
   let lastState = {called:[],waiting:[],counters:[],last:null};
   let lastCalledSig = null, curScreen = 0, rotTimer = null;
   // widget-uri ce depind de starea cozii (se redeseneaza la fiecare update); restul o singura data
-  const LIVE = {now_serving:1, last_called:1, called_list:1, waiting_list:1, tickets_grid:1};
+  const LIVE = {now_serving:1, last_called:1, called_list:1, waiting_list:1, tickets_grid:1, people_counting:1};
   let wTimers = []; // timere per-ecran (playlist/vreme), curatate la schimbarea ecranului
 
   /* ---------- voce / sunet ---------- */
@@ -47,7 +47,10 @@
   /* ======================= MOD LAYOUT ======================= */
   function buildScreen(i){
     wTimers.forEach(t=>clearInterval(t)); wTimers=[]; // opreste timerele ecranului precedent
-    curScreen=i; const s=cfg.layout.screens[i]; stage.style.background=s.bg||'#0b0d12'; stage.innerHTML='';
+    curScreen=i; const s=cfg.layout.screens[i]; stage.style.background=s.bg||'#0b0d12';
+    if(s.bg_image && safeUrl(s.bg_image)){ stage.style.backgroundImage=`url("${safeUrl(s.bg_image)}")`; stage.style.backgroundSize=(s.bg_fit==='contain'?'contain':'cover'); stage.style.backgroundPosition='center'; stage.style.backgroundRepeat='no-repeat'; }
+    else stage.style.backgroundImage='';
+    stage.innerHTML='';
     (s.widgets||[]).forEach(w=>{ const el=document.createElement('div');
       el.className='lw lw-'+w.type;
       el.style.cssText=`position:absolute;left:${w.x}%;top:${w.y}%;width:${w.w}%;height:${w.h}%;overflow:hidden;color:#fff;border-radius:14px`;
@@ -139,8 +142,10 @@
         let bg=p.bg||'#11141b';
         if(p.crowd_light) bg = ratio>=(+p.cl_red||90)?'#7f1d1d' : ratio>=(+p.cl_yellow||50)?'#854d0e' : '#14532d';
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=bg;
+        const pcLast=state.last;
         el.innerHTML=`<div style="opacity:.85;text-transform:uppercase;letter-spacing:.05em;font-size:${Math.max(11,H*.1)}px">${esc(pickML(p.label||'Persoane inauntru'))}</div>
-          <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.4}px;line-height:1.05">${inside} <span style="opacity:.55">/ ${cap}</span></div>`;
+          <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.4}px;line-height:1.05">${inside} <span style="opacity:.55">/ ${cap}</span></div>`
+          + (p.show_enter ? `<div style="margin-top:${Math.max(3,H*.03)}px;font-weight:800;font-size:${Math.max(12,H*.13)}px;color:${accent}">↑ Enter <b>${pcLast?esc(pcLast.label):'—'}</b></div>` : '');
         break; }
       case 'qr_code': {
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.background=p.bg||'#ffffff';el.style.padding='8px';
