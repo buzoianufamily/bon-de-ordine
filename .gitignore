@@ -1,4 +1,5 @@
 # Date specifice instantei — NU se urca in git (contin secrete / fisiere incarcate)
+/config/config.php
 /config/tenants.json
 /config/billing.json
 /config/invoices.json
