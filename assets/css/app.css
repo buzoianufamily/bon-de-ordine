@@ -332,6 +332,19 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .dvtoggle button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
 .dv-hidden{display:none!important}
 .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:1rem}
+/* lansator de aplicatii (pagina „Aplicatii", in stil Moviik) */
+.appgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1rem}
+.apptile{display:flex;gap:1rem;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.15rem 1.2rem;transition:.12s}
+.apptile:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));transform:translateY(-1px)}
+.apptile .ico{width:60px;height:60px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.9rem;background:color-mix(in srgb,var(--accent) 14%,transparent);flex:0 0 auto;line-height:1}
+.apptile.off{opacity:.82}
+.apptile.off .ico{background:color-mix(in srgb,var(--ink) 7%,transparent);filter:grayscale(1)}
+.apptile .nm{font-weight:800;font-size:1.05rem;line-height:1.25}
+.apptile .apsub{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:.15rem}
+.apptile .ds{color:var(--muted);font-size:.85rem;margin:.45rem 0 .85rem;line-height:1.4}
+.apptile .acts{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.apptile .apt-off{font-size:.82rem;font-weight:700;color:var(--muted)}
+.btn-sm{padding:.4rem .8rem;font-size:.85rem}
 .cardgrid.wide{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 .cardgrid.aslist{grid-template-columns:1fr}
 .mcard .card-foot .acts{display:inline-flex;align-items:center;gap:.7rem;white-space:nowrap;font-size:.82rem}

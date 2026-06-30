@@ -7,7 +7,7 @@ $brandLogo = setting('brand_logo', '');
 
 /* grupuri de navigare cu iconite simple (emoji) langa nume — ca la inceput */
 $navGroups = [
-  ''           => [ ['', 'Dashboard', '◧'], ['statistics','Statistici','📊'], ['tickets','Bilete','🎫'], ['branches','Filiale','🏢'], ['appointments','Programari','📅'], ['feedback','Feedback','⭐'] ],
+  ''           => [ ['', 'Dashboard', '◧'], ['statistics','Statistici','📊'], ['apps','Aplicatii','🧩'], ['tickets','Bilete','🎫'], ['branches','Filiale','🏢'], ['appointments','Programari','📅'], ['feedback','Feedback','⭐'] ],
   'Continut'   => [ ['users','Utilizatori','◉'], ['services','Servicii','◆'], ['groups','Grupuri','🗂'], ['media','Multimedia','▦'], ['forms','Formulare','🗒'] ],
   'Configurare'=> [ ['counters','Ghisee','▤'], ['devices','Dispozitive','▭'] ],
 ];

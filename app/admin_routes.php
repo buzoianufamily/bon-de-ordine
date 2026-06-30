@@ -199,8 +199,31 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'help':
             view('admin/help', []); return;
+
+        case 'apps':
+            admin_apps(); return;
     }
     http_response_code(404); echo 'Sectiune inexistenta.';
+}
+
+/* ----------------------- APLICATII (lansator) -----------------------
+ * Pagina-hub in stil Moviik: carduri pentru fiecare aplicatie (terminal operator,
+ * concierge, programari, dozator, afisaj TV, bilet digital, coada publica) cu
+ * actiuni „Deschide" + „Configureaza". E doar un lansator catre rutele/builderele
+ * existente — NU dubleaza functionalitate. */
+function admin_apps(): void {
+    $apps = [
+        'dispenser'      => one("SELECT id, connection_key, name FROM devices WHERE type='dispenser' ORDER BY id LIMIT 1"),
+        'player'         => one("SELECT id, connection_key, name FROM devices WHERE type IN ('player','widget_player') ORDER BY id LIMIT 1"),
+        'digital_ticket' => one("SELECT id, connection_key, name FROM devices WHERE type='digital_ticket' ORDER BY id LIMIT 1"),
+    ];
+    $counts = [
+        'counters' => (int) val('SELECT COUNT(*) FROM counters'),
+        'services' => (int) val('SELECT COUNT(*) FROM services'),
+        'appt'     => (int) val("SELECT COUNT(*) FROM services WHERE appt_enabled=1"),
+        'devices'  => (int) val('SELECT COUNT(*) FROM devices'),
+    ];
+    view('admin/apps', compact('apps', 'counts'));
 }
 
 /* ----------------------- VERIFICARE PRODUCTIE (readiness) ----------------------- */
