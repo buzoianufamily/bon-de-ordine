@@ -167,12 +167,16 @@ function issue_ticket(int $service_id, bool $priority = false, string $channel =
 
 /** ID-urile serviciilor pe care le deserveste un ghiseu. */
 function counter_service_ids(array $counter): array {
-    if ((int)$counter['all_services'] === 1) {
-        return array_map('intval', array_column(
-            all('SELECT id FROM services WHERE branch_id = ? AND status = "active"', [$counter['branch_id']]), 'id'));
-    }
-    return array_map('intval', array_column(
+    $allBranch = fn() => array_map('intval', array_column(
+        all('SELECT id FROM services WHERE branch_id = ? AND status = "active"', [$counter['branch_id']]), 'id'));
+    if ((int)$counter['all_services'] === 1) return $allBranch();
+    $ids = array_map('intval', array_column(
         all('SELECT service_id AS id FROM counter_services WHERE counter_id = ?', [$counter['id']]), 'id'));
+    // Plasa de siguranta: un ghiseu cu all_services=0 dar FARA niciun serviciu asignat ar
+    // afisa coada goala (bonurile nu apar ca sa fie chemate). Un ghiseu care nu deserveste
+    // niciun serviciu nu e niciodata intentionat -> tratam „neconfigurat" ca „toate serviciile".
+    if (!$ids) return $allBranch();
+    return $ids;
 }
 
 /** Pozitia in coada + cati sunt inainte (pt bilet digital). */
@@ -421,6 +425,7 @@ function queue_state(int $branch_id, bool $withEstimates = false): array {
     // ultimele bilete chemate (pt lista pe TV)
     $called = all(
         "SELECT t.id, t.label, t.status, t.priority, t.called_at, t.recall_count,
+                t.service_id, t.counter_id,
                 s.name AS service_name, s.prefix, s.color,
                 c.code AS counter_code, c.name AS counter_name
          FROM tickets t

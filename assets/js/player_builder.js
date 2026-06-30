@@ -24,16 +24,21 @@
     image: { label:'Imagine / logo', icon:'🖼️', w:30,h:20, props:{url:'',fit:'cover'},
       fields:[['url','URL imagine','text'],['fit','Incadrare',['cover','contain']]],
       preview:p=>`<div class="wv wv-img">${p.url?`<img style="object-fit:${p.fit||'cover'}" src="${esc(p.url)}">`:'<div class="wv-text" style="color:#5b6270">Imagine</div>'}</div>` },
-    tickets_grid: { label:'Grila bilete', icon:'▦', w:62,h:64, props:{title:'',rows:6,show_counter:true},
-      fields:[['title','Titlu (optional)','text'],['rows','Nr. servicii afisate','number'],['show_counter','Arata ghiseul','bool']],
-      preview:p=>`<div class="wv" style="gap:3px">${[['Cable TV','A001','5'],['5G Internet','B037','12'],['Smart Phones','C024','2']].map(([nm,lb,c])=>`<div style="display:flex;align-items:center;gap:6px;background:#0008;border-left:4px solid var(--accent);border-radius:6px;padding:3px 6px"><span style="opacity:.45;font-weight:800">${c}</span><span style="flex:1">${esc(nm)}</span><b style="background:var(--accent);color:#fff;padding:1px 6px;border-radius:4px">${lb}</b></div>`).join('')}</div>` },
+    tickets_grid: { label:'Grila bilete', icon:'▦', w:62,h:64, props:{title:'',status:'waiting',rows:6,filter_services:[],filter_counters:[],col_count:true,col_counter:true,col_color:true,col_prefix:false,col_name:true,col_label:true,col_priority:true,sort:'recent',paginate:false,page_size:6,page_sec:8,flash:true,row_gap:6,radius:8},
+      fields:[['title','Titlu (optional)','text'],['status','Bilete afisate',['waiting','called']],['rows','Nr. randuri','number'],
+        ['filter_services','Doar serviciile (gol = toate)','svcmulti'],['filter_counters','Doar ghiseele (gol = toate)','ctrmulti'],
+        ['col_count','Coloana: nr. la rand','bool'],['col_counter','Coloana: ghiseu','bool'],['col_color','Coloana: bara de culoare','bool'],['col_prefix','Coloana: prefix (badge)','bool'],['col_name','Coloana: nume serviciu','bool'],['col_label','Coloana: numar bon','bool'],['col_priority','Coloana: prioritar (★)','bool'],
+        ['sort','Sortare (la „chemate")',['recent','service']],
+        ['paginate','Auto-paginare','bool'],['page_size','Bilete/pagina','number'],['page_sec','Schimba pagina la (sec)','number'],
+        ['flash','Efect la bilet chemat (flash)','bool'],['row_gap','Distanta randuri (px)','number'],['radius','Rotunjire rand (px)','number']],
+      preview:p=>`<div class="wv" style="gap:${Math.max(2,(+p.row_gap||6)/2)}px">${[['Cable TV','A001','5','B1'],['5G Internet','B037','12','B2'],['Smart Phones','C024','2','B1']].slice(0,+(p.rows||3)||3).map(([nm,lb,c,ctr])=>`<div style="display:flex;align-items:center;gap:6px;background:#0008;${p.col_color!==false?'border-left:4px solid var(--accent);':''}border-radius:${Math.max(2,(+p.radius||8)/2)}px;padding:3px 6px">${p.col_count!==false?`<span style="opacity:.45;font-weight:800">${c}</span>`:''}${p.col_counter!==false?`<span style="opacity:.6;font-size:.8em">${ctr}</span>`:''}${p.col_name!==false?`<span style="flex:1">${esc(nm)}</span>`:'<span style="flex:1"></span>'}${p.col_label!==false?`<b style="background:var(--accent);color:#fff;padding:1px 6px;border-radius:4px">${lb}</b>`:''}</div>`).join('')}</div>` },
     last_called: { label:'Ultimul apelat', icon:'📣', w:44,h:30, props:{label:'Ultimul bon apelat'},
       fields:[['label','Eticheta','text']],
       preview:p=>`<div class="wv wv-now"><div class="l">${esc(p.label||'Ultimul bon apelat')}</div><div class="n">A001</div><div>Birou 1</div></div>` },
-    people_counting: { label:'Numarare persoane', icon:'👥', w:30,h:22, props:{label:'Persoane inauntru',inside:10,capacity:87,crowd_light:false,cl_yellow:50,cl_red:90},
-      fields:[['label','Eticheta','text'],['inside','Persoane inauntru','number'],['capacity','Capacitate maxima','number'],['crowd_light','Semafor aglomeratie (verde/galben/rosu)','bool'],['cl_yellow','Galben de la (%)','number'],['cl_red','Rosu de la (%)','number']],
+    people_counting: { label:'Numarare persoane', icon:'👥', w:30,h:26, props:{label:'Persoane inauntru',inside:10,capacity:87,crowd_light:false,cl_yellow:50,cl_red:90,show_enter:false},
+      fields:[['label','Eticheta','text'],['inside','Persoane inauntru','number'],['capacity','Capacitate maxima','number'],['crowd_light','Semafor aglomeratie (verde/galben/rosu)','bool'],['cl_yellow','Galben de la (%)','number'],['cl_red','Rosu de la (%)','number'],['show_enter','Arata bonul care intra (↑ Enter)','bool']],
       preview:p=>{ const r=(+p.capacity>0?(+p.inside/ +p.capacity*100):0); const bg=!p.crowd_light?'':(r>=(+p.cl_red||90)?'background:#7f1d1d;':r>=(+p.cl_yellow||50)?'background:#854d0e;':'background:#14532d;');
-        return `<div class="wv" style="align-items:center;justify-content:center;text-align:center;border-radius:8px;${bg}"><div style="font-size:.78em;opacity:.8">${esc(p.label||'Persoane inauntru')}</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:1.9em">${p.inside??0} <span style="opacity:.5">/ ${p.capacity??0}</span></div></div>`; } },
+        return `<div class="wv" style="align-items:center;justify-content:center;text-align:center;border-radius:8px;${bg}"><div style="font-size:.78em;opacity:.8">${esc(p.label||'Persoane inauntru')}</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:1.9em">${p.inside??0} <span style="opacity:.5">/ ${p.capacity??0}</span></div>${p.show_enter?`<div style="font-size:.8em;margin-top:2px;color:var(--accent)">↑ Enter <b>A001</b></div>`:''}</div>`; } },
     qr_code: { label:'Cod QR', icon:'🔳', w:22,h:32, props:{url:'',caption:'Scaneaza pentru bilet digital'},
       fields:[['url','URL (gol = adresa site)','text'],['caption','Text sub cod','text']],
       preview:p=>`<div class="wv" style="align-items:center;justify-content:center;text-align:center"><div style="width:54px;height:54px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#000;font-size:2em">🔳</div><div style="font-size:.72em;margin-top:4px;opacity:.85">${esc(p.caption||'')}</div></div>` },
@@ -64,7 +69,19 @@
   // ---- stare ----
   let doc = P.config && P.config.screens ? P.config : defaultDoc();
   if (!doc.sound) doc.sound = {voice:'ro-RO',say_number:true,say_counter:true,repeat:2};
+  if (!doc.canvas) doc.canvas = {orientation:'landscape', ratio:'16:9'};
   let cur = 0, sel = null;
+
+  // ---- dimensiuni canvas (orientare + aspect) -> forma stage-ului din editor ----
+  function canvasDims(){
+    const c=doc.canvas||{orientation:'landscape',ratio:'16:9'};
+    const R={'16:9':[16,9],'4:3':[4,3],'1:1':[1,1],'21:9':[21,9]};
+    let [a,b]=R[c.ratio]||[16,9];
+    if(c.orientation==='portrait'){ const t=a; a=b; b=t; }
+    const maxW=900, maxH=560; let w=maxW, h=w*b/a; if(h>maxH){ h=maxH; w=h*a/b; }
+    return {w:Math.round(w), h:Math.round(h)};
+  }
+  function applyCanvas(){ const d=canvasDims(); stage.style.width=d.w+'px'; stage.style.height=d.h+'px'; }
 
   function defaultDoc(){
     return { screens:[{ id:uid(), name:'Ecran 1', duration:15, bg:'#0b0d12', widgets:[
@@ -133,6 +150,8 @@
   function renderStage(){
     const s = screen();
     stage.style.background = s.bg || '#0b0d12';
+    if(s.bg_image){ stage.style.backgroundImage=`url("${s.bg_image}")`; stage.style.backgroundSize=(s.bg_fit==='contain'?'contain':'cover'); stage.style.backgroundPosition='center'; stage.style.backgroundRepeat='no-repeat'; }
+    else stage.style.backgroundImage='';
     stage.innerHTML = '';
     s.widgets.forEach(w=>{
       const def = WIDGETS[w.type]; if(!def) return;
@@ -193,6 +212,10 @@
     insp.innerHTML = h;
     def.fields.forEach(([key,,type])=>{
       const el=document.getElementById('p_'+key); if(!el)return;
+      if(type==='svcmulti'||type==='ctrmulti'){
+        el.addEventListener('change',()=>{ w.props[key]=Array.from(el.querySelectorAll('input[type=checkbox]:checked')).map(c=>+c.value); renderStage(); });
+        return;
+      }
       const ev = type==='bool'?'change':'input';
       el.addEventListener(ev,()=>{ w.props[key] = type==='bool'?el.checked:(type==='number'?+el.value:el.value); renderStage(); });
     });
@@ -208,19 +231,35 @@
   }
   function renderScreenSettings(){
     const s = screen();
-    insp.innerHTML = `<div class="pb-grp">Ecran</div>
+    insp.innerHTML = `<div class="pb-grp">Canvas (toate ecranele)</div>
+      ${fieldHtml('cv_orient','Orientare',['landscape','portrait'],doc.canvas.orientation)}
+      ${fieldHtml('cv_ratio','Aspect',['16:9','4:3','1:1','21:9'],doc.canvas.ratio)}
+      <hr><div class="pb-grp">Ecran</div>
       ${fieldHtml('s_name','Nume ecran','text',s.name)}
       ${fieldHtml('s_dur','Durata afisare (sec)','number',s.duration)}
       ${fieldHtml('s_bg','Culoare fundal','color',s.bg||'#0b0d12')}
+      ${fieldHtml('s_bgimg','Imagine fundal (URL)','text',s.bg_image||'')}
+      <button class="pb-btn" id="pickScreenBg" style="width:100%;justify-content:center;margin:.2rem 0 .5rem">📁 Alege din galerie</button>
+      <div id="screenBgGrid" style="display:none;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:.6rem"></div>
+      ${fieldHtml('s_bgfit','Incadrare fundal',['cover','contain'],s.bg_fit||'cover')}
       <hr><div class="pb-grp">Sunet la apel (anunt vocal)</div>
       ${fieldHtml('snd_voice','Voce','select_voice',doc.sound.voice)}
       <label class="chk"><input type="checkbox" id="snd_num" ${doc.sound.say_number?'checked':''}> Anunta numarul bonului</label>
       <label class="chk"><input type="checkbox" id="snd_ctr" ${doc.sound.say_counter?'checked':''}> Anunta ghiseul</label>
       ${fieldHtml('snd_rep','Repetari anunt','number',doc.sound.repeat)}
       <hr><p class="muted">Apasa pe un widget ca sa-i editezi proprietatile. Trage de el ca sa-l muti, de coltul colorat ca sa-l redimensionezi.</p>`;
+    document.getElementById('cv_orient').addEventListener('change',e=>{doc.canvas.orientation=e.target.value; applyCanvas(); renderStage();});
+    document.getElementById('cv_ratio').addEventListener('change',e=>{doc.canvas.ratio=e.target.value; applyCanvas(); renderStage();});
     bind('s_name','input',v=>s.name=v, true);
     bind('s_dur','input',v=>s.duration=+v);
     document.getElementById('s_bg').addEventListener('input',e=>{s.bg=e.target.value; renderStage();});
+    document.getElementById('s_bgimg').addEventListener('input',e=>{s.bg_image=e.target.value.trim(); renderStage();});
+    document.getElementById('s_bgfit').addEventListener('change',e=>{s.bg_fit=e.target.value; renderStage();});
+    { const pm=document.getElementById('pickScreenBg'), grid=document.getElementById('screenBgGrid');
+      pm.onclick=async()=>{ if(grid.style.display==='grid'){grid.style.display='none';return;} const r=await QMS.api('admin/media?format=json',null,'GET'); if(!r||!r.ok)return;
+        grid.style.display='grid';
+        grid.innerHTML=(r.media||[]).filter(m=>m.mime&&m.mime.startsWith('image')).map(m=>`<img src="${m.url}" data-u="${m.url}" style="width:100%;height:46px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #2a2f3a">`).join('')||'<div class="muted" style="grid-column:1/-1">Galerie goala.</div>';
+        grid.querySelectorAll('img').forEach(im=>im.onclick=()=>{ s.bg_image=im.dataset.u; const u=document.getElementById('s_bgimg'); if(u)u.value=im.dataset.u; grid.style.display='none'; renderStage(); }); }; }
     document.getElementById('snd_voice').addEventListener('change',e=>doc.sound.voice=e.target.value);
     document.getElementById('snd_num').addEventListener('change',e=>doc.sound.say_number=e.target.checked);
     document.getElementById('snd_ctr').addEventListener('change',e=>doc.sound.say_counter=e.target.checked);
@@ -229,6 +268,14 @@
   }
 
   function fieldHtml(id,lab,type,val){
+    if(type==='svcmulti'||type==='ctrmulti'){
+      const list = type==='svcmulti' ? (P.services||[]) : (P.counters||[]);
+      const sel = Array.isArray(val)?val.map(Number):[];
+      const opts = list.length ? list.map(o=>{ const oid=+o.id, txt = type==='svcmulti'?((o.prefix?o.prefix+' ':'')+o.name):(o.code+' · '+o.name);
+        return `<label class="chk" style="margin:.15rem 0"><input type="checkbox" value="${oid}" ${sel.includes(oid)?'checked':''}> ${esc(txt)}</label>`; }).join('')
+        : `<div class="muted" style="font-size:.78rem">${type==='svcmulti'?'Niciun serviciu in filiala.':'Niciun ghiseu in filiala.'}</div>`;
+      return `<div class="field"><label>${lab}</label><div id="${id}" data-multi="1" style="max-height:140px;overflow:auto;border:1px solid #2a2f3a;border-radius:8px;padding:.4rem .5rem">${opts}</div></div>`;
+    }
     if(type==='bool') return `<label class="chk"><input type="checkbox" id="${id}" ${val?'checked':''}> ${lab}</label>`;
     if(type==='textarea') return `<div class="field"><label>${lab}</label><textarea id="${id}" rows="2">${esc(val||'')}</textarea></div>`;
     if(type==='color') return `<div class="field"><label>${lab}</label><input type="color" id="${id}" value="${val||'#0b0d12'}"></div>`;
@@ -250,6 +297,6 @@
     QMS.toast(res.ok?'Afisaj salvat ✔':(res.error||'Eroare'), res.ok?'ok':'error');
   };
 
-  function renderAll(){ renderScreens(); renderStage(); renderInspector(); }
+  function renderAll(){ applyCanvas(); renderScreens(); renderStage(); renderInspector(); }
   renderAll();
 })();

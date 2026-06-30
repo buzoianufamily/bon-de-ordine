@@ -87,6 +87,8 @@ window.PLAYER = {
   deviceId: <?= (int)$dev['id'] ?>,
   saveUrl: <?= json_encode('admin/devices/'.$dev['id'].'/player') ?>,
   accent: <?= json_encode($accent) ?>,
+  services: <?= json_encode(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name']], all('SELECT id,prefix,name FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order',[$dev['branch_id']])), JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP) ?>,
+  counters: <?= json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], all('SELECT id,code,name FROM counters WHERE branch_id=? ORDER BY code',[$dev['branch_id']])), JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP) ?>,
   config: <?= $cfg ? json_encode($cfg, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>

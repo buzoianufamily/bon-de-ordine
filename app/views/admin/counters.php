@@ -26,7 +26,7 @@
         <div class="sub muted"><?= e($r['branch_name']) ?></div>
       </div>
     </div>
-    <div class="mbody grow"><span class="muted">Servicii:</span> <?= $r['all_services']?'toate din filiala':((int)$r['svc_count'].' alocate') ?>
+    <div class="mbody grow"><span class="muted">Servicii:</span> <?= $r['all_services'] ? 'toate din filiala' : ((int)$r['svc_count']>0 ? ((int)$r['svc_count'].' alocate') : '<span style="color:var(--warn,#d97706)" title="Niciun serviciu alocat — ghiseul deserveste automat toate serviciile filialei, ca sa nu ramana fara bonuri">toate (neconfigurat)</span>') ?>
       <div class="muted" style="font-size:.72rem;margin-top:.5rem;text-transform:uppercase;letter-spacing:.05em">Afisaj birou (tableta)</div>
       <input readonly value="<?= e(url('cd/'.$r['id'])) ?>" onclick="this.select()" style="font-size:.76rem;padding:.4rem;margin-top:.25rem">
     </div>

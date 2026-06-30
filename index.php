@@ -164,6 +164,14 @@ SWJS;
         header('Cache-Control: no-store');
         $action = $seg[1] ?? '';
 
+        // PERFORMANTA / anti-blocare: cererile GET din API sunt doar-citire (afisaj/poll la 2s, SSE,
+        // stare bilet). PHP tine un LOCK exclusiv pe fisierul de sesiune pe toata durata cererii, deci
+        // un SSE persistent sau un poll lent ar bloca toate celelalte cereri ale aceleiasi sesiuni
+        // (alte taburi, navigare) -> „se blocheaza toata aplicatia". Inchidem sesiunea acum: $_SESSION
+        // ramane CITIBIL (require_login citeste uid-ul), doar scrierile nu mai persista — iar toate
+        // mutatiile API sunt POST (raman cu sesiunea deschisa pentru CSRF / pin-switch).
+        if ($method === 'GET' && PHP_SESSION_ACTIVE === session_status()) session_write_close();
+
         // ---- endpoint-uri publice (folosite de dispozitive) ----
         if ($action === 'state') { // polling afisaj
             $branch = (int)($_GET['branch'] ?? 1);
