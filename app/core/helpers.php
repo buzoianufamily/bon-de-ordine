@@ -720,6 +720,15 @@ function run_sql_file(string $file): void {
  * Astfel NU mai e nevoie de install.php.
  */
 function auto_install(): void {
+    // Sonda RAPIDA pe calea fierbinte: daca tabela 'settings' exista, suntem deja instalati.
+    // (Evitam information_schema la fiecare cerere — e foarte lent pe hosturi partajate cu
+    //  multe baze de date, ceea ce incetinea TOATE paginile. Aceasta interogare e instantanee.)
+    try {
+        db()->query("SELECT 1 FROM settings LIMIT 1");
+        return; // tabela exista -> instalat; run_migrations() se ocupa de actualizari
+    } catch (Throwable $e) {
+        // tabela lipseste sau alta eroare — confirmam o singura data, apoi (re)instalam
+    }
     try {
         $hasSettings = (int) val(
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='settings'"

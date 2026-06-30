@@ -155,6 +155,14 @@ chk(array_reduce($qs['waiting'], fn($c,$w) => $c || array_key_exists('est',$w), 
 $cv = counter_view(one("SELECT * FROM counters WHERE id=$ctr")); chk(array_key_exists('no_show',$cv), 'counter_view: no_show key');
 chk(array_key_exists('no_show', branch_queue($br)), 'branch_queue: no_show key');
 
+/* ---- 9a-bis. Ghiseu „neconfigurat" (all_services=0, fara servicii) NU ramane fara bonuri ----
+   Regresie: un ghiseu fara servicii alocate trebuie sa deserveasca automat toate serviciile filialei,
+   altfel operatorul nu vede niciun bon de chemat. */
+q("INSERT INTO counters (branch_id,code,name,all_services,status) VALUES (?, 'CIX0', 'fara servicii', 0, 'open')", [$br]);
+$cNoSvc = (int) insert_id();
+$cvNo = counter_view(one("SELECT * FROM counters WHERE id=$cNoSvc"));
+chk($cvNo['waiting_count'] > 0, 'counter_view: ghiseu neconfigurat (all_services=0, 0 servicii) deserveste toate -> are bonuri la rand');
+
 /* ---- 9b. Estimare: imparte doar la ghiseele deschise care chiar deservesc serviciul ---- */
 q("INSERT INTO branches (name) VALUES ('CI-est')"); $brE = (int) insert_id();
 q("INSERT INTO services (branch_id,prefix,name) VALUES (?,'E','CI est E')", [$brE]); $svcE = (int) insert_id();
