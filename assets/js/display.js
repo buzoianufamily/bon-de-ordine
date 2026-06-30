@@ -124,18 +124,39 @@
         el.innerHTML=safeUrl(p.url)?`<img src="${esc(safeUrl(p.url))}" style="width:100%;height:100%;object-fit:${p.fit||'cover'}">`:'';
         break; }
       case 'tickets_grid': {
-        el.style.background=p.bg||'transparent';el.style.padding='6px';el.style.display='flex';el.style.flexDirection='column';el.style.gap=Math.max(3,H*.012)+'px';
-        const svcs=(state.waiting||[]).slice(0,+(p.rows||6));
-        const byPrefix={}; (state.called||[]).forEach(c=>{ if(!byPrefix[c.prefix]) byPrefix[c.prefix]=c; });
-        const rh=Math.max(26,(H-(p.title?26:8))/Math.max(1,svcs.length||1)-(H*.012));
+        const gap=p.row_gap!=null?+p.row_gap:Math.max(3,H*.012), rad=p.radius!=null?+p.radius:8;
+        el.style.background=p.bg||'transparent';el.style.padding='6px';el.style.display='flex';el.style.flexDirection='column';el.style.gap=gap+'px';
+        // construieste randurile dupa status (la rand pe serviciu / chemate recent)
+        let rows;
+        if((p.status||'waiting')==='called'){
+          let list=(state.called||[]).slice();
+          if((p.sort||'recent')==='service') list.sort((a,b)=>String(a.prefix||'').localeCompare(String(b.prefix||'')));
+          rows=list.map(c=>({color:c.color,prefix:c.prefix,name:c.service_name||'',label:c.label,counter:c.counter_code||c.counter_name||'',count:null,priority:!!c.priority,tid:c.id}));
+        } else {
+          const byPrefix={}; (state.called||[]).forEach(c=>{ if(!byPrefix[c.prefix]) byPrefix[c.prefix]=c; });
+          rows=(state.waiting||[]).map(s=>{ const c=byPrefix[s.prefix]; return {color:s.color,prefix:s.prefix,name:s.name,label:c?c.label:'—',counter:c?(c.counter_code||c.counter_name||''):'',count:s.cnt,priority:false,tid:c?c.id:null}; });
+        }
+        const maxRows=+(p.rows||6);
+        // auto-paginare (cicleaza paginile cu timer per-widget)
+        let pageRows;
+        if(p.paginate){ const ps=Math.max(1,+(p.page_size||maxRows||6)), pages=Math.max(1,Math.ceil(rows.length/ps));
+          if(el.__page==null)el.__page=0; el.__page%=pages; pageRows=rows.slice(el.__page*ps,el.__page*ps+ps);
+          if(!el.__pgTimer && pages>1){ el.__pgTimer=setInterval(()=>{ el.__page=(el.__page+1)%pages; paintWidget(el,el.__w,lastState); }, Math.max(3,+(p.page_sec||8))*1000); wTimers.push(el.__pgTimer); }
+        } else { pageRows=rows.slice(0,maxRows); if(el.__pgTimer){clearInterval(el.__pgTimer);el.__pgTimer=null;} }
+        const n=pageRows.length||1, rh=Math.max(26,(H-(p.title?26:8))/Math.max(1,n)-gap);
         el.innerHTML=(p.title?`<div style="color:#9aa3b2;text-transform:uppercase;letter-spacing:.06em;font-size:${Math.max(11,H*.05)}px;margin-bottom:4px">${esc(pickML(p.title))}</div>`:'')+
-          (svcs.length?svcs.map(s=>{ const c=byPrefix[s.prefix]; const lab=c?c.label:'—'; const ctr=c?(c.counter_code||c.counter_name||''):'';
-            return `<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);border-left:5px solid ${esc(s.color)};border-radius:8px;padding:0 12px;height:${rh}px">
-              <span style="opacity:.45;font-family:'Bricolage Grotesque';font-weight:800;font-size:${rh*.5}px;min-width:${rh*.8}px;text-align:center">${s.cnt}</span>
-              ${p.show_counter!==false?`<span style="opacity:.7;font-weight:700;font-size:${rh*.3}px;min-width:${rh}px">${esc(ctr)}</span>`:''}
-              <span style="flex:1;font-weight:700;font-size:${rh*.4}px;line-height:1.05">${esc(s.name)}</span>
-              <b style="background:${c?esc(s.color):'transparent'};color:${c?'#fff':'#5b6270'};font-family:'Bricolage Grotesque';font-size:${rh*.55}px;padding:${c?('2px '+(rh*.22)+'px'):'0'};border-radius:${rh*.18}px;min-width:${rh*1.6}px;text-align:center">${esc(lab)}</b></div>`; }).join('')
-            :'<div style="opacity:.4;padding:1rem">Niciun serviciu activ.</div>');
+          (pageRows.length?pageRows.map(r=>{ const hasLab=r.label&&r.label!=='—';
+            return `<div data-tid="${r.tid||''}" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);${p.col_color!==false?`border-left:5px solid ${esc(r.color)};`:''}border-radius:${rad}px;padding:0 12px;height:${rh}px">
+              ${(p.col_count!==false && r.count!=null)?`<span style="opacity:.45;font-family:'Bricolage Grotesque';font-weight:800;font-size:${rh*.5}px;min-width:${rh*.8}px;text-align:center">${r.count}</span>`:''}
+              ${p.col_counter!==false?`<span style="opacity:.7;font-weight:700;font-size:${rh*.3}px;min-width:${rh}px">${esc(r.counter)}</span>`:''}
+              ${p.col_prefix?`<span style="background:${esc(r.color)};color:#fff;font-weight:800;border-radius:5px;padding:1px ${rh*.18}px;font-size:${rh*.34}px">${esc(r.prefix||'')}</span>`:''}
+              ${p.col_name!==false?`<span style="flex:1;font-weight:700;font-size:${rh*.4}px;line-height:1.05">${esc(r.name)}${(r.priority&&p.col_priority!==false)?' <span style="color:#fca5a5">★</span>':''}</span>`:'<span style="flex:1"></span>'}
+              ${p.col_label!==false?`<b style="background:${hasLab?esc(r.color):'transparent'};color:${hasLab?'#fff':'#5b6270'};font-family:'Bricolage Grotesque';font-size:${rh*.55}px;padding:${hasLab?('2px '+(rh*.22)+'px'):'0'};border-radius:${rh*.18}px;min-width:${rh*1.6}px;text-align:center">${esc(r.label)}</b>`:''}</div>`; }).join('')
+            :'<div style="opacity:.4;padding:1rem">Niciun bilet.</div>');
+        // flash randul biletului proaspat chemat
+        if(p.flash!==false && state.last){ const fr=el.querySelector('[data-tid="'+state.last.id+'"]'), sig=state.last.id+':'+(state.last.recall_count||0)+':'+state.last.called_at;
+          if(fr && el.__flashSig!==sig){ el.__flashSig=sig; fr.style.transition='none'; fr.style.boxShadow='inset 0 0 0 3px #fff';
+            setTimeout(()=>{ fr.style.transition='box-shadow .8s'; fr.style.boxShadow='none'; },120); } }
         break; }
       case 'people_counting': {
         const inside=+p.inside||0, cap=+p.capacity||0, ratio=cap>0?(inside/cap*100):0;
