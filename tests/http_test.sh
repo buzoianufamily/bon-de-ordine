@@ -205,6 +205,32 @@ XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
 CT_OPA="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=op_activity" | grep -i 'content-type')"
 tcontains "export activitate operatori CSV" 'text/csv' "$CT_OPA"
 
+# --- Concierge / receptie (terminal virtual cu tab-uri: Bon nou / Chemare / Programari) ---
+CGCSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+CG_PAGE="$(curl -s -b "$JAR" "$B/concierge")"
+t "GET /concierge (autentificat) -> 200" 200 "$(code -b "$JAR" "$B/concierge")"
+tcontains "concierge: tab Bon nou"    'Bon nou'      "$CG_PAGE"
+tcontains "concierge: tab Chemare"    'Chemare'      "$CG_PAGE"
+tcontains "concierge: tab Programari" 'Programari'   "$CG_PAGE"
+tcontains "concierge: motorul concierge.js" 'concierge.js' "$CG_PAGE"
+# branch-state intoarce noile chei pentru tab-ul Chemare
+BSTATE="$(curl -s -b "$JAR" "$B/api/branch-state?branch=$BR")"
+tcontains "branch-state are cheia called"    '"called"'    "$BSTATE"
+tcontains "branch-state are cheia cancelled" '"cancelled"' "$BSTATE"
+# tab Programari: creeaza -> listeaza -> check-in -> bon
+APPT_DATE="$(date -d '+1 day' +%F 2>/dev/null || date -v+1d +%F)"
+AC="$(curl -s -b "$JAR" -X POST $B/api/appt-create -H "X-CSRF: $CGCSRF" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"date\":\"$APPT_DATE\",\"time\":\"10:30\",\"name\":\"Client CI\",\"phone\":\"0700000000\"}")"
+tcontains "api/appt-create ok" '"ok":true' "$AC"
+APPT_LIST="$(curl -s -b "$JAR" "$B/api/concierge-appointments?branch=$BR&date=$APPT_DATE")"
+tcontains "concierge-appointments listeaza clientul creat" 'Client CI' "$APPT_LIST"
+APPT_ID="$(printf '%s' "$AC" | python3 -c "import sys,json;print(json.load(sys.stdin)['appt']['id'])" 2>/dev/null)"
+if [ -n "${APPT_ID:-}" ]; then
+  CI="$(curl -s -b "$JAR" -X POST $B/api/appt-checkin -H "X-CSRF: $CGCSRF" -H 'Content-Type: application/json' -d "{\"appt_id\":$APPT_ID}")"
+  tcontains "api/appt-checkin emite bon" '"ticket"' "$CI"
+fi
+# endpoint de citire respinge mutatia prin POST gresit? (concierge-appointments e read-only -> GET ok)
+t "api/concierge-appointments e GET (read-only)" 200 "$(code -b "$JAR" "$B/api/concierge-appointments?branch=$BR&date=$APPT_DATE")"
+
 # --- export/import servicii din CSV (autentificat) ---
 CT_SVC="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/services/export" | grep -i 'content-type')"
 tcontains "export servicii CSV content-type" 'text/csv' "$CT_SVC"

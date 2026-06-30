@@ -345,6 +345,39 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .apptile .acts{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
 .apptile .apt-off{font-size:.82rem;font-weight:700;color:var(--muted)}
 .btn-sm{padding:.4rem .8rem;font-size:.85rem}
+/* ----- Concierge / receptie (terminal virtual cu tab-uri) ----- */
+.tabpane{display:none}
+.tabpane.on{display:block;animation:cgFade .15s ease}
+@keyframes cgFade{from{opacity:.4;transform:translateY(3px)}to{opacity:1;transform:none}}
+.cg-badge{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);margin-left:.3rem}
+.cg-svcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem}
+.cg-svcbtn{display:flex;align-items:center;gap:.6rem;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.7rem .85rem;cursor:pointer;transition:.12s;font:inherit;color:var(--ink)}
+.cg-svcbtn:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));transform:translateY(-1px)}
+.cg-svcbtn .b{width:38px;height:38px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.05rem;flex:0 0 auto}
+.cg-svcbtn .t{font-size:.92rem}
+.cg-issued{margin-top:.8rem;font-weight:700}
+.cg-issued.ok{color:var(--ok,#16a34a)} .cg-issued.err{color:var(--danger,#dc2626)}
+.cg-lastcard{margin-bottom:1rem;text-align:center}
+.cg-last{font-family:var(--display);font-weight:800;font-size:3rem;line-height:1.05;margin:.15rem 0}
+.cg-lastmeta{font-size:.86rem;margin-bottom:.6rem}
+.cg-lastacts{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.cg-tablewrap{overflow-x:auto}
+.cg-table{width:100%;border-collapse:collapse}
+.cg-table th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line)}
+.cg-table td{padding:.55rem .6rem;border-bottom:1px solid var(--line);font-size:.9rem;vertical-align:middle}
+.cg-table .tag{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.78rem;vertical-align:middle}
+.cg-row.cancelled td{opacity:.65}
+.cg-row.called td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.pill.st-waiting{background:#fef3c7;color:#92400e}
+.pill.st-called{background:#dbeafe;color:#1e40af}
+.pill.st-serving{background:#dcfce7;color:#166534}
+.pill.st-cancelled,.pill.st-no_show{background:#fee2e2;color:#b91c1c}
+.pill.st-booked{background:#e0e7ff;color:#3730a3}
+.pill.st-checked_in{background:#dcfce7;color:#166534}
+.cg-apptfilters{display:flex;gap:.7rem;flex-wrap:wrap;margin:.8rem 0 .2rem}
+.cg-apptfilters .field{margin:0;min-width:150px}
+.cg-apptform{margin-top:.8rem;padding:.9rem 1rem;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.6rem}
 .cardgrid.wide{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 .cardgrid.aslist{grid-template-columns:1fr}
 .mcard .card-foot .acts{display:inline-flex;align-items:center;gap:.7rem;white-space:nowrap;font-size:.82rem}

@@ -374,10 +374,29 @@ function requeue_ticket(int $ticket_id): bool {    $st = q("UPDATE tickets SET s
 /** Coada unei filiale pentru modul Concierge: bilete individuale la rand + ghisee. */
 function branch_queue(int $branch_id): array {
     $waiting = all(
-        "SELECT t.id, t.label, t.priority, t.issued_at, s.name AS service_name, s.color
+        "SELECT t.id, t.label, t.priority, t.issued_at, t.service_id, t.form_data,
+                s.name AS service_name, s.color,
+                TIME_FORMAT(t.issued_at,'%H:%i') AS hm, DATE_FORMAT(t.issued_at,'%d.%m.%Y') AS day
          FROM tickets t JOIN services s ON s.id = t.service_id
          WHERE t.branch_id = ? AND t.status = 'waiting'
          ORDER BY t.priority DESC, t.issued_at ASC LIMIT 100", [$branch_id]);
+    // bilete in lucru azi (chemate / in servire) — pentru „ultimul bilet chemat" si filtrul „Chemate"
+    $called = all(
+        "SELECT t.id, t.label, t.priority, t.service_id, t.form_data, t.status, t.counter_id,
+                s.name AS service_name, s.color, c.code AS counter_code, c.name AS counter_name,
+                TIME_FORMAT(t.issued_at,'%H:%i') AS hm, DATE_FORMAT(t.issued_at,'%d.%m.%Y') AS day,
+                TIME_FORMAT(t.called_at,'%H:%i') AS called_hm
+         FROM tickets t JOIN services s ON s.id = t.service_id
+         LEFT JOIN counters c ON c.id = t.counter_id
+         WHERE t.branch_id = ? AND t.status IN ('called','serving') AND DATE(t.issued_at)=CURDATE()
+         ORDER BY t.called_at DESC LIMIT 50", [$branch_id]);
+    // bilete inchise azi fara servire (anulate / neprezentate) — pentru filtrul „Anulate"
+    $cancelled = all(
+        "SELECT t.id, t.label, t.service_id, t.form_data, t.status, s.name AS service_name, s.color,
+                TIME_FORMAT(t.issued_at,'%H:%i') AS hm, DATE_FORMAT(t.issued_at,'%d.%m.%Y') AS day
+         FROM tickets t JOIN services s ON s.id = t.service_id
+         WHERE t.branch_id = ? AND t.status IN ('cancelled','no_show') AND DATE(t.issued_at)=CURDATE()
+         ORDER BY t.finished_at DESC LIMIT 50", [$branch_id]);
     $counters = all(
         "SELECT c.id, c.code, c.name, c.status, c.pause_note,
                 (SELECT t.label FROM tickets t WHERE t.counter_id = c.id AND t.status IN ('called','serving')
@@ -389,7 +408,9 @@ function branch_queue(int $branch_id): array {
          FROM tickets t JOIN services s ON s.id = t.service_id
          WHERE t.branch_id = ? AND t.status='no_show' AND DATE(t.finished_at)=CURDATE()
          ORDER BY t.finished_at DESC LIMIT 12", [$branch_id]);
-    return ['waiting' => $waiting, 'waiting_count' => count($waiting), 'counters' => $counters, 'no_show' => $no_show];
+    return ['waiting' => $waiting, 'waiting_count' => count($waiting),
+            'called' => $called, 'cancelled' => $cancelled,
+            'counters' => $counters, 'no_show' => $no_show];
 }
 
 /**

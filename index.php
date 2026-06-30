@@ -248,7 +248,7 @@ SWJS;
         $u = require_login();
         // actiunile care modifica starea trebuie sa fie POST (+ CSRF) — altfel un GET cross-site
         // ar putea declansa actiuni cu sesiunea operatorului. 'counter-state'/'branch-state' sunt doar citire.
-        $readOnlyActions = ['counter-state', 'branch-state'];
+        $readOnlyActions = ['counter-state', 'branch-state', 'concierge-appointments'];
         if (!in_array($action, $readOnlyActions, true) && $method !== 'POST')
             json_out(['ok' => false, 'error' => 'Metoda nepermisa (foloseste POST).'], 405);
         if ($method === 'POST') csrf_check();
@@ -328,6 +328,42 @@ SWJS;
                 ]] + counter_view($c));
             case 'branch-state':
                 json_out(['ok' => true] + branch_queue((int)($_GET['branch'] ?? 1)));
+            case 'appt-checkin': {   // receptia face check-in la o programare -> emite bon
+                $a = one('SELECT * FROM appointments WHERE id=?', [(int) input('appt_id', 0)]);
+                if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+                try { $t = appt_checkin($a); }
+                catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+                json_out(['ok' => true, 'ticket' => $t, 'position' => ticket_position($t)]);
+            }
+            case 'appt-cancel': {    // receptia anuleaza o programare
+                $a = appt_cancel((int) input('appt_id', 0));
+                json_out(['ok' => (bool) $a] + ($a ? [] : ['error' => 'Programare inexistenta sau deja anulata']));
+            }
+            case 'appt-create': {    // receptia creeaza o programare manuala
+                $sid = (int) input('service_id', 0);
+                $ts  = strtotime(trim((string) input('date', '') . ' ' . (string) input('time', '')));
+                if (!$sid || !$ts) json_out(['ok' => false, 'error' => 'Completeaza serviciul, data si ora.'], 422);
+                try { $a = appt_book($sid, date('Y-m-d H:i:00', $ts), trim((string) input('name', '')) ?: null,
+                        trim((string) input('phone', '')) ?: null, trim((string) input('email', '')) ?: null, 'concierge'); }
+                catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+                json_out(['ok' => true, 'appt' => $a]);
+            }
+            case 'concierge-appointments': {   // programarile zilei (filtrabile) pentru tab-ul Programari
+                $br   = (int) ($_GET['branch'] ?? 0);
+                $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
+                $svc  = (int) ($_GET['service_id'] ?? 0);
+                $w = 'DATE(a.slot_start)=?'; $args = [$date];
+                if ($br)  { $w .= ' AND a.branch_id=?';  $args[] = $br; }
+                if ($svc) { $w .= ' AND a.service_id=?'; $args[] = $svc; }
+                $rows = all(
+                    "SELECT a.id, a.slot_start, a.status, a.customer_name, a.customer_phone, a.public_token, a.ticket_id,
+                            s.name AS service_name, s.prefix, s.color, t.label AS ticket_label,
+                            TIME_FORMAT(a.slot_start,'%H:%i') AS hm, DATE_FORMAT(a.slot_start,'%d.%m.%Y') AS day
+                     FROM appointments a JOIN services s ON s.id=a.service_id
+                     LEFT JOIN tickets t ON t.id=a.ticket_id
+                     WHERE $w ORDER BY a.slot_start LIMIT 200", $args);
+                json_out(['ok' => true, 'appointments' => $rows]);
+            }
         }
         json_out(['ok' => false, 'error' => 'Endpoint necunoscut'], 404);
     }
@@ -659,7 +695,7 @@ SWJS;
         $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));
         $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: ($branches[0] ?? ['id'=>0,'name'=>'—']);
         $counters = all('SELECT id,code,name,status FROM counters WHERE branch_id=? ORDER BY code', [$branch['id']]);
-        $services = all('SELECT id,prefix,name,color,allow_priority FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order', [$branch['id']]);
+        $services = all('SELECT id,prefix,name,color,allow_priority,appt_enabled FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order', [$branch['id']]);
         view('public/concierge', compact('u','branches','branch','counters','services'));
         return;
     }
