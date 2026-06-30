@@ -75,6 +75,8 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
         <div class="field"><label>Screensaver dupa (sec, 0=oprit)</label><input type="number" id="f__logic__screensaver_sec" value="<?= e($gd($L,'screensaver_sec',0)) ?>"></div>
       </div>
       <label class="chk"><input type="checkbox" id="f__logic__show_waiting" <?= $cb($gb($L,'show_waiting',false)) ?>> Arata pe butoane cati asteapta la fiecare serviciu (👥, live)</label>
+      <label class="chk"><input type="checkbox" id="f__logic__appt_checkin" <?= $cb($gb($L,'appt_checkin',false)) ?>> Permite check-in la programari (clientul cu programare isi ia bonul aici)</label>
+      <label class="chk"><input type="checkbox" id="f__logic__virtual_keyboard" <?= $cb($gb($L,'virtual_keyboard',false)) ?>> Tastatura pe ecran (pentru formulare/check-in, la touchscreen)</label>
       <div class="field"><label>Ce se tipareste pe bon</label>
         <label class="chk"><input type="checkbox" id="f__logic__print_logo" <?= $cb($gb($L,'print_logo',true)) ?>> Logo</label>
         <label class="chk"><input type="checkbox" id="f__logic__print_service" <?= $cb($gb($L,'print_service',true)) ?>> Numele serviciului</label>
@@ -120,6 +122,10 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
       <div class="field"><label>Eticheta buton prioritar</label><input id="f__texts__priority_label" value="<?= e($gd($T,'priority_label','★ Bilet prioritar')) ?>"></div>
       <div class="field"><label>Text serviciu inchis (sub nume)</label><input id="f__texts__closed_hint" value="<?= e($gd($T,'closed_hint','Inchis acum')) ?>"></div>
       <div class="field"><label>Eticheta „inchis" (insigna)</label><input id="f__texts__closed_label" value="<?= e($gd($T,'closed_label','🔒 Inchis')) ?>"></div>
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <div class="field"><label>Buton „Am o programare" (check-in)</label><input id="f__texts__checkin_btn" value="<?= e($gd($T,'checkin_btn','Am o programare')) ?>"></div>
+      <div class="field"><label>Titlu fereastra check-in</label><input id="f__texts__checkin_title" value="<?= e($gd($T,'checkin_title','Check-in programare')) ?>"></div>
+      <div class="field"><label>Indiciu camp check-in</label><input id="f__texts__checkin_hint" value="<?= e($gd($T,'checkin_hint','Introdu codul programarii sau numarul de telefon')) ?>"></div>
       <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
       <div class="field"><label>Titlu fereastra bilet</label><input id="f__texts__popup_title" value="<?= e($gd($T,'popup_title','Biletul dumneavoastra')) ?>"></div>
       <div class="field"><label>Text „X inainte" (foloseste {n})</label><input id="f__texts__ahead_text" value="<?= e($gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra')) ?>"></div>

@@ -239,6 +239,17 @@ fi
 # endpoint de citire respinge mutatia prin POST gresit? (concierge-appointments e read-only -> GET ok)
 t "api/concierge-appointments e GET (read-only)" 200 "$(code -b "$JAR" "$B/api/concierge-appointments?branch=$BR&date=$APPT_DATE")"
 
+# --- Ticket Dispenser: check-in programare la dozator (cheie dispozitiv, fara login) ---
+ACI="$(curl -s -b "$JAR" -X POST $B/api/appt-create -H "X-CSRF: $CGCSRF" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"date\":\"$TODAY\",\"time\":\"23:55\",\"name\":\"Checkin CI\",\"phone\":\"0790000000\"}")"
+ACI_TOK="$(printf '%s' "$ACI" | python3 -c "import sys,json;print(json.load(sys.stdin).get('appt',{}).get('public_token',''))" 2>/dev/null)"
+if [ -n "${ACI_TOK:-}" ]; then
+  CKR="$(curl -s -X POST $B/api/ticket-checkin -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"code\":\"$ACI_TOK\"}")"
+  tcontains "api/ticket-checkin emite bon din programare" '"ticket"' "$CKR"
+  tcontains "api/ticket-checkin intoarce serviciul" '"service_name"' "$CKR"
+fi
+t "api/ticket-checkin fara cheie -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket-checkin -H 'Content-Type: application/json' -d "{\"code\":\"x\"}")"
+t "api/ticket-checkin cod inexistent -> 404" 404 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket-checkin -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"code\":\"nuexista_xyz\"}")"
+
 # --- export/import servicii din CSV (autentificat) ---
 CT_SVC="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/services/export" | grep -i 'content-type')"
 tcontains "export servicii CSV content-type" 'text/csv' "$CT_SVC"

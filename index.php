@@ -230,6 +230,32 @@ SWJS;
             }
             json_out($resp);
         }
+        if ($action === 'ticket-checkin' && $method === 'POST') { // check-in programare la dozator (clientul cu programare isi ia bonul)
+            $dev = device_by_key((string)input('device_key', ''));
+            if (!$dev) json_out(['ok' => false, 'error' => 'Dispozitiv neautorizat'], 403);
+            $code = trim((string)input('code', ''));
+            if ($code === '') json_out(['ok' => false, 'error' => 'Introdu codul programarii sau numarul de telefon.'], 422);
+            // cauta programarea de azi (booked) pe filiala dispozitivului, dupa token public SAU telefon
+            $appt = one("SELECT * FROM appointments WHERE branch_id=? AND status='booked' AND DATE(slot_start)=CURDATE()
+                         AND (public_token=? OR customer_phone=?) ORDER BY slot_start LIMIT 1",
+                        [(int)$dev['branch_id'], $code, $code]);
+            if (!$appt) json_out(['ok' => false, 'error' => 'Programare negasita pentru azi. Verifica codul sau telefonul.'], 404);
+            try { $t = appt_checkin($appt); }
+            catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+            $svcRow = one('SELECT * FROM services WHERE id = ?', [$t['service_id']]);
+            $resp = ['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
+                     'wait_est' => est_wait_seconds($t), 'virtual_url' => url('t/' . $t['public_token']),
+                     'service_name' => $svcRow['name'] ?? '', 'color' => $svcRow['color'] ?? null];
+            if ($dev['printer_mode'] === 'network' && $dev['printer_ip']) {
+                $bytes = build_ticket_escpos($t, $svcRow, one('SELECT * FROM branches WHERE id=?', [$t['branch_id']]));
+                $resp['print'] = print_network($dev['printer_ip'], (int)$dev['printer_port'], $bytes);
+            }
+            if ($dev['printer_mode'] === 'android') {
+                $bytes = build_ticket_escpos($t, $svcRow, one('SELECT * FROM branches WHERE id=?', [$t['branch_id']]));
+                $resp['escpos_b64'] = base64_encode($bytes);
+            }
+            json_out($resp);
+        }
         if ($action === 'virtual-cancel' && $method === 'POST') { // clientul renunta la rand de pe telefon
             $tok = (string) input('token', '');
             $row = $tok !== '' ? one("SELECT id, status FROM tickets WHERE public_token = ?", [$tok]) : null;

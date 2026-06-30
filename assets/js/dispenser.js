@@ -16,7 +16,7 @@
   });
 
   function openModal(html){ modalBox.innerHTML=html; modal.classList.add('show'); }
-  function closeModal(){ modal.classList.remove('show'); }
+  function closeModal(){ modal.classList.remove('show'); detachKeyboard(); }
 
   // flux complet, secvential
   async function startFlow(btn, forced){
@@ -89,16 +89,69 @@
     const res = await QMS.api('api/ticket', payload);
     btn.style.pointerEvents='';
     if(!res.ok){ QMS.toast(res.error||'Eroare','error'); return; }
-    showTicket(res, btn);
-    if(cfg.printerMode==='browser') setTimeout(()=>printBrowser(res, btn), 350);
+    afterTicket(res, btn.dataset.name, btn.dataset.color);
+  }
+
+  // afisare + printare bilet (folosit si la emitere normala, si la check-in programare)
+  function afterTicket(res, name, color){
+    showTicket(res, name, color);
+    if(cfg.printerMode==='browser') setTimeout(()=>printBrowser(res, name), 350);
     if(cfg.printerMode==='android' && res.escpos_b64 && window.AndroidPrinter && window.AndroidPrinter.printBase64){
       try{ window.AndroidPrinter.printBase64(res.escpos_b64); }catch(e){ QMS.toast('Eroare imprimanta','error'); }
     }
   }
 
-  function showTicket(res, btn){
-    const t=res.ticket, color=btn.dataset.color||cfg.accent;
-    $('tkSvc').textContent=btn.dataset.name;
+  /* ---- check-in programare la dozator (clientul cu programare isi ia bonul) ---- */
+  const btnCheckin=$('btnCheckin');
+  if(btnCheckin) btnCheckin.addEventListener('click', openCheckin);
+  function openCheckin(){
+    openModal(`<h3 style="margin-top:0">${esc(cfg.texts.checkin_title||'Check-in programare')}</h3>
+      <p class="muted" style="margin:.2rem 0 .8rem">${esc(cfg.texts.checkin_hint||'Introdu codul programarii sau numarul de telefon')}</p>
+      <input id="ciCode" type="text" autocomplete="off" style="width:100%;font-size:1.4rem;text-align:center;padding:.7rem;letter-spacing:.04em">
+      <div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn" style="flex:1" id="ciCancel">${esc(cfg.popup.policy_cancel||'Anuleaza')}</button>
+      <button class="btn btn-primary" style="flex:1" id="ciOk">${esc(cfg.popup.policy_ok||'Continua')}</button></div>`);
+    const inp=$('ciCode'); if(cfg.virtualKeyboard) attachKeyboard(inp); else inp.focus();
+    $('ciCancel').onclick=()=>closeModal();
+    $('ciOk').onclick=async ()=>{
+      const code=(inp.value||'').trim(); if(!code){ QMS.toast('Introdu codul programarii','error'); return; }
+      $('ciOk').disabled=true;
+      const res=await QMS.api('api/ticket-checkin',{device_key:cfg.key, code:code});
+      $('ciOk').disabled=false;
+      if(!res.ok){ QMS.toast(res.error||'Eroare','error'); return; }
+      closeModal();
+      afterTicket(res, res.service_name||'', res.color||cfg.accent);
+    };
+  }
+
+  /* ---- tastatura pe ecran (touchscreen) ---- */
+  let kbd=null, kbdTarget=null;
+  function buildKeyboard(){
+    if(kbd) return kbd;
+    kbd=document.createElement('div'); kbd.className='vkbd'; kbd.style.display='none';
+    const rows=[['1','2','3','4','5','6','7','8','9','0'],['q','w','e','r','t','y','u','i','o','p'],['a','s','d','f','g','h','j','k','l'],['z','x','c','v','b','n','m','@','.']];
+    let html=rows.map(r=>'<div class="vk-row">'+r.map(k=>`<button type="button" class="vk" data-k="${k}">${k}</button>`).join('')+'</div>').join('');
+    html+='<div class="vk-row"><button type="button" class="vk vk-wide" data-k=" ">spatiu</button><button type="button" class="vk vk-back" data-k="back">⌫</button></div>';
+    kbd.innerHTML=html;
+    kbd.addEventListener('mousedown', e=>e.preventDefault()); // nu fura focusul din input
+    kbd.addEventListener('click', e=>{ const b=e.target.closest('[data-k]'); if(!b||!kbdTarget) return;
+      const k=b.getAttribute('data-k');
+      if(k==='back') kbdTarget.value=kbdTarget.value.slice(0,-1); else kbdTarget.value+=k;
+      kbdTarget.dispatchEvent(new Event('input',{bubbles:true})); kbdTarget.focus();
+    });
+    document.body.appendChild(kbd); return kbd;
+  }
+  function attachKeyboard(inp){ if(!cfg.virtualKeyboard) return; buildKeyboard(); kbdTarget=inp; kbd.style.display=''; setTimeout(()=>inp.focus(),0); }
+  function detachKeyboard(){ if(kbd) kbd.style.display='none'; kbdTarget=null; }
+  if(cfg.virtualKeyboard){
+    document.addEventListener('focusin', e=>{ const el=e.target;
+      const ok = (el.tagName==='INPUT' && /^(text|tel|email|number|search|)$/.test((el.getAttribute('type')||'text'))) || el.tagName==='TEXTAREA';
+      if(ok){ buildKeyboard(); kbdTarget=el; kbd.style.display=''; }
+    });
+  }
+
+  function showTicket(res, name, color){
+    const t=res.ticket; color=color||cfg.accent;
+    $('tkSvc').textContent=name||'';
     const big=$('tkNum'); big.textContent=t.label; big.style.color=color;
     $('tkPos').textContent = res.position>0 ? (cfg.texts.ahead||'Sunt {n} inainte').replace('{n}',res.position) : (cfg.texts.ahead_first||'Sunteti urmatorul');
     const tw=$('tkWait'); if(tw){ const m=Math.round((+res.wait_est||0)/60);
@@ -118,14 +171,14 @@
   }
   window.qmsCloseTicket=closeTicket;
 
-  function printBrowser(res, btn){
+  function printBrowser(res, name){
     const t=res.ticket, P=cfg.print||{};
     let f=window.frames['printframe']; if(!f){ const fr=document.createElement('iframe'); fr.name='printframe'; fr.style.cssText='position:absolute;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(fr); f=fr; }
     const doc=f.contentDocument; doc.open();
     doc.write(`<html><head><style>@page{size:80mm auto;margin:0}body{width:80mm;font-family:monospace;text-align:center;margin:0;padding:6px 4px}.b{font-size:13px;font-weight:bold}.num{font-size:46px;font-weight:bold;margin:6px 0}.s{font-size:14px}hr{border:none;border-top:1px dashed #000}img{width:120px;height:120px}</style></head><body>
       ${P.logo&&cfg.logo?`<img src="${cfg.logo}" style="width:auto;max-height:60px">`:''}
       <div class="b">${esc(cfg.brand||'')}</div><div>${esc(cfg.branch||'')}</div><hr>
-      ${P.service!==0?`<div class="s">${esc(btn.dataset.name)}</div>`:''}
+      ${P.service!==0?`<div class="s">${esc(name||'')}</div>`:''}
       ${t.priority?'<div class="b">* PRIORITAR *</div>':''}
       <div class="num">${esc(t.label)}</div>
       ${P.position!==0?`<div>${$('tkPos').textContent}</div>`:''}

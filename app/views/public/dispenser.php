@@ -37,6 +37,11 @@ $hasGroups = !empty($grouped);
 // randeaza un buton de serviciu (folosit si in mod plat, si grupat)
 // (optional) cati asteapta acum la fiecare serviciu — afisat pe butoane si actualizat live
 $showWait = $gb($L,'show_waiting',false);
+$apptCheckin = $gb($L,'appt_checkin',false) && setting('mod_booking','1')==='1';
+$vkbd = $gb($L,'virtual_keyboard',false);
+$checkin_btn   = $tr('checkin_btn',   $gd($T,'checkin_btn','Am o programare'));
+$checkin_title = $tr('checkin_title', $gd($T,'checkin_title','Check-in programare'));
+$checkin_hint  = $tr('checkin_hint',  $gd($T,'checkin_hint','Introdu codul programarii sau numarul de telefon'));
 $waitCnt = [];
 if ($showWait) {
     try { foreach (all("SELECT service_id, COUNT(*) c FROM tickets WHERE status='waiting' AND branch_id=? GROUP BY service_id", [$branch['id']]) as $r)
@@ -113,6 +118,11 @@ if ($fids) {
   <?php endif; ?>
   <?php $notice = active_notice(); ?>
   <div id="dspNotice" style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fef3c7;color:#92400e;border-radius:14px;padding:.8rem 1.2rem;text-align:center;font-weight:700;<?= $notice===''?'display:none':'' ?>"><?= $notice!=='' ? '📢 '.e($notice) : '' ?></div>
+  <?php if($apptCheckin): ?>
+  <div style="max-width:1100px;margin:.6rem auto 0;width:100%;text-align:center">
+    <button class="btn btn-lg" id="btnCheckin" style="background:#fff;border:2px solid var(--accent,#00c375);color:var(--accent,#00c375);font-weight:800">📅 <?= e($checkin_btn) ?></button>
+  </div>
+  <?php endif; ?>
   <?php if(!$services): ?>
     <div class="svc-grid"><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
   <?php elseif($hasGroups): ?>
@@ -152,15 +162,16 @@ if ($fids) {
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>window.DISPENSER={
   key:<?= jsenc($dev['connection_key']) ?>, printerMode:<?= jsenc($printerMode) ?>,
-  accent:<?= jsenc(setting('accent_color','#2563eb')) ?>, brand:<?= jsenc(setting('brand_name','')) ?>,
+  accent:<?= jsenc(setting('accent_color','#00c375')) ?>, brand:<?= jsenc(setting('brand_name','')) ?>,
   branch:<?= jsenc($branch['name']) ?>, footer:<?= jsenc($footer) ?>,
   virtual:<?= setting('virtual_enabled','1')==='1'?'true':'false' ?>, logo:<?= jsenc($logo) ?>,
   branchId:<?= (int)$branch['id'] ?>, showWaiting:<?= $showWait?'true':'false' ?>,
+  apptCheckin:<?= $apptCheckin?'true':'false' ?>, virtualKeyboard:<?= $vkbd?'true':'false' ?>,
   forms:<?= jsenc($svcForms, JSON_UNESCAPED_UNICODE) ?>,
   lang:<?= jsenc($lang) ?>, revertUrl:<?= jsenc($revertUrl) ?>,
   autoReturn:<?= (int)$gd($L,'auto_return_sec',7) ?>, screensaver:<?= (int)$gd($L,'screensaver_sec',0) ?>,
   print:{logo:<?= $gb($L,'print_logo',true)?1:0 ?>,service:<?= $gb($L,'print_service',true)?1:0 ?>,position:<?= $gb($L,'print_position',true)?1:0 ?>,datetime:<?= $gb($L,'print_datetime',true)?1:0 ?>,qr:<?= $gb($L,'print_qr',true)?1:0 ?>},
-  texts:{popup_title:<?= jsenc($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= jsenc($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= jsenc($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= jsenc($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= jsenc($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= jsenc($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>},
+  texts:{popup_title:<?= jsenc($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= jsenc($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= jsenc($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= jsenc($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= jsenc($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= jsenc($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>,checkin_title:<?= jsenc($checkin_title) ?>,checkin_hint:<?= jsenc($checkin_hint) ?>},
   popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= jsenc($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= jsenc($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= jsenc($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= jsenc($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= jsenc($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= jsenc($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= jsenc($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
 <script src="<?= e(asset('js/dispenser.js')) ?>"></script>
