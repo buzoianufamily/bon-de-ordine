@@ -7,7 +7,7 @@ $brandLogo = setting('brand_logo', '');
 
 /* grupuri de navigare cu iconite simple (emoji) langa nume — ca la inceput */
 $navGroups = [
-  ''           => [ ['', 'Dashboard', '◧'], ['statistics','Statistici','📊'], ['tickets','Bilete','🎫'], ['branches','Filiale','🏢'], ['appointments','Programari','📅'], ['feedback','Feedback','⭐'] ],
+  ''           => [ ['', 'Dashboard', '◧'], ['statistics','Statistici','📊'], ['apps','Aplicatii','🧩'], ['tickets','Bilete','🎫'], ['branches','Filiale','🏢'], ['appointments','Programari','📅'], ['feedback','Feedback','⭐'] ],
   'Continut'   => [ ['users','Utilizatori','◉'], ['services','Servicii','◆'], ['groups','Grupuri','🗂'], ['media','Multimedia','▦'], ['forms','Formulare','🗒'] ],
   'Configurare'=> [ ['counters','Ghisee','▤'], ['devices','Dispozitive','▭'] ],
 ];
@@ -32,9 +32,8 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
 </head><body class="admin">
 <a href="#main-content" class="skip-link">Sari la conținut</a>
 <script>(function(){try{
-  var t=localStorage.getItem('admin_theme');
-  /* fara preferinta salvata -> urmeaza tema sistemului de operare */
-  if(t==='light' || (!t && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+  /* implicit tema inchisa (ca la Moviik); trecem pe deschis doar daca utilizatorul a ales explicit */
+  if(localStorage.getItem('admin_theme')==='light') document.body.classList.add('light');
 }catch(e){}})();</script>
 <div class="shell">
   <nav class="side">
@@ -73,6 +72,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
         <?php if ($brandLogo): ?><img src="<?= e($brandLogo) ?>" alt="<?= e($brandName) ?>"><?php else: ?><span class="dot"></span><?= e($brandName) ?><?php endif; ?>
       </div>
       <div class="right">
+        <span class="statuspill" title="Sistemul functioneaza"><span class="d"></span>Gata</span>
         <button class="themebtn" id="theme-toggle" title="Comuta tema deschisa/inchisa" aria-label="Comuta tema">🌙</button>
         <span class="uchip"><span class="av"><?= e(mb_strtoupper(mb_substr($u['name'] ?? '?',0,1))) ?></span><?= e($u['name'] ?? '') ?></span>
       </div>

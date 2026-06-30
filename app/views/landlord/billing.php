@@ -9,7 +9,7 @@ if (!empty($prefillHost)) foreach ($tenants as $t) if (strtolower((string)$t['ho
 <title>Landlord · Facturare</title>
 <meta name="csrf" content="<?= e(csrf_token()) ?>"><meta name="base" content="<?= e(base_url()) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
-<style>:root{--accent:#2563eb}
+<style>:root{--accent:#00c375}
 body{background:#0a0b0d;color:#e8eaef}.llwrap{max-width:1080px;margin:0 auto;padding:1.4rem}
 h1,h2,h3{color:#f3f5f8}.card{background:#15171c;border-color:#1e2128}
 input,select,textarea{background:#101216;color:#e8eaef;border-color:#272c36}label{color:#aab1bd}

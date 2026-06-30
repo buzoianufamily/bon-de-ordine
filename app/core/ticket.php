@@ -465,15 +465,18 @@ function counter_view(array $counter): array {
     }
     $waiting = all(
         "SELECT t.id, t.label, t.priority, t.issued_at, t.form_data, t.target_counter_id, t.note,
-                s.name AS service_name, s.color, s.kpi_wait_sec,
+                t.service_id, s.prefix, s.name AS service_name, s.color, s.kpi_wait_sec,
                 TIMESTAMPDIFF(SECOND, t.issued_at, NOW()) AS waited
          FROM tickets t JOIN services s ON s.id = t.service_id
          WHERE t.status = 'waiting' AND ($cond)
          ORDER BY (t.target_counter_id = ?) DESC, t.priority DESC, t.issued_at ASC LIMIT 50",
         array_merge($args, [$cid]));
     $current = one(
-        "SELECT t.*, s.name AS service_name, s.color FROM tickets t
-         JOIN services s ON s.id = t.service_id
+        "SELECT t.*, s.name AS service_name, s.color,
+                TIME_FORMAT(t.issued_at, '%H:%i') AS created_hm,
+                TIMESTAMPDIFF(SECOND, t.issued_at, COALESCE(t.called_at, NOW())) AS wait_sec,
+                TIMESTAMPDIFF(SECOND, COALESCE(t.served_at, t.called_at, NOW()), NOW()) AS serving_sec
+         FROM tickets t JOIN services s ON s.id = t.service_id
          WHERE t.counter_id = ? AND t.status IN ('called','serving')
          ORDER BY t.called_at DESC LIMIT 1", [$counter['id']]);
     // neprezentati recent (azi) pe serviciile ghiseului — pot fi repusi la rand daca ajung tarziu

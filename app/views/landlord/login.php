@@ -3,7 +3,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Landlord · Administrare instante</title>
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
-<style>:root{--accent:#2563eb}</style>
+<style>:root{--accent:#00c375}</style>
 </head>
 <body class="authpage"><div class="center"><div class="auth">
   <div class="card pad" style="padding:2rem 1.8rem">

@@ -9,9 +9,36 @@
   const elWait = document.getElementById('waitCount');
   const elList = document.getElementById('qList');
   const elBar  = document.getElementById('selBar');
+  const elSvcCounts = document.getElementById('svcCounts');
+  const elSvcTotal  = document.getElementById('svcTotal');
+  const elServ = document.getElementById('servTimer');
+  const elNow  = document.getElementById('ctrNow');
+  const elTinfo = document.getElementById('tinfo');
+  const elCreated = document.getElementById('curCreated');
+  const elWaited  = document.getElementById('curWaited');
   const esc = s => String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   const mmss = s => { s=Math.max(0,s|0); return ('0'+((s/60|0)%100)).slice(-2)+':'+('0'+(s%60)).slice(-2); };
   let selId = null, items = [], lastSig = '', lastBarKey = '';
+  let servActive = false, servBase = 0, servAt = 0;   // cronometru servire (ticat local intre refresh-uri)
+
+  /* contoarele pe servicii din antet (cate bilete la rand pe fiecare serviciu) */
+  function renderSvcCounts(waiting){
+    if(!elSvcCounts) return;
+    const cnt = {};
+    (waiting||[]).forEach(w => { const k=+w.service_id||0; cnt[k]=(cnt[k]||0)+1; });
+    const svcs = cfg.services||[];
+    elSvcCounts.innerHTML = svcs.map(s => {
+      const n = cnt[s.id]||0;
+      return `<div class="svcc${n>0?' has':''}"><span class="b" style="background:${esc(s.color||cfg.accent)}">${esc((s.prefix||'?')[0])}</span><span class="nm">${esc(s.name||'')}</span><span class="n">${n}</span></div>`;
+    }).join('') || '<span class="muted">Niciun serviciu</span>';
+    if(elSvcTotal) elSvcTotal.textContent = (waiting||[]).length;
+  }
+  /* cronometru de servire: ticaie local in fiecare secunda */
+  setInterval(function(){
+    if(!servActive || !elServ) return;
+    const sec = servBase + Math.max(0, (Date.now()-servAt)/1000|0);
+    elServ.textContent = '🕒 ' + mmss(sec);
+  }, 1000);
 
   /* ---- notificari browser (opt-in) ---- */
   let knownWaiting = null;
@@ -257,6 +284,21 @@
     elCur.style.color = c ? (c.color||cfg.accent) : '#cbd1da';
     elSvc.textContent = c ? c.service_name : 'Niciun bilet in lucru';
     renderCurForm(c);
+    // cronometru servire + info bilet (creare/asteptare) + inel activ — ca la Moviik
+    if(c){
+      servActive=true; servBase=+c.serving_sec||0; servAt=Date.now();
+      if(elServ) elServ.textContent='🕒 '+mmss(servBase);
+      if(elNow) elNow.classList.add('has');
+      if(elTinfo) elTinfo.style.display='';
+      if(elCreated) elCreated.textContent=c.created_hm||'—';
+      if(elWaited) elWaited.textContent=mmss(+c.wait_sec||0);
+    } else {
+      servActive=false;
+      if(elServ) elServ.textContent='';
+      if(elNow) elNow.classList.remove('has');
+      if(elTinfo) elTinfo.style.display='none';
+    }
+    renderSvcCounts(res.waiting||[]);
 
     const ni = [];
     if(c) ni.push({id:c.id,label:c.label,service_name:c.service_name,color:c.color,status:c.status,priority:c.priority,form_data:c.form_data,note:c.note});

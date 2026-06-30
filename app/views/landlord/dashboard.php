@@ -8,7 +8,7 @@ foreach ($rows as $r) { if (!$r['active']) { $suspCnt++; continue; } if (!empty(
 <title>Landlord · Instante</title>
 <meta name="csrf" content="<?= e(csrf_token()) ?>"><meta name="base" content="<?= e(base_url()) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
-<style>:root{--accent:#2563eb}
+<style>:root{--accent:#00c375}
 body{background:#0a0b0d;color:#e8eaef}
 .llwrap{max-width:1180px;margin:0 auto;padding:1.4rem}
 h1,h2,h3{color:#f3f5f8}

@@ -41,16 +41,7 @@ document.addEventListener('click',function(e){
     try{ localStorage.setItem('admin_theme', light?'light':'dark'); }catch(e){}
     setIcon();
   });
-  // daca utilizatorul NU a ales manual, urmarim live schimbarile temei din sistemul de operare
-  if(window.matchMedia){
-    try{
-      matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(ev){
-        try{ if(localStorage.getItem('admin_theme')) return; }catch(e){}
-        document.body.classList.toggle('light', ev.matches);
-        setIcon();
-      });
-    }catch(e){}
-  }
+  // tema implicita e inchisa (ca la Moviik); nu mai urmarim automat tema sistemului
 })();
 /* sidebar toggle — persista starea in localStorage */
 (function(){
@@ -61,6 +52,16 @@ document.addEventListener('click',function(e){
   if(btn) btn.addEventListener('click',function(){
     shell.classList.toggle('nav-collapsed');
     localStorage.setItem('nav_collapsed', shell.classList.contains('nav-collapsed')?'1':'0');
+  });
+})();
+/* contoare de caractere pe campurile cu limita (ca la Moviik: 0/50) */
+(function(){
+  document.querySelectorAll('.content input[maxlength], .content textarea[maxlength]').forEach(function(el){
+    var max=parseInt(el.getAttribute('maxlength'),10); if(!max||max>2000) return;
+    var cc=document.createElement('span'); cc.className='cc';
+    function upd(){ cc.textContent=el.value.length+'/'+max; }
+    upd(); el.addEventListener('input',upd);
+    if(el.nextSibling) el.parentNode.insertBefore(cc, el.nextSibling); else el.parentNode.appendChild(cc);
   });
 })();
 /* drawer mobil pentru bara laterala (fundalul e controlat doar din JS, prin stil inline) */

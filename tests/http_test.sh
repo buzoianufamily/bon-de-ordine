@@ -131,6 +131,11 @@ tcontains "statistici au sectiunea Programari online" 'Programari online' "$(cur
 t "GET /admin/closures"          200 "$(code -b "$JAR" $B/admin/closures)"
 t "GET /admin/help"              200 "$(code -b "$JAR" $B/admin/help)"
 tcontains "help documenteaza formatele CSV" 'nume,email,rol,parola' "$(curl -s -b "$JAR" "$B/admin/help")"
+t "GET /admin/apps"              200 "$(code -b "$JAR" $B/admin/apps)"
+APPS_PAGE="$(curl -s -b "$JAR" "$B/admin/apps")"
+tcontains "apps: lansator are terminalul operator" 'Terminal operator' "$APPS_PAGE"
+tcontains "apps: lansator are afisajul TV"          'Afisaj TV'        "$APPS_PAGE"
+tcontains "apps: lansator are biletul digital"      'Bilet digital'    "$APPS_PAGE"
 t "GET /admin/devices/qr"        200 "$(code -b "$JAR" $B/admin/devices/qr)"
 
 # --- exporturi (autentificat) ---

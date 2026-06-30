@@ -925,6 +925,9 @@ function run_migrations(): void {
     if (!$hasCol('appointments','consent_at')) $ddl("ALTER TABLE appointments ADD COLUMN consent_at DATETIME NULL");
     if (!$hasCol('appointments','consent_ip')) $ddl("ALTER TABLE appointments ADD COLUMN consent_ip VARCHAR(45) NULL");
 
+    // v32: accent implicit aliniat la verdele Moviik (doar daca instanta inca foloseste albastrul implicit vechi)
+    try { if (val("SELECT v FROM settings WHERE k='accent_color'") === '#2563eb') set_setting('accent_color', '#00c375'); } catch (Throwable $e) {}
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
