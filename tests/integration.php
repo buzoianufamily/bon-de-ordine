@@ -407,6 +407,11 @@ chk($hasIdx > 0, 'migrare: idx_tickets_counter prezent dupa migrare');
 chk($hasSvcIdx > 0, 'migrare: idx_tickets_svc_status re-adaugat dupa upgrade');
 chk($hasTls === 1, 'migrare: users.totp_last_slice re-adaugat dupa upgrade');
 chk((int)val("SELECT v FROM settings WHERE k='schema_version'") === APP_SCHEMA_VERSION, 'migrare: schema_version urcata la zi');
+// v32: accentul albastru implicit vechi devine verde Moviik; o culoare personalizata ramane neatinsa
+set_setting('accent_color', '#2563eb'); set_setting('schema_version', '31'); run_migrations();
+chk(setting('accent_color', '') === '#00c375', 'migrare v32: accent albastru implicit -> verde Moviik');
+set_setting('accent_color', '#ff8800'); set_setting('schema_version', '31'); run_migrations();
+chk(setting('accent_color', '') === '#ff8800', 'migrare v32: culoarea personalizata NU e schimbata');
 
 /* ---- 29. Webhook de test (raporteaza rezultatul) ---- */
 set_setting('webhook_url', '');

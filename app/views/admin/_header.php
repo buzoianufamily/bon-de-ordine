@@ -32,9 +32,8 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
 </head><body class="admin">
 <a href="#main-content" class="skip-link">Sari la conținut</a>
 <script>(function(){try{
-  var t=localStorage.getItem('admin_theme');
-  /* fara preferinta salvata -> urmeaza tema sistemului de operare */
-  if(t==='light' || (!t && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+  /* implicit tema inchisa (ca la Moviik); trecem pe deschis doar daca utilizatorul a ales explicit */
+  if(localStorage.getItem('admin_theme')==='light') document.body.classList.add('light');
 }catch(e){}})();</script>
 <div class="shell">
   <nav class="side">

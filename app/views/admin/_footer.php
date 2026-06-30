@@ -41,16 +41,7 @@ document.addEventListener('click',function(e){
     try{ localStorage.setItem('admin_theme', light?'light':'dark'); }catch(e){}
     setIcon();
   });
-  // daca utilizatorul NU a ales manual, urmarim live schimbarile temei din sistemul de operare
-  if(window.matchMedia){
-    try{
-      matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(ev){
-        try{ if(localStorage.getItem('admin_theme')) return; }catch(e){}
-        document.body.classList.toggle('light', ev.matches);
-        setIcon();
-      });
-    }catch(e){}
-  }
+  // tema implicita e inchisa (ca la Moviik); nu mai urmarim automat tema sistemului
 })();
 /* sidebar toggle — persista starea in localStorage */
 (function(){

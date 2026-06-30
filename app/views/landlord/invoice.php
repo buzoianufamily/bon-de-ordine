@@ -14,7 +14,7 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;b
 .sheet{max-width:800px;margin:0 auto;background:#fff;padding:2.4rem;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .toolbar{max-width:800px;margin:0 auto .9rem;display:flex;gap:.5rem;justify-content:flex-end}
 .btn{font:inherit;padding:.5rem .9rem;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#111;cursor:pointer;text-decoration:none}
-.btn-primary{background:#2563eb;color:#fff;border-color:#2563eb}
+.btn-primary{background:#00c375;color:#fff;border-color:#00c375}
 h1{font-size:1.5rem;margin:0 0 .2rem}
 .row{display:flex;gap:2rem;flex-wrap:wrap;justify-content:space-between}
 .box{flex:1;min-width:220px}
