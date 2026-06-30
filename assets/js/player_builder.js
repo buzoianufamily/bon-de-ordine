@@ -24,8 +24,9 @@
     image: { label:'Imagine / logo', icon:'🖼️', w:30,h:20, props:{url:'',fit:'cover'},
       fields:[['url','URL imagine','text'],['fit','Incadrare',['cover','contain']]],
       preview:p=>`<div class="wv wv-img">${p.url?`<img style="object-fit:${p.fit||'cover'}" src="${esc(p.url)}">`:'<div class="wv-text" style="color:#5b6270">Imagine</div>'}</div>` },
-    tickets_grid: { label:'Grila bilete', icon:'▦', w:62,h:64, props:{title:'',status:'waiting',rows:6,col_count:true,col_counter:true,col_color:true,col_prefix:false,col_name:true,col_label:true,col_priority:true,sort:'recent',paginate:false,page_size:6,page_sec:8,flash:true,row_gap:6,radius:8},
+    tickets_grid: { label:'Grila bilete', icon:'▦', w:62,h:64, props:{title:'',status:'waiting',rows:6,filter_services:[],filter_counters:[],col_count:true,col_counter:true,col_color:true,col_prefix:false,col_name:true,col_label:true,col_priority:true,sort:'recent',paginate:false,page_size:6,page_sec:8,flash:true,row_gap:6,radius:8},
       fields:[['title','Titlu (optional)','text'],['status','Bilete afisate',['waiting','called']],['rows','Nr. randuri','number'],
+        ['filter_services','Doar serviciile (gol = toate)','svcmulti'],['filter_counters','Doar ghiseele (gol = toate)','ctrmulti'],
         ['col_count','Coloana: nr. la rand','bool'],['col_counter','Coloana: ghiseu','bool'],['col_color','Coloana: bara de culoare','bool'],['col_prefix','Coloana: prefix (badge)','bool'],['col_name','Coloana: nume serviciu','bool'],['col_label','Coloana: numar bon','bool'],['col_priority','Coloana: prioritar (★)','bool'],
         ['sort','Sortare (la „chemate")',['recent','service']],
         ['paginate','Auto-paginare','bool'],['page_size','Bilete/pagina','number'],['page_sec','Schimba pagina la (sec)','number'],
@@ -211,6 +212,10 @@
     insp.innerHTML = h;
     def.fields.forEach(([key,,type])=>{
       const el=document.getElementById('p_'+key); if(!el)return;
+      if(type==='svcmulti'||type==='ctrmulti'){
+        el.addEventListener('change',()=>{ w.props[key]=Array.from(el.querySelectorAll('input[type=checkbox]:checked')).map(c=>+c.value); renderStage(); });
+        return;
+      }
       const ev = type==='bool'?'change':'input';
       el.addEventListener(ev,()=>{ w.props[key] = type==='bool'?el.checked:(type==='number'?+el.value:el.value); renderStage(); });
     });
@@ -263,6 +268,14 @@
   }
 
   function fieldHtml(id,lab,type,val){
+    if(type==='svcmulti'||type==='ctrmulti'){
+      const list = type==='svcmulti' ? (P.services||[]) : (P.counters||[]);
+      const sel = Array.isArray(val)?val.map(Number):[];
+      const opts = list.length ? list.map(o=>{ const oid=+o.id, txt = type==='svcmulti'?((o.prefix?o.prefix+' ':'')+o.name):(o.code+' · '+o.name);
+        return `<label class="chk" style="margin:.15rem 0"><input type="checkbox" value="${oid}" ${sel.includes(oid)?'checked':''}> ${esc(txt)}</label>`; }).join('')
+        : `<div class="muted" style="font-size:.78rem">${type==='svcmulti'?'Niciun serviciu in filiala.':'Niciun ghiseu in filiala.'}</div>`;
+      return `<div class="field"><label>${lab}</label><div id="${id}" data-multi="1" style="max-height:140px;overflow:auto;border:1px solid #2a2f3a;border-radius:8px;padding:.4rem .5rem">${opts}</div></div>`;
+    }
     if(type==='bool') return `<label class="chk"><input type="checkbox" id="${id}" ${val?'checked':''}> ${lab}</label>`;
     if(type==='textarea') return `<div class="field"><label>${lab}</label><textarea id="${id}" rows="2">${esc(val||'')}</textarea></div>`;
     if(type==='color') return `<div class="field"><label>${lab}</label><input type="color" id="${id}" value="${val||'#0b0d12'}"></div>`;

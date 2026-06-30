@@ -127,14 +127,20 @@
         const gap=p.row_gap!=null?+p.row_gap:Math.max(3,H*.012), rad=p.radius!=null?+p.radius:8;
         el.style.background=p.bg||'transparent';el.style.padding='6px';el.style.display='flex';el.style.flexDirection='column';el.style.gap=gap+'px';
         // construieste randurile dupa status (la rand pe serviciu / chemate recent)
+        // filtru optional pe servicii / ghisee (gol = toate) — pentru un TV dedicat unor ghisee/servicii
+        const fSvc=(Array.isArray(p.filter_services)&&p.filter_services.length)?p.filter_services.map(Number):null;
+        const fCtr=(Array.isArray(p.filter_counters)&&p.filter_counters.length)?p.filter_counters.map(Number):null;
         let rows;
         if((p.status||'waiting')==='called'){
           let list=(state.called||[]).slice();
+          if(fSvc) list=list.filter(c=>fSvc.includes(+c.service_id));
+          if(fCtr) list=list.filter(c=>fCtr.includes(+c.counter_id));
           if((p.sort||'recent')==='service') list.sort((a,b)=>String(a.prefix||'').localeCompare(String(b.prefix||'')));
           rows=list.map(c=>({color:c.color,prefix:c.prefix,name:c.service_name||'',label:c.label,counter:c.counter_code||c.counter_name||'',count:null,priority:!!c.priority,tid:c.id}));
         } else {
           const byPrefix={}; (state.called||[]).forEach(c=>{ if(!byPrefix[c.prefix]) byPrefix[c.prefix]=c; });
-          rows=(state.waiting||[]).map(s=>{ const c=byPrefix[s.prefix]; return {color:s.color,prefix:s.prefix,name:s.name,label:c?c.label:'—',counter:c?(c.counter_code||c.counter_name||''):'',count:s.cnt,priority:false,tid:c?c.id:null}; });
+          let svcs=(state.waiting||[]); if(fSvc) svcs=svcs.filter(s=>fSvc.includes(+s.id));
+          rows=svcs.map(s=>{ const c=byPrefix[s.prefix]; return {color:s.color,prefix:s.prefix,name:s.name,label:c?c.label:'—',counter:c?(c.counter_code||c.counter_name||''):'',count:s.cnt,priority:false,tid:c?c.id:null}; });
         }
         const maxRows=+(p.rows||6);
         // auto-paginare (cicleaza paginile cu timer per-widget)

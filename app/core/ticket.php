@@ -425,6 +425,7 @@ function queue_state(int $branch_id, bool $withEstimates = false): array {
     // ultimele bilete chemate (pt lista pe TV)
     $called = all(
         "SELECT t.id, t.label, t.status, t.priority, t.called_at, t.recall_count,
+                t.service_id, t.counter_id,
                 s.name AS service_name, s.prefix, s.color,
                 c.code AS counter_code, c.name AS counter_name
          FROM tickets t
