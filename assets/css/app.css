@@ -176,8 +176,28 @@ body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var
 /* ====== Counter (operator) ====== */
 .counter-wrap{max-width:1100px;margin:0 auto;padding:1.5rem}
 .callnext{width:100%;border:none;border-radius:24px;background:var(--accent);color:#fff;padding:2.4rem;font-family:var(--display);
-  font-size:1.8rem;font-weight:800;cursor:pointer;box-shadow:0 14px 36px color-mix(in srgb,var(--accent) 40%,transparent);transition:.12s}
+  font-size:1.8rem;font-weight:800;cursor:pointer;box-shadow:0 14px 36px color-mix(in srgb,var(--accent) 40%,transparent);transition:.12s;
+  display:flex;align-items:center;justify-content:center;gap:.7rem}
+.callnext .cn-ic{font-size:1.4rem;line-height:1}
 .callnext:active{transform:scale(.99)}
+/* contoare pe servicii (antet terminal), ca la Moviik */
+.ctrcounts{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.svccounts{display:flex;gap:.55rem;flex-wrap:wrap;flex:1}
+.svcc{display:inline-flex;align-items:center;gap:.45rem;background:color-mix(in srgb,var(--ink) 5%,transparent);border:1px solid var(--line);border-radius:999px;padding:.28rem .75rem .28rem .32rem;font-weight:800}
+.svcc.has{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.svcc .b{width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:.78rem;font-weight:800;flex:0 0 auto}
+.svcc .nm{font-size:.82rem;color:var(--muted);font-weight:600}
+.svcc .n{font-size:1rem;min-width:1.1em;text-align:center}
+.ctrcounts .total{font-size:.88rem;color:var(--muted);white-space:nowrap}
+.ctrcounts .total strong{color:var(--ink);font-size:1.15rem}
+/* biletul in lucru — inel circular cu cronometru de servire */
+.ctr-now{display:flex;justify-content:center;margin:.3rem 0 .8rem}
+.ctr-now .ring{width:230px;height:230px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:3px solid var(--line);transition:.2s;padding:1rem}
+.ctr-now.has .ring{border-color:color-mix(in srgb,var(--accent) 55%,transparent);box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 9%,transparent)}
+.ctr-now .now-svc{font-size:.74rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;max-width:88%;line-height:1.25}
+.ctr-now .current-ticket{font-size:3.4rem;margin:.15rem 0}
+.ctr-now .serv-timer{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:800;font-size:1rem;min-height:1.2em}
+.tinfo{display:flex;gap:1.8rem;justify-content:center;margin:-.2rem 0 1rem;font-size:.86rem}
 .current-ticket{font-family:var(--display);font-size:4.5rem;font-weight:800;line-height:1}
 .qbtns{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
 .qlist{max-height:62vh;overflow:auto}

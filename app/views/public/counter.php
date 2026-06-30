@@ -1,12 +1,12 @@
 <?php $title='Ghiseu '.$counter['code']; require __DIR__.'/_head.php';
-$services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order',[$counter['branch_id']]); ?>
-<body><div class="counter-wrap">
+$services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order',[$counter['branch_id']]);
+$myStatus = (string)(val('SELECT work_status FROM users WHERE id=?', [$u['id']]) ?: 'offline'); ?>
+<body class="ctrpage"><div class="counter-wrap">
   <div class="topbar">
-    <div><div class="muted">Operator: <?= e($u['name']) ?> <span id="myStats" class="pill" style="background:#eef2ff;color:#3730a3;display:none;margin-left:.4rem"></span></div>
+    <div><div class="muted">Operator: <?= e($u['name']) ?> <span id="myStats" class="pill" style="background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);display:none;margin-left:.4rem"></span></div>
       <h1 style="margin:0"><?= e($counter['name']) ?> <span class="muted" style="font-weight:600">(<?= e($counter['code']) ?>)</span></h1></div>
     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-      <?php $myStatus = (string)(val('SELECT work_status FROM users WHERE id=?', [$u['id']]) ?: 'offline');
-        $stOpts=['available'=>'🟢 Disponibil','busy'=>'🔴 Ocupat','paused'=>'🟡 Pauza','offline'=>'⚪ Indisponibil']; ?>
+      <?php $stOpts=['available'=>'🟢 Disponibil','busy'=>'🔴 Ocupat','paused'=>'🟡 Pauza','offline'=>'⚪ Indisponibil']; ?>
       <select id="opStatus" onchange="qmsStatus(this.value)" style="width:auto">
         <?php foreach($stOpts as $k=>$lab): ?><option value="<?= $k ?>" <?= $myStatus===$k?'selected':'' ?>><?= $lab ?></option><?php endforeach; ?>
       </select>
@@ -21,13 +21,29 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   <?php if(($notice = active_notice()) !== ''): ?>
   <div class="card pad" style="background:#fef3c7;color:#92400e;font-weight:700;margin-bottom:1rem">📢 <?= e($notice) ?></div>
   <?php endif; ?>
+
+  <!-- bara cu numarul de bilete la rand pe fiecare serviciu (ca la Moviik) -->
+  <div class="card pad ctrcounts">
+    <div class="svccounts" id="svcCounts"></div>
+    <div class="total">Total · <strong id="svcTotal">0</strong></div>
+  </div>
+
   <div class="row">
     <div class="card pad" style="flex:1.1">
-      <div class="muted">Bilet in lucru</div>
-      <div class="current-ticket" id="curTicket">—</div>
-      <div id="curSvc" class="muted" style="font-weight:700;margin-bottom:1rem">Niciun bilet in lucru</div>
+      <!-- biletul in lucru — afisaj circular cu cronometru de servire -->
+      <div class="ctr-now" id="ctrNow">
+        <div class="ring">
+          <div id="curSvc" class="now-svc">Niciun bilet in lucru</div>
+          <div class="current-ticket" id="curTicket">—</div>
+          <div class="serv-timer" id="servTimer"></div>
+        </div>
+      </div>
+      <div class="tinfo" id="tinfo" style="display:none">
+        <div><span class="muted">⏱ Emis la</span> <strong id="curCreated">—</strong></div>
+        <div><span class="muted">⌛ Asteptare</span> <strong id="curWaited">—</strong></div>
+      </div>
       <div id="curForm"></div>
-      <button class="callnext" id="btnCall">CHEAMA URMATORUL</button>
+      <button class="callnext" id="btnCall"><span class="cn-ic">📣</span><span>CHEAMA URMATORUL</span></button>
       <?php if(count($services)>1): ?>
       <div class="field" style="margin-top:.7rem">
         <label>Cheama urmatorul dintr-un serviciu anume</label>
@@ -40,9 +56,9 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
     </div>
     <div class="card pad" style="flex:1.2">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <strong>Bilete</strong><span class="pill" style="background:#eef2ff;color:#3730a3"><span id="waitCount">0</span> la rand</span>
+        <strong>Bilete</strong><span class="pill" style="background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)"><span id="waitCount">0</span> la rand</span>
       </div>
-      <div class="muted" style="font-size:.8rem;margin-top:.3rem">Selecteaza un bilet (un singur bilet) ca sa apara optiunile: chemare / recheamare / in servire / finalizat / neprezentat.</div>
+      <div class="muted" style="font-size:.8rem;margin-top:.3rem">Selecteaza un bilet ca sa apara optiunile: chemare / recheamare / in servire / finalizat / neprezentat / transfer / nota.</div>
       <div id="selBar" class="selbar" style="display:none"></div>
       <div class="qlist" id="qList" style="margin-top:.6rem"></div>
       <div id="nsBox" style="display:none;margin-top:1rem;border-top:1px solid var(--line,#e6e8ec);padding-top:.7rem">
@@ -57,7 +73,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
 <script>window.COUNTER={
   counterId:<?= (int)$counter['id'] ?>,
   counterName:<?= jsenc($counter['name'] ?: ('ghiseul '.$counter['code'])) ?>,
-  accent:<?= jsenc(setting('accent_color','#2563eb')) ?>,
+  accent:<?= jsenc(setting('accent_color','#00c375')) ?>,
   notify:<?= $notify?'true':'false' ?>,
   voiceOn:<?= setting('counter_voice','0')==='1'?'true':'false' ?>,
   voice:<?= jsenc(setting('display_voice','ro-RO')) ?>,
@@ -65,7 +81,7 @@ $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND
   sayCounter:<?= setting('display_say_counter','1')==='1'?'true':'false' ?>,
   repeat:<?= (int)setting('display_repeat','2') ?>,
   myStatus:<?= jsenc($myStatus) ?>,
-  services:<?= jsenc(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name']], $services), JSON_UNESCAPED_UNICODE) ?>,
+  services:<?= jsenc(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name'],'color'=>$s['color']], $services), JSON_UNESCAPED_UNICODE) ?>,
   counters:<?php $otherCounters = all('SELECT id, code, name FROM counters WHERE branch_id=? AND id<>? ORDER BY code', [$counter['branch_id'], $counter['id']]);
     echo jsenc(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], $otherCounters), JSON_UNESCAPED_UNICODE); ?>
 };</script>
