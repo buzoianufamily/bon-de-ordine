@@ -139,6 +139,58 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
           <option value="tile" <?= $br==='tile'?'selected':'' ?>>Textura repetata (tile)</option>
         </select></div>
       </div>
+
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <div class="muted" style="font-weight:700;margin-bottom:.5rem">Imagine overlay pe antet</div>
+      <div class="field"><label>Imagine overlay (banner/decor pe antet)</label>
+        <div class="pickrow"><input type="text" id="f__appearance__header_overlay" value="<?= e($gd($A,'header_overlay','')) ?>" placeholder="URL imagine"><button type="button" class="btn" data-pick="f__appearance__header_overlay">📁</button></div>
+        <div class="mgrid" data-grid="f__appearance__header_overlay"></div>
+      </div>
+      <div class="row2">
+        <?php $hoa=$gd($A,'header_overlay_align','center'); ?>
+        <div class="field"><label>Aliniere overlay</label><select id="f__appearance__header_overlay_align">
+          <option value="left" <?= $hoa==='left'?'selected':'' ?>>Stanga</option>
+          <option value="center" <?= $hoa==='center'?'selected':'' ?>>Centru</option>
+          <option value="right" <?= $hoa==='right'?'selected':'' ?>>Dreapta</option>
+        </select></div>
+        <div class="field"><label>Inaltime overlay (px)</label><input type="number" id="f__appearance__header_overlay_height" value="<?= e($gd($A,'header_overlay_height','')) ?>"></div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <div class="muted" style="font-weight:700;margin-bottom:.5rem">Asezare bilete — distante (px)</div>
+      <div class="row2">
+        <div class="field"><label>Margine sus</label><input type="number" id="f__appearance__grid_pad_top" value="<?= e($gd($A,'grid_pad_top','')) ?>"></div>
+        <div class="field"><label>Margine jos</label><input type="number" id="f__appearance__grid_pad_bottom" value="<?= e($gd($A,'grid_pad_bottom','')) ?>"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Margine stanga</label><input type="number" id="f__appearance__grid_pad_left" value="<?= e($gd($A,'grid_pad_left','')) ?>"></div>
+        <div class="field"><label>Margine dreapta</label><input type="number" id="f__appearance__grid_pad_right" value="<?= e($gd($A,'grid_pad_right','')) ?>"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Distanta intre randuri</label><input type="number" id="f__appearance__grid_row_gap" value="<?= e($gd($A,'grid_row_gap','')) ?>"></div>
+        <div class="field"><label>Distanta intre coloane</label><input type="number" id="f__appearance__grid_col_gap" value="<?= e($gd($A,'grid_col_gap','')) ?>"></div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <div class="muted" style="font-weight:700;margin-bottom:.5rem">Stil texte (culoare / marime / aliniere)</div>
+      <div class="row2">
+        <div class="field"><label>Subtitlu — culoare</label><input type="color" id="f__appearance__subtitle_color" value="<?= e($gd($A,'subtitle_color','#6b7280')) ?>"></div>
+        <div class="field"><label>Subtitlu — marime (px)</label><input type="number" id="f__appearance__subtitle_size" value="<?= e($gd($A,'subtitle_size','')) ?>"></div>
+      </div>
+      <?php $sa=$gd($A,'subtitle_align', $gd($T,'title_align','center')); ?>
+      <div class="field"><label>Subtitlu — aliniere</label><select id="f__appearance__subtitle_align">
+        <option value="left" <?= $sa==='left'?'selected':'' ?>>Stanga</option>
+        <option value="center" <?= $sa==='center'?'selected':'' ?>>Centru</option>
+        <option value="right" <?= $sa==='right'?'selected':'' ?>>Dreapta</option>
+      </select></div>
+      <div class="row2">
+        <div class="field"><label>Nume serviciu — marime (px)</label><input type="number" id="f__appearance__btn_name_size" value="<?= e($gd($A,'btn_name_size','')) ?>"></div>
+        <div class="field"><label>Text buton — marime (px)</label><input type="number" id="f__appearance__btn_hint_size" value="<?= e($gd($A,'btn_hint_size','')) ?>"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Mesaj „fara servicii" — culoare</label><input type="color" id="f__appearance__nosvc_color" value="<?= e($gd($A,'nosvc_color','#6b7280')) ?>"></div>
+        <div class="field"><label>Mesaj „fara servicii" — marime (px)</label><input type="number" id="f__appearance__nosvc_size" value="<?= e($gd($A,'nosvc_size','')) ?>"></div>
+      </div>
     </div>
 
     <!-- TEXTE -->
@@ -205,7 +257,7 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
   <!-- PREVIEW -->
   <div class="pv-wrap">
     <div class="pv" id="pv">
-      <div class="pv-head"><img id="pvLogo" src="" alt=""><h1 id="pvTitle">ALEGE SERVICIUL</h1><div class="muted" id="pvSub"></div></div>
+      <div class="pv-head"><img id="pvLogo" src="" alt=""><h1 id="pvTitle">ALEGE SERVICIUL</h1><div class="muted" id="pvSub"></div><img id="pvOvl" alt="" style="display:none;max-width:80%;margin:.3rem auto 0"></div>
       <div class="pv-grid" id="pvGrid"></div>
     </div>
   </div>

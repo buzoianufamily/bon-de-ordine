@@ -106,6 +106,20 @@ $bgCss = $bgImg
 $gridCss = $gridCols==='list' ? 'grid-template-columns:1fr'
   : (in_array($gridCols,['2','3','4'],true) ? "grid-template-columns:repeat($gridCols,1fr)"
   : ($gridCols==='wide' ? 'grid-template-columns:repeat(auto-fit,minmax(340px,1fr))' : ''));
+// overlay pe antet
+$headerOverlay = (string)$gd($A,'header_overlay','');
+$hoAlign = in_array($gd($A,'header_overlay_align','center'),['left','center','right'],true) ? $gd($A,'header_overlay_align','center') : 'center';
+$hoH = (int)$gd($A,'header_overlay_height',0);
+// distante grila bilete (per latura + gap-uri)
+$gridBox = '';
+foreach (['grid_pad_top'=>'padding-top','grid_pad_bottom'=>'padding-bottom','grid_pad_left'=>'padding-left','grid_pad_right'=>'padding-right','grid_row_gap'=>'row-gap','grid_col_gap'=>'column-gap'] as $k=>$css)
+  if ($gd($A,$k,'')!=='') $gridBox .= $css.':'.(int)$gd($A,$k,0).'px;';
+// stil texte (culoare/marime/aliniere) — culorile validate ca hex/rgb
+$col = fn($v) => preg_match('/^#[0-9a-fA-F]{3,8}$|^rgba?\([0-9.,\s]+\)$/', (string)$v) ? (string)$v : '';
+$subColor=$col($gd($A,'subtitle_color','')); $subSize=$gd($A,'subtitle_size','');
+$subAlign=in_array($gd($A,'subtitle_align',''),['left','center','right'],true)?$gd($A,'subtitle_align',''):'';
+$btnNameSize=$gd($A,'btn_name_size',''); $btnHintSize=$gd($A,'btn_hint_size','');
+$nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
 ?>
 <style>
 .kiosk{background:<?= $bgCss ?>}
@@ -115,6 +129,12 @@ $gridCss = $gridCols==='list' ? 'grid-template-columns:1fr'
 .kiosk-head .logo{max-height:<?= (int)$gd($A,'logo_height',74) ?>px}
 .kiosk-clock{font-weight:800;color:<?= e($gd($A,'header_color','#1a1d23')) ?>;opacity:.85;font-size:1.05rem;margin-top:.2rem;font-variant-numeric:tabular-nums}
 <?php if($gridCss): ?>.kiosk .svc-grid{<?= $gridCss ?>}<?php endif; ?>
+<?php if($gridBox): ?>.kiosk .svc-grid{<?= $gridBox ?>}<?php endif; ?>
+.kiosk-head .ovl{display:block;max-width:90%}
+<?php if($subColor||$subSize!==''||$subAlign): ?>.kiosk-head .ksub{<?= $subColor?'color:'.$subColor.';':'' ?><?= $subSize!==''?'font-size:'.(int)$subSize.'px;':'' ?><?= $subAlign?'text-align:'.$subAlign.';':'' ?>}<?php endif; ?>
+<?php if($btnNameSize!==''): ?>.kiosk .svc-btn .nm{font-size:<?= (int)$btnNameSize ?>px}<?php endif; ?>
+<?php if($btnHintSize!==''): ?>.kiosk .svc-btn .ds{font-size:<?= (int)$btnHintSize ?>px}<?php endif; ?>
+<?php if($nosvcColor||$nosvcSize!==''): ?>.kiosk .knosvc{<?= $nosvcColor?'color:'.$nosvcColor.';':'' ?><?= $nosvcSize!==''?'font-size:'.(int)$nosvcSize.'px;':'' ?>}<?php endif; ?>
 .svc-btn{border-radius:<?= (int)$gd($A,'btn_radius',22) ?>px;min-height:<?= (int)$gd($A,'btn_height',170) ?>px;color:<?= e($gd($A,'btn_text_color','#ffffff')) ?>}
 .svc-btn .pfx{display:<?= $gb($A,'watermark',true)?'block':'none' ?>}
 .svc-btn.closed{opacity:.5;filter:grayscale(.7);cursor:not-allowed}
@@ -137,8 +157,9 @@ $gridCss = $gridCols==='list' ? 'grid-template-columns:1fr'
   <div class="kiosk-head">
     <?php if($logo): ?><img class="logo" src="<?= e($logo) ?>" alt=""><?php endif; ?>
     <h1><?= e($title_txt) ?></h1>
-    <?php if($gd($T,'subtitle','')): ?><p class="muted"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
+    <?php if($gd($T,'subtitle','')): ?><p class="muted ksub"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
     <?php if($clock): ?><div class="kiosk-clock" id="kClock"></div><?php endif; ?>
+    <?php if($headerOverlay): ?><img class="ovl" src="<?= e($headerOverlay) ?>" alt="" style="<?= $hoH?('max-height:'.$hoH.'px;'):'' ?>margin-left:<?= $hoAlign==='left'?'0':'auto' ?>;margin-right:<?= $hoAlign==='right'?'0':'auto' ?>"><?php endif; ?>
   </div>
   <?php $closedToday = branch_closure_reason((int)$branch['id']); if($closedToday !== null): ?>
     <div style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fee2e2;color:#b91c1c;border-radius:14px;padding:1rem 1.3rem;text-align:center;font-weight:800;font-size:1.15rem">
@@ -153,7 +174,7 @@ $gridCss = $gridCols==='list' ? 'grid-template-columns:1fr'
   </div>
   <?php endif; ?>
   <?php if(!$services): ?>
-    <div class="svc-grid"><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
+    <div class="svc-grid"><p class="muted knosvc" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
   <?php elseif($hasGroups): ?>
     <?php foreach($groupsById as $gid=>$g): if(empty($grouped[$gid])) continue; ?>
       <div class="grp-head" style="border-left:5px solid <?= e($g['color']) ?>"><?= e($g['name']) ?></div>
