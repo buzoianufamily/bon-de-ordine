@@ -411,6 +411,14 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .cg-apptfilters .field{margin:0;min-width:150px}
 .cg-apptform{margin-top:.8rem;padding:.9rem 1rem;border:1px dashed var(--line);border-radius:12px;background:color-mix(in srgb,var(--ink) 3%,transparent)}
 .formgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.6rem}
+/* ----- Admin programari: rail de servicii (filtru) in vederea pe zi ----- */
+.apptsvcs{display:flex;flex-direction:column;gap:.25rem}
+.apptsvc{display:flex;align-items:center;gap:.55rem;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:10px;padding:.55rem .65rem;cursor:pointer;color:var(--ink);font:inherit}
+.apptsvc:hover{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.apptsvc.on{background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
+.apptsvc .nm{flex:1;min-width:0;font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.apptsvc .ct{font-variant-numeric:tabular-nums;font-weight:800;color:var(--muted);background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:999px;padding:.05rem .5rem;font-size:.8rem}
+.apptsvc.on .ct{color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
 .cardgrid.wide{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 .cardgrid.aslist{grid-template-columns:1fr}
 .mcard .card-foot .acts{display:inline-flex;align-items:center;gap:.7rem;white-space:nowrap;font-size:.82rem}
