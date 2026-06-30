@@ -37,7 +37,7 @@ window.DISPLAY = {
   sayCounter: <?= !empty($sound['say_counter']) ? 'true':'false' ?>,
   repeat: <?= (int)($sound['repeat'] ?? 2) ?>,
   useSSE: true,
-  accent: <?= jsenc(setting('accent_color','#2563eb')) ?>,
+  accent: <?= jsenc(setting('accent_color','#00c375')) ?>,
   layout: <?= $hasLayout ? jsenc($layout, JSON_UNESCAPED_UNICODE) : 'null' ?>
 };
 </script>

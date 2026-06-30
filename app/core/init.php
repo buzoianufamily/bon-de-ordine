@@ -118,7 +118,7 @@ if (!headers_sent()) {
         header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; "
              . "frame-ancestors 'self'; form-action 'self'; img-src 'self' data: https:; "
              . "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
-             . "font-src 'self'; connect-src 'self'; media-src 'self'; frame-src 'self' https: http:");
+             . "font-src 'self'; connect-src 'self' https://api.open-meteo.com; media-src 'self'; frame-src 'self' https: http:");
     }
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') header('Strict-Transport-Security: max-age=15552000');
 }
