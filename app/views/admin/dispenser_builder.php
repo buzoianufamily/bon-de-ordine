@@ -83,8 +83,20 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
         <label class="chk"><input type="checkbox" id="f__logic__print_position" <?= $cb($gb($L,'print_position',true)) ?>> Cati sunt inainte</label>
         <label class="chk"><input type="checkbox" id="f__logic__print_datetime" <?= $cb($gb($L,'print_datetime',true)) ?>> Data si ora</label>
         <label class="chk"><input type="checkbox" id="f__logic__print_qr" <?= $cb($gb($L,'print_qr',true)) ?>> Cod QR (urmarire pe telefon)</label>
+        <label class="chk"><input type="checkbox" id="f__logic__print_desc" <?= $cb($gb($L,'print_desc',false)) ?>> Descrierea serviciului</label>
       </div>
-      <p class="hint">Serviciile afisate si modul de printare se seteaza din pagina dispozitivului (Editeaza).</p>
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <label class="chk"><input type="checkbox" id="f__logic__lang_menu" <?= $cb($gb($L,'lang_menu',false)) ?>> Meniu de limbi pe acest dozator (bara de limbi sus)</label>
+      <div class="field"><label>Limbi disponibile (RO mereu activ)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.2rem">
+          <?php foreach(['en'=>'EN','de'=>'DE','fr'=>'FR','hu'=>'HU','it'=>'IT','es'=>'ES'] as $lc=>$lab): ?>
+            <label class="chk" style="margin:0"><input type="checkbox" id="f__logic__lang_<?= $lc ?>" <?= $cb($gb($L,'lang_'.$lc,false)) ?>> <?= $lab ?></label>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php $ld=$gd($L,'lang_default','ro'); $ldl=['ro'=>'Romana','en'=>'English','de'=>'Deutsch','fr'=>'Francais','hu'=>'Magyar','it'=>'Italiano','es'=>'Espanol']; ?>
+      <div class="field"><label>Limba implicita</label><select id="f__logic__lang_default"><?php foreach($ldl as $v=>$lab): ?><option value="<?= $v ?>" <?= $ld===$v?'selected':'' ?>><?= e($lab) ?></option><?php endforeach; ?></select></div>
+      <p class="hint">Limbile se seteaza per dozator (inlocuiesc setarea globala). Serviciile afisate se aleg din pagina dispozitivului (Editeaza).</p>
     </div>
 
     <!-- ASPECT -->
@@ -111,11 +123,33 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
       </div>
       <div class="field"><label>Culoare text butoane</label><input type="color" id="f__appearance__btn_text_color" value="<?= e($gd($A,'btn_text_color','#ffffff')) ?>"></div>
       <label class="chk"><input type="checkbox" id="f__appearance__watermark" <?= $cb($gb($A,'watermark',true)) ?>> Litera prefix mare in fundalul butonului</label>
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <?php $ff=$gd($A,'font_family',''); $fonts=['' =>'Implicit (Manrope)','system-ui, sans-serif'=>'System','\'Roboto\', sans-serif'=>'Roboto','Arial, sans-serif'=>'Arial','\'Times New Roman\', serif'=>'Times New Roman','Georgia, serif'=>'Georgia','\'Courier New\', monospace'=>'Courier New','Tahoma, sans-serif'=>'Tahoma','Verdana, sans-serif'=>'Verdana']; ?>
+      <div class="field"><label>Font (familie)</label><select id="f__appearance__font_family"><?php foreach($fonts as $v=>$lab): ?><option value="<?= e($v) ?>" <?= $ff===$v?'selected':'' ?>><?= e($lab) ?></option><?php endforeach; ?></select></div>
+      <?php $gc=$gd($A,'grid_cols',''); $glay=['' =>'Automat (dupa ecran)','list'=>'1 coloana — vertical (ecran portret)','2'=>'2 coloane','3'=>'3 coloane','4'=>'4 coloane','wide'=>'Randuri late — orizontal (landscape)']; ?>
+      <div class="field"><label>Asezare servicii pe ecran</label><select id="f__appearance__grid_cols"><?php foreach($glay as $v=>$lab): ?><option value="<?= e($v) ?>" <?= $gc===$v?'selected':'' ?>><?= e($lab) ?></option><?php endforeach; ?></select>
+        <p class="hint">Pentru ecran vertical (portret) alege „1 coloana"; pentru orizontal (landscape) „Randuri late" sau 3-4 coloane.</p></div>
+      <label class="chk"><input type="checkbox" id="f__appearance__clock" <?= $cb($gb($A,'clock',false)) ?>> Afiseaza ceas + data pe antet</label>
+      <label class="chk"><input type="checkbox" id="f__appearance__clock_24h" <?= $cb($gb($A,'clock_24h',true)) ?>> Format 24h</label>
+      <div class="row2">
+        <div class="field"><label>Spatiu antet (px, gol=implicit)</label><input type="number" id="f__appearance__header_gap" value="<?= e($gd($A,'header_gap','')) ?>"></div>
+        <?php $br=$gd($A,'bg_repeat','cover'); ?>
+        <div class="field"><label>Mod fundal</label><select id="f__appearance__bg_repeat">
+          <option value="cover" <?= $br==='cover'?'selected':'' ?>>Acoperire (cover)</option>
+          <option value="tile" <?= $br==='tile'?'selected':'' ?>>Textura repetata (tile)</option>
+        </select></div>
+      </div>
     </div>
 
     <!-- TEXTE -->
     <div class="panel" data-p="texte">
       <div class="field"><label>Titlu</label><input id="f__texts__title" value="<?= e($gd($T,'title', setting('dispenser_title','ALEGE SERVICIUL'))) ?>"></div>
+      <?php $ta=$gd($T,'title_align','center'); ?>
+      <div class="field"><label>Aliniere titlu</label><select id="f__texts__title_align">
+        <option value="left" <?= $ta==='left'?'selected':'' ?>>Stanga</option>
+        <option value="center" <?= $ta==='center'?'selected':'' ?>>Centru</option>
+        <option value="right" <?= $ta==='right'?'selected':'' ?>>Dreapta</option>
+      </select></div>
       <div class="field"><label>Subtitlu (optional)</label><input id="f__texts__subtitle" value="<?= e($gd($T,'subtitle','')) ?>"></div>
       <div class="field"><label>Text pe buton (sub nume)</label><input id="f__texts__btn_hint" value="<?= e($gd($T,'btn_hint','Apasati pentru bilet')) ?>"></div>
       <div class="field"><label>Mesaj cand nu sunt servicii</label><input id="f__texts__no_services" value="<?= e($gd($T,'no_services','Momentan nu sunt servicii disponibile')) ?>"></div>
@@ -136,6 +170,16 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
         <div class="field"><label>Buton inchidere</label><input id="f__texts__done_btn" value="<?= e($gd($T,'done_btn','Gata')) ?>"></div>
         <div class="field"><label>Subsol bon (gol = global)</label><input id="f__texts__footer" value="<?= e($gd($T,'footer','')) ?>"></div>
       </div>
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <div class="muted" style="font-weight:700;margin-bottom:.4rem">Butoane formular</div>
+      <div class="row2">
+        <div class="field"><label>Buton „Trimite"</label><input id="f__texts__form_submit" value="<?= e($gd($T,'form_submit','Continua')) ?>"></div>
+        <div class="field"><label>Buton „Anuleaza"</label><input id="f__texts__form_cancel" value="<?= e($gd($T,'form_cancel','Anuleaza')) ?>"></div>
+      </div>
+      <hr style="border:none;border-top:1px solid #1c2029;margin:1rem 0">
+      <div class="muted" style="font-weight:700;margin-bottom:.4rem">Bon tiparit (variabile)</div>
+      <div class="field"><label>Antet bon — variabile: {{service}} {{ticketLabel}} {{dateTime}}</label><input id="f__texts__print_header" value="<?= e($gd($T,'print_header','')) ?>"></div>
+      <div class="field"><label>Text „cati inainte" pe bon — variabila {{total}}</label><input id="f__texts__print_ahead" value="<?= e($gd($T,'print_ahead','')) ?>" placeholder="ex: Persoane inainte: {{total}}"></div>
     </div>
 
     <!-- POPUP -->

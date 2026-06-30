@@ -66,8 +66,8 @@
     }).join('');
     openModal(`<h3 style="margin-top:0">${esc(form.name||'Completati datele')}</h3>
       <div style="text-align:left;max-height:52vh;overflow:auto;padding:.2rem">${html}</div>
-      <div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn" style="flex:1" id="mfCancel">Anuleaza</button>
-      <button class="btn btn-primary" style="flex:1" id="mfOk">Continua</button></div>`);
+      <div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn" style="flex:1" id="mfCancel">${esc(cfg.texts.form_cancel||'Anuleaza')}</button>
+      <button class="btn btn-primary" style="flex:1" id="mfOk">${esc(cfg.texts.form_submit||'Continua')}</button></div>`);
     $('mfOk').onclick=()=>{
       const data=[]; let valid=true;
       form.fields.forEach((f,i)=>{ const el=$('mf_'+i);
@@ -89,13 +89,13 @@
     const res = await QMS.api('api/ticket', payload);
     btn.style.pointerEvents='';
     if(!res.ok){ QMS.toast(res.error||'Eroare','error'); return; }
-    afterTicket(res, btn.dataset.name, btn.dataset.color);
+    afterTicket(res, btn.dataset.name, btn.dataset.color, btn.dataset.desc);
   }
 
   // afisare + printare bilet (folosit si la emitere normala, si la check-in programare)
-  function afterTicket(res, name, color){
+  function afterTicket(res, name, color, desc){
     showTicket(res, name, color);
-    if(cfg.printerMode==='browser') setTimeout(()=>printBrowser(res, name), 350);
+    if(cfg.printerMode==='browser') setTimeout(()=>printBrowser(res, name, desc), 350);
     if(cfg.printerMode==='android' && res.escpos_b64 && window.AndroidPrinter && window.AndroidPrinter.printBase64){
       try{ window.AndroidPrinter.printBase64(res.escpos_b64); }catch(e){ QMS.toast('Eroare imprimanta','error'); }
     }
@@ -171,23 +171,42 @@
   }
   window.qmsCloseTicket=closeTicket;
 
-  function printBrowser(res, name){
+  // inlocuieste variabilele de sablon din textele bonului tiparit
+  function fillVars(s, res, name){
+    const t=res.ticket;
+    return String(s||'')
+      .replace(/\{\{\s*service\s*\}\}/g, name||'')
+      .replace(/\{\{\s*ticketLabel\s*\}\}/g, t.label||'')
+      .replace(/\{\{\s*ticketCode\s*\}\}/g, t.public_token||'')
+      .replace(/\{\{\s*ticketId\s*\}\}/g, t.id||'')
+      .replace(/\{\{\s*total\s*\}\}/g, (res.position!=null?res.position:''))
+      .replace(/\{\{\s*dateTime\s*\}\}/g, new Date().toLocaleString('ro-RO'));
+  }
+  function printBrowser(res, name, desc){
     const t=res.ticket, P=cfg.print||{};
     let f=window.frames['printframe']; if(!f){ const fr=document.createElement('iframe'); fr.name='printframe'; fr.style.cssText='position:absolute;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(fr); f=fr; }
     const doc=f.contentDocument; doc.open();
-    doc.write(`<html><head><style>@page{size:80mm auto;margin:0}body{width:80mm;font-family:monospace;text-align:center;margin:0;padding:6px 4px}.b{font-size:13px;font-weight:bold}.num{font-size:46px;font-weight:bold;margin:6px 0}.s{font-size:14px}hr{border:none;border-top:1px dashed #000}img{width:120px;height:120px}</style></head><body>
+    doc.write(`<html><head><style>@page{size:80mm auto;margin:0}body{width:80mm;font-family:monospace;text-align:center;margin:0;padding:6px 4px}.b{font-size:13px;font-weight:bold}.num{font-size:46px;font-weight:bold;margin:6px 0}.s{font-size:14px}.d{font-size:12px}hr{border:none;border-top:1px dashed #000}img{width:120px;height:120px}</style></head><body>
       ${P.logo&&cfg.logo?`<img src="${cfg.logo}" style="width:auto;max-height:60px">`:''}
-      <div class="b">${esc(cfg.brand||'')}</div><div>${esc(cfg.branch||'')}</div><hr>
+      <div class="b">${esc(cfg.brand||'')}</div><div>${esc(cfg.branch||'')}</div>
+      ${P.header?`<div class="s">${esc(fillVars(P.header,res,name))}</div>`:''}<hr>
       ${P.service!==0?`<div class="s">${esc(name||'')}</div>`:''}
+      ${P.desc&&desc?`<div class="d">${esc(desc)}</div>`:''}
       ${t.priority?'<div class="b">* PRIORITAR *</div>':''}
       <div class="num">${esc(t.label)}</div>
-      ${P.position!==0?`<div>${$('tkPos').textContent}</div>`:''}
+      ${P.position!==0?`<div>${esc(P.ahead?fillVars(P.ahead,res,name):$('tkPos').textContent)}</div>`:''}
       ${P.datetime!==0?`<div class="s">${new Date().toLocaleString('ro-RO')}</div>`:''}
       ${P.qr!==0&&cfg.virtual&&res.virtual_url?`<div>${esc(cfg.texts.qr_hint||'')}</div><img src="${QMS.base()}/qr?size=120&data=${encodeURIComponent(vurl(res.virtual_url))}">`:''}
       <hr><div class="s">${esc(cfg.footer||'')}</div></body></html>`);
     doc.close();
     setTimeout(()=>{ f.contentWindow.focus(); f.contentWindow.print(); },250);
   }
+
+  /* ceas + data pe antet (optional) */
+  if(cfg.clock){ const c=$('kClock'); if(c){ const tick=()=>{ const d=new Date();
+    const dd=d.toLocaleDateString('ro-RO');
+    const tt=d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',hour12:!cfg.clock24});
+    c.textContent=dd+' · '+tt; }; tick(); setInterval(tick,1000); } }
 
   if(cfg.screensaver>0){ const saver=$('saver'); let st=null;
     const reset=()=>{ saver.classList.remove('show'); clearTimeout(st); st=setTimeout(()=>saver.classList.add('show'), cfg.screensaver*1000); };

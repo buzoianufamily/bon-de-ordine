@@ -32,17 +32,21 @@
     const bgColor=val('f__appearance__bg_color','#eef1f6'), bgImg=val('f__appearance__bg_image','');
     const pv=$('pv');
     pv.style.background = bgImg ? `center/cover url("${bgImg}")` : `linear-gradient(180deg,#fff,${bgColor})`;
+    pv.style.fontFamily = val('f__appearance__font_family','') || '';
     const title=$('pvTitle'); title.textContent=val('f__texts__title','ALEGE SERVICIUL');
     title.style.color=val('f__appearance__header_color','#1a1d23');
     title.style.fontSize=Math.max(16,Math.min(48,+val('f__appearance__title_size',40)*.7))+'px';
-    const sub=$('pvSub'); sub.textContent=val('f__texts__subtitle','');
+    const talign=val('f__texts__title_align','center'); title.style.textAlign=talign;
+    const sub=$('pvSub'); sub.textContent=val('f__texts__subtitle',''); sub.style.textAlign=talign;
     const logo=$('pvLogo'); const lu=val('f__appearance__logo_url','')||D.globalLogo||'';
     if(lu){ logo.src=lu; logo.style.display='block'; logo.style.maxHeight=Math.min(70,+val('f__appearance__logo_height',74))+'px'; } else logo.style.display='none';
     const rad=+val('f__appearance__btn_radius',22), h=Math.min(110,+val('f__appearance__btn_height',170));
     const tcol=val('f__appearance__btn_text_color','#ffffff'), wm=val('f__appearance__watermark',true);
     const hint=val('f__texts__btn_hint','Apasati pentru bilet');
     const colors=[D.accent,'#16a34a','#d97706'];
-    $('pvGrid').innerHTML=sampleSvc.map((s,i)=>`<button class="pv-btn" style="background:linear-gradient(135deg,${colors[i]},${colors[i]}cc);border-radius:${rad}px;min-height:${h}px;color:${tcol}">
+    const grid=$('pvGrid'); const gc=val('f__appearance__grid_cols','');
+    grid.style.gridTemplateColumns = gc==='list'?'1fr' : (/^[234]$/.test(gc)?`repeat(${gc},1fr)`:'1fr 1fr');
+    grid.innerHTML=sampleSvc.map((s,i)=>`<button class="pv-btn" style="background:linear-gradient(135deg,${colors[i]},${colors[i]}cc);border-radius:${rad}px;min-height:${h}px;color:${tcol}">
       ${wm?`<span class="pf">${s[0]}</span>`:''}<span class="nm">${esc(s[1])}</span><span class="ds">${esc(hint)}</span></button>`).join('');
   }
   const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
