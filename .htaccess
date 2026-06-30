@@ -5,6 +5,12 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  # CRITIC (inainte de orice): blocheaza .git / alte VCS si fisierele ascunse.
+  # Altfel, daca deployul e un checkout git in docroot, oricine poate descarca /.git/
+  # si reconstrui TOT codul + config.php (cu parola) din istoric.
+  RewriteRule (^|/)\.(git|svn|hg|bzr)(/|$) - [F,L]
+  RewriteRule (^|/)\.(env|gitignore|gitattributes|htpasswd|user\.ini)$ - [F,L]
+
   # Nu rescrie fisiere sau directoare reale (assets etc.)
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
@@ -14,11 +20,17 @@ DirectoryIndex index.php
   RewriteRule ^ index.php [QSA,L]
 </IfModule>
 
-# Blocheaza accesul direct la foldere sensibile
-RedirectMatch 403 ^/?(app|config|database)(/|$)
+# Blocheaza accesul direct la foldere sensibile (+ .git, pentru servere fara mod_rewrite)
+RedirectMatch 403 ^/?(app|config|database|backups|tests|\.github|\.claude)(/|$)
+RedirectMatch 403 ^/?\.(git|svn|hg|bzr)(/|$)
 
 # Blocheaza fisiere sensibile (inclusiv tenants.json / .env — manifestul PWA e servit de index.php, nu ca fisier)
 <FilesMatch "\.(sql|md|log|ini|json|env)$">
+  Require all denied
+</FilesMatch>
+
+# Copii de rezerva / fisiere editor — altfel ar fi servite ca TEXT SIMPLU (cu tot cu parole)
+<FilesMatch "(?i)(\.(bak|old|orig|save|swp|swo|tmp|dist|inc))$|~$">
   Require all denied
 </FilesMatch>
 
