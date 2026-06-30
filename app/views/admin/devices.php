@@ -4,9 +4,16 @@ $badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>
 function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
 <div class="topbar"><h1>Dispozitive</h1><div style="display:flex;gap:.5rem"><a class="btn btn-ghost" href="<?= e(url('admin/devices/qr')) ?>">🔳 Coduri QR</a><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Dispozitiv nou</a></div></div>
 <?= list_toolbar('Cauta dispozitiv...') ?>
-<div class="cardgrid">
-<?php foreach($rows as $d): $u=dev_url($d); ?>
-  <div class="mcard" data-name="<?= e(mb_strtolower($d['name'].' '.($labels[$d['type']]??$d['type']).' '.$d['branch_name'].' '.$d['connection_key'])) ?>">
+<div class="filterpills" id="devfilter" role="group" aria-label="Filtreaza dupa tip">
+  <button class="on" data-dtype="all">Toate</button>
+  <button data-dtype="dispenser">Dispensere</button>
+  <button data-dtype="player">Afisaje TV</button>
+  <button data-dtype="digital_ticket">Bilete digitale</button>
+  <button data-dtype="launcher">Launchere</button>
+</div>
+<div class="cardgrid" id="devgrid">
+<?php foreach($rows as $d): $u=dev_url($d); $dt=in_array($d['type'],['player','widget_player'],true)?'player':$d['type']; ?>
+  <div class="mcard" data-dtype="<?= e($dt) ?>" data-name="<?= e(mb_strtolower($d['name'].' '.($labels[$d['type']]??$d['type']).' '.$d['branch_name'].' '.$d['connection_key'])) ?>">
     <div class="mhead">
       <span class="badge" style="background:#2a2f3a;font-size:.78rem"><?= e($badge[$d['type']]??'?') ?></span>
       <div style="flex:1"><div class="nm"><?= e($d['name']) ?></div>
@@ -36,4 +43,16 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
 <?php endforeach; ?>
 <?php if(!$rows): ?><div class="empty"><div class="eic">▭</div><p>Niciun dispozitiv inca. Creeaza un dispenser (emitere bonuri) sau un afisaj TV.</p><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Creeaza primul dispozitiv</a></div><?php endif; ?>
 </div>
+<script>(function(){
+  var bar=document.getElementById('devfilter'), grid=document.getElementById('devgrid');
+  if(!bar||!grid)return;
+  bar.addEventListener('click',function(e){
+    var b=e.target.closest('[data-dtype]'); if(!b)return;
+    var t=b.getAttribute('data-dtype');
+    bar.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+    grid.querySelectorAll('.mcard').forEach(function(c){
+      c.style.display=(t==='all'||c.getAttribute('data-dtype')===t)?'':'none';
+    });
+  });
+})();</script>
 <?php require __DIR__.'/_footer.php'; ?>

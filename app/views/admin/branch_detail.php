@@ -4,18 +4,22 @@ $bid = (int)$branch['id'];
 $turl = fn($t)=>url('admin/branches/'.$bid.'?tab='.$t);
 $labels=['dispenser'=>'Dispenser','player'=>'Afisaj TV','widget_player'=>'Afisaj TV','digital_ticket'=>'Bilet digital','launcher'=>'Launcher'];
 $badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>'QR','launcher'=>'L']; ?>
-<div class="topbar">
-  <div>
-    <div class="crumb"><a href="<?= e(url('admin/branches')) ?>">Filiale</a> › <?= e($branch['name']) ?></div>
-    <h1 style="margin:.1rem 0"><?= e($branch['name']) ?></h1>
-    <span class="muted"><?= e(trim(($branch['city']?:'').(($branch['city']&&$branch['country'])?', ':'').($branch['country']?:''))) ?: '—' ?></span>
-    <?php $bh = !empty($branch['open_hours']) ? json_decode($branch['open_hours'], true) : null;
-    if (!empty($bh['enabled'])): $dn=[1=>'Lu',2=>'Ma',3=>'Mi',4=>'Jo',5=>'Vi',6=>'Sa',0=>'Du']; $parts=[];
-      foreach($dn as $d=>$ab){ $dv=$bh['days'][$d]??($bh['days'][(string)$d]??null); if(is_array($dv)&&count($dv)>=2) $parts[]=$ab.' '.$dv[0].'–'.$dv[1]; } ?>
-      <span class="muted" style="display:block;font-size:.8rem;margin-top:.15rem">🕒 <?= $parts ? e(implode(' · ', $parts)) : 'inchisa toata saptamana' ?></span>
-    <?php endif; ?>
+<div class="crumb"><a href="<?= e(url('admin/branches')) ?>">Filiale</a> › <?= e($branch['name']) ?></div>
+<div class="ehead">
+  <div class="eic">🏢</div>
+  <div style="flex:1">
+    <h2 class="etitle"><?= e($branch['name']) ?></h2>
+    <div class="esub">
+      <div><span class="k">Oras</span><span class="v"><?= e($branch['city'] ?: '—') ?></span></div>
+      <div><span class="k">Tara</span><span class="v"><?= e($branch['country'] ?: '—') ?></span></div>
+      <?php $bh = !empty($branch['open_hours']) ? json_decode($branch['open_hours'], true) : null;
+      if (!empty($bh['enabled'])): $dn=[1=>'Lu',2=>'Ma',3=>'Mi',4=>'Jo',5=>'Vi',6=>'Sa',0=>'Du']; $parts=[];
+        foreach($dn as $d=>$ab){ $dv=$bh['days'][$d]??($bh['days'][(string)$d]??null); if(is_array($dv)&&count($dv)>=2) $parts[]=$ab.' '.$dv[0].'–'.$dv[1]; } ?>
+        <div><span class="k">Program</span><span class="v">🕒 <?= $parts ? e(implode(' · ', $parts)) : 'inchisa' ?></span></div>
+      <?php endif; ?>
+    </div>
   </div>
-  <a class="btn" href="<?= e(url('admin/branches/'.$bid.'/edit')) ?>">Editeaza filiala</a>
+  <div class="eact"><a class="btn" href="<?= e(url('admin/branches/'.$bid.'/edit')) ?>">✎ Editeaza filiala</a></div>
 </div>
 
 <div class="tabs">
