@@ -54,6 +54,16 @@ document.addEventListener('click',function(e){
     localStorage.setItem('nav_collapsed', shell.classList.contains('nav-collapsed')?'1':'0');
   });
 })();
+/* contoare de caractere pe campurile cu limita (ca la Moviik: 0/50) */
+(function(){
+  document.querySelectorAll('.content input[maxlength], .content textarea[maxlength]').forEach(function(el){
+    var max=parseInt(el.getAttribute('maxlength'),10); if(!max||max>2000) return;
+    var cc=document.createElement('span'); cc.className='cc';
+    function upd(){ cc.textContent=el.value.length+'/'+max; }
+    upd(); el.addEventListener('input',upd);
+    if(el.nextSibling) el.parentNode.insertBefore(cc, el.nextSibling); else el.parentNode.appendChild(cc);
+  });
+})();
 /* drawer mobil pentru bara laterala (fundalul e controlat doar din JS, prin stil inline) */
 (function(){
   var shell=document.querySelector('.shell'), btn=document.getElementById('nav-open'), bk=document.getElementById('navbk');

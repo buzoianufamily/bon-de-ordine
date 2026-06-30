@@ -72,6 +72,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
         <?php if ($brandLogo): ?><img src="<?= e($brandLogo) ?>" alt="<?= e($brandName) ?>"><?php else: ?><span class="dot"></span><?= e($brandName) ?><?php endif; ?>
       </div>
       <div class="right">
+        <span class="statuspill" title="Sistemul functioneaza"><span class="d"></span>Gata</span>
         <button class="themebtn" id="theme-toggle" title="Comuta tema deschisa/inchisa" aria-label="Comuta tema">🌙</button>
         <span class="uchip"><span class="av"><?= e(mb_strtoupper(mb_substr($u['name'] ?? '?',0,1))) ?></span><?= e($u['name'] ?? '') ?></span>
       </div>
