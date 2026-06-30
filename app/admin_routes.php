@@ -2060,7 +2060,7 @@ function admin_appointments_list(): void {
                  FROM appointments a JOIN services s ON s.id=a.service_id JOIN branches b ON b.id=a.branch_id
                  LEFT JOIN tickets t ON t.id=a.ticket_id WHERE $w ORDER BY a.slot_start", $args);
     $branches = all('SELECT id,name FROM branches ORDER BY name');
-    $services = all('SELECT id,prefix,name,branch_id FROM services WHERE appt_enabled=1 AND status="active" ORDER BY name');
+    $services = all('SELECT id,prefix,name,color,branch_id FROM services WHERE appt_enabled=1 AND status="active" ORDER BY name');
     $date=$f['date']; $branch=$f['branch']; $viewMode=$f['viewMode']; $weekStart=$f['weekStart']; $weekEnd=$f['weekEnd'];
     // lista de asteptare: intrari viitoare neanuntate
     $waitlist = all("SELECT w.*, s.name service_name, s.prefix, s.color, b.name branch_name

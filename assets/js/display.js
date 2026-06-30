@@ -131,13 +131,16 @@
               <span style="opacity:.45;font-family:'Bricolage Grotesque';font-weight:800;font-size:${rh*.5}px;min-width:${rh*.8}px;text-align:center">${s.cnt}</span>
               ${p.show_counter!==false?`<span style="opacity:.7;font-weight:700;font-size:${rh*.3}px;min-width:${rh}px">${esc(ctr)}</span>`:''}
               <span style="flex:1;font-weight:700;font-size:${rh*.4}px;line-height:1.05">${esc(s.name)}</span>
-              <b style="color:${esc(s.color)};font-family:'Bricolage Grotesque';font-size:${rh*.6}px">${esc(lab)}</b></div>`; }).join('')
+              <b style="background:${c?esc(s.color):'transparent'};color:${c?'#fff':'#5b6270'};font-family:'Bricolage Grotesque';font-size:${rh*.55}px;padding:${c?('2px '+(rh*.22)+'px'):'0'};border-radius:${rh*.18}px;min-width:${rh*1.6}px;text-align:center">${esc(lab)}</b></div>`; }).join('')
             :'<div style="opacity:.4;padding:1rem">Niciun serviciu activ.</div>');
         break; }
       case 'people_counting': {
-        el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=p.bg||'#11141b';
-        el.innerHTML=`<div style="opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:${Math.max(11,H*.1)}px">${esc(pickML(p.label||'Persoane inauntru'))}</div>
-          <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.4}px;line-height:1.05">${(+p.inside||0)} <span style="opacity:.45">/ ${(+p.capacity||0)}</span></div>`;
+        const inside=+p.inside||0, cap=+p.capacity||0, ratio=cap>0?(inside/cap*100):0;
+        let bg=p.bg||'#11141b';
+        if(p.crowd_light) bg = ratio>=(+p.cl_red||90)?'#7f1d1d' : ratio>=(+p.cl_yellow||50)?'#854d0e' : '#14532d';
+        el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=bg;
+        el.innerHTML=`<div style="opacity:.85;text-transform:uppercase;letter-spacing:.05em;font-size:${Math.max(11,H*.1)}px">${esc(pickML(p.label||'Persoane inauntru'))}</div>
+          <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.4}px;line-height:1.05">${inside} <span style="opacity:.55">/ ${cap}</span></div>`;
         break; }
       case 'qr_code': {
         el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.background=p.bg||'#ffffff';el.style.padding='8px';
@@ -170,14 +173,25 @@
     }
   }
   function paintWeather(el,p,H){
-    el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.justifyContent='center';el.style.textAlign='center';el.style.background=p.bg||'#11141b';
-    el.innerHTML=`<div style="opacity:.7;font-size:${Math.max(11,H*.12)}px">${esc(p.city||'')}</div><div class="wx" style="font-family:'Bricolage Grotesque';font-weight:800;font-size:${H*.34}px;line-height:1.1">…</div>`;
+    const mode=p.mode||'forecast', days=Math.max(1,Math.min(7,+(p.days||3)));
+    el.style.display='flex';el.style.flexDirection='column';el.style.justifyContent='center';el.style.background=p.bg||'#11141b';el.style.padding='8px';el.style.textAlign='center';
+    el.innerHTML=`${p.city?`<div style="opacity:.7;font-size:${Math.max(11,H*.1)}px;margin-bottom:4px">${esc(p.city)}</div>`:''}<div class="wx" style="flex:1;display:flex;flex-direction:column;justify-content:center;font-family:'Bricolage Grotesque';font-weight:800">…</div>`;
     const wx=el.querySelector('.wx');
     const load=()=>{ const url=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(p.lat||'44.43')}&longitude=${encodeURIComponent(p.lon||'26.10')}&current=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
-      fetch(url).then(r=>r.json()).then(d=>{ const t=Math.round(d&&d.current&&d.current.temperature_2m);
-        const mx=Math.round(d&&d.daily&&d.daily.temperature_2m_max&&d.daily.temperature_2m_max[0]);
-        const mn=Math.round(d&&d.daily&&d.daily.temperature_2m_min&&d.daily.temperature_2m_min[0]);
-        wx.innerHTML=`${isNaN(t)?'--':t}°C`+(isNaN(mx)?'':` <span style="font-size:.45em;opacity:.7">${mx}° / ${mn}°</span>`); })
+      fetch(url).then(r=>r.json()).then(d=>{
+        if(mode==='current'){ const t=Math.round(d&&d.current&&d.current.temperature_2m);
+          const mx=Math.round(d&&d.daily&&d.daily.temperature_2m_max&&d.daily.temperature_2m_max[0]);
+          const mn=Math.round(d&&d.daily&&d.daily.temperature_2m_min&&d.daily.temperature_2m_min[0]);
+          wx.style.fontSize=H*.34+'px';
+          wx.innerHTML=`<div>${isNaN(t)?'--':t}°C</div>`+(isNaN(mx)?'':`<div style="font-size:.42em;opacity:.7">${mx}° / ${mn}°</div>`); return; }
+        const tm=(d&&d.daily&&d.daily.time)||[], mx=(d&&d.daily&&d.daily.temperature_2m_max)||[], mn=(d&&d.daily&&d.daily.temperature_2m_min)||[];
+        const n=Math.min(days,tm.length); const rh=Math.max(14,(H-(p.city?34:14))/Math.max(1,n)); const fs=Math.max(11,rh*.44);
+        let html=''; for(let i=0;i<n;i++){ const dt=new Date(tm[i]); const dd=dt.getDate();
+          const mon=dt.toLocaleDateString('ro-RO',{month:'short'}).replace('.','');
+          html+=`<div style="display:flex;align-items:center;justify-content:space-between;height:${rh}px;border-bottom:1px solid rgba(255,255,255,.08);font-size:${fs}px">
+            <span><b>${dd}</b> <span style="opacity:.75;text-transform:capitalize;font-weight:400">${esc(mon)}</span></span>
+            <span><b style="color:#f97316">${Math.round(mx[i])}°C</b> <span style="opacity:.6;margin-left:.35em;font-weight:400">${Math.round(mn[i])}°C</span></span></div>`; }
+        wx.innerHTML=html||'--'; })
         .catch(()=>{ wx.textContent='--°C'; }); };
     load(); wTimers.push(setInterval(load, 30*60*1000));
   }

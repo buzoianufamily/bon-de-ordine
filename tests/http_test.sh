@@ -44,6 +44,7 @@ HDRS="$(curl -s -D - -o /dev/null "$B/")"
 tcontains "CSP: antet prezent" 'Content-Security-Policy:' "$HDRS"
 tcontains "CSP: default-src self" "default-src 'self'" "$HDRS"
 tcontains "CSP: object-src none" "object-src 'none'" "$HDRS"
+tcontains "CSP: connect-src permite API vreme (afisaj)" 'connect-src .*api.open-meteo.com' "$HDRS"
 tcontains "noindex: X-Robots-Tag pe raspunsuri" 'X-Robots-Tag: noindex' "$HDRS"
 t "GET /robots.txt -> 200" 200 "$(code $B/robots.txt)"
 tcontains "robots.txt interzice indexarea" 'Disallow: /' "$(curl -s $B/robots.txt)"
@@ -69,6 +70,11 @@ tcontains "feedback a11y: stelele sunt butoane (operabile cu tastatura)" '<butto
 # programare publica multilingva
 tcontains "book RO implicit" 'Programare online' "$(curl -s "$B/book")"
 tcontains "book EN (?lang=en)" 'Online booking' "$(curl -s "$B/book?lang=en")"
+# layout master-detail (lista servicii in stanga, mereu prezenta + cautare)
+BOOK_HOME="$(curl -s "$B/book")"
+tcontains "book: layout master-detail (lista servicii)" 'class="booklist"' "$BOOK_HOME"
+tcontains "book: cautare serviciu in panoul stang"      'id="svcSearch"'   "$BOOK_HOME"
+tcontains "book/{id}: lista servicii ramane (master-detail)" 'class="booklist"' "$(curl -s "$B/book/$SVC")"
 t "POST /book/{id}/waitlist -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC/waitlist --data-urlencode 'slot_start=2030-01-01 10:00:00' --data-urlencode 'email=wl@ci.ro')"
 # rezervarea publica (slot in trecut -> respinsa cu redirect, dar calea cu rate-limit nu da 500)
 t "POST /book/{id} (slot trecut) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode 'slot_start=2000-01-01 10:00:00' --data-urlencode 'name=CI')"
@@ -171,7 +177,10 @@ t "POST /admin/reset confirmare gresita -> 302 (respins)" 302 "$(code -b "$JAR" 
 tcontains "settings: card de pregatire productie (admin)" 'Pregătire pentru producție' "$(curl -s -b "$JAR" "$B/admin/settings")"
 CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
-tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$(curl -s -b "$JAR" "$B/admin/appointments")"
+APPT_ADMIN="$(curl -s -b "$JAR" "$B/admin/appointments")"
+tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$APPT_ADMIN"
+tcontains "admin appointments: rail servicii (master-detail)" 'id="apptSvcs"' "$APPT_ADMIN"
+tcontains "admin appointments: cautare programari" 'id="apptSearch"' "$APPT_ADMIN"
 # GDPR: pagina drepturilor persoanei vizate (export/anonimizare) — doar admin
 t "GET /admin/gdpr -> 200" 200 "$(code -b "$JAR" $B/admin/gdpr)"
 tcontains "gdpr: formular de cautare email" 'name="q_email"' "$(curl -s -b "$JAR" "$B/admin/gdpr")"
@@ -204,6 +213,43 @@ XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
 [ "$XLSX_SIG" = "PK" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: stats xlsx not a zip (got '$XLSX_SIG')"; }
 CT_OPA="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=op_activity" | grep -i 'content-type')"
 tcontains "export activitate operatori CSV" 'text/csv' "$CT_OPA"
+
+# --- Concierge / receptie (terminal virtual cu tab-uri: Bon nou / Chemare / Programari) ---
+CGCSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+CG_PAGE="$(curl -s -b "$JAR" "$B/concierge")"
+t "GET /concierge (autentificat) -> 200" 200 "$(code -b "$JAR" "$B/concierge")"
+tcontains "concierge: tab Bon nou"    'Bon nou'      "$CG_PAGE"
+tcontains "concierge: tab Chemare"    'Chemare'      "$CG_PAGE"
+tcontains "concierge: tab Programari" 'Programari'   "$CG_PAGE"
+tcontains "concierge: motorul concierge.js" 'concierge.js' "$CG_PAGE"
+# branch-state intoarce noile chei pentru tab-ul Chemare
+BSTATE="$(curl -s -b "$JAR" "$B/api/branch-state?branch=$BR")"
+tcontains "branch-state are cheia called"    '"called"'    "$BSTATE"
+tcontains "branch-state are cheia cancelled" '"cancelled"' "$BSTATE"
+# tab Programari: creeaza -> listeaza -> check-in -> bon
+APPT_DATE="$(date -d '+1 day' +%F 2>/dev/null || date -v+1d +%F)"
+AC="$(curl -s -b "$JAR" -X POST $B/api/appt-create -H "X-CSRF: $CGCSRF" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"date\":\"$APPT_DATE\",\"time\":\"10:30\",\"name\":\"Client CI\",\"phone\":\"0700000000\"}")"
+tcontains "api/appt-create ok" '"ok":true' "$AC"
+APPT_LIST="$(curl -s -b "$JAR" "$B/api/concierge-appointments?branch=$BR&date=$APPT_DATE")"
+tcontains "concierge-appointments listeaza clientul creat" 'Client CI' "$APPT_LIST"
+APPT_ID="$(printf '%s' "$AC" | python3 -c "import sys,json;print(json.load(sys.stdin)['appt']['id'])" 2>/dev/null)"
+if [ -n "${APPT_ID:-}" ]; then
+  CI="$(curl -s -b "$JAR" -X POST $B/api/appt-checkin -H "X-CSRF: $CGCSRF" -H 'Content-Type: application/json' -d "{\"appt_id\":$APPT_ID}")"
+  tcontains "api/appt-checkin emite bon" '"ticket"' "$CI"
+fi
+# endpoint de citire respinge mutatia prin POST gresit? (concierge-appointments e read-only -> GET ok)
+t "api/concierge-appointments e GET (read-only)" 200 "$(code -b "$JAR" "$B/api/concierge-appointments?branch=$BR&date=$APPT_DATE")"
+
+# --- Ticket Dispenser: check-in programare la dozator (cheie dispozitiv, fara login) ---
+ACI="$(curl -s -b "$JAR" -X POST $B/api/appt-create -H "X-CSRF: $CGCSRF" -H 'Content-Type: application/json' -d "{\"service_id\":$SVC,\"date\":\"$TODAY\",\"time\":\"23:55\",\"name\":\"Checkin CI\",\"phone\":\"0790000000\"}")"
+ACI_TOK="$(printf '%s' "$ACI" | python3 -c "import sys,json;print(json.load(sys.stdin).get('appt',{}).get('public_token',''))" 2>/dev/null)"
+if [ -n "${ACI_TOK:-}" ]; then
+  CKR="$(curl -s -X POST $B/api/ticket-checkin -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"code\":\"$ACI_TOK\"}")"
+  tcontains "api/ticket-checkin emite bon din programare" '"ticket"' "$CKR"
+  tcontains "api/ticket-checkin intoarce serviciul" '"service_name"' "$CKR"
+fi
+t "api/ticket-checkin fara cheie -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket-checkin -H 'Content-Type: application/json' -d "{\"code\":\"x\"}")"
+t "api/ticket-checkin cod inexistent -> 404" 404 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket-checkin -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"code\":\"nuexista_xyz\"}")"
 
 # --- export/import servicii din CSV (autentificat) ---
 CT_SVC="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/services/export" | grep -i 'content-type')"

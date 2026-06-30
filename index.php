@@ -230,6 +230,32 @@ SWJS;
             }
             json_out($resp);
         }
+        if ($action === 'ticket-checkin' && $method === 'POST') { // check-in programare la dozator (clientul cu programare isi ia bonul)
+            $dev = device_by_key((string)input('device_key', ''));
+            if (!$dev) json_out(['ok' => false, 'error' => 'Dispozitiv neautorizat'], 403);
+            $code = trim((string)input('code', ''));
+            if ($code === '') json_out(['ok' => false, 'error' => 'Introdu codul programarii sau numarul de telefon.'], 422);
+            // cauta programarea de azi (booked) pe filiala dispozitivului, dupa token public SAU telefon
+            $appt = one("SELECT * FROM appointments WHERE branch_id=? AND status='booked' AND DATE(slot_start)=CURDATE()
+                         AND (public_token=? OR customer_phone=?) ORDER BY slot_start LIMIT 1",
+                        [(int)$dev['branch_id'], $code, $code]);
+            if (!$appt) json_out(['ok' => false, 'error' => 'Programare negasita pentru azi. Verifica codul sau telefonul.'], 404);
+            try { $t = appt_checkin($appt); }
+            catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+            $svcRow = one('SELECT * FROM services WHERE id = ?', [$t['service_id']]);
+            $resp = ['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
+                     'wait_est' => est_wait_seconds($t), 'virtual_url' => url('t/' . $t['public_token']),
+                     'service_name' => $svcRow['name'] ?? '', 'color' => $svcRow['color'] ?? null];
+            if ($dev['printer_mode'] === 'network' && $dev['printer_ip']) {
+                $bytes = build_ticket_escpos($t, $svcRow, one('SELECT * FROM branches WHERE id=?', [$t['branch_id']]));
+                $resp['print'] = print_network($dev['printer_ip'], (int)$dev['printer_port'], $bytes);
+            }
+            if ($dev['printer_mode'] === 'android') {
+                $bytes = build_ticket_escpos($t, $svcRow, one('SELECT * FROM branches WHERE id=?', [$t['branch_id']]));
+                $resp['escpos_b64'] = base64_encode($bytes);
+            }
+            json_out($resp);
+        }
         if ($action === 'virtual-cancel' && $method === 'POST') { // clientul renunta la rand de pe telefon
             $tok = (string) input('token', '');
             $row = $tok !== '' ? one("SELECT id, status FROM tickets WHERE public_token = ?", [$tok]) : null;
@@ -248,7 +274,7 @@ SWJS;
         $u = require_login();
         // actiunile care modifica starea trebuie sa fie POST (+ CSRF) — altfel un GET cross-site
         // ar putea declansa actiuni cu sesiunea operatorului. 'counter-state'/'branch-state' sunt doar citire.
-        $readOnlyActions = ['counter-state', 'branch-state'];
+        $readOnlyActions = ['counter-state', 'branch-state', 'concierge-appointments'];
         if (!in_array($action, $readOnlyActions, true) && $method !== 'POST')
             json_out(['ok' => false, 'error' => 'Metoda nepermisa (foloseste POST).'], 405);
         if ($method === 'POST') csrf_check();
@@ -328,6 +354,42 @@ SWJS;
                 ]] + counter_view($c));
             case 'branch-state':
                 json_out(['ok' => true] + branch_queue((int)($_GET['branch'] ?? 1)));
+            case 'appt-checkin': {   // receptia face check-in la o programare -> emite bon
+                $a = one('SELECT * FROM appointments WHERE id=?', [(int) input('appt_id', 0)]);
+                if (!$a) json_out(['ok' => false, 'error' => 'Programare inexistenta'], 404);
+                try { $t = appt_checkin($a); }
+                catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+                json_out(['ok' => true, 'ticket' => $t, 'position' => ticket_position($t)]);
+            }
+            case 'appt-cancel': {    // receptia anuleaza o programare
+                $a = appt_cancel((int) input('appt_id', 0));
+                json_out(['ok' => (bool) $a] + ($a ? [] : ['error' => 'Programare inexistenta sau deja anulata']));
+            }
+            case 'appt-create': {    // receptia creeaza o programare manuala
+                $sid = (int) input('service_id', 0);
+                $ts  = strtotime(trim((string) input('date', '') . ' ' . (string) input('time', '')));
+                if (!$sid || !$ts) json_out(['ok' => false, 'error' => 'Completeaza serviciul, data si ora.'], 422);
+                try { $a = appt_book($sid, date('Y-m-d H:i:00', $ts), trim((string) input('name', '')) ?: null,
+                        trim((string) input('phone', '')) ?: null, trim((string) input('email', '')) ?: null, 'concierge'); }
+                catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
+                json_out(['ok' => true, 'appt' => $a]);
+            }
+            case 'concierge-appointments': {   // programarile zilei (filtrabile) pentru tab-ul Programari
+                $br   = (int) ($_GET['branch'] ?? 0);
+                $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : date('Y-m-d');
+                $svc  = (int) ($_GET['service_id'] ?? 0);
+                $w = 'DATE(a.slot_start)=?'; $args = [$date];
+                if ($br)  { $w .= ' AND a.branch_id=?';  $args[] = $br; }
+                if ($svc) { $w .= ' AND a.service_id=?'; $args[] = $svc; }
+                $rows = all(
+                    "SELECT a.id, a.slot_start, a.status, a.customer_name, a.customer_phone, a.public_token, a.ticket_id,
+                            s.name AS service_name, s.prefix, s.color, t.label AS ticket_label,
+                            TIME_FORMAT(a.slot_start,'%H:%i') AS hm, DATE_FORMAT(a.slot_start,'%d.%m.%Y') AS day
+                     FROM appointments a JOIN services s ON s.id=a.service_id
+                     LEFT JOIN tickets t ON t.id=a.ticket_id
+                     WHERE $w ORDER BY a.slot_start LIMIT 200", $args);
+                json_out(['ok' => true, 'appointments' => $rows]);
+            }
         }
         json_out(['ok' => false, 'error' => 'Endpoint necunoscut'], 404);
     }
@@ -542,6 +604,9 @@ SWJS;
         if (setting('mod_booking', '1') !== '1') { fail_page(404, 'Indisponibil', 'Modulul de programari este dezactivat.'); }
         $lang = strtolower(preg_replace('/[^a-z]/', '', (string)($_GET['lang'] ?? 'ro')));
         if (!isset(disp_lang_meta()[$lang])) $lang = 'ro';
+        // lista de servicii (panoul din stanga, mereu prezent — layout master-detail)
+        $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
+                         WHERE s.status="active" AND s.appt_enabled=1 ORDER BY b.name, s.sort_order');
         if (!empty($seg[1]) && ctype_digit($seg[1])) {
             $svc = one('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
                         WHERE s.id=? AND s.status="active" AND s.appt_enabled=1', [(int)$seg[1]]);
@@ -580,12 +645,10 @@ SWJS;
             $wlOn = function_exists('mail_enabled') && mail_enabled();  // lista de asteptare necesita email
             $hasFree = false; foreach ($slots as $sl) { if (empty($sl['past']) && empty($sl['full'])) { $hasFree = true; break; } }
             $nextDay = $hasFree ? null : appt_next_open_day($svc, $date);  // sugereaza prima zi libera
-            view('public/book_slots', compact('svc','date','slots','closed','lang','wlOn','nextDay'));
+            view('public/book', compact('services','svc','date','slots','closed','lang','wlOn','nextDay'));
             return;
         }
-        $services = all('SELECT s.*, b.name AS branch_name FROM services s JOIN branches b ON b.id=s.branch_id
-                         WHERE s.status="active" AND s.appt_enabled=1 ORDER BY b.name, s.sort_order');
-        view('public/book_services', ['services' => $services, 'lang' => $lang]);
+        view('public/book', ['services' => $services, 'svc' => null, 'lang' => $lang]);
         return;
     }
 
@@ -659,7 +722,7 @@ SWJS;
         $branchId = (int)($_GET['branch'] ?? ($branches[0]['id'] ?? 1));
         $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: ($branches[0] ?? ['id'=>0,'name'=>'—']);
         $counters = all('SELECT id,code,name,status FROM counters WHERE branch_id=? ORDER BY code', [$branch['id']]);
-        $services = all('SELECT id,prefix,name,color,allow_priority FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order', [$branch['id']]);
+        $services = all('SELECT id,prefix,name,color,allow_priority,appt_enabled FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order', [$branch['id']]);
         view('public/concierge', compact('u','branches','branch','counters','services'));
         return;
     }

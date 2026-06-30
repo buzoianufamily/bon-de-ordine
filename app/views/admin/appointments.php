@@ -69,13 +69,50 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
   <?php if(!$rows): ?><p class="muted">Nicio programare in saptamana selectata.</p><?php endif; ?>
 </div>
 
-<?php else: ?>
+<?php else:
+  // ---- vedere zi: master-detail (servicii=filtru in stanga, programari+cautare in dreapta) ----
+  $svcCount = []; foreach($rows as $a){ $sid=(int)$a['service_id']; $svcCount[$sid]=($svcCount[$sid]??0)+1; }
+?>
 <div class="row" style="align-items:flex-start">
-  <div class="card pad" style="flex:2;min-width:340px">
-    <h3 style="margin-top:0">Programarile zilei (<?= count($rows) ?>)</h3>
-    <table><thead><tr><th>Ora</th><th>Serviciu</th><th>Client</th><th>Status</th><th>Bilet</th><th></th></tr></thead><tbody>
-    <?php foreach($rows as $a): $st=$statusMap[$a['status']]??['—','#1c2029','#9aa3b2']; ?>
-      <tr>
+  <div class="card pad" style="flex:1;min-width:230px">
+    <h3 style="margin-top:0">Servicii</h3>
+    <div class="apptsvcs" id="apptSvcs">
+      <button type="button" class="apptsvc on" data-svc="all"><span class="nm">Toate serviciile</span><span class="ct"><?= count($rows) ?></span></button>
+      <?php foreach($services as $s): $sid=(int)$s['id']; ?>
+        <button type="button" class="apptsvc" data-svc="<?= $sid ?>"><span class="tag" style="background:<?= e($s['color']) ?>;width:20px;height:20px;font-size:.7rem"><?= e($s['prefix']) ?></span><span class="nm"><?= e($s['name']) ?></span><span class="ct"><?= (int)($svcCount[$sid]??0) ?></span></button>
+      <?php endforeach; ?>
+    </div>
+  </div>
+
+  <div class="card pad" style="flex:2.4;min-width:340px">
+    <div class="listhead" style="margin-bottom:.7rem">
+      <div class="search"><span class="si">🔍</span><input type="text" id="apptSearch" placeholder="Cauta client, telefon, email, bon, serviciu..."></div>
+      <button class="btn btn-primary" id="apptNewBtn" type="button">+ Programare noua</button>
+    </div>
+    <div id="apptNewForm" style="display:none;margin-bottom:1rem;padding:.9rem 1rem;border:1px dashed var(--line);border-radius:12px">
+      <?php if(!$services): ?>
+        <p class="muted" style="margin:0">Niciun serviciu cu programari activate. Activeaza din Servicii → editare → sectiunea Programari.</p>
+      <?php else: ?>
+      <form method="post" action="<?= e(url('admin/appointments')) ?>"><?= csrf_field() ?>
+        <div class="formgrid">
+          <div class="field"><label>Serviciu</label><select name="service_id" required>
+            <?php foreach($services as $s): ?><option value="<?= (int)$s['id'] ?>"><?= e($s['prefix'].' · '.$s['name']) ?></option><?php endforeach; ?>
+          </select></div>
+          <div class="field"><label>Data</label><input type="date" name="date" value="<?= e($date) ?>" required></div>
+          <div class="field"><label>Ora</label><input type="time" name="time" required></div>
+          <div class="field"><label>Nume client</label><input name="name"></div>
+          <div class="field"><label>Telefon</label><input name="phone" type="tel"></div>
+          <div class="field"><label>Email (optional — primeste confirmarea)</label><input name="email" type="email"></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:.7rem">Adauga programare</button>
+      </form>
+      <?php endif; ?>
+    </div>
+    <h3 style="margin:0 0 .6rem">Programarile zilei (<span id="apptShown"><?= count($rows) ?></span>)</h3>
+    <table><thead><tr><th>Ora</th><th>Serviciu</th><th>Client</th><th>Status</th><th>Bilet</th><th></th></tr></thead><tbody id="apptRows">
+    <?php foreach($rows as $a): $st=$statusMap[$a['status']]??['—','#1c2029','#9aa3b2'];
+      $hay=mb_strtolower(($a['customer_name']??'').' '.($a['customer_phone']??'').' '.($a['customer_email']??'').' '.$a['service_name'].' '.($a['ticket_label']??'')); ?>
+      <tr data-svc="<?= (int)$a['service_id'] ?>" data-search="<?= e($hay) ?>">
         <td><strong><?= date('H:i',strtotime($a['slot_start'])) ?></strong></td>
         <td><span class="tag" style="background:<?= e($a['color']) ?>;width:20px;height:20px;font-size:.7rem"><?= e($a['prefix']) ?></span> <?= e($a['service_name']) ?></td>
         <td><?= e($a['customer_name'] ?: '—') ?><?= $a['customer_phone']?'<br><span class="muted" style="font-size:.78rem">'.e($a['customer_phone']).'</span>':'' ?><?= $a['customer_email']?'<br><span class="muted" style="font-size:.78rem">'.e($a['customer_email']).'</span>':'' ?></td>
@@ -89,29 +126,29 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
         </td>
       </tr>
     <?php endforeach; ?>
-    <?php if(!$rows): ?><tr><td colspan="6" class="muted">Nicio programare in ziua selectata.</td></tr><?php endif; ?>
+    <?php if(!$rows): ?><tr class="apptempty"><td colspan="6" class="muted">Nicio programare in ziua selectata.</td></tr><?php endif; ?>
     </tbody></table>
-  </div>
-
-  <div class="card pad" style="flex:1;min-width:260px">
-    <h3 style="margin-top:0">Programare noua (manuala)</h3>
-    <?php if(!$services): ?>
-      <p class="muted">Niciun serviciu cu programari activate. Activeaza din Servicii → editare → sectiunea Programari.</p>
-    <?php else: ?>
-    <form method="post" action="<?= e(url('admin/appointments')) ?>"><?= csrf_field() ?>
-      <div class="field"><label>Serviciu</label><select name="service_id" required>
-        <?php foreach($services as $s): ?><option value="<?= (int)$s['id'] ?>"><?= e($s['prefix'].' · '.$s['name']) ?></option><?php endforeach; ?>
-      </select></div>
-      <div class="row"><div class="field"><label>Data</label><input type="date" name="date" value="<?= e($date) ?>" required></div>
-        <div class="field"><label>Ora</label><input type="time" name="time" required></div></div>
-      <div class="field"><label>Nume client</label><input name="name"></div>
-      <div class="field"><label>Telefon</label><input name="phone" type="tel"></div>
-      <div class="field"><label>Email (optional — primeste confirmarea)</label><input name="email" type="email"></div>
-      <button class="btn btn-primary" style="width:100%">Adauga programare</button>
-    </form>
-    <?php endif; ?>
+    <p class="muted" id="apptNoMatch" style="display:none;padding:.6rem 0 0">Nicio programare pentru filtrele alese.</p>
   </div>
 </div>
+<script>
+(function(){
+  var svcs=document.getElementById('apptSvcs'), search=document.getElementById('apptSearch'),
+      rows=Array.prototype.slice.call(document.querySelectorAll('#apptRows tr')),
+      shown=document.getElementById('apptShown'), nm=document.getElementById('apptNoMatch'),
+      nb=document.getElementById('apptNewBtn'), nf=document.getElementById('apptNewForm');
+  var fSvc='all', fQ='';
+  function apply(){ var n=0; rows.forEach(function(tr){ if(tr.classList.contains('apptempty'))return;
+    var okS=(fSvc==='all')||(tr.getAttribute('data-svc')===fSvc);
+    var okQ=!fQ||((tr.getAttribute('data-search')||'').indexOf(fQ)>=0);
+    var ok=okS&&okQ; tr.style.display=ok?'':'none'; if(ok)n++; });
+    if(shown)shown.textContent=n; if(nm)nm.style.display=(n===0&&rows.length)?'':'none'; }
+  if(svcs)svcs.addEventListener('click',function(e){var b=e.target.closest('[data-svc]');if(!b)return;
+    fSvc=b.getAttribute('data-svc'); svcs.querySelectorAll('.apptsvc').forEach(function(x){x.classList.toggle('on',x===b);}); apply();});
+  if(search)search.addEventListener('input',function(){fQ=this.value.trim().toLowerCase();apply();});
+  if(nb)nb.addEventListener('click',function(){nf.style.display=(nf.style.display==='none')?'':'none';});
+})();
+</script>
 <?php endif; ?>
 
 <div class="card pad" style="margin-top:1.2rem">

@@ -10,12 +10,21 @@ $bgColor = $gd($A,'bg_color','#eef1f6');
 $title_txt = $gd($T,'title', setting('dispenser_title','ALEGE SERVICIUL'));
 $footer = $gd($T,'footer', setting('ticket_footer',''));
 $printerMode = $dev['type']==='digital_ticket' ? 'none' : $dev['printer_mode'];
-// ---- multi-limba ----
+// ---- multi-limba: per dozator (din editor) daca e configurat, altfel setarea globala (compat) ----
 $dict = disp_strings();
-$enabledLangs = array_values(array_filter(array_map('trim', explode(',', setting('dispenser_langs','ro')))));
-if (!in_array('ro',$enabledLangs,true)) array_unshift($enabledLangs,'ro');
-$lang = strtolower((string)($_GET['lang'] ?? 'ro'));
-if (!in_array($lang, $enabledLangs, true)) $lang = 'ro';
+if (!empty($L['lang_menu'])) {
+    $enabledLangs = ['ro'];
+    foreach (['en','de','fr','hu','it','es'] as $lc) if (!empty($L['lang_'.$lc])) $enabledLangs[] = $lc;
+    $defaultLang = (string)$gd($L,'lang_default','ro');
+} else {
+    $enabledLangs = array_values(array_filter(array_map('trim', explode(',', setting('dispenser_langs','ro')))));
+    if (!in_array('ro',$enabledLangs,true)) array_unshift($enabledLangs,'ro');
+    $defaultLang = 'ro';
+}
+$enabledLangs = array_values(array_unique($enabledLangs));
+if (!in_array($defaultLang, $enabledLangs, true)) $defaultLang = 'ro';
+$lang = strtolower((string)($_GET['lang'] ?? $defaultLang));
+if (!in_array($lang, $enabledLangs, true)) $lang = $defaultLang;
 $tr = function(string $key, string $base) use ($dict,$lang){ return $lang==='ro' ? $base : ($dict[$key][$lang] ?? $base); };
 $svcName = function(array $s) use ($lang){ if ($lang==='ro'||empty($s['i18n'])) return $s['name'];
     $t=json_decode($s['i18n'],true); return (is_array($t)&&!empty($t[$lang]['name']))?$t[$lang]['name']:$s['name']; };
@@ -37,6 +46,11 @@ $hasGroups = !empty($grouped);
 // randeaza un buton de serviciu (folosit si in mod plat, si grupat)
 // (optional) cati asteapta acum la fiecare serviciu — afisat pe butoane si actualizat live
 $showWait = $gb($L,'show_waiting',false);
+$apptCheckin = $gb($L,'appt_checkin',false) && setting('mod_booking','1')==='1';
+$vkbd = $gb($L,'virtual_keyboard',false);
+$checkin_btn   = $tr('checkin_btn',   $gd($T,'checkin_btn','Am o programare'));
+$checkin_title = $tr('checkin_title', $gd($T,'checkin_title','Check-in programare'));
+$checkin_hint  = $tr('checkin_hint',  $gd($T,'checkin_hint','Introdu codul programarii sau numarul de telefon'));
 $waitCnt = [];
 if ($showWait) {
     try { foreach (all("SELECT service_id, COUNT(*) c FROM tickets WHERE status='waiting' AND branch_id=? GROUP BY service_id", [$branch['id']]) as $r)
@@ -44,7 +58,7 @@ if ($showWait) {
 }
 $renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc,$showWait,$waitCnt) {
   $capped=service_cap_reached($s); $open=service_is_open($s) && !$capped; $snm=$svcName($s); $sds=$svcDesc($s); ?>
-      <button class="svc-btn<?= $open?'':' closed' ?>" <?= $open?'':'disabled' ?> data-id="<?= (int)$s['id'] ?>" data-color="<?= e($s['color']) ?>" data-priority="<?= $s['allow_priority']?'1':'0' ?>" data-name="<?= e($snm) ?>"
+      <button class="svc-btn<?= $open?'':' closed' ?>" <?= $open?'':'disabled' ?> data-id="<?= (int)$s['id'] ?>" data-color="<?= e($s['color']) ?>" data-priority="<?= $s['allow_priority']?'1':'0' ?>" data-name="<?= e($snm) ?>" data-desc="<?= e($sds) ?>"
               style="background:linear-gradient(135deg,<?= e($s['color']) ?>,<?= e($s['color']) ?>cc)">
         <?php if($showWait && $open): ?><span class="wbadge" data-wc="<?= (int)$s['id'] ?>" style="<?= empty($waitCnt[(int)$s['id']])?'display:none':'' ?>">👥 <b><?= (int)($waitCnt[(int)$s['id']] ?? 0) ?></b></span><?php endif; ?>
         <span class="pfx"><?= e($s['prefix']) ?></span>
@@ -78,10 +92,49 @@ if ($fids) {
     foreach ($services as $s) { $fid=(int)($s['form_id']??0); if ($fid && isset($byId[$fid])) $svcForms[(int)$s['id']] = $byId[$fid]; }
 }
 ?>
+<?php
+// ---- aspect granular (font, asezare, ceas, spatiu antet, textura, aliniere titlu) ----
+$fontFam = preg_replace('/[^a-zA-Z0-9 ,\'"\-]/', '', (string)$gd($A,'font_family',''));
+$headerGap = $gd($A,'header_gap','');
+$bgRepeat = $gd($A,'bg_repeat','cover');
+$gridCols = (string)$gd($A,'grid_cols','');
+$clock = $gb($A,'clock',false); $clock24 = $gb($A,'clock_24h',true);
+$titleAlign = in_array($gd($T,'title_align','center'),['left','center','right'],true) ? $gd($T,'title_align','center') : 'center';
+$bgCss = $bgImg
+  ? ($bgRepeat==='tile' ? "url('".e($bgImg)."') repeat" : "center/cover url('".e($bgImg)."')")
+  : "linear-gradient(180deg,#fff,".e($bgColor).")";
+$gridCss = $gridCols==='list' ? 'grid-template-columns:1fr'
+  : (in_array($gridCols,['2','3','4'],true) ? "grid-template-columns:repeat($gridCols,1fr)"
+  : ($gridCols==='wide' ? 'grid-template-columns:repeat(auto-fit,minmax(340px,1fr))' : ''));
+// overlay pe antet
+$headerOverlay = (string)$gd($A,'header_overlay','');
+$hoAlign = in_array($gd($A,'header_overlay_align','center'),['left','center','right'],true) ? $gd($A,'header_overlay_align','center') : 'center';
+$hoH = (int)$gd($A,'header_overlay_height',0);
+// distante grila bilete (per latura + gap-uri)
+$gridBox = '';
+foreach (['grid_pad_top'=>'padding-top','grid_pad_bottom'=>'padding-bottom','grid_pad_left'=>'padding-left','grid_pad_right'=>'padding-right','grid_row_gap'=>'row-gap','grid_col_gap'=>'column-gap'] as $k=>$css)
+  if ($gd($A,$k,'')!=='') $gridBox .= $css.':'.(int)$gd($A,$k,0).'px;';
+// stil texte (culoare/marime/aliniere) — culorile validate ca hex/rgb
+$col = fn($v) => preg_match('/^#[0-9a-fA-F]{3,8}$|^rgba?\([0-9.,\s]+\)$/', (string)$v) ? (string)$v : '';
+$subColor=$col($gd($A,'subtitle_color','')); $subSize=$gd($A,'subtitle_size','');
+$subAlign=in_array($gd($A,'subtitle_align',''),['left','center','right'],true)?$gd($A,'subtitle_align',''):'';
+$btnNameSize=$gd($A,'btn_name_size',''); $btnHintSize=$gd($A,'btn_hint_size','');
+$nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
+?>
 <style>
-.kiosk{background:<?= $bgImg ? "center/cover url('".e($bgImg)."')" : "linear-gradient(180deg,#fff,".e($bgColor).")" ?>}
+.kiosk{background:<?= $bgCss ?>}
+<?php if($fontFam): ?>.kiosk,.kiosk button,.kiosk input,.kiosk select,.kiosk textarea{font-family:<?= $fontFam ?>}<?php endif; ?>
+.kiosk-head{text-align:<?= e($titleAlign) ?><?= $headerGap!=='' ? ';padding-top:'.(int)$headerGap.'px;padding-bottom:'.(int)$headerGap.'px' : '' ?>}
 .kiosk-head h1{color:<?= e($gd($A,'header_color','#1a1d23')) ?>;font-size:<?= (int)$gd($A,'title_size',40) ?>px}
 .kiosk-head .logo{max-height:<?= (int)$gd($A,'logo_height',74) ?>px}
+.kiosk-clock{font-weight:800;color:<?= e($gd($A,'header_color','#1a1d23')) ?>;opacity:.85;font-size:1.05rem;margin-top:.2rem;font-variant-numeric:tabular-nums}
+<?php if($gridCss): ?>.kiosk .svc-grid{<?= $gridCss ?>}<?php endif; ?>
+<?php if($gridBox): ?>.kiosk .svc-grid{<?= $gridBox ?>}<?php endif; ?>
+.kiosk-head .ovl{display:block;max-width:90%}
+<?php if($subColor||$subSize!==''||$subAlign): ?>.kiosk-head .ksub{<?= $subColor?'color:'.$subColor.';':'' ?><?= $subSize!==''?'font-size:'.(int)$subSize.'px;':'' ?><?= $subAlign?'text-align:'.$subAlign.';':'' ?>}<?php endif; ?>
+<?php if($btnNameSize!==''): ?>.kiosk .svc-btn .nm{font-size:<?= (int)$btnNameSize ?>px}<?php endif; ?>
+<?php if($btnHintSize!==''): ?>.kiosk .svc-btn .ds{font-size:<?= (int)$btnHintSize ?>px}<?php endif; ?>
+<?php if($nosvcColor||$nosvcSize!==''): ?>.kiosk .knosvc{<?= $nosvcColor?'color:'.$nosvcColor.';':'' ?><?= $nosvcSize!==''?'font-size:'.(int)$nosvcSize.'px;':'' ?>}<?php endif; ?>
 .svc-btn{border-radius:<?= (int)$gd($A,'btn_radius',22) ?>px;min-height:<?= (int)$gd($A,'btn_height',170) ?>px;color:<?= e($gd($A,'btn_text_color','#ffffff')) ?>}
 .svc-btn .pfx{display:<?= $gb($A,'watermark',true)?'block':'none' ?>}
 .svc-btn.closed{opacity:.5;filter:grayscale(.7);cursor:not-allowed}
@@ -104,7 +157,9 @@ if ($fids) {
   <div class="kiosk-head">
     <?php if($logo): ?><img class="logo" src="<?= e($logo) ?>" alt=""><?php endif; ?>
     <h1><?= e($title_txt) ?></h1>
-    <?php if($gd($T,'subtitle','')): ?><p class="muted"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
+    <?php if($gd($T,'subtitle','')): ?><p class="muted ksub"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
+    <?php if($clock): ?><div class="kiosk-clock" id="kClock"></div><?php endif; ?>
+    <?php if($headerOverlay): ?><img class="ovl" src="<?= e($headerOverlay) ?>" alt="" style="<?= $hoH?('max-height:'.$hoH.'px;'):'' ?>margin-left:<?= $hoAlign==='left'?'0':'auto' ?>;margin-right:<?= $hoAlign==='right'?'0':'auto' ?>"><?php endif; ?>
   </div>
   <?php $closedToday = branch_closure_reason((int)$branch['id']); if($closedToday !== null): ?>
     <div style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fee2e2;color:#b91c1c;border-radius:14px;padding:1rem 1.3rem;text-align:center;font-weight:800;font-size:1.15rem">
@@ -113,8 +168,13 @@ if ($fids) {
   <?php endif; ?>
   <?php $notice = active_notice(); ?>
   <div id="dspNotice" style="max-width:1100px;margin:.2rem auto 0;width:100%;background:#fef3c7;color:#92400e;border-radius:14px;padding:.8rem 1.2rem;text-align:center;font-weight:700;<?= $notice===''?'display:none':'' ?>"><?= $notice!=='' ? '📢 '.e($notice) : '' ?></div>
+  <?php if($apptCheckin): ?>
+  <div style="max-width:1100px;margin:.6rem auto 0;width:100%;text-align:center">
+    <button class="btn btn-lg" id="btnCheckin" style="background:#fff;border:2px solid var(--accent,#00c375);color:var(--accent,#00c375);font-weight:800">📅 <?= e($checkin_btn) ?></button>
+  </div>
+  <?php endif; ?>
   <?php if(!$services): ?>
-    <div class="svc-grid"><p class="muted" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
+    <div class="svc-grid"><p class="muted knosvc" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
   <?php elseif($hasGroups): ?>
     <?php foreach($groupsById as $gid=>$g): if(empty($grouped[$gid])) continue; ?>
       <div class="grp-head" style="border-left:5px solid <?= e($g['color']) ?>"><?= e($g['name']) ?></div>
@@ -152,15 +212,17 @@ if ($fids) {
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>window.DISPENSER={
   key:<?= jsenc($dev['connection_key']) ?>, printerMode:<?= jsenc($printerMode) ?>,
-  accent:<?= jsenc(setting('accent_color','#2563eb')) ?>, brand:<?= jsenc(setting('brand_name','')) ?>,
+  accent:<?= jsenc(setting('accent_color','#00c375')) ?>, brand:<?= jsenc(setting('brand_name','')) ?>,
   branch:<?= jsenc($branch['name']) ?>, footer:<?= jsenc($footer) ?>,
   virtual:<?= setting('virtual_enabled','1')==='1'?'true':'false' ?>, logo:<?= jsenc($logo) ?>,
   branchId:<?= (int)$branch['id'] ?>, showWaiting:<?= $showWait?'true':'false' ?>,
+  apptCheckin:<?= $apptCheckin?'true':'false' ?>, virtualKeyboard:<?= $vkbd?'true':'false' ?>,
   forms:<?= jsenc($svcForms, JSON_UNESCAPED_UNICODE) ?>,
   lang:<?= jsenc($lang) ?>, revertUrl:<?= jsenc($revertUrl) ?>,
   autoReturn:<?= (int)$gd($L,'auto_return_sec',7) ?>, screensaver:<?= (int)$gd($L,'screensaver_sec',0) ?>,
-  print:{logo:<?= $gb($L,'print_logo',true)?1:0 ?>,service:<?= $gb($L,'print_service',true)?1:0 ?>,position:<?= $gb($L,'print_position',true)?1:0 ?>,datetime:<?= $gb($L,'print_datetime',true)?1:0 ?>,qr:<?= $gb($L,'print_qr',true)?1:0 ?>},
-  texts:{popup_title:<?= jsenc($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= jsenc($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= jsenc($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= jsenc($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= jsenc($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= jsenc($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>},
+  clock:<?= $clock?'true':'false' ?>, clock24:<?= $clock24?'true':'false' ?>,
+  print:{logo:<?= $gb($L,'print_logo',true)?1:0 ?>,service:<?= $gb($L,'print_service',true)?1:0 ?>,position:<?= $gb($L,'print_position',true)?1:0 ?>,datetime:<?= $gb($L,'print_datetime',true)?1:0 ?>,qr:<?= $gb($L,'print_qr',true)?1:0 ?>,desc:<?= $gb($L,'print_desc',false)?1:0 ?>,header:<?= jsenc($tr('print_header',$gd($T,'print_header',''))) ?>,ahead:<?= jsenc($tr('print_ahead',$gd($T,'print_ahead',''))) ?>},
+  texts:{popup_title:<?= jsenc($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= jsenc($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= jsenc($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= jsenc($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= jsenc($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= jsenc($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>,checkin_title:<?= jsenc($checkin_title) ?>,checkin_hint:<?= jsenc($checkin_hint) ?>,form_submit:<?= jsenc($tr('form_submit',$gd($T,'form_submit','Continua'))) ?>,form_cancel:<?= jsenc($tr('form_cancel',$gd($T,'form_cancel','Anuleaza'))) ?>},
   popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= jsenc($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= jsenc($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= jsenc($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= jsenc($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= jsenc($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= jsenc($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= jsenc($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
 <script src="<?= e(asset('js/dispenser.js')) ?>"></script>
