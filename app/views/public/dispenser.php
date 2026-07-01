@@ -91,6 +91,26 @@ if ($fids) {
         $byId[(int)$r['id']] = ['name'=>$r['name'], 'fields'=>json_decode($r['fields'] ?: '[]', true) ?: []];
     foreach ($services as $s) { $fid=(int)($s['form_id']??0); if ($fid && isset($byId[$fid])) $svcForms[(int)$s['id']] = $byId[$fid]; }
 }
+// ---- date servicii pentru widgetul „Grila servicii" din editorul canvas (aceeasi logica ca $renderBtn) ----
+$svcData = [];
+foreach ($services as $s) {
+    $capped = service_cap_reached($s); $open = service_is_open($s) && !$capped; $snm = $svcName($s); $sds = $svcDesc($s);
+    if ($open) $hint = $sds ?: $tr('btn_hint', $gd($T,'btn_hint','Apasati pentru bilet'));
+    elseif ($capped) $hint = $tr('cap_hint', $gd($T,'cap_hint','Limita atinsa azi'));
+    elseif (!empty($s['paused']) && !empty($s['pause_note'])) $hint = (string)$s['pause_note'];
+    else { $no = service_next_open($s);
+        if ($no) { $sameDay = date('Y-m-d',$no) === date('Y-m-d'); $hint = $tr('opens_at',$gd($T,'opens_at','Deschide')).' '.($sameDay?date('H:i',$no):date('d.m H:i',$no)); }
+        else $hint = $tr('closed_hint', $gd($T,'closed_hint','Inchis acum')); }
+    $svcData[] = ['id'=>(int)$s['id'], 'prefix'=>$s['prefix'], 'name'=>$snm, 'desc'=>$sds, 'color'=>$s['color'],
+        'open'=>$open, 'priority'=>(bool)$s['allow_priority'], 'hint'=>$hint,
+        'badge'=>($open?'':($capped?$tr('cap_label',$gd($T,'cap_label','⛔ Epuizat azi')):$tr('closed_label',$gd($T,'closed_label','🔒 Inchis')))),
+        'prioLabel'=>(($open && $s['allow_priority'] && !$gb($PU,'ask_type',false)) ? $tr('priority_label',$gd($T,'priority_label','★ Bilet prioritar')) : ''),
+        'showWait'=>$showWait, 'wait'=>(int)($waitCnt[(int)$s['id']] ?? 0)];
+}
+// ---- layout canvas (opt-in): daca exista si e activat, dispenserul se afiseaza ca afisorul TV ----
+$canvasCfg = $cfg['canvas'] ?? null;
+$useCanvas = is_array($canvasCfg) && !empty($canvasCfg['enabled']) && !empty($canvasCfg['screens']);
+$cvSound = (is_array($canvasCfg) && !empty($canvasCfg['sound'])) ? $canvasCfg['sound'] : ['voice'=>setting('display_voice','ro-RO'),'say_number'=>false,'say_counter'=>false,'repeat'=>2];
 ?>
 <?php
 // ---- aspect granular (font, asezare, ceas, spatiu antet, textura, aliniere titlu) ----
@@ -121,6 +141,23 @@ $subAlign=in_array($gd($A,'subtitle_align',''),['left','center','right'],true)?$
 $btnNameSize=$gd($A,'btn_name_size',''); $btnHintSize=$gd($A,'btn_hint_size','');
 $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
 ?>
+<?php if ($useCanvas): ?>
+<style>
+.lang-bar{position:fixed;top:14px;right:16px;display:flex;gap:.4rem;z-index:6;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+.lang-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .7rem;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font-weight:800;font-size:.9rem;text-decoration:none}
+.lang-pill .fl{font-size:1.15rem;line-height:1}
+.lang-pill.on{background:#fff;color:#111}
+</style>
+<body style="margin:0;background:#0b0d12">
+  <?php if(count($enabledLangs)>1): ?>
+  <div class="lang-bar">
+    <?php foreach($enabledLangs as $lc): if(!isset($langMeta[$lc])) continue; ?>
+      <a href="<?= e($langHref($lc)) ?>" class="lang-pill<?= $lc===$lang?' on':'' ?>"><span class="fl"><?= $langMeta[$lc][1] ?></span><?= e(strtoupper($lc)) ?></a>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+  <div id="stage" style="position:fixed;inset:0;overflow:hidden;background:#0b0d12"></div>
+<?php else: ?>
 <style>
 .kiosk{background:<?= $bgCss ?>}
 <?php if($fontFam): ?>.kiosk,.kiosk button,.kiosk input,.kiosk select,.kiosk textarea{font-family:<?= $fontFam ?>}<?php endif; ?>
@@ -196,6 +233,7 @@ $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
     <div class="svc-grid"><?php foreach($services as $s) $renderBtn($s); ?></div>
   <?php endif; ?>
 </div>
+<?php endif; /* useCanvas */ ?>
 
 <!-- overlay bilet -->
 <div class="kiosk-overlay" id="overlay">
@@ -233,5 +271,15 @@ $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
   texts:{popup_title:<?= jsenc($tr('popup_title',$gd($T,'popup_title','Biletul dumneavoastra'))) ?>,ahead:<?= jsenc($tr('ahead_text',$gd($T,'ahead_text','Sunt {n} persoane inaintea dumneavoastra'))) ?>,ahead_first:<?= jsenc($tr('ahead_first',$gd($T,'ahead_first','Sunteti urmatorul la rand'))) ?>,qr_hint:<?= jsenc($tr('qr_hint',$gd($T,'qr_hint','Urmariti pe telefon'))) ?>,done:<?= jsenc($tr('done_btn',$gd($T,'done_btn','Gata'))) ?>,wait_est:<?= jsenc($tr('wait_est_text',$gd($T,'wait_est_text','Timp estimat ~{m} min'))) ?>,checkin_title:<?= jsenc($checkin_title) ?>,checkin_hint:<?= jsenc($checkin_hint) ?>,form_submit:<?= jsenc($tr('form_submit',$gd($T,'form_submit','Continua'))) ?>,form_cancel:<?= jsenc($tr('form_cancel',$gd($T,'form_cancel','Anuleaza'))) ?>},
   popup:{ask_type:<?= $gb($PU,'ask_type',false)?'true':'false' ?>,regular:<?= jsenc($tr('regular_label',$gd($PU,'regular_label','BILET NORMAL'))) ?>,priority:<?= jsenc($tr('priority_label_pu',$gd($PU,'priority_label','BILET PRIORITAR'))) ?>,policy_enabled:<?= $gb($PU,'policy_enabled',false)?'true':'false' ?>,policy_title:<?= jsenc($gd($PU,'policy_title','Politica bilet prioritar')) ?>,policy_text:<?= jsenc($gd($PU,'policy_text','')) ?>,policy_checkbox:<?= jsenc($gd($PU,'policy_checkbox','Accept termenii si conditiile')) ?>,policy_cancel:<?= jsenc($tr('policy_cancel',$gd($PU,'policy_cancel','Anuleaza'))) ?>,policy_ok:<?= jsenc($tr('policy_ok',$gd($PU,'policy_ok','Continua'))) ?>}
 };</script>
+<?php if ($useCanvas): ?>
+<script>window.DISPLAY={
+  branch:<?= (int)$branch['id'] ?>, accent:<?= jsenc(setting('accent_color','#00c375')) ?>, useSSE:false, /* dispenser: polling (nu SSE) ca sa nu tina un worker ocupat si sa raspunda prompt la emitere */
+  voice:<?= jsenc($cvSound['voice'] ?? 'ro-RO') ?>, sayNumber:<?= !empty($cvSound['say_number'])?'true':'false' ?>, sayCounter:<?= !empty($cvSound['say_counter'])?'true':'false' ?>, repeat:<?= (int)($cvSound['repeat'] ?? 2) ?>,
+  services:<?= jsenc($svcData, JSON_UNESCAPED_UNICODE) ?>,
+  noSvcText:<?= jsenc($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?>,
+  layout:<?= jsenc($canvasCfg, JSON_UNESCAPED_UNICODE) ?>
+};</script>
+<script src="<?= e(asset('js/display.js')) ?>"></script>
+<?php endif; ?>
 <script src="<?= e(asset('js/dispenser.js')) ?>"></script>
 </body></html>

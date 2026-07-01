@@ -66,6 +66,16 @@
     const dt=d.toLocaleDateString('ro-RO',{weekday:'long',day:'numeric',month:'long'});
     return m==='time'?t : m==='date'?dt : (t+'<div style="font-size:.5em;opacity:.7">'+dt+'</div>'); }
 
+  // widget interactiv doar pentru dispenser: grila de servicii (butoanele care emit bonul)
+  if (P.mode==='dispenser') {
+    WIDGETS.service_grid = { label:'Grila servicii', icon:'🎟️', w:64,h:80, props:{title:'',cols:'auto',gap:14},
+      fields:[['title','Titlu (optional)','text'],['cols','Coloane',['auto','2','3','4','list']],['gap','Distanta butoane (px)','number']],
+      preview:p=>{ const gtc = p.cols==='list'?'1fr':(/^[234]$/.test(String(p.cols))?'repeat('+p.cols+',1fr)':'1fr 1fr');
+        return `<div class="wv" style="padding:2px">${p.title?`<div style="font-weight:800;font-size:.9em;margin-bottom:4px">${esc(p.title)}</div>`:''}<div style="display:grid;grid-template-columns:${gtc};gap:${Math.max(2,(+p.gap||14)/3)}px">`
+          + ['Casierie','Informatii','Depunere','Ghiseu 4'].map(n=>`<div style="background:linear-gradient(135deg,var(--accent),#0006);border-radius:6px;padding:6px 8px;min-height:32px"><div style="font-weight:800;font-size:.86em">${esc(n)}</div><div style="opacity:.7;font-size:.66em">Apasati pentru bilet</div></div>`).join('')
+          + `</div></div>`; } };
+  }
+
   // ---- stare ----
   let doc = P.config && P.config.screens ? P.config : defaultDoc();
   if (!doc.sound) doc.sound = {voice:'ro-RO',say_number:true,say_counter:true,repeat:2};
@@ -84,6 +94,13 @@
   function applyCanvas(){ const d=canvasDims(); stage.style.width=d.w+'px'; stage.style.height=d.h+'px'; }
 
   function defaultDoc(){
+    if (P.mode==='dispenser') {
+      return { screens:[{ id:uid(), name:'Ecran 1', duration:15, bg:'#0b0d12', widgets:[
+        {id:uid(),type:'text',x:3,y:3,w:74,h:12,props:{text:'ALEGE SERVICIUL',size:40}},
+        {id:uid(),type:'clock',x:79,y:3,w:18,h:12,props:{mode:'time'}},
+        {id:uid(),type:'service_grid',x:3,y:17,w:94,h:80,props:{title:'',cols:'auto',gap:14}},
+      ]}], sound:{voice:'ro-RO',say_number:false,say_counter:false,repeat:2}, canvas:{orientation:'landscape',ratio:'16:9'}, enabled:true };
+    }
     return { screens:[{ id:uid(), name:'Ecran 1', duration:15, bg:'#0b0d12', widgets:[
       {id:uid(),type:'now_serving',x:3,y:4,w:44,h:46,props:{label:'Se serveste bonul'}},
       {id:uid(),type:'called_list',x:3,y:54,w:44,h:42,props:{title:'Ultimele apelate',rows:5}},
@@ -231,7 +248,10 @@
   }
   function renderScreenSettings(){
     const s = screen();
-    insp.innerHTML = `<div class="pb-grp">Canvas (toate ecranele)</div>
+    const enToggle = P.mode==='dispenser'
+      ? `<div class="pb-grp">Layout dispenser</div><label class="chk"><input type="checkbox" id="cv_enabled" ${doc.enabled?'checked':''}> Afiseaza acest layout pe dispenser <span class="muted">(nebifat = editorul clasic)</span></label><hr>`
+      : '';
+    insp.innerHTML = enToggle + `<div class="pb-grp">Canvas (toate ecranele)</div>
       ${fieldHtml('cv_orient','Orientare',['landscape','portrait'],doc.canvas.orientation)}
       ${fieldHtml('cv_ratio','Aspect',['16:9','4:3','1:1','21:9'],doc.canvas.ratio)}
       <hr><div class="pb-grp">Ecran</div>
@@ -248,6 +268,7 @@
       <label class="chk"><input type="checkbox" id="snd_ctr" ${doc.sound.say_counter?'checked':''}> Anunta ghiseul</label>
       ${fieldHtml('snd_rep','Repetari anunt','number',doc.sound.repeat)}
       <hr><p class="muted">Apasa pe un widget ca sa-i editezi proprietatile. Trage de el ca sa-l muti, de coltul colorat ca sa-l redimensionezi.</p>`;
+    { const en=document.getElementById('cv_enabled'); if(en) en.addEventListener('change',e=>{ doc.enabled=e.target.checked; }); }
     document.getElementById('cv_orient').addEventListener('change',e=>{doc.canvas.orientation=e.target.value; applyCanvas(); renderStage();});
     document.getElementById('cv_ratio').addEventListener('change',e=>{doc.canvas.ratio=e.target.value; applyCanvas(); renderStage();});
     bind('s_name','input',v=>s.name=v, true);
