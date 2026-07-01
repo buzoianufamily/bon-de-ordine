@@ -194,8 +194,13 @@
       <div class="field"><label>Email de contact pentru cereri privind datele</label><input name="legal_email" type="email" value="<?= $s('legal_email') ?>" placeholder="date@exemplu.ro"><p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se folosește adresa „expeditor" de la Email.</p></div>
       <div class="field"><label>Text suplimentar (opțional, apare la finalul ambelor pagini)</label><textarea name="legal_extra" rows="3" placeholder="ex: Responsabil cu protecția datelor (DPO): ..."><?= $s('legal_extra') ?></textarea></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
-      <h3 style="margin-top:0">Politici proprii (opțional)</h3>
-      <p class="muted" style="font-size:.82rem;margin-top:0">Dacă ai deja politici publicate pe site-ul tău, pune aici adresele lor — paginile legale vor redirecționa acolo în loc să afișeze șablonul implicit.</p>
+      <h3 style="margin-top:0">Text pagini legale (opțional)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Paginile publice sunt la <code><?= e(url('legal/privacy')) ?></code> și <code><?= e(url('legal/terms')) ?></code>. Lasă gol ca să folosești șablonul GDPR implicit, sau scrie aici <strong>textul tău</strong> — înlocuiește complet șablonul (păstrează linkurile din subsol). Poți lăsa rânduri goale între paragrafe.</p>
+      <div class="field"><label>Text „Politică de confidențialitate"</label><textarea name="legal_privacy_text" rows="8" placeholder="Gol = șablonul GDPR implicit"><?= $s('legal_privacy_text') ?></textarea></div>
+      <div class="field"><label>Text „Termeni și condiții"</label><textarea name="legal_terms_text" rows="8" placeholder="Gol = șablonul implicit"><?= $s('legal_terms_text') ?></textarea></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Redirect către politici externe (opțional)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Dacă ai deja politici publicate pe alt site, pune aici adresele — linkul <code>/legal/privacy</code> (respectiv <code>/legal/terms</code>) va <strong>redirecționa</strong> acolo în loc să afișeze pagina internă. (Are prioritate față de textul de mai sus.)</p>
       <div class="field"><label>URL Politică de confidențialitate</label><input name="privacy_url" type="url" value="<?= $s('privacy_url') ?>" placeholder="https://site-ul-tau.ro/confidentialitate"></div>
       <div class="field"><label>URL Termeni și condiții</label><input name="terms_url" type="url" value="<?= $s('terms_url') ?>" placeholder="https://site-ul-tau.ro/termeni"></div>
     </div>

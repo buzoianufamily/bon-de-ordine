@@ -10,6 +10,7 @@ $op    = trim((string) setting('legal_operator', '')) ?: $brand;          // ope
 $addr  = trim((string) setting('legal_address', ''));
 $email = trim((string) setting('legal_email', '')) ?: trim((string) setting('mail_from', ''));
 $extra = trim((string) setting('legal_extra', ''));
+$customText = trim((string) setting($kind === 'terms' ? 'legal_terms_text' : 'legal_privacy_text', ''));  // text propriu (inlocuieste sablonul)
 $ret   = (int) setting('retention_months', 6); if ($ret <= 0) $ret = 6;
 $updated = date('d.m.Y');
 $title = ($kind === 'terms' ? 'Termeni si conditii' : 'Politica de confidentialitate') . ' · ' . $brand;
@@ -18,7 +19,11 @@ require __DIR__ . '/_head.php';
 <body><div class="center"><div class="portal" style="max-width:720px">
   <a href="<?= e(url('') . ($lang !== 'ro' ? '?lang='.$lang : '')) ?>" class="muted">← <?= e($brand) ?></a>
   <div class="card pad" style="margin-top:.8rem;line-height:1.7">
-  <?php if ($kind === 'privacy'): ?>
+  <?php if ($customText !== ''): // text propriu, setat de operator ?>
+    <h1 style="margin-top:0"><?= $kind === 'terms' ? 'Termeni si conditii' : 'Politica de confidentialitate' ?></h1>
+    <p class="muted">Ultima actualizare: <?= e($updated) ?></p>
+    <div><?= nl2br(e($customText)) ?></div>
+  <?php elseif ($kind === 'privacy'): ?>
     <h1 style="margin-top:0">Politica de confidentialitate</h1>
     <p class="muted">Ultima actualizare: <?= e($updated) ?></p>
 
