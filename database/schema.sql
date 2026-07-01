@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS counters (
   name         VARCHAR(80)  NOT NULL,               -- ex: Birou 1
   status       ENUM('open','paused','closed') NOT NULL DEFAULT 'closed',
   pause_note   VARCHAR(120) NULL,                  -- mesaj afisat clientilor in pauza
+  cd_hint_idle    VARCHAR(80) NULL,                -- afisaj /cd: text cand nu e niciun bon (gol = implicit din Setari)
+  cd_hint_serving VARCHAR(80) NULL,                -- afisaj /cd: text cand un bon e chemat (gol = implicit din Setari)
   all_services TINYINT(1) NOT NULL DEFAULT 1,       -- 1 = toate serviciile filialei
   priority     INT NOT NULL DEFAULT 0,              -- prioritate ghiseu (tie-break)
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
