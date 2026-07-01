@@ -1,4 +1,4 @@
-<?php $title='Concierge · '.setting('brand_name','Bon de ordine'); require __DIR__.'/_head.php';
+<?php $title='Concierge · '.setting('brand_name','Bon de ordine'); $publicTheme=true; require __DIR__.'/_head.php';
 $apptServices = array_values(array_filter($services, fn($s)=>(int)$s['allow_priority']>=0 && (int)($s['appt_enabled']??0)===1)); ?>
 <body class="cgpage"><div class="counter-wrap">
   <div class="topbar">

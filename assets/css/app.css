@@ -44,6 +44,19 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .mediadrop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
 /* data curenta (dreapta sus pe dashboard) — pronuntata in ambele teme */
 .datechip{display:inline-flex;align-items:center;gap:.4rem;font-weight:800;font-size:.9rem;color:var(--ink);background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);padding:.32rem .8rem;border-radius:999px;letter-spacing:.01em}
+/* ===== Tema publica optionala (comutator dark/light pe paginile publice) ===== */
+/* implicit = tema deschisa (:root). Cand utilizatorul alege „inchis", clasa .pdark pe <html>
+   suprascrie DOAR variabilele de culoare, deci toate paginile care folosesc var(--...) se aseaza corect. */
+html.pdark{--bg:#0b0d12;--surface:#15181f;--ink:#e8eaef;--muted:#9aa3b2;--line:#242a35;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35)}
+html.pdark body{background:var(--bg);color:var(--ink)}
+html.pdark input,html.pdark select,html.pdark textarea{background:#101319;color:var(--ink);border-color:var(--line)}
+.ptheme-btn{position:fixed;z-index:60;bottom:16px;left:16px;width:46px;height:46px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.25rem;line-height:1;cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;transition:.15s}
+.ptheme-btn:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));transform:translateY(-1px)}
+/* cardul de feedback devine „theme-aware" (nu afecteaza .vt-card de la bilet virtual / programare) */
+.vt-card.themed-card{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.vt-card.themed-card h1,.vt-card.themed-card h2,.vt-card.themed-card h3{color:var(--ink)}
+.vt-card.themed-card .muted{color:var(--muted)}
 @keyframes slidein{from{opacity:0;transform:translateY(8px)}}
 
 /* ====== Admin shell ====== */
