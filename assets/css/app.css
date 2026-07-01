@@ -44,7 +44,12 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 
 /* ====== Admin shell ====== */
 .shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
-.side{background:#181819;color:#9aa1ad;padding:.4rem .55rem 1rem;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;border-right:1px solid #2a2a30}
+.side{background:#181819;color:#9aa1ad;padding:.4rem .55rem 1rem;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;border-right:1px solid #2a2a30;scrollbar-width:thin;scrollbar-color:#33333c transparent}
+/* bara de scroll a meniului lateral — discreta, pe tema inchisa (fara nuanta alba a scrollbar-ului implicit) */
+.side::-webkit-scrollbar{width:10px}
+.side::-webkit-scrollbar-track{background:transparent}
+.side::-webkit-scrollbar-thumb{background:#33333c;border-radius:8px;border:2px solid #181819}
+.side::-webkit-scrollbar-thumb:hover{background:#45454f}
 .side .side-top{display:flex;align-items:center;padding:.55rem .7rem;margin-bottom:.45rem;color:#8a93a3;font-size:1.15rem;background:none;border:none;border-bottom:1px solid #16181d;cursor:pointer;width:100%;text-align:left;transition:.12s}
 .side .side-top .ic{width:20px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
 .side .side-top:hover{color:#fff}
@@ -70,6 +75,17 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .adminbar .uchip{display:flex;align-items:center;gap:.5rem;color:var(--ink);font-weight:600}
 .adminbar .uchip .av{width:26px;height:26px;border-radius:999px;background:#262b35;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem}
 .content{padding:1.4rem 2rem;width:100%}
+/* Setari: cardul de setari ocupa toata latimea; pe ecrane late campurile curg pe 2 coloane,
+   iar titlurile de sectiune (h3/hr/paragrafe) se intind pe toata latimea. */
+.settab{width:100%}
+.settab .card.setcard{max-width:none}
+@media(min-width:1080px){
+  .settab .card.setcard{column-count:2;column-gap:2.4rem}
+  .settab .card.setcard > *{break-inside:avoid}
+  .settab .card.setcard > h3,.settab .card.setcard > hr,.settab .card.setcard > p{column-span:all}
+  .settab .card.setcard > h3{margin-top:1rem}
+  .settab .card.setcard > h3:first-child{margin-top:0}
+}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:1.4rem}
 .kpi .n{font-family:var(--display);font-size:2.1rem;font-weight:800;line-height:1}

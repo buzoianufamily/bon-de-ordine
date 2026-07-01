@@ -411,7 +411,8 @@ SWJS;
 
     // ===================== PAGINI PUBLICE =====================
     if ($route === '/') {
-        if (current_user()) redirect('admin');
+        // logat -> ecran de alegere (backoffice / terminal / concierge / status), nu direct dashboard
+        if ($u = current_user()) { view('public/hub', ['u' => $u]); return; }
         view('public/portal');
         return;
     }

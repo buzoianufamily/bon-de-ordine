@@ -13,7 +13,7 @@
 <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
 
   <div class="settab" data-pane="general">
-    <div class="card pad" style="max-width:640px">
+    <div class="card pad setcard">
       <h3 style="margin-top:0">Brand</h3>
       <div class="field"><label>Nume companie / brand</label><input name="brand_name" value="<?= $s('brand_name') ?>"></div>
       <div class="field"><label>Nume organizatie (pe bon)</label><input name="org_name" value="<?= $s('org_name') ?>"></div>
@@ -38,7 +38,7 @@
 
   <div class="settab dv-hidden" data-pane="ticket">
     <div class="row" style="align-items:flex-start">
-    <div class="card pad" style="flex:1;min-width:300px;max-width:640px">
+    <div class="card pad" style="flex:1;min-width:300px">
       <h3 style="margin-top:0">Comportament coada</h3>
       <div class="field"><label>Escaladare prioritate după … minute de așteptare (0 = oprit)</label><input type="number" name="priority_escalate_min" min="0" max="600" value="<?= $s('priority_escalate_min','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Anti-„înfometare": biletele normale care așteaptă peste acest prag sunt chemate înaintea celor noi (ca biletele prioritare), în ordinea vechimii.</p></div>
@@ -80,7 +80,7 @@
   </div>
 
   <div class="settab dv-hidden" data-pane="display">
-    <div class="card pad" style="max-width:640px">
+    <div class="card pad setcard">
       <h3 style="margin-top:0">Afisaj &amp; anunt vocal</h3>
       <div class="field"><label>Voce (limba TTS)</label><select name="display_voice">
         <?php foreach(['ro-RO'=>'Romana','en-US'=>'Engleza','de-DE'=>'Germana','fr-FR'=>'Franceza'] as $k=>$lab): ?>
@@ -94,7 +94,7 @@
   </div>
 
   <div class="settab dv-hidden" data-pane="digital">
-    <div class="card pad" style="max-width:640px">
+    <div class="card pad setcard">
       <p class="muted" style="font-size:.82rem;margin-top:0">Biletul digital se activeaza/dezactiveaza din tabul <strong>Module</strong>.</p>
       <h3 style="margin-top:0">Anunț general (banner public)</h3>
       <p class="muted" style="font-size:.82rem;margin-top:0">Mesaj informativ afișat pe dispenser, pe pagina de status și pe afișajele de ghișeu (ex: „Azi program redus până la 14:00"). Lasă textul gol ca să-l ascunzi.</p>
@@ -113,7 +113,7 @@
   </div>
 
   <div class="settab dv-hidden" data-pane="email">
-    <div class="card pad" style="max-width:640px">
+    <div class="card pad setcard">
       <h3 style="margin-top:0">Trimitere email</h3>
       <p class="muted" style="font-size:.82rem;margin-top:0">Folosit pentru confirmari/anulari de programari. Fara SMTP configurat, se foloseste functia <code>mail()</code> a serverului (merge pe cPanel). Pentru livrare sigura, completeaza SMTP-ul contului tau de email.</p>
       <label style="margin:.5rem 0;display:block"><input type="checkbox" name="mail_enabled" <?= setting('mail_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Activeaza trimiterea de emailuri</label>
@@ -144,7 +144,7 @@
   </div>
 
   <div class="settab dv-hidden" data-pane="auto">
-    <div class="card pad" style="max-width:640px">
+    <div class="card pad setcard">
       <h3 style="margin-top:0">Automatizări (necesită cron)</h3>
       <p class="muted" style="font-size:.82rem;margin-top:0">Aceste sarcini rulează prin job-ul cron — configurează-l în <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>. Remindere și raportul zilnic necesită și email activ (tabul <strong>Email</strong>).</p>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="reminder_enabled" <?= setting('reminder_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>reminder</strong> pe email cu ~24h inainte de programare</label>
@@ -173,7 +173,7 @@
   </div>
 
   <div class="settab dv-hidden" data-pane="module">
-    <div class="card pad" style="max-width:640px">
+    <div class="card pad setcard">
       <h3 style="margin-top:0">Aplicatii optionale</h3>
       <p class="muted" style="font-size:.82rem;margin-top:0">Activeaza sau dezactiveaza modulele instantei. Modulele oprite nu mai sunt accesibile public (linkurile dispar, paginile raspund cu „modul dezactivat").</p>
       <label class="switch" style="margin:.7rem 0;align-items:flex-start"><input type="checkbox" name="virtual_enabled" <?= setting('virtual_enabled','1')==='1'?'checked':'' ?>><span class="track"></span> <span><strong>Bilet digital (QR)</strong> — urmarire bon pe telefon, QR pe bonul tiparit</span></label>
@@ -186,7 +186,7 @@
   </div>
 
   <div class="settab dv-hidden" data-pane="legal">
-    <div class="card pad" style="max-width:640px">
+    <div class="card pad setcard">
       <h3 style="margin-top:0">Date operator (pentru paginile legale)</h3>
       <p class="muted" style="font-size:.82rem;margin-top:0">Aceste date completeaza paginile publice <a href="<?= e(url('legal/privacy')) ?>" target="_blank">Confidențialitate</a> și <a href="<?= e(url('legal/terms')) ?>" target="_blank">Termeni</a> (linkuri afișate în subsolul paginilor publice). Necesare pentru conformitatea GDPR atunci când colectezi date (programări, feedback).</p>
       <div class="field"><label>Operator / entitate juridică (controlor de date)</label><input name="legal_operator" value="<?= $s('legal_operator') ?>" placeholder="ex: Primăria Orașului X / SC Firma SRL"><p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se folosește numele de brand.</p></div>
@@ -264,11 +264,18 @@
 /* tab-uri setari */
 (function(){
   var tabs=document.querySelectorAll('#setTabs [data-tab]');
+  function show(name){ var found=false;
+    tabs.forEach(function(x){ var on=x.getAttribute('data-tab')===name; x.classList.toggle('on',on); if(on)found=true; });
+    document.querySelectorAll('.settab').forEach(function(p){ p.classList.toggle('dv-hidden', p.getAttribute('data-pane')!==name); });
+    return found;
+  }
   tabs.forEach(function(t){ t.addEventListener('click',function(e){ e.preventDefault();
     var name=t.getAttribute('data-tab');
-    tabs.forEach(function(x){x.classList.toggle('on',x===t);});
-    document.querySelectorAll('.settab').forEach(function(p){ p.classList.toggle('dv-hidden', p.getAttribute('data-pane')!==name); });
+    try{ localStorage.setItem('bdo_settab', name); }catch(_){}
+    show(name);
   }); });
+  // ramai pe acelasi tab dupa salvare (pagina se reincarca) — restaureaza ultimul tab ales
+  try{ var last=localStorage.getItem('bdo_settab'); if(last){ if(!show(last)) show('general'); } }catch(_){}
 })();
 /* previzualizare live a bonului (tabul Bilet) */
 (function(){
