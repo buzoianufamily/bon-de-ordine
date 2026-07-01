@@ -22,8 +22,6 @@
           <div class="field" style="display:flex;align-items:flex-end"><label class="switch" style="margin:0 0 .6rem"><input type="checkbox" name="active" <?= ($row['active']??1)?'checked':'' ?>><span class="track"></span> Activ</label></div>
         </div>
         <div class="field"><label>Parola <?= $row?'(lasa gol = nu schimba)':'' ?></label><input type="password" name="password" autocomplete="new-password" <?= $row?'':'required' ?>></div>
-        <div class="field"><label>PIN terminal (optional, doar cifre)</label><input type="text" name="pin" inputmode="numeric" pattern="[0-9]*" maxlength="12" value="<?= e($row['pin']??'') ?>" placeholder="ex: 1234">
-          <p class="muted" style="font-size:.78rem;margin-top:.3rem">Permite schimbarea rapida a operatorului la terminal. Recomandat doar pentru operatori, pe dispozitive de incredere.</p></div>
       </div>
     </div>
 

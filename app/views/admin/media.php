@@ -1,13 +1,25 @@
 <?php $title='Multimedia'; $active='media'; require __DIR__.'/_header.php'; ?>
 <div class="topbar">
   <h1>Multimedia</h1>
-  <form method="post" action="<?= e(url('admin/media/upload')) ?>" enctype="multipart/form-data" id="upForm" style="display:flex;gap:.5rem;align-items:center">
-    <?= csrf_field() ?>
-    <input type="file" name="file[]" id="fileInput" multiple style="display:none" onchange="document.getElementById('upForm').submit()">
-    <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">⬆ Incarca fisiere</button>
-  </form>
 </div>
-<p class="muted" style="margin-top:-.6rem">Orice tip de fisier (imagini, video, SVG, PDF, documente…). Le folosesti ca logo sau in widget-ul „Imagine" de pe afisaj. Limita provine din configurarea serverului (PHP <code><?= e(bdo_human_size(min(bdo_ini_bytes('upload_max_filesize'), bdo_ini_bytes('post_max_size')) ?: 512*1024*1024)) ?></code>).</p>
+<form method="post" action="<?= e(url('admin/media/upload')) ?>" enctype="multipart/form-data" id="upForm">
+  <?= csrf_field() ?>
+  <input type="file" name="file[]" id="fileInput" multiple style="display:none" onchange="document.getElementById('upForm').submit()">
+  <div id="dropzone" class="mediadrop">
+    <div style="font-size:1.6rem">⬆</div>
+    <div><strong>Trage fisierele aici</strong> sau <button type="button" class="btn btn-primary" style="vertical-align:middle" onclick="document.getElementById('fileInput').click()">alege fisiere</button></div>
+    <div class="muted" style="font-size:.82rem;margin-top:.3rem">Poti selecta / trage <strong>mai multe deodata</strong>. Orice tip de fisier (imagini, video, SVG, PDF, documente…). Limita serverului: <code><?= e(bdo_human_size(min(bdo_ini_bytes('upload_max_filesize'), bdo_ini_bytes('post_max_size')) ?: 512*1024*1024)) ?></code>.</div>
+  </div>
+</form>
+<script>
+(function(){
+  var dz=document.getElementById('dropzone'), inp=document.getElementById('fileInput'), form=document.getElementById('upForm');
+  if(!dz) return;
+  ['dragenter','dragover'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.add('over'); }); });
+  ['dragleave','dragend','drop'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
+  dz.addEventListener('drop',function(e){ if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){ inp.files=e.dataTransfer.files; form.submit(); } });
+})();
+</script>
 
 <div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-top:1rem">
   <?php foreach($rows as $m): $isVid = str_starts_with($m['mime'],'video'); ?>

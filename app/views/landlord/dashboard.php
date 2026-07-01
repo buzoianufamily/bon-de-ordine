@@ -145,6 +145,21 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
           <div class="muted" style="font-size:.8rem;margin-bottom:.3rem">Cron pentru aceasta instanta (remindere, raport, backup, curatare) — se configureaza o data in cPanel, interval */15:</div>
           <pre style="background:#101216;color:#7CFFB2;padding:.7rem;border-radius:8px;overflow:auto;font-size:.76rem;margin:0">*/15 * * * * curl -s "<?= e($cronUrl) ?>" >/dev/null 2>&1</pre>
         </div>
+        <div style="margin-top:.9rem;border-top:1px solid #1e2128;padding-top:.7rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+          <span class="muted" style="font-size:.8rem">Backup baza de date (date clienti):</span>
+          <a class="btn" href="<?= e(url('landlord/backup')) ?>?host=<?= e(rawurlencode($r['main'] ? '' : $r['host'])) ?>">⬇ Descarca backup SQL</a>
+          <form method="post" action="<?= e(url('landlord/backup-auto')) ?>" style="display:inline">
+            <?= csrf_field() ?><input type="hidden" name="host" value="<?= e($r['host']) ?>">
+            <?php if (!empty($h['backup_auto'])): ?>
+              <span style="color:#16a34a;font-size:.82rem">✔ backup automat zilnic activ</span>
+              <button class="btn" style="margin-left:.4rem">Opreste</button>
+            <?php else: ?>
+              <span class="muted" style="font-size:.82rem">backup automat oprit</span>
+              <input type="hidden" name="on" value="1">
+              <button class="btn btn-primary" style="margin-left:.4rem">Activeaza (necesita cron)</button>
+            <?php endif; ?>
+          </form>
+        </div>
       </details>
     <?php endforeach; ?>
     <?php if ($gCrit === 0 && $gWarn === 0 && $okCnt === 0): ?>

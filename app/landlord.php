@@ -79,12 +79,28 @@ function landlord_invoice_label(array $inv): string {
          . sprintf('%05d', (int)($inv['number'] ?? 0)) . ' / ' . (int)($inv['year'] ?? 0);
 }
 
+/** Rezolva configul DB pentru un host: instanta principala (gol/main) sau un tenant din registru. */
+function landlord_db_for_host(string $host, array $tenants): ?array {
+    $main = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+    if ($host === '' || $host === 'main' || $host === $main) return cfg('db');
+    foreach ($tenants as $t) if (strtolower((string)$t['host']) === $host) return $t['db'] ?? null;
+    return null;
+}
+
+/** Deschide o conexiune PDO catre baza unei instante (arunca la esec). */
+function landlord_pdo(array $db): PDO {
+    $dsn = "mysql:host=" . ($db['host'] ?? 'localhost') . ";dbname=" . ($db['name'] ?? '') . ";charset=" . ($db['charset'] ?? 'utf8mb4');
+    return new PDO($dsn, $db['user'] ?? '', $db['pass'] ?? '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5,
+    ]);
+}
+
 /** Verifica sanatatea unei instante: conexiune + cativa indicatori cheie. */
 function landlord_health(array $db): array {
     $out = ['ok' => false, 'error' => '', 'brand' => '', 'schema' => 0,
             'users' => null, 'dev_total' => null, 'dev_online' => null,
             'tickets_today' => null, 'last_ticket' => null,
-            'cron_token' => '', 'checks' => [], 'checks_crit' => 0, 'checks_warn' => 0];
+            'cron_token' => '', 'backup_auto' => false, 'checks' => [], 'checks_crit' => 0, 'checks_warn' => 0];
     if (empty($db['name']) || empty($db['user'])) { $out['error'] = 'Date DB incomplete'; return $out; }
     try {
         $dsn = "mysql:host=" . ($db['host'] ?? 'localhost') . ";dbname={$db['name']};charset=" . ($db['charset'] ?? 'utf8mb4');
@@ -104,6 +120,7 @@ function landlord_health(array $db): array {
         $out['tickets_today'] = $v("SELECT COUNT(*) FROM tickets WHERE DATE(issued_at)=CURDATE()");
         $out['last_ticket']   = $v("SELECT MAX(issued_at) FROM tickets");
         $out['cron_token']    = (string)($v("SELECT v FROM settings WHERE k='cron_token'") ?? '');
+        $out['backup_auto']   = ((string)($v("SELECT v FROM settings WHERE k='backup_auto_enabled'") ?? '0')) === '1';
         // verificari „pregatit de productie" derivate din DB (per instanta) — vizibile doar in landlord
         $out['checks'] = landlord_instance_checks($pdo);
         foreach ($out['checks'] as $c) { if ($c['level'] === 'crit') $out['checks_crit']++; elseif ($c['level'] === 'warn') $out['checks_warn']++; }
@@ -180,8 +197,17 @@ function landlord_instance_checks(PDO $pdo): array {
 }
 
 function landlord_dispatch(array $seg, string $method): void {
-    // ascuns complet pe instantele clientilor
-    if (!empty($GLOBALS['__tenant'])) { http_response_code(404); echo 'Pagina nu a fost gasita.'; return; }
+    // Izolarea panoului landlord:
+    //  - daca este configurat 'landlord_host' (ex: clienti.bonordine.ro), panoul exista DOAR pe acel host
+    //    (404 pe orice alt host, inclusiv pe subdomeniile clientilor si pe instanta-aplicatie principala);
+    //  - altfel (compatibilitate): doar pe instanta principala, ascuns pe subdomeniile clientilor.
+    $llHost  = strtolower(trim((string) cfg('landlord_host', '')));
+    $curHost = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+    if ($llHost !== '') {
+        if ($curHost !== $llHost) { http_response_code(404); echo 'Pagina nu a fost gasita.'; return; }
+    } elseif (!empty($GLOBALS['__tenant'])) {
+        http_response_code(404); echo 'Pagina nu a fost gasita.'; return;
+    }
 
     $pass = (string) cfg('landlord_pass', '');
     if ($pass === '') {
@@ -281,6 +307,20 @@ function landlord_dispatch(array $seg, string $method): void {
             redirect('landlord');
         }
 
+        // ---- backup automat per instanta (scrie backup_auto_enabled in baza instantei) ----
+        if ($a === 'backup-auto') {
+            $host = strtolower(trim((string)($_POST['host'] ?? '')));
+            $db = landlord_db_for_host($host, $tenants);
+            if (!$db) { flash('Instanta inexistenta.', 'error'); redirect('landlord'); }
+            try {
+                $pdo = landlord_pdo($db);
+                $pdo->prepare("INSERT INTO settings (k,v) VALUES ('backup_auto_enabled',?) ON DUPLICATE KEY UPDATE v=VALUES(v)")
+                    ->execute([isset($_POST['on']) ? '1' : '0']);
+                flash('Backup automat ' . (isset($_POST['on']) ? 'activat' : 'oprit') . ' pentru ' . $host . '.');
+            } catch (Throwable $e) { flash('Nu am putut actualiza instanta: ' . $e->getMessage(), 'error'); }
+            redirect('landlord');
+        }
+
         // ---- facturare ----
         if ($a === 'billing-settings') {
             $b = [
@@ -364,6 +404,20 @@ function landlord_dispatch(array $seg, string $method): void {
         }
 
         redirect('landlord');
+    }
+
+    // ---- backup baza de date per instanta (GET): descarca un .sql cu datele instantei ----
+    if ($a === 'backup') {
+        $host = strtolower(trim((string)($_GET['host'] ?? '')));
+        $db = landlord_db_for_host($host, $tenants);
+        if (!$db) { http_response_code(404); echo 'Instanta inexistenta.'; return; }
+        try { $pdo = landlord_pdo($db); }
+        catch (Throwable $e) { http_response_code(502); echo 'Conexiune DB esuata: ' . htmlspecialchars($e->getMessage()); return; }
+        $fn = 'backup_' . preg_replace('/[^a-z0-9.-]+/i', '_', ($host !== '' ? $host : 'main')) . '_' . date('Ymd_His') . '.sql';
+        header('Content-Type: application/sql; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $fn . '"');
+        db_dump_write(function (string $s) { echo $s; }, $pdo);
+        return;
     }
 
     // ---- facturare: pagina de gestiune + factura printabila (GET) ----

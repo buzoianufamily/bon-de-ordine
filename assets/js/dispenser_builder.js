@@ -46,7 +46,10 @@
     if(ou){ ov.src=ou; ov.style.display='block'; const oh=+val('f__appearance__header_overlay_height',0); ov.style.maxHeight=oh?Math.min(64,oh)+'px':'';
       const oa=val('f__appearance__header_overlay_align','center'); ov.style.marginLeft=oa==='left'?'0':'auto'; ov.style.marginRight=oa==='right'?'0':'auto'; } else ov.style.display='none';
     const logo=$('pvLogo'); const lu=val('f__appearance__logo_url','')||D.globalLogo||'';
-    if(lu){ logo.src=lu; logo.style.display='block'; logo.style.maxHeight=Math.min(70,+val('f__appearance__logo_height',74))+'px'; } else logo.style.display='none';
+    if(lu){ logo.src=lu; logo.style.display='block'; logo.style.maxHeight=Math.min(70,+val('f__appearance__logo_height',74))+'px';
+      var lp=val('f__appearance__logo_pos','');
+      logo.style.margin = lp && lp.indexOf('left')>=0 ? '0 auto 0 0' : (lp && lp.indexOf('right')>=0 ? '0 0 0 auto' : (lp ? '0 auto' : ''));
+    } else logo.style.display='none';
     const rad=+val('f__appearance__btn_radius',22), h=Math.min(110,+val('f__appearance__btn_height',170));
     const tcol=val('f__appearance__btn_text_color','#ffffff'), wm=val('f__appearance__watermark',true);
     const hint=val('f__texts__btn_hint','Apasati pentru bilet');
