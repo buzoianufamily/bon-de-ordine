@@ -18,7 +18,7 @@ $title='Parerea ta · '.setting('brand_name','Bon de ordine'); require __DIR__.'
     </div>
     <textarea name="comment" rows="3" maxlength="500" placeholder="<?= e($L['comment_ph']) ?>" style="margin-bottom:.8rem"></textarea>
     <button class="btn btn-primary btn-lg" style="width:100%" id="fbSend" disabled><?= e($L['send']) ?></button>
-    <p class="muted" style="font-size:.76rem;margin:.7rem 0 0"><?= e($L['privacy_note']) ?> <a href="<?= e(url('legal/privacy').($lang!=='ro'?'?lang='.$lang:'')) ?>" target="_blank" rel="noopener"><?= e($L['privacy']) ?></a>.</p>
+    <p class="muted" style="font-size:.76rem;margin:.7rem 0 0"><?= e($L['privacy_note']) ?> <a href="<?= e(legal_url('privacy', $lang)) ?>" target="_blank" rel="noopener"><?= e($L['privacy']) ?></a>.</p>
   </form>
   <script>
   (function(){

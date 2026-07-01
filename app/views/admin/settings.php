@@ -194,8 +194,16 @@
       <div class="field"><label>Email de contact pentru cereri privind datele</label><input name="legal_email" type="email" value="<?= $s('legal_email') ?>" placeholder="date@exemplu.ro"><p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se folosește adresa „expeditor" de la Email.</p></div>
       <div class="field"><label>Text suplimentar (opțional, apare la finalul ambelor pagini)</label><textarea name="legal_extra" rows="3" placeholder="ex: Responsabil cu protecția datelor (DPO): ..."><?= $s('legal_extra') ?></textarea></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+      <h3 style="margin-top:0">Adresa (slug) paginilor legale</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Alege cum arată linkul (ex: <code>termeni</code> în loc de <code>terms</code>). Doar litere mici, cifre și liniuțe; gol = implicit.</p>
+      <div class="row">
+        <div class="field"><label>Slug „Confidențialitate"</label><input name="legal_slug_privacy" value="<?= $s('legal_slug_privacy') ?>" placeholder="confidentialitate (gol = privacy)"></div>
+        <div class="field"><label>Slug „Termeni"</label><input name="legal_slug_terms" value="<?= $s('legal_slug_terms') ?>" placeholder="termeni (gol = terms)"></div>
+      </div>
+      <p class="muted" style="font-size:.8rem">Linkuri curente: <code><?= e(legal_url('privacy')) ?></code> · <code><?= e(legal_url('terms')) ?></code></p>
+      <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Text pagini legale (opțional)</h3>
-      <p class="muted" style="font-size:.82rem;margin-top:0">Paginile publice sunt la <code><?= e(url('legal/privacy')) ?></code> și <code><?= e(url('legal/terms')) ?></code>. Lasă gol ca să folosești șablonul GDPR implicit, sau scrie aici <strong>textul tău</strong> — înlocuiește complet șablonul (păstrează linkurile din subsol). Poți lăsa rânduri goale între paragrafe.</p>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Lasă gol ca să folosești șablonul GDPR implicit, sau scrie aici <strong>textul tău</strong> — înlocuiește complet șablonul (păstrează linkurile din subsol). Poți lăsa rânduri goale între paragrafe.</p>
       <div class="field"><label>Text „Politică de confidențialitate"</label><textarea name="legal_privacy_text" rows="8" placeholder="Gol = șablonul GDPR implicit"><?= $s('legal_privacy_text') ?></textarea></div>
       <div class="field"><label>Text „Termeni și condiții"</label><textarea name="legal_terms_text" rows="8" placeholder="Gol = șablonul implicit"><?= $s('legal_terms_text') ?></textarea></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">

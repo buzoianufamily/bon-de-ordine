@@ -79,7 +79,7 @@ require __DIR__ . '/_head.php';
     <p>Serviciul este oferit „ca atare". In limitele permise de lege, operatorul nu raspunde pentru intarzieri, indisponibilitati temporare sau pierderi rezultate din utilizarea sistemului.</p>
 
     <h3>6. Date personale</h3>
-    <p>Prelucrarea datelor tale este descrisa in <a href="<?= e(url('legal/privacy') . ($lang !== 'ro' ? '?lang='.$lang : '')) ?>">Politica de confidentialitate</a>.</p>
+    <p>Prelucrarea datelor tale este descrisa in <a href="<?= e(legal_url('privacy', $lang)) ?>">Politica de confidentialitate</a>.</p>
 
     <h3>7. Modificari si lege aplicabila</h3>
     <p>Putem actualiza acesti termeni; versiunea curenta este cea publicata pe aceasta pagina. Termenilor li se aplica legislatia din Romania.</p>
