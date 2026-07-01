@@ -111,7 +111,7 @@
   const screen = () => doc.screens[cur];
 
   // ---- sabloane de ecran (preset-uri gata facute) ----
-  const PRESETS = {
+  const PRESETS_TV = {
     clasic: { label:'Clasic', icon:'🖥', widgets:()=>[
       {id:uid(),type:'now_serving',x:3,y:4,w:44,h:46,props:{label:'Se serveste bonul'}},
       {id:uid(),type:'called_list',x:3,y:54,w:44,h:42,props:{title:'Ultimele apelate',rows:5}},
@@ -130,6 +130,33 @@
       {id:uid(),type:'clock',x:30,y:76,w:40,h:18,props:{mode:'time'}},
     ]},
   };
+  // sabloane dedicate DISPENSERULUI (interactiv: emitere bon), nu copii de la TV
+  const PRESETS_DISP = {
+    simplu: { label:'Grila simpla', icon:'🎟', widgets:()=>[
+      {id:uid(),type:'text',x:3,y:3,w:94,h:11,props:{text:'ALEGE SERVICIUL',size:40}},
+      {id:uid(),type:'service_grid',x:3,y:16,w:94,h:82,props:{title:'',cols:'auto',gap:14}},
+    ]},
+    antet: { label:'Antet + ceas', icon:'🏛', widgets:()=>[
+      {id:uid(),type:'image',x:3,y:3,w:20,h:12,props:{url:'',fit:'contain'}},
+      {id:uid(),type:'text',x:24,y:3,w:52,h:12,props:{text:'ALEGE SERVICIUL',size:38}},
+      {id:uid(),type:'clock',x:79,y:3,w:18,h:12,props:{mode:'full'}},
+      {id:uid(),type:'service_grid',x:3,y:17,w:94,h:73,props:{title:'',cols:'auto',gap:14}},
+      {id:uid(),type:'ticker',x:0,y:91,w:100,h:9,props:{text:'Bun venit! Alegeti serviciul dorit pentru a primi bonul de ordine. ',speed:18}},
+    ]},
+    media: { label:'Cu reclama', icon:'🖼', widgets:()=>[
+      {id:uid(),type:'text',x:3,y:3,w:64,h:11,props:{text:'ALEGE SERVICIUL',size:36}},
+      {id:uid(),type:'service_grid',x:3,y:16,w:64,h:82,props:{title:'',cols:'2',gap:12}},
+      {id:uid(),type:'playlist',x:69,y:3,w:28,h:70,props:{items:'',interval:6,fit:'cover'}},
+      {id:uid(),type:'qr_code',x:69,y:75,w:28,h:23,props:{url:'',caption:'Bilet pe telefon'}},
+    ]},
+    coada: { label:'Servicii + coada', icon:'📊', widgets:()=>[
+      {id:uid(),type:'text',x:3,y:3,w:94,h:10,props:{text:'ALEGE SERVICIUL',size:34}},
+      {id:uid(),type:'service_grid',x:3,y:15,w:63,h:83,props:{title:'',cols:'2',gap:12}},
+      {id:uid(),type:'now_serving',x:68,y:15,w:29,h:34,props:{label:'Se serveste bonul'}},
+      {id:uid(),type:'waiting_list',x:68,y:51,w:29,h:47,props:{title:'La rand'}},
+    ]},
+  };
+  const PRESETS = (P.mode==='dispenser') ? PRESETS_DISP : PRESETS_TV;
   const presetsEl = document.getElementById('presets');
   if (presetsEl) {
     presetsEl.innerHTML = Object.entries(PRESETS).map(([k,p])=>`<button data-pr="${k}"><span class="ic">${p.icon}</span>${p.label}</button>`).join('');

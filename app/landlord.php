@@ -87,6 +87,13 @@ function landlord_db_for_host(string $host, array $tenants): ?array {
     return null;
 }
 
+/** Chei de setari care NU se exporta/importa la clonarea configuratiei (secrete + specifice instantei). */
+function landlord_config_sensitive(string $k): bool {
+    static $deny = ['schema_version','api_key','cron_token','webhook_secret','smtp_pass','onboarding_dismissed',
+        'backup_last','cron_last_run','last_daily_report','sla_alert_last'];
+    return in_array($k, $deny, true);
+}
+
 /** Deschide o conexiune PDO catre baza unei instante (arunca la esec). */
 function landlord_pdo(array $db): PDO {
     $dsn = "mysql:host=" . ($db['host'] ?? 'localhost') . ";dbname=" . ($db['name'] ?? '') . ";charset=" . ($db['charset'] ?? 'utf8mb4');
@@ -321,6 +328,27 @@ function landlord_dispatch(array $seg, string $method): void {
             redirect('landlord');
         }
 
+        // ---- clonare configuratie: import setari dintr-un JSON in baza unei instante ----
+        if ($a === 'config-import') {
+            $host = strtolower(trim((string)($_POST['host'] ?? '')));
+            $db = landlord_db_for_host($host, $tenants);
+            if (!$db) { flash('Instanta inexistenta.', 'error'); redirect('landlord'); }
+            $raw = (isset($_FILES['file']) && is_uploaded_file($_FILES['file']['tmp_name'] ?? '')) ? (string)@file_get_contents($_FILES['file']['tmp_name']) : '';
+            $data = json_decode($raw, true);
+            $kv = is_array($data['settings'] ?? null) ? $data['settings'] : (is_array($data) ? $data : null);
+            if (!is_array($kv)) { flash('Fisier invalid: nu contine setari.', 'error'); redirect('landlord'); }
+            try {
+                $pdo = landlord_pdo($db);
+                $st = $pdo->prepare("INSERT INTO settings (k,v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=VALUES(v)");
+                $n = 0;
+                foreach ($kv as $k => $v) { $k = (string)$k;
+                    if ($k === '' || landlord_config_sensitive($k) || !is_scalar($v)) continue;
+                    $st->execute([$k, (string)$v]); $n++; }
+                flash("Configuratie importata in $host ($n setari).");
+            } catch (Throwable $e) { flash('Import esuat: ' . $e->getMessage(), 'error'); }
+            redirect('landlord');
+        }
+
         // ---- facturare ----
         if ($a === 'billing-settings') {
             $b = [
@@ -417,6 +445,22 @@ function landlord_dispatch(array $seg, string $method): void {
         header('Content-Type: application/sql; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $fn . '"');
         db_dump_write(function (string $s) { echo $s; }, $pdo);
+        return;
+    }
+
+    // ---- clonare configuratie: export setari (branding/texte/module) ca JSON, per instanta ----
+    if ($a === 'config-export') {
+        $host = strtolower(trim((string)($_GET['host'] ?? '')));
+        $db = landlord_db_for_host($host, $tenants);
+        if (!$db) { http_response_code(404); echo 'Instanta inexistenta.'; return; }
+        try { $pdo = landlord_pdo($db); } catch (Throwable $e) { http_response_code(502); echo 'Conexiune DB esuata.'; return; }
+        $out = [];
+        try { foreach ($pdo->query("SELECT k,v FROM settings")->fetchAll(PDO::FETCH_NUM) as $r)
+            if (!landlord_config_sensitive((string)$r[0])) $out[(string)$r[0]] = (string)$r[1]; } catch (Throwable $e) {}
+        $fn = 'config_' . preg_replace('/[^a-z0-9.-]+/i', '_', ($host !== '' ? $host : 'main')) . '_' . date('Ymd_His') . '.json';
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $fn . '"');
+        echo json_encode(['settings' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         return;
     }
 

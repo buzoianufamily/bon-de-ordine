@@ -224,20 +224,6 @@
   <button class="btn btn-primary btn-lg" style="margin-top:1.2rem">Salveaza setarile</button>
 </form>
 
-<div class="card pad" style="margin-top:1.4rem">
-  <h3 style="margin-top:0">Backup / clonare configurație</h3>
-  <p class="muted" style="font-size:.82rem;margin-top:0">Descarcă toate setările (branding, texte, alerte, module, automatizări) ca fișier JSON — pentru backup sau pentru a configura rapid o altă instanță. Cheile sensibile (chei API, token cron) <strong>nu</strong> se exportă.</p>
-  <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
-    <a class="btn" href="<?= e(url('admin/settings/export')) ?>">⬇ Exportă configurația</a>
-  </div>
-  <form method="post" action="<?= e(url('admin/settings/import')) ?>" enctype="multipart/form-data" style="margin-top:1rem" data-confirm="Imporți configurația? Setările curente vor fi suprascrise (fără chei API/cron).">
-    <?= csrf_field() ?>
-    <div class="field"><label>Importă dintr-un fișier .json</label><input type="file" name="file" accept="application/json,.json"></div>
-    <button class="btn btn-danger">⬆ Importă configurația</button>
-  </form>
-  <p class="muted" style="font-size:.8rem;margin:1rem 0 0">Backup-ul complet al bazei de date (fișier <code>.sql</code> cu datele clienților) se face de către furnizor din panoul de administrare a instanțelor — nu este disponibil aici.</p>
-</div>
-
 <?php if ((current_user()['role'] ?? '') === 'admin'): ?>
 <div class="card pad" style="margin-top:1.4rem;border-color:#dc2626">
   <h3 style="margin-top:0;color:#dc2626">⚠ Pregătire pentru producție</h3>

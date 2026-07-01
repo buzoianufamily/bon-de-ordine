@@ -20,6 +20,13 @@ function cfg(string $path, $default = null) {
     return $v;
 }
 
+/** Data lunga in romana, ex: „Miercuri, 01.07.2026" (fara locale de sistem). */
+function ro_long_date(?int $ts = null): string {
+    $ts = $ts ?? time();
+    $days = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
+    return $days[(int) date('w', $ts)] . ', ' . date('d.m.Y', $ts);
+}
+
 /** URL de baza al aplicatiei (auto-detectat). */
 function base_url(): string {
     $set = cfg('app.base_url');

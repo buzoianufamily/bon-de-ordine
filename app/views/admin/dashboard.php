@@ -32,7 +32,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
       </select>
     </form>
     <?php endif; ?>
-    <span class="muted" style="font-size:.85rem"><?= date('l, d.m.Y') ?></span>
+    <span class="datechip">📅 <?= e(ro_long_date()) ?></span>
   </div>
 </div>
 
