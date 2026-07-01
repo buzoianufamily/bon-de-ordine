@@ -20,7 +20,9 @@
         <?php if($row): ?><p class="muted">Cheie conectare: <code style="font-size:1.1rem;font-weight:800"><?= e($row['connection_key']) ?></code> (generata automat)</p><?php endif; ?>
         <div class="row">
           <div class="field"><label>Tip</label><select name="type">
-            <?php foreach(['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj widget','digital_ticket'=>'Bilet digital QR','launcher'=>'Launcher dispozitiv'] as $k=>$lab): ?>
+            <?php $__types=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj widget','digital_ticket'=>'Bilet digital QR'];
+              if(($row['type']??'')==='launcher') $__types['launcher']='Launcher (invechit)'; // afisat doar daca un dispozitiv vechi il are deja
+              foreach($__types as $k=>$lab): ?>
               <option value="<?= $k ?>" <?= ($row['type']??'dispenser')===$k?'selected':'' ?>><?= $lab ?></option><?php endforeach; ?></select></div>
           <div class="field" style="flex:2"><label>Nume</label><input name="name" value="<?= $v('name') ?>" placeholder="Dispenser intrare" maxlength="120" required></div>
         </div>

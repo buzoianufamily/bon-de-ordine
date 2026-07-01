@@ -602,11 +602,21 @@ function public_lang_bar(string $current, string $base): string {
  * Subsol public cu linkuri legale (confidentialitate + termeni) si brand.
  * $lang threadeaza limba in URL ca restul paginii ramana coerenta.
  */
+/** Slug configurabil pentru paginile legale (ex: „termeni" in loc de „terms"). Doar [a-z0-9-]. */
+function legal_slug(string $kind): string {
+    $def = $kind === 'terms' ? 'terms' : 'privacy';
+    $s = strtolower(preg_replace('/[^a-z0-9\-]/', '', (string) setting($kind === 'terms' ? 'legal_slug_terms' : 'legal_slug_privacy', '')));
+    return $s !== '' ? $s : $def;
+}
+/** Link catre pagina legala, folosind slug-ul configurat de operator. */
+function legal_url(string $kind, string $lang = 'ro'): string {
+    $lq = ($lang !== '' && $lang !== 'ro') ? '?lang=' . rawurlencode($lang) : '';
+    return url('legal/' . legal_slug($kind)) . $lq;
+}
 function public_legal_footer(string $lang = 'ro'): string {
     $brand = e(setting('brand_name', 'Bon de ordine'));
-    $lq = ($lang !== '' && $lang !== 'ro') ? '?lang=' . rawurlencode($lang) : '';
-    $priv  = e(url('legal/privacy') . $lq);
-    $terms = e(url('legal/terms') . $lq);
+    $priv  = e(legal_url('privacy', $lang));
+    $terms = e(legal_url('terms', $lang));
     $labels = [
         'ro'=>['Confidentialitate','Termeni'], 'en'=>['Privacy','Terms'], 'de'=>['Datenschutz','AGB'],
         'fr'=>['Confidentialité','Conditions'], 'hu'=>['Adatvédelem','Feltételek'],

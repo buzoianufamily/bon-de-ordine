@@ -411,7 +411,8 @@ SWJS;
 
     // ===================== PAGINI PUBLICE =====================
     if ($route === '/') {
-        if (current_user()) redirect('admin');
+        // logat -> ecran de alegere (backoffice / terminal / concierge / status), nu direct dashboard
+        if ($u = current_user()) { view('public/hub', ['u' => $u]); return; }
         view('public/portal');
         return;
     }
@@ -703,7 +704,10 @@ SWJS;
     // ===================== PAGINI LEGALE (GDPR): confidentialitate + termeni =====================
     if ($seg[0] === 'legal' || $seg[0] === 'confidentialitate' || $seg[0] === 'termeni') {
         $sub = strtolower((string)($seg[1] ?? ''));
-        $kind = ($seg[0] === 'termeni' || $sub === 'terms' || $sub === 'termeni') ? 'terms' : 'privacy';
+        if ($seg[0] === 'termeni') { $kind = 'terms'; }
+        elseif ($seg[0] === 'confidentialitate') { $kind = 'privacy'; }
+        // /legal/{slug}: recunoaste slug-ul configurat de operator + aliasurile implicite
+        else { $kind = in_array($sub, [legal_slug('terms'), 'terms', 'termeni'], true) ? 'terms' : 'privacy'; }
         // daca operatorul a publicat politici proprii pe alt URL, redirectioneaza acolo
         $ext = trim((string) setting($kind === 'terms' ? 'terms_url' : 'privacy_url', ''));
         if ($ext !== '' && preg_match('#^https?://#i', $ext)) { redirect($ext); }
