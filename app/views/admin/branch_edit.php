@@ -12,7 +12,7 @@ $bdayVal = function($d) use ($bsched){ return $bsched['days'][$d] ?? ($bsched['d
 </div>
 <form method="post" action="<?= e(url('admin/branches')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
-  <div class="card pad" style="max-width:820px">
+  <div class="card pad">
 
     <div class="formsec">
       <div class="sech"><span class="ic">🏢</span><div><h3>Date filiala</h3><p>Denumire, locatie si fus orar.</p></div></div>

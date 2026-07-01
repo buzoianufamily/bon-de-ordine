@@ -8,7 +8,7 @@
 </div>
 <form method="post" action="<?= e(url('admin/users')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
-  <div class="card pad" style="max-width:820px">
+  <div class="card pad">
 
     <div class="formsec">
       <div class="sech"><span class="ic">◉</span><div><h3>Date utilizator</h3><p>Cont, rol si parola.</p></div></div>

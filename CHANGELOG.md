@@ -4,17 +4,29 @@ Sistem de gestionare a cozilor (multi-tenant, PHP 8 + MySQL/MariaDB), pregătit 
 vânzare pe abonament. Versiunea schemei bazei de date este urcată automat la fiecare
 accesare (`schema_version`); mai jos, capacitățile grupate pe teme.
 
-## Schema curentă: v31
+## Schema curentă: v33
 
 ---
+
+## Cont, profil & separarea furnizor/client
+- **Meniul contului** (chip dreapta-sus): editare profil (nume, email, **telefon**, parolă) + **Iesire**.
+- Butonul **„Portal"** în bara laterală (înlocuiește „Iesire") — duce la pagina publică de start.
+- **Verificare „pregătit de producție"** mutată din adminul clientului în **`/landlord`** —
+  verificări **per instanță** citite din baza de date a fiecărui client (parolă implicită, 2FA,
+  email, backup, cron, retenție GDPR, date legale).
+- **Cron** scos din pagina API a clientului → afișat în `/landlord` (linkul de cron per instanță).
+- **Media:** se acceptă orice tip de fișier (limita = a serverului PHP); SVG-ul este **curățat**
+  de scripturi la încărcare (anti-XSS), extensiile executabile pe server rămân blocate.
+- **Afișaj de ghișeu** (`/cd/…`): texte editabile din Setări → Afișaj (mesaj „în așteptare" / „bon chemat").
+- Pagini admin pe **toată lățimea** (editare utilizator/serviciu/ghișeu/dispozitiv, roluri, GDPR, securitate, backup).
 
 ## Maturizare pentru vânzare pe abonament
 
 ### Fiabilitate („fără ecrane albe")
 - Pagini de eroare prietenoase + handler global de erori/excepții (fără scurgeri în producție).
 - Sondă de uptime `/health` (JSON: stare DB + versiune schemă), pentru monitorizare externă.
-- Pagină admin **Verificare producție** (`/admin/checkup`): listă de control automată
-  (parolă implicită, HTTPS, email, backup, cron, 2FA, retenție, date legale, permisiuni, plan).
+- **Verificare „pregătit de producție"** (parolă implicită, email, backup, cron, 2FA, retenție,
+  date legale, permisiuni, plan) — disponibilă **per instanță** în panoul furnizorului `/landlord`.
 - Fus orar aliniat între PHP și sesiunea MySQL.
 
 ### Ciclu de abonament & monetizare

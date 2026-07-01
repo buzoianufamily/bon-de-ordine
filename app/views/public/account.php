@@ -14,6 +14,17 @@ $home = ($u['role'] ?? '') === 'agent' ? 'counter' : 'admin'; ?>
     <?php endforeach; ?>
     <form method="post" action="<?= e(url('account').$lq) ?>">
       <?= csrf_field() ?>
+      <input type="hidden" name="form" value="profile">
+      <h3 style="margin:0 0 .6rem;font-size:1rem"><?= e($L['ac_profile']) ?></h3>
+      <div class="field"><label><?= e($L['ac_name']) ?></label><input name="name" value="<?= e($u['name'] ?? '') ?>" required autocomplete="name"></div>
+      <div class="field"><label><?= e($L['email']) ?></label><input type="email" name="email" value="<?= e($u['email'] ?? '') ?>" required autocomplete="email"></div>
+      <div class="field"><label><?= e($L['ac_phone']) ?></label><input type="tel" name="phone" value="<?= e($u['phone'] ?? '') ?>" autocomplete="tel"></div>
+      <button class="btn btn-primary btn-lg" style="width:100%"><?= e($L['ac_save']) ?></button>
+    </form>
+    <hr style="border:none;border-top:1px solid var(--line,#e5e7eb);margin:1.2rem 0">
+    <form method="post" action="<?= e(url('account').$lq) ?>">
+      <?= csrf_field() ?>
+      <input type="hidden" name="form" value="password">
       <h3 style="margin:0 0 .6rem;font-size:1rem"><?= e($L['ac_change']) ?></h3>
       <div class="field"><label><?= e($L['ac_cur']) ?></label><input type="password" name="cur_pass" required autocomplete="current-password"></div>
       <div class="field"><label><?= e($L['ac_newmin']) ?></label><input type="password" name="new_pass" required minlength="6" autocomplete="new-password"></div>

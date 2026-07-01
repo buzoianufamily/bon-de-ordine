@@ -83,7 +83,8 @@ function landlord_invoice_label(array $inv): string {
 function landlord_health(array $db): array {
     $out = ['ok' => false, 'error' => '', 'brand' => '', 'schema' => 0,
             'users' => null, 'dev_total' => null, 'dev_online' => null,
-            'tickets_today' => null, 'last_ticket' => null];
+            'tickets_today' => null, 'last_ticket' => null,
+            'cron_token' => '', 'checks' => [], 'checks_crit' => 0, 'checks_warn' => 0];
     if (empty($db['name']) || empty($db['user'])) { $out['error'] = 'Date DB incomplete'; return $out; }
     try {
         $dsn = "mysql:host=" . ($db['host'] ?? 'localhost') . ";dbname={$db['name']};charset=" . ($db['charset'] ?? 'utf8mb4');
@@ -102,10 +103,80 @@ function landlord_health(array $db): array {
         $out['dev_online']    = $v("SELECT COUNT(*) FROM devices WHERE last_seen IS NOT NULL AND last_seen > (NOW() - INTERVAL 2 MINUTE)");
         $out['tickets_today'] = $v("SELECT COUNT(*) FROM tickets WHERE DATE(issued_at)=CURDATE()");
         $out['last_ticket']   = $v("SELECT MAX(issued_at) FROM tickets");
+        $out['cron_token']    = (string)($v("SELECT v FROM settings WHERE k='cron_token'") ?? '');
+        // verificari „pregatit de productie" derivate din DB (per instanta) — vizibile doar in landlord
+        $out['checks'] = landlord_instance_checks($pdo);
+        foreach ($out['checks'] as $c) { if ($c['level'] === 'crit') $out['checks_crit']++; elseif ($c['level'] === 'warn') $out['checks_warn']++; }
     } catch (Throwable $e) {
         $out['error'] = $e->getMessage();
     }
     return $out;
+}
+
+/**
+ * Verificari de pregatire pentru productie, calculate DIN baza de date a unei instante
+ * (nu depind de request-ul curent). Returneaza [level,title,detail], level in ok|warn|crit.
+ * Complementeaza landlord_health() — panoul „Verificare" per instanta din landlord.
+ */
+function landlord_instance_checks(PDO $pdo): array {
+    $checks = [];
+    $add = function (string $level, string $title, string $detail) use (&$checks) { $checks[] = compact('level', 'title', 'detail'); };
+    $val = function (string $sql) use ($pdo) {
+        try { $r = $pdo->query($sql)->fetchColumn(); return $r === false ? null : $r; }
+        catch (Throwable $e) { return null; }
+    };
+    // setari citite in bloc
+    $s = [];
+    try {
+        $st = $pdo->query("SELECT k,v FROM settings WHERE k IN ('retention_months','legal_operator','legal_email',"
+            . "'backup_auto_enabled','cron_last_run','webhook_url','webhook_secret','mail_enabled','smtp_host')");
+        foreach ($st->fetchAll(PDO::FETCH_NUM) as $r) $s[$r[0]] = $r[1];
+    } catch (Throwable $e) {}
+
+    // 1) parola de admin implicita
+    $defPw = (int)($val("SELECT COUNT(*) FROM users WHERE role='admin' AND must_change_pw=1") ?? 0);
+    $defPw > 0
+        ? $add('crit', 'Parola admin implicita', "$defPw cont(uri) de admin inca folosesc parola implicita.")
+        : $add('ok', 'Parole admin', 'Niciun admin nu mai foloseste parola implicita.');
+
+    // 2) 2FA pe conturile de admin
+    $admins  = (int)($val("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1") ?? 0);
+    $with2fa = (int)($val("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1 AND totp_enabled=1") ?? 0);
+    ($admins > 0 && $with2fa < $admins)
+        ? $add('warn', 'Autentificare in doi pasi', "$with2fa din $admins admini au 2FA activ.")
+        : $add('ok', 'Autentificare in doi pasi', 'Toti adminii activi au 2FA.');
+
+    // 3) email configurat
+    (($s['mail_enabled'] ?? '0') === '1' && trim((string)($s['smtp_host'] ?? '')) !== '')
+        ? $add('ok', 'Email', 'Trimiterea de emailuri este configurata.')
+        : $add('warn', 'Email', 'Emailul nu este configurat (reset parola, remindere, rapoarte nu functioneaza).');
+
+    // 4) backup automat
+    (($s['backup_auto_enabled'] ?? '0') === '1')
+        ? $add('ok', 'Backup automat', 'Backup-ul automat zilnic este activ.')
+        : $add('warn', 'Backup automat', 'Backup-ul automat este oprit (necesita cron).');
+
+    // 5) cron ruleaza?
+    $last = (int)($s['cron_last_run'] ?? 0);
+    if ($last === 0) $add('warn', 'Cron', 'Cron-ul nu a rulat niciodata. Configureaza-l (vezi mai jos).');
+    elseif (time() - $last > 7200) $add('warn', 'Cron', 'Cron-ul nu a mai rulat de peste 2 ore (ultima: ' . date('d.m.Y H:i', $last) . ').');
+    else $add('ok', 'Cron', 'Cron-ul a rulat recent (' . date('d.m.Y H:i', $last) . ').');
+
+    // 6) webhook fara secret
+    if (trim((string)($s['webhook_url'] ?? '')) !== '' && trim((string)($s['webhook_secret'] ?? '')) === '')
+        $add('warn', 'Webhook fara secret', 'URL de webhook fara secret de semnatura.');
+
+    // 7) retentie date (GDPR)
+    ((int)($s['retention_months'] ?? 0) > 0)
+        ? $add('ok', 'Retentie date', 'Datele vechi se sterg automat.')
+        : $add('warn', 'Retentie date', 'Nu este setata stergerea automata a datelor vechi (GDPR).');
+
+    // 8) date operator pentru paginile legale
+    (trim((string)($s['legal_operator'] ?? '')) !== '' || trim((string)($s['legal_email'] ?? '')) !== '')
+        ? $add('ok', 'Date legale', 'Datele operatorului pentru paginile legale sunt completate.')
+        : $add('warn', 'Date legale', 'Completeaza datele operatorului (pagini confidentialitate/termeni).');
+
+    return $checks;
 }
 
 function landlord_dispatch(array $seg, string $method): void {

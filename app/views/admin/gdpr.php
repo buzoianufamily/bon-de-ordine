@@ -1,7 +1,7 @@
 <?php $title='GDPR · Date personale'; $active='gdpr'; require __DIR__.'/_header.php'; ?>
 <div class="topbar"><h1>GDPR — drepturile persoanei vizate</h1></div>
 
-<div class="card pad" style="max-width:760px">
+<div class="card pad">
   <p class="muted" style="margin-top:0">Caută toate datele personale legate de o adresă de email și/sau un număr de telefon (programări, listă de așteptare, bilete), apoi <strong>exportă-le</strong> (dreptul de acces) sau <strong>anonimizează-le</strong> (dreptul de a fi uitat). Acțiunile sunt înregistrate în jurnalul de audit.</p>
   <form method="get" action="<?= e(url('admin/gdpr')) ?>">
     <div class="row">
@@ -14,7 +14,7 @@
 
 <?php if ($found !== null):
   $tot = count($found['appointments']) + count($found['waitlist']) + count($found['tickets']); ?>
-  <div class="card pad" style="max-width:760px;margin-top:1rem">
+  <div class="card pad" style="margin-top:1rem">
     <h3 style="margin-top:0">Rezultate (<?= (int)$tot ?>)</h3>
     <?php if ($tot === 0): ?>
       <p class="muted">Nicio înregistrare găsită pentru aceste date.</p>

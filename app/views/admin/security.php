@@ -8,7 +8,7 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
 <div class="topbar"><h1>Securitate</h1></div>
 
 <?php if(!empty($newCodes)): ?>
-<div class="card pad" style="max-width:620px;margin-bottom:1.2rem;border:1px solid color-mix(in srgb,var(--warn) 55%,var(--line))">
+<div class="card pad" style="margin-bottom:1.2rem;border:1px solid color-mix(in srgb,var(--warn) 55%,var(--line))">
   <h3 style="margin-top:0">⚠ Coduri de recuperare — salveaza-le ACUM</h3>
   <p class="muted" style="font-size:.85rem;margin-top:0">Fiecare cod functioneaza <strong>o singura data</strong> in locul codului din aplicatie (daca pierzi telefonul). Se afiseaza <strong>doar acum</strong> — noteaza-le sau printeaza-le.</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.5rem;font-family:monospace;font-size:1.05rem;font-weight:700">
@@ -18,7 +18,7 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
 </div>
 <?php endif; ?>
 
-<div class="card pad" style="max-width:620px">
+<div class="card pad">
   <h3 style="margin-top:0">Autentificare in doi pasi (2FA)</h3>
   <p class="muted" style="margin-top:0;font-size:.88rem">Adauga un pas suplimentar la autentificare: pe langa parola, un cod de 6 cifre generat de o aplicatie pe telefon (Google Authenticator, Authy, Microsoft Authenticator).</p>
 
@@ -55,7 +55,7 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
   <?php endif; ?>
 </div>
 
-<form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="max-width:620px;margin-top:1.2rem">
+<form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="margin-top:1.2rem">
   <?= csrf_field() ?><input type="hidden" name="act" value="password">
   <h3 style="margin-top:0">Schimba parola</h3>
   <p class="muted" style="margin-top:0;font-size:.88rem">Schimba parola contului tau (<?= e($u['email'] ?? '') ?>). Minim 6 caractere.</p>
@@ -68,7 +68,7 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
 </form>
 
 <?php if(($u['role'] ?? '') === 'admin'): ?>
-<form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="max-width:620px;margin-top:1.2rem">
+<form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="margin-top:1.2rem">
   <?= csrf_field() ?><input type="hidden" name="act" value="policy">
   <h3 style="margin-top:0">Politica de securitate (toata instanta)</h3>
   <label style="display:block;margin:.4rem 0"><input type="checkbox" name="force_2fa_admin" <?= !empty($force2fa)?'checked':'' ?> style="width:auto"> Obliga toti <strong>administratorii</strong> sa foloseasca 2FA (fara 2FA activ, nu pot accesa backoffice-ul, doar pagina aceasta)</label>

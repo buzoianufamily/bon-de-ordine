@@ -3,11 +3,11 @@
   <h1>Multimedia</h1>
   <form method="post" action="<?= e(url('admin/media/upload')) ?>" enctype="multipart/form-data" id="upForm" style="display:flex;gap:.5rem;align-items:center">
     <?= csrf_field() ?>
-    <input type="file" name="file[]" id="fileInput" accept="image/*,video/mp4,video/webm" multiple style="display:none" onchange="document.getElementById('upForm').submit()">
+    <input type="file" name="file[]" id="fileInput" multiple style="display:none" onchange="document.getElementById('upForm').submit()">
     <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">⬆ Incarca fisiere</button>
   </form>
 </div>
-<p class="muted" style="margin-top:-.6rem">Imagini (JPG, PNG, GIF, WEBP, SVG) si video (MP4, WEBM), max 25MB. Le folosesti ca logo sau in widget-ul „Imagine" de pe afisaj.</p>
+<p class="muted" style="margin-top:-.6rem">Orice tip de fisier (imagini, video, SVG, PDF, documente…). Le folosesti ca logo sau in widget-ul „Imagine" de pe afisaj. Limita provine din configurarea serverului (PHP <code><?= e(bdo_human_size(min(bdo_ini_bytes('upload_max_filesize'), bdo_ini_bytes('post_max_size')) ?: 512*1024*1024)) ?></code>).</p>
 
 <div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-top:1rem">
   <?php foreach($rows as $m): $isVid = str_starts_with($m['mime'],'video'); ?>

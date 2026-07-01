@@ -121,7 +121,7 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 2. **Bază de date:** cPanel → **MySQL Databases** → creează o bază + un utilizator noi, cu **ALL PRIVILEGES**.
 3. **Înregistrare:** în panoul `/landlord`, completează formularul (host + datele bazei) → **Salvează** (îți confirmă pe loc dacă conexiunea DB merge).
 4. **Prima accesare** a subdomeniului instalează automat schema, datele demo și adminul implicit — la prima logare clientul este obligat să schimbe parola implicită.
-5. Dacă clientul folosește emailuri (remindere/raport): adaugă în cPanel câte un **Cron Job** per instanță, cu URL‑ul de cron din **API & Webhooks** al acelei instanțe.
+5. Dacă clientul folosește emailuri (remindere/raport): adaugă în cPanel câte un **Cron Job** per instanță, cu URL‑ul de cron afișat în `/landlord` → **„🩺 Verificare & cron per instanță"** (linkul de cron pentru fiecare instanță).
 
 ### Operare zilnică
 - Tabelul din `/landlord` arată pentru fiecare instanță: **Funcționează / EROARE** (cu mesajul erorii), versiunea schemei (marcată „veche" dacă instanța n‑a fost accesată după un update — se actualizează singură la prima accesare), bilete azi, ultimul bon, dispozitive online, utilizatori.
@@ -131,7 +131,7 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 ---
 
 ## Vânzare pe abonament (pentru furnizor)
-- **Verificare „pregătit de producție":** Admin → **Verificare** (`/admin/checkup`) — listă de control automată (parolă implicită, HTTPS, email, backup, cron, 2FA, retenție, date legale). Rezolvă avertismentele înainte de a preda instanța clientului.
+- **Verificare „pregătit de producție":** în `/landlord` → **„🩺 Verificare & cron per instanță"** — listă de control automată **per instanță** (parolă implicită, 2FA, email, backup, cron, retenție, date legale), citită direct din baza de date a fiecărui client. Rezolvă avertismentele înainte de a preda instanța. (A fost mutată din adminul clientului în panoul furnizorului.)
 - **Limite de plan:** în `/landlord`, la fiecare client poți seta limite (filiale/ghișee/utilizatori/servicii) — aplicația le impune automat. `0 = nelimitat`.
 - **Pregătire pentru producție:** după testare, Admin → Setări → **Pregătire pentru producție** șterge datele de test (bilete/programări/feedback) păstrând toată configurația; face automat un backup de siguranță înainte. Necesită confirmarea „STERGE".
 - **Documente contractuale (modele):** vezi `docs/contracte/` — `DPA-model.md` (acord de prelucrare a datelor, GDPR art. 28) și `contract-abonament-SLA-model.md`. **Sunt modele orientative — validează‑le cu un jurist.**

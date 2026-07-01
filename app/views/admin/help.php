@@ -39,7 +39,7 @@ $ver = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : '—';
     <a class="card pad" href="<?= e(url('admin/devices')) ?>"><strong>Dispozitive</strong><br><span class="muted" style="font-size:.85rem">dispensere, afișaje TV, coduri QR de instalare</span></a>
     <a class="card pad" href="<?= e(url('admin/settings')) ?>"><strong>Setări</strong><br><span class="muted" style="font-size:.85rem">brand, bilet, voce, email, anunț, module, backup config</span></a>
     <a class="card pad" href="<?= e(url('admin/statistics')) ?>"><strong>Statistici</strong><br><span class="muted" style="font-size:.85rem">KPI, heatmap, export Excel/CSV, raport printabil</span></a>
-    <a class="card pad" href="<?= e(url('admin/api')) ?>"><strong>API & Webhooks</strong><br><span class="muted" style="font-size:.85rem">cheie API, cron, webhooks (inclusiv alerte SLA)</span></a>
+    <a class="card pad" href="<?= e(url('admin/api')) ?>"><strong>API & Webhooks</strong><br><span class="muted" style="font-size:.85rem">cheie API, webhooks (inclusiv alerte SLA)</span></a>
     <a class="card pad" href="<?= e(url('admin/security')) ?>"><strong>Securitate</strong><br><span class="muted" style="font-size:.85rem">2FA, schimbare parolă, politici</span></a>
     <a class="card pad" href="<?= e(url('admin/audit')) ?>"><strong>Jurnal audit</strong><br><span class="muted" style="font-size:.85rem">cine ce a modificat; filtrare + export CSV</span></a>
   </div>
@@ -56,16 +56,5 @@ $ver = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : '—';
     <tr><td><a href="<?= e(url('admin/users')) ?>">Utilizatori</a></td><td><code>nume,email,rol,parola</code> <span class="muted">(rol: admin / manager / agent)</span></td></tr>
     <tr><td><a href="<?= e(url('admin/closures')) ?>">Zile închise</a></td><td><code>data,motiv</code> <span class="muted">(data în format AAAA‑LL‑ZZ)</span></td></tr>
   </table>
-</div>
-
-<div class="panel">
-  <h4>Sfaturi</h4>
-  <ul style="line-height:1.8;margin:0">
-    <li><strong>Imprimantă termică:</strong> cel mai simplu = mini‑PC Android + imprimantă USB (vezi aplicația din <code>android/</code>). Pentru rețea, IP imprimantă + port 9100.</li>
-    <li><strong>Voce românească pe TV:</strong> folosește Chrome; dă un click pe afișaj o dată după deschidere (browserele cer interacțiune înainte de sunet).</li>
-    <li><strong>Anunț rapid pentru clienți:</strong> Setări → Digital & alerte → „Anunț general" apare live pe toate afișajele.</li>
-    <li><strong>Coadă peste țintă:</strong> Dashboard arată depășirile SLA; setează alerte pe email/webhook în Setări → Automatizări.</li>
-    <li><strong>Backup:</strong> Setări → „Exportă configurația" (branding/texte) și API & Webhooks → „Backup bază de date" (date).</li>
-  </ul>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

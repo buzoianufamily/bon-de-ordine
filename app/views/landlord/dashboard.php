@@ -102,6 +102,56 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
     </table>
   </div>
 
+  <?php
+    // rezumat global al verificarilor (doar instantele care raspund)
+    $gCrit = 0; $gWarn = 0;
+    foreach ($rows as $r) { if (!empty($r['health']['ok'])) { $gCrit += (int)($r['health']['checks_crit'] ?? 0); $gWarn += (int)($r['health']['checks_warn'] ?? 0); } }
+    $lvlColor = ['ok' => '#16a34a', 'warn' => '#d97706', 'crit' => '#dc2626'];
+    $lvlIcon  = ['ok' => '✔', 'warn' => '⚠', 'crit' => '✖'];
+  ?>
+  <div class="card pad" style="margin-bottom:1.2rem">
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <h3 style="margin:0">🩺 Verificare &amp; cron per instanta</h3>
+      <span class="muted" style="font-size:.85rem">
+        <?php if ($gCrit || $gWarn): ?>
+          <?= $gCrit ? '<span style="color:#dc2626">✖ '.$gCrit.' critice</span>' : '' ?><?= $gCrit && $gWarn ? ' · ' : '' ?><?= $gWarn ? '<span style="color:#d97706">⚠ '.$gWarn.' avertismente</span>' : '' ?>
+        <?php else: ?><span style="color:#16a34a">✔ toate instantele sunt pregatite</span><?php endif; ?>
+      </span>
+    </div>
+    <p class="muted" style="font-size:.82rem;margin:.4rem 0 1rem">Diagnoza „pregatit de productie?" citita din baza de date a fiecarui client (parole implicite, 2FA, email, backup, cron, retentie GDPR, date legale) plus linkul de cron de configurat pentru fiecare instanta.</p>
+
+    <?php foreach ($rows as $r): $h = $r['health']; if (empty($h['ok'])) continue;
+      $crit = (int)($h['checks_crit'] ?? 0); $warn = (int)($h['checks_warn'] ?? 0);
+      $cronUrl = 'https://' . $r['host'] . '/cron?key=' . rawurlencode((string)($h['cron_token'] ?? '')); ?>
+      <details class="llchk" style="border:1px solid #1e2128;border-radius:10px;padding:.6rem .8rem;margin-bottom:.6rem">
+        <summary style="cursor:pointer;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-weight:700">
+          <span style="color:var(--accent)"><?= e($r['host']) ?></span>
+          <?php if ($r['main']): ?><span class="muted" style="font-size:.74rem;font-weight:400">(principala)</span><?php endif; ?>
+          <span style="margin-left:auto;font-size:.82rem">
+            <?php if ($crit): ?><span style="color:#dc2626">✖ <?= $crit ?></span> <?php endif; ?>
+            <?php if ($warn): ?><span style="color:#d97706">⚠ <?= $warn ?></span> <?php endif; ?>
+            <?php if (!$crit && !$warn): ?><span style="color:#16a34a">✔ toate ok</span><?php endif; ?>
+          </span>
+        </summary>
+        <div style="margin-top:.7rem;display:grid;gap:.35rem">
+          <?php foreach (($h['checks'] ?? []) as $c): ?>
+            <div style="display:flex;gap:.6rem;align-items:flex-start;font-size:.86rem">
+              <span style="color:<?= $lvlColor[$c['level']] ?? '#838b98' ?>;font-weight:800;width:1.1em"><?= $lvlIcon[$c['level']] ?? '•' ?></span>
+              <span><strong><?= e($c['title']) ?></strong> — <span class="muted"><?= e($c['detail']) ?></span></span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <div style="margin-top:.9rem;border-top:1px solid #1e2128;padding-top:.7rem">
+          <div class="muted" style="font-size:.8rem;margin-bottom:.3rem">Cron pentru aceasta instanta (remindere, raport, backup, curatare) — se configureaza o data in cPanel, interval */15:</div>
+          <pre style="background:#101216;color:#7CFFB2;padding:.7rem;border-radius:8px;overflow:auto;font-size:.76rem;margin:0">*/15 * * * * curl -s "<?= e($cronUrl) ?>" >/dev/null 2>&1</pre>
+        </div>
+      </details>
+    <?php endforeach; ?>
+    <?php if ($gCrit === 0 && $gWarn === 0 && $okCnt === 0): ?>
+      <p class="muted" style="font-size:.85rem;margin:0">Nicio instanta activa care sa raspunda momentan.</p>
+    <?php endif; ?>
+  </div>
+
   <div class="row" style="align-items:flex-start">
     <form method="post" action="<?= e(url('landlord/save')) ?>" class="card pad" style="flex:1;min-width:320px" id="frm"><?= csrf_field() ?>
       <h3 style="margin-top:0"><?= $edit ? 'Editare instanta' : 'Instanta noua' ?></h3>
@@ -144,7 +194,7 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
         <li><strong>Baza de date:</strong> cPanel → MySQL Databases → creeaza o baza + un utilizator noi, cu ALL PRIVILEGES.</li>
         <li><strong>Inregistreaza aici:</strong> completeaza formularul din stanga cu host + datele bazei.</li>
         <li><strong>Prima accesare</strong> a subdomeniului instaleaza automat schema, datele demo si adminul implicit (<code>admin@example.ro</code> / <code>123456</code>) — schimba-l imediat.</li>
-        <li>Pentru remindere/rapoarte pe email: configureaza cate un <strong>cron</strong> per client (URL-ul de cron din API &amp; Webhooks al fiecarei instante).</li>
+        <li>Pentru remindere/rapoarte pe email: configureaza cate un <strong>cron</strong> per client — linkul de cron il gasesti mai sus, in „🩺 Verificare &amp; cron per instanta".</li>
       </ol>
       <p class="muted" style="font-size:.8rem;margin-bottom:0">Suspendarea opreste instant accesul clientului (pagina „instanta suspendata"), fara sa stearga nimic. Versiunea curenta a schemei: <strong>v<?= (int)$schemaNow ?></strong> — instantele marcate „veche" se actualizeaza singure la prima accesare.</p>
     </div>

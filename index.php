@@ -529,12 +529,21 @@ SWJS;
         $lq = $lang !== 'ro' ? '?lang=' . $lang : '';
         if ($method === 'POST') {
             csrf_check();
-            $res = change_own_password((int)$u['id'], (string) input('cur_pass', ''),
-                (string) input('new_pass', ''), (string) input('new_pass2', ''));
-            if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
-            else { flash($res['error'], 'error'); }
+            if (input('form', '') === 'profile') {
+                $res = change_own_profile((int)$u['id'], (string) input('name', ''),
+                    (string) input('email', ''), (string) input('phone', ''));
+                if ($res['ok']) { audit('profile_update', 'user', $u['id']); flash('Profilul a fost actualizat.'); }
+                else { flash($res['error'], 'error'); }
+            } else {
+                $res = change_own_password((int)$u['id'], (string) input('cur_pass', ''),
+                    (string) input('new_pass', ''), (string) input('new_pass2', ''));
+                if ($res['ok']) { audit('password_change', 'user', $u['id']); flash('Parola a fost schimbata.'); }
+                else { flash($res['error'], 'error'); }
+            }
             redirect('account' . $lq);
         }
+        // reincarca datele proaspete (nume/email/telefon pot fi tocmai modificate)
+        $u = one('SELECT * FROM users WHERE id=?', [(int)$u['id']]) ?: $u;
         view('public/account', compact('u', 'lang'));
         return;
     }

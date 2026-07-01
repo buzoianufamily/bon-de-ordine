@@ -16,7 +16,7 @@ if ($row && !empty($row['i18n'])) { $ti=json_decode($row['i18n'],true);
 </div>
 <form method="post" action="<?= e(url('admin/services')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
-  <div class="card pad" style="max-width:900px">
+  <div class="card pad">
 
     <div class="formsec">
       <div class="sech"><span class="ic">◆</span><div><h3>Date serviciu</h3><p>Nume, prefix bilet, culoare si numerotare.</p></div></div>

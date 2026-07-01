@@ -164,14 +164,17 @@ if [ -n "$BKFILE" ]; then
   tcontains "download backup pe server -> application/sql" 'application/sql' "$CT_BK"
 else FAIL=$((FAIL+1)); echo "FAIL: backup pe server nu apare in lista"; fi
 t "backup download: traversare de cale respinsa -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=../config/config.php")"
-# verificare productie (readiness): pagina de diagnoza, doar admin
-t "GET /admin/checkup -> 200" 200 "$(code -b "$JAR" $B/admin/checkup)"
-tcontains "checkup: pagina de verificare productie" 'Verificare producție' "$(curl -s -b "$JAR" "$B/admin/checkup")"
-# securitate media: SVG (poate contine <script>) e RESPINS la upload -> anti-XSS stocat
+# verificare productie (readiness) a fost mutata in landlord -> nu mai apare in adminul clientului
+t "GET /admin/checkup -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" $B/admin/checkup)"
+# media: se accepta orice tip de fisier; SVG-ul e ACCEPTAT dar CURATAT de scripturi (anti-XSS stocat)
 SVGF="$(mktemp)"; printf '%s' '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' > "$SVGF"
-curl -s -o /dev/null -b "$JAR" -X POST "$B/admin/media" -F "_csrf=$CSRF" -F "file[]=@$SVGF;type=image/svg+xml;filename=evil.svg"
-case "$(curl -s -b "$JAR" "$B/admin/media")" in *.svg*) FAIL=$((FAIL+1)); echo "FAIL: SVG acceptat la upload media (risc XSS stocat)";; *) PASS=$((PASS+1));; esac
+curl -s -o /dev/null -b "$JAR" -X POST "$B/admin/media/upload" -F "_csrf=$CSRF" -F "file[]=@$SVGF;type=image/svg+xml;filename=evil.svg"
 rm -f "$SVGF"
+SVGPATH="$(curl -s -b "$JAR" "$B/admin/media" | grep -oE 'assets/uploads/evil_[a-z0-9]+\.svg' | head -1)"
+if [ -n "$SVGPATH" ]; then
+  PASS=$((PASS+1))
+  case "$(curl -s -b "$JAR" "$B/$SVGPATH")" in *"<script"*) FAIL=$((FAIL+1)); echo "FAIL: SVG stocat inca contine <script> (risc XSS)";; *) PASS=$((PASS+1));; esac
+else FAIL=$((FAIL+1)); echo "FAIL: SVG nu a fost acceptat la upload media"; fi
 # pregatire productie: resetul cere confirmarea exacta „STERGE" (altfel respins, fara stergere)
 t "POST /admin/reset confirmare gresita -> 302 (respins)" 302 "$(code -b "$JAR" -X POST "$B/admin/reset" -d "_csrf=$CSRF&confirm=nu")"
 tcontains "settings: card de pregatire productie (admin)" 'Pregătire pentru producție' "$(curl -s -b "$JAR" "$B/admin/settings")"

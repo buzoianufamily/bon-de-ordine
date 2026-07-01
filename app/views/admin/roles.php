@@ -2,7 +2,7 @@
 <div class="topbar"><h1>Roluri si permisiuni</h1></div>
 <p class="muted" style="margin-top:-.6rem">Adminul are acces complet (necofigurabil). Bifeaza ce poate accesa un <strong>Manager</strong>. Operatorul are acces doar la terminalul de ghiseu.</p>
 <form method="post" action="<?= e(url('admin/roles')) ?>"><?= csrf_field() ?>
-  <div class="card pad" style="max-width:640px">
+  <div class="card pad">
     <table><thead><tr><th>Sectiune</th><th style="text-align:center">Admin</th><th style="text-align:center">Manager</th><th style="text-align:center">Operator</th></tr></thead><tbody>
     <?php foreach($areas as $key=>$label): ?>
       <tr>
