@@ -5,9 +5,10 @@ $st=['waiting'=>['La rand','#fef3c7','#92400e'],'called'=>['Apelat','#dbeafe','#
   <form method="post" action="<?= e(url('admin/tickets/reset')) ?>" data-confirm="Resetezi bonurile? Se STERG TOATE biletele (coada + istoric + statistici) si numerotarea reincepe de la 0. Actiunea NU poate fi anulata." style="display:flex;gap:.4rem;align-items:center">
     <?= csrf_field() ?>
     <?php if(count($branches)>1): ?><select name="branch" style="width:auto"><option value="0">Toate filialele</option><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select><?php endif; ?>
-    <button class="btn btn-danger">↺ Reset bonuri</button>
+    <button class="btn btn-danger" title="Sterge DOAR biletele si reincepe numerotarea de la 0 (fara backup). Pentru curatarea completa inainte de productie, foloseste Setari → Pregatire pentru productie.">↺ Reset bonuri</button>
   </form>
 </div>
+<p class="muted" style="margin-top:-.6rem;font-size:.82rem">„Reset bonuri" șterge <strong>doar biletele</strong> și repornește numerotarea de la 0 (fără backup). Pentru curățarea completă a datelor de test înainte de predare (bilete + programări + feedback + sesiuni, cu backup automat) folosește <a href="<?= e(url('admin/settings')) ?>">Setări → „⚠ Pregătire pentru producție"</a>.</p>
 <form method="get" id="tkFilter" action="<?= e(url('admin/tickets')) ?>" class="card pad" style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.2rem">
   <div class="field" style="margin:0"><label>Data</label><input type="date" name="date" value="<?= e($date) ?>" onchange="this.form.submit()"></div>
   <div class="field" style="margin:0"><label>Status</label><select name="status" onchange="this.form.submit()" style="width:auto">

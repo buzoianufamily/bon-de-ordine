@@ -228,6 +228,7 @@
 <div class="card pad" style="margin-top:1.4rem;border-color:#dc2626">
   <h3 style="margin-top:0;color:#dc2626">⚠ Pregătire pentru producție</h3>
   <p class="muted" style="font-size:.82rem;margin-top:0">După ce ai terminat de testat, șterge <strong>datele de test</strong> (bilete, programări, feedback, sesiuni, jurnale de prezență/webhook) ca să pornești cu o evidență curată. <strong>Configurația rămâne intactă</strong> (filiale, servicii, ghișee, utilizatori, dispozitive, setări). Se face automat un <strong>backup de siguranță</strong> înainte. Acțiunea este ireversibilă (în afară de restaurarea backup-ului).</p>
+  <p class="muted" style="font-size:.8rem;margin-top:.2rem"><strong>Diferența față de „Reset bonuri" (Bilete):</strong> acolo se șterg <em>doar biletele</em> și repornește numerotarea, fără backup; aici se curăță <em>toate</em> datele operaționale (bilete + programări + feedback + sesiuni), cu backup automat înainte — pentru predarea instanței în producție.</p>
   <form method="post" action="<?= e(url('admin/reset')) ?>" data-confirm="Sigur ștergi TOATE datele operaționale (bilete/programări/feedback)? Configurația rămâne. Se face backup automat înainte."><?= csrf_field() ?>
     <div class="field" style="max-width:280px"><label>Scrie <code>STERGE</code> pentru confirmare</label><input name="confirm" autocomplete="off" placeholder="STERGE"></div>
     <button class="btn btn-danger">Șterge datele de test</button>
