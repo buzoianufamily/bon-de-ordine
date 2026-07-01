@@ -9,9 +9,9 @@ return [
     // ---- Baza de date (din cPanel > MySQL Databases) ----
     'db' => [
         'host'    => 'localhost',
-        'name'    => 'r140100buzo_bon',      // ex: cont_queue
-        'user'    => 'r140100buzo_bon',       // ex: cont_user
-        'pass'    => 'bondeordine',
+        'name'    => 'r140100buzo_demobondeordine',      // ex: cont_queue
+        'user'    => 'r140100buzo_demobondeordine',       // ex: cont_user
+        'pass'    => 'demobondeordine',
         'charset' => 'utf8mb4',
     ],
 
@@ -27,5 +27,5 @@ return [
     // ---- Multi-tenant (optional) ----
     // Parola panoului /landlord (administrarea instantelor clientilor).
     // Gol = panoul e dezactivat. Pune un sir lung si aleatoriu cand il folosesti.
-    'landlord_pass' => '',
+    'landlord_pass' => 'demobondeordine',
 ];
