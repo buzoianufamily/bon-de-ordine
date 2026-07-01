@@ -92,8 +92,8 @@
       <p class="muted" style="font-size:.82rem">Aceste valori sunt folosite pe afisajele fara layout personalizat. Afisajele cu layout (editor canvas) au setarile lor de sunet.</p>
     </div>
     <div class="card pad setcard">
-      <h3 style="margin-top:0">Afisaj de ghiseu (<code>/cd/…</code>)</h3>
-      <p class="muted" style="font-size:.82rem;margin-top:0">Ecranul mic de pe biroul operatorului (tableta/monitor) care arata bonul curent chemat la acel ghiseu. Deschide-l din <a href="<?= e(url('admin/counters')) ?>">Ghisee</a> (linkul „Afisaj ghiseu"). Aici personalizezi mesajele afisate:</p>
+      <h3 style="margin-top:0">Afisaj de ghiseu (<code>/cd/…</code>) — text implicit</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Ecranul mic de pe biroul operatorului (tableta/monitor) care arata bonul curent chemat la acel ghiseu (linkul „Afisaj" din <a href="<?= e(url('admin/counters')) ?>">Ghisee</a>). Textele de mai jos sunt <strong>implicite pentru toate ghiseele</strong>; le poti suprascrie individual din <a href="<?= e(url('admin/counters')) ?>">editarea fiecarui ghiseu</a>.</p>
       <div class="field"><label>Text cand nu e niciun bon chemat</label><input name="cd_hint_idle" value="<?= $s('cd_hint_idle') ?>" placeholder="Asteptam urmatorul bon…" maxlength="80"></div>
       <div class="field"><label>Text cand un bon este chemat (deasupra numarului)</label><input name="cd_hint_serving" value="<?= $s('cd_hint_serving') ?>" placeholder="Va rugam prezentati-va la ghiseu" maxlength="80"></div>
       <p class="muted" style="font-size:.8rem;margin-bottom:0">Ex: pune „Bonul curent este:" ca text pentru bonul chemat.</p>

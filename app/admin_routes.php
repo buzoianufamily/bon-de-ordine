@@ -658,6 +658,8 @@ function admin_counter_save(): void {
     $id = (int)($_POST['id'] ?? 0);
     $f = ['branch_id'=>(int)($_POST['branch_id'] ?? 1), 'code'=>trim($_POST['code'] ?? ''),
           'name'=>trim($_POST['name'] ?? ''), 'status'=>(in_array($_POST['status'] ?? 'closed', ['open','paused','closed'], true) ? $_POST['status'] : 'closed'),
+          'cd_hint_idle'=>mb_substr(trim((string)($_POST['cd_hint_idle'] ?? '')), 0, 80),
+          'cd_hint_serving'=>mb_substr(trim((string)($_POST['cd_hint_serving'] ?? '')), 0, 80),
           'all_services'=>isset($_POST['all_services'])?1:0, 'priority'=>(int)($_POST['priority'] ?? 0)];
     if ($f['code'] === '' || $f['name'] === '') { flash('Cod si nume obligatorii.', 'error'); redirect('admin/counters'); }
     // cod unic pe filiala (evita ghisee ambigue)

@@ -1,7 +1,7 @@
 <?php $title='Ghiseu '.$counter['code'].' · Afisaj'; $kiosk=true; require __DIR__.'/_head.php';
-/* texte editabile din Setari -> Afisaj (fallback la formularile implicite) */
-$cdIdle    = trim((string) setting('cd_hint_idle', '')) ?: 'Asteptam urmatorul bon…';
-$cdServing = trim((string) setting('cd_hint_serving', '')) ?: 'Va rugam prezentati-va la ghiseu'; ?>
+/* texte: intai per ghiseu (editare ghiseu), apoi implicit din Setari -> Afisaj, apoi valoarea de baza */
+$cdIdle    = trim((string) ($counter['cd_hint_idle'] ?? '')) ?: (trim((string) setting('cd_hint_idle', '')) ?: 'Asteptam urmatorul bon…');
+$cdServing = trim((string) ($counter['cd_hint_serving'] ?? '')) ?: (trim((string) setting('cd_hint_serving', '')) ?: 'Va rugam prezentati-va la ghiseu'); ?>
 <body style="margin:0;background:#0b0d12;color:#fff;overflow:hidden">
 <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1vh">
   <div style="font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9aa3b2;font-size:3.2vh"><?= e(setting('brand_name','')) ?></div>

@@ -954,6 +954,10 @@ function run_migrations(): void {
     // v33: telefon pe conturi (editabil de fiecare utilizator in „Contul meu")
     if (!$hasCol('users','phone')) $ddl("ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL AFTER email");
 
+    // v34: texte de afisaj de ghiseu (/cd) per ghiseu (gol = implicit din Setari -> Afisaj)
+    if (!$hasCol('counters','cd_hint_idle'))    $ddl("ALTER TABLE counters ADD COLUMN cd_hint_idle VARCHAR(80) NULL");
+    if (!$hasCol('counters','cd_hint_serving')) $ddl("ALTER TABLE counters ADD COLUMN cd_hint_serving VARCHAR(80) NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -972,7 +976,8 @@ function run_migrations(): void {
             && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')
             && $hasCol('users','must_change_pw')
             && $hasCol('appointments','consent_at') && $hasCol('appointments','consent_ip')
-            && $hasCol('users','phone')) {
+            && $hasCol('users','phone')
+            && $hasCol('counters','cd_hint_idle') && $hasCol('counters','cd_hint_serving')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

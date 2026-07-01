@@ -45,6 +45,18 @@
       </div>
     </div>
 
+    <?php $defIdle = trim((string)setting('cd_hint_idle','')) ?: 'Asteptam urmatorul bon…';
+          $defServ = trim((string)setting('cd_hint_serving','')) ?: 'Va rugam prezentati-va la ghiseu'; ?>
+    <div class="formsec">
+      <div class="sech"><span class="ic">🖥</span><div><h3>Afisaj de ghiseu (<code>/cd</code>)</h3><p>Ecranul de pe birou care arata bonul curent chemat la acest ghiseu.</p></div></div>
+      <div class="secb">
+        <?php if($row): ?><p class="muted" style="margin-top:0;font-size:.84rem">Link afisaj: <a href="<?= e(url('cd/'.(int)$row['id'])) ?>" target="_blank"><code><?= e(url('cd/'.(int)$row['id'])) ?></code></a></p><?php endif; ?>
+        <div class="field"><label>Text cand nu e niciun bon chemat</label><input name="cd_hint_idle" value="<?= $v('cd_hint_idle') ?>" maxlength="80" placeholder="<?= e($defIdle) ?>"></div>
+        <div class="field"><label>Text cand un bon este chemat (deasupra numarului)</label><input name="cd_hint_serving" value="<?= $v('cd_hint_serving') ?>" maxlength="80" placeholder="<?= e($defServ) ?>">
+          <p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se foloseste textul implicit din <a href="<?= e(url('admin/settings')) ?>">Setari → Afisaj</a> (afisat ca sugestie mai sus). Ex: pune „Bonul curent este:" pentru bonul chemat.</p></div>
+      </div>
+    </div>
+
     <button class="btn btn-primary btn-lg">Salveaza</button>
   </div>
 </form>
