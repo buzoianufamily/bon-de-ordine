@@ -1032,14 +1032,14 @@ function backup_dir(): string {
     return $d;
 }
 /** Genereaza un dump SQL complet, apeland $emit(string) pentru fiecare bucata (stream sau fisier). */
-function db_dump_write(callable $emit): void {
-    $pdo = db();
+function db_dump_write(callable $emit, ?PDO $pdo = null): void {
+    $pdo = $pdo ?: db();
     @set_time_limit(300);
     $emit("-- Backup Bon de ordine · " . date('c') . "\n");
     $emit("SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
     $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
     foreach ($tables as $t) {
-        $create = one("SHOW CREATE TABLE `$t`");
+        $create = $pdo->query("SHOW CREATE TABLE `$t`")->fetch(PDO::FETCH_ASSOC);
         $emit("DROP TABLE IF EXISTS `$t`;\n" . ($create['Create Table'] ?? '') . ";\n\n");
         $stmt = $pdo->query("SELECT * FROM `$t`");
         $batch = [];

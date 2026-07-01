@@ -40,12 +40,12 @@
     <div class="row" style="align-items:flex-start">
     <div class="card pad" style="flex:1;min-width:300px">
       <h3 style="margin-top:0">Comportament coada</h3>
-      <div class="field"><label>Escaladare prioritate după … minute de așteptare (0 = oprit)</label><input type="number" name="priority_escalate_min" min="0" max="600" value="<?= $s('priority_escalate_min','0') ?>">
+      <div class="field"><label>Escaladare prioritate după X minute de așteptare (0 = oprit)</label><input type="number" name="priority_escalate_min" min="0" max="600" value="<?= $s('priority_escalate_min','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Anti-„înfometare": biletele normale care așteaptă peste acest prag sunt chemate înaintea celor noi (ca biletele prioritare), în ordinea vechimii.</p></div>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="release_on_pause" <?= setting('release_on_pause','1')==='1'?'checked':'' ?> style="width:auto"> Când un ghișeu intră în pauză, eliberează biletele direcționate către el înapoi în coada generală (evită biletele blocate)</label>
-      <div class="field"><label>Marchează automat „neprezentat" după … rechemări (0 = oprit)</label><input type="number" name="max_recalls" min="0" max="20" value="<?= $s('max_recalls','0') ?>">
+      <div class="field"><label>Marchează automat „neprezentat" după X rechemări (0 = oprit)</label><input type="number" name="max_recalls" min="0" max="20" value="<?= $s('max_recalls','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Dacă operatorul recheamă un bilet de mai multe ori și clientul nu se prezintă, biletul devine automat „neprezentat" și coada avansează.</p></div>
-      <div class="field"><label>Auto-delogare la inactivitate după … minute (0 = oprit)</label><input type="number" name="admin_idle_min" min="0" max="240" value="<?= $s('admin_idle_min','0') ?>">
+      <div class="field"><label>Auto-delogare la inactivitate după X minute (0 = oprit)</label><input type="number" name="admin_idle_min" min="0" max="240" value="<?= $s('admin_idle_min','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Securitate pentru PC-uri partajate (backoffice + terminal operator): după atâtea minute fără activitate (mouse/tastatură), sesiunea se închide automat. Recomandat 15–30 la ghișee publice.</p></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Bilet tiparit &amp; dispenser</h3>
@@ -235,39 +235,7 @@
     <div class="field"><label>Importă dintr-un fișier .json</label><input type="file" name="file" accept="application/json,.json"></div>
     <button class="btn btn-danger">⬆ Importă configurația</button>
   </form>
-  <hr style="border:none;border-top:1px solid var(--line);margin:1.1rem 0">
-  <h3 style="margin-top:0">Backup bază de date</h3>
-  <p class="muted" style="font-size:.82rem;margin-top:0">Descarcă un fișier <code>.sql</code> cu toată baza de date (structură + date: filiale, servicii, bilete, programări…). Păstrează-l într-un loc sigur — conține datele clienților.</p>
-  <form method="post" action="<?= e(url('admin/backup')) ?>"><?= csrf_field() ?>
-    <button class="btn btn-primary">⬇ Descarcă backup SQL</button>
-  </form>
-  <hr style="border:none;border-top:1px solid var(--line);margin:1.1rem 0">
-  <h3 style="margin-top:0">Backup automat (pe server)</h3>
-  <p class="muted" style="font-size:.82rem;margin-top:0">Prin cron, o dată pe zi, sistemul scrie automat un backup în folderul <code>backups/</code> (protejat de acces web) și păstrează ultimele câteva copii. Descarcă-le periodic în afara serverului.</p>
-  <form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
-    <label style="display:block;margin:.4rem 0"><input type="checkbox" name="backup_auto_enabled" <?= setting('backup_auto_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Activează backup-ul automat zilnic (necesită cron)</label>
-    <div class="field"><label>Câte copii păstrez</label><input type="number" name="backup_keep" min="1" max="365" value="<?= $s('backup_keep','14') ?>" style="max-width:120px"></div>
-    <button class="btn">Salvează</button>
-  </form>
-  <form method="post" action="<?= e(url('admin/backup/run')) ?>" style="margin-top:.6rem"><?= csrf_field() ?>
-    <button class="btn">⟳ Rulează un backup acum</button>
-  </form>
-  <?php $bks = function_exists('backup_list') ? backup_list() : []; if ($bks): ?>
-    <div style="overflow-x:auto;margin-top:1rem"><table style="min-width:420px">
-      <thead><tr><th>Fișier</th><th>Dimensiune</th><th>Data</th><th></th></tr></thead>
-      <tbody><?php foreach ($bks as $bk): ?>
-        <tr>
-          <td><code><?= e($bk['name']) ?></code></td>
-          <td><?= number_format($bk['size']/1024, 0) ?> KB</td>
-          <td class="muted"><?= e(date('d.m.Y H:i', $bk['mtime'])) ?></td>
-          <td style="text-align:right;white-space:nowrap">
-            <a class="lnk" href="<?= e(url('admin/backup/download').'?file='.rawurlencode($bk['name'])) ?>">⬇ Descarcă</a>
-            <form method="post" action="<?= e(url('admin/backup/delete')) ?>" style="display:inline;margin-left:.6rem" data-confirm="Ștergi acest backup?"><?= csrf_field() ?><input type="hidden" name="file" value="<?= e($bk['name']) ?>"><button class="lnk del" style="background:none;border:none;cursor:pointer;color:#dc2626;font:inherit">Șterge</button></form>
-          </td>
-        </tr>
-      <?php endforeach; ?></tbody>
-    </table></div>
-  <?php endif; ?>
+  <p class="muted" style="font-size:.8rem;margin:1rem 0 0">Backup-ul complet al bazei de date (fișier <code>.sql</code> cu datele clienților) se face de către furnizor din panoul de administrare a instanțelor — nu este disponibil aici.</p>
 </div>
 
 <?php if ((current_user()['role'] ?? '') === 'admin'): ?>

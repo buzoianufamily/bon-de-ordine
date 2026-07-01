@@ -116,6 +116,14 @@ Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul
 1. În `config/config.php` setează o parolă lungă la `'landlord_pass' => '…'`.
 2. Deschide `https://domeniul-tau.ro/landlord` și autentifică‑te cu acea parolă.
 
+**Izolarea panoului (recomandat):** ca panoul de administrare a clienților să fie complet separat de aplicație și **invizibil pentru clienți**, dedică‑i un subdomeniu (ex: `clienti.domeniul-tau.ro`) și pune‑l în `config/config.php`:
+
+```php
+'landlord_host' => 'clienti.domeniul-tau.ro',
+```
+
+Cu această setare, `/landlord` funcționează **doar** pe acel host (accesarea rădăcinii lui redirecționează direct la panou), iar pe subdomeniile clienților și pe instanța‑aplicație `/landlord` întoarce **404** — clienții nu află că pagina există. Dacă lași `landlord_host` gol, panoul rămâne disponibil (ca înainte) doar pe instanța principală, ascuns pe subdomeniile clienților.
+
 ### Adaugi un client nou (~3 minute)
 1. **Subdomeniu:** cPanel → **Domains** → creează `client1.domeniul-tau.ro` cu **același document root** ca aplicația (sau creează o singură dată un subdomeniu wildcard `*`).
 2. **Bază de date:** cPanel → **MySQL Databases** → creează o bază + un utilizator noi, cu **ALL PRIVILEGES**.

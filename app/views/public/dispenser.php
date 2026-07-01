@@ -127,6 +127,14 @@ $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
 .kiosk-head{text-align:<?= e($titleAlign) ?><?= $headerGap!=='' ? ';padding-top:'.(int)$headerGap.'px;padding-bottom:'.(int)$headerGap.'px' : '' ?>}
 .kiosk-head h1{color:<?= e($gd($A,'header_color','#1a1d23')) ?>;font-size:<?= (int)$gd($A,'title_size',40) ?>px}
 .kiosk-head .logo{max-height:<?= (int)$gd($A,'logo_height',74) ?>px}
+/* pozitionare logo (sus/jos · stanga/centru/dreapta); implicit = comportamentul vechi (inline, dupa alinierea antetului) */
+.kiosk-head .logo.lp-top-left{display:block;margin:0 auto 0 0}
+.kiosk-head .logo.lp-top-center{display:block;margin:0 auto}
+.kiosk-head .logo.lp-top-right{display:block;margin:0 0 0 auto}
+.kiosk .logo.lp-bottom-left,.kiosk .logo.lp-bottom-center,.kiosk .logo.lp-bottom-right{position:fixed;bottom:18px;z-index:5}
+.kiosk .logo.lp-bottom-left{left:18px}
+.kiosk .logo.lp-bottom-right{right:18px}
+.kiosk .logo.lp-bottom-center{left:50%;transform:translateX(-50%)}
 .kiosk-clock{font-weight:800;color:<?= e($gd($A,'header_color','#1a1d23')) ?>;opacity:.85;font-size:1.05rem;margin-top:.2rem;font-variant-numeric:tabular-nums}
 <?php if($gridCss): ?>.kiosk .svc-grid{<?= $gridCss ?>}<?php endif; ?>
 <?php if($gridBox): ?>.kiosk .svc-grid{<?= $gridBox ?>}<?php endif; ?>
@@ -155,7 +163,7 @@ $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
   </div>
   <?php endif; ?>
   <div class="kiosk-head">
-    <?php if($logo): ?><img class="logo" src="<?= e($logo) ?>" alt=""><?php endif; ?>
+    <?php if($logo): $logoPos = in_array($gd($A,'logo_pos',''),['top-left','top-center','top-right','bottom-left','bottom-center','bottom-right'],true) ? $gd($A,'logo_pos','') : ''; ?><img class="logo<?= $logoPos ? ' lp-'.e($logoPos) : '' ?>" src="<?= e($logo) ?>" alt=""><?php endif; ?>
     <h1><?= e($title_txt) ?></h1>
     <?php if($gd($T,'subtitle','')): ?><p class="muted ksub"><?= e($gd($T,'subtitle','')) ?></p><?php endif; ?>
     <?php if($clock): ?><div class="kiosk-clock" id="kClock"></div><?php endif; ?>

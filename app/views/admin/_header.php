@@ -86,7 +86,12 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
         </div>
       </div>
     </div>
+    <?php $__flashes = get_flashes(); if ($__flashes): ?>
+      <div class="toast-wrap" role="status" aria-live="polite">
+        <?php foreach ($__flashes as $f): ?>
+          <div class="toast srv-toast <?= $f['type']==='error'?'error':'ok' ?>"><?= e($f['msg']) ?></div>
+        <?php endforeach; ?>
+      </div>
+      <script>setTimeout(function(){document.querySelectorAll('.srv-toast').forEach(function(t){t.remove();});},4000);</script>
+    <?php endif; ?>
     <div class="content" id="main-content">
-    <?php foreach (get_flashes() as $f): ?>
-      <div class="toast <?= $f['type']==='error'?'error':'ok' ?>" style="position:static;margin-bottom:1rem;display:inline-block"><?= e($f['msg']) ?></div>
-    <?php endforeach; ?>

@@ -150,20 +150,14 @@ CT_CSV="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/tickets/export?date=$TOD
 tcontains "export bilete CSV content-type" 'text/csv' "$CT_CSV"
 CFG_JSON="$(curl -s -b "$JAR" "$B/admin/settings/export")"
 tcontains "export config JSON" '"settings"' "$CFG_JSON"
-# reorganizare: backup DB + tab Automatizari mutate in Setari; API nu mai are backup
+# reorganizare: backup DB mutat in landlord (client nu mai are acces); config export ramane
 SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
-tcontains "Setari are backup baza de date (mutat din API)" 'Backup bază de date' "$SET_PAGE"
 tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
-case "$(curl -s -b "$JAR" "$B/admin/api")" in *'Backup baza de date'*) FAIL=$((FAIL+1)); echo "FAIL: API inca are backup DB";; *) PASS=$((PASS+1));; esac
-# backup pe server: ruleaza -> apare in lista -> se descarca; traversare de cale respinsa
-t "POST /admin/backup/run -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
-BKFILE="$(curl -s -b "$JAR" "$B/admin/settings" | grep -oE 'backup_[0-9]{8}_[0-9]{6}\.sql' | head -1)"
-if [ -n "$BKFILE" ]; then
-  PASS=$((PASS+1))
-  CT_BK="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/backup/download?file=$BKFILE" | grep -i 'content-type')"
-  tcontains "download backup pe server -> application/sql" 'application/sql' "$CT_BK"
-else FAIL=$((FAIL+1)); echo "FAIL: backup pe server nu apare in lista"; fi
-t "backup download: traversare de cale respinsa -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=../config/config.php")"
+tcontains "Setari export config ramane la client" 'Exportă configurația' "$SET_PAGE"
+case "$SET_PAGE" in *'Descarcă backup SQL'*) FAIL=$((FAIL+1)); echo "FAIL: clientul inca are backup SQL in Setari";; *) PASS=$((PASS+1));; esac
+# rutele de backup ale clientului sunt inchise (mutate in landlord)
+t "client: POST /admin/backup/run -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
+t "client: GET /admin/backup/download -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=x.sql")"
 # verificare productie (readiness) a fost mutata in landlord -> nu mai apare in adminul clientului
 t "GET /admin/checkup -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" $B/admin/checkup)"
 # media: se accepta orice tip de fisier; SVG-ul e ACCEPTAT dar CURATAT de scripturi (anti-XSS stocat)
@@ -439,6 +433,10 @@ if [ -n "$INV_ID" ]; then
   tcontains "factura printabila: serie/numar BDO 00001" 'BDO 00001' "$INV_HTML"
   tcontains "factura printabila: buton print" 'window.print()' "$INV_HTML"
 else FAIL=$((FAIL+1)); echo "FAIL: factura nu a fost creata (fara id in redirect)"; fi
+# landlord: backup DB al instantei principale -> .sql descarcabil (mutat aici din adminul clientului)
+CT_LBK="$(curl -s -b "$LJAR" -D - -o /dev/null "$B/landlord/backup?host=main" | grep -i 'content-type')"
+tcontains "landlord backup: content-type application/sql" 'application/sql' "$CT_LBK"
+tcontains "landlord backup: contine dump SQL" 'CREATE TABLE' "$(curl -s -b "$LJAR" "$B/landlord/backup?host=main")"
 rm -f "$LJAR"
 
 # --- logout ---

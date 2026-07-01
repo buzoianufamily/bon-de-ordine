@@ -171,12 +171,8 @@ function admin_dispatch(array $seg, string $method): void {
             admin_audit_list(); return;
 
         case 'backup':
-            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
-            if ($a === 'download') { admin_backup_download(); return; }
-            if ($method === 'POST' && $a === 'run')    { admin_backup_run(); return; }
-            if ($method === 'POST' && $a === 'delete') { admin_backup_delete(); return; }
-            if ($method === 'POST') { admin_db_backup(); return; }
-            redirect('admin/settings');
+            // Backup-ul bazei de date (date clienti) e o operatiune de furnizor -> doar in panoul landlord.
+            http_response_code(404); echo 'Sectiune inexistenta.'; return;
 
         case 'security':
             if ($method === 'POST') { admin_security_save(); return; }
@@ -692,18 +688,17 @@ function admin_user_save(): void {
     if (!in_array($role, ['admin','manager','agent'], true)) $role = 'agent';   // whitelist (defense-in-depth)
     $active=isset($_POST['active'])?1:0; $pass=(string)($_POST['password']??'');
     $notify=isset($_POST['notify_browser'])?1:0;
-    $pin = preg_replace('/\D/', '', (string)($_POST['pin'] ?? '')); $pin = $pin !== '' ? substr($pin, 0, 12) : null;
     $allowed = implode(',', array_filter(array_map('intval', (array)($_POST['allowed_counters'] ?? [])))) ?: null;
     if ($name==='' || $email==='') { flash('Nume si email obligatorii.', 'error'); redirect('admin/users'); }
     if ($id) {
-        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=?,password_hash=? WHERE id=?',
-            [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT),$id]);
-        else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,pin=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$pin,$id]);
+        if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,password_hash=? WHERE id=?',
+            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT),$id]);
+        else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$id]);
     } else {
         if (tenant_limit_reached('users')) { flash('Ai atins limita planului pentru utilizatori ('.tenant_limit('users').'). Contactează furnizorul pentru un pachet mai mare.', 'error'); redirect('admin/users'); }
         if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
-        try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,pin,password_hash) VALUES (?,?,?,?,?,?,?,?)',
-            [$name,$email,$role,$active,$notify,$allowed,$pin,password_hash($pass,PASSWORD_DEFAULT)]); }
+        try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,password_hash) VALUES (?,?,?,?,?,?,?)',
+            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT)]); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
     if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
@@ -1322,7 +1317,7 @@ function admin_settings_save(): void {
              'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra','legal_privacy_text','legal_terms_text','legal_slug_privacy','legal_slug_terms','backup_keep','admin_idle_min',
              'cd_hint_idle','cd_hint_serving'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
-    set_setting('backup_auto_enabled', isset($_POST['backup_auto_enabled']) ? '1' : '0');
+    // backup_auto_enabled se controleaza din panoul landlord (backup = operatiune de furnizor), nu de aici
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
     set_setting('reminder_enabled', isset($_POST['reminder_enabled']) ? '1' : '0');

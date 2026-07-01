@@ -114,8 +114,13 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
         <div class="mgrid" data-grid="f__appearance__logo_url"></div>
       </div>
       <div class="row2">
-        <div class="field"><label>Marime titlu (px)</label><input type="number" id="f__appearance__title_size" value="<?= e($gd($A,'title_size',40)) ?>"></div>
+        <div class="field"><label>Pozitie logo</label>
+          <?php $lp=$gd($A,'logo_pos',''); $lpOpts=[''=>'Implicit (sus, dupa aliniere titlu)','top-left'=>'Sus stanga','top-center'=>'Sus centru','top-right'=>'Sus dreapta','bottom-left'=>'Jos stanga','bottom-center'=>'Jos centru','bottom-right'=>'Jos dreapta']; ?>
+          <select id="f__appearance__logo_pos"><?php foreach($lpOpts as $k=>$lab): ?><option value="<?= e($k) ?>" <?= $lp===$k?'selected':'' ?>><?= e($lab) ?></option><?php endforeach; ?></select></div>
         <div class="field"><label>Inaltime logo (px)</label><input type="number" id="f__appearance__logo_height" value="<?= e($gd($A,'logo_height',74)) ?>"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Marime titlu (px)</label><input type="number" id="f__appearance__title_size" value="<?= e($gd($A,'title_size',40)) ?>"></div>
       </div>
       <div class="row2">
         <div class="field"><label>Rotunjire butoane (px)</label><input type="number" id="f__appearance__btn_radius" value="<?= e($gd($A,'btn_radius',22)) ?>"></div>

@@ -411,6 +411,11 @@ SWJS;
 
     // ===================== PAGINI PUBLICE =====================
     if ($route === '/') {
+        // host dedicat landlord (ex: clienti.bonordine.ro) -> portalul furnizorului, nu aplicatia
+        $llHost = strtolower(trim((string) cfg('landlord_host', '')));
+        if ($llHost !== '' && strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === $llHost) {
+            redirect('landlord');
+        }
         // logat -> ecran de alegere (backoffice / terminal / concierge / status), nu direct dashboard
         if ($u = current_user()) { view('public/hub', ['u' => $u]); return; }
         view('public/portal');
