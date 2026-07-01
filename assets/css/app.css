@@ -42,6 +42,8 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .toast.error{background:var(--danger)} .toast.ok{background:var(--accent);color:var(--accent-ink)}
 .mediadrop{border:2px dashed color-mix(in srgb,var(--ink) 22%,transparent);border-radius:14px;padding:1.6rem 1rem;text-align:center;margin-bottom:1rem;transition:border-color .15s,background .15s}
 .mediadrop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+/* data curenta (dreapta sus pe dashboard) — pronuntata in ambele teme */
+.datechip{display:inline-flex;align-items:center;gap:.4rem;font-weight:800;font-size:.9rem;color:var(--ink);background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);padding:.32rem .8rem;border-radius:999px;letter-spacing:.01em}
 @keyframes slidein{from{opacity:0;transform:translateY(8px)}}
 
 /* ====== Admin shell ====== */
@@ -397,7 +399,8 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:1rem}
 /* lansator de aplicatii (pagina „Aplicatii", in stil Moviik) */
 .appgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1rem}
-.apptile{display:flex;gap:1rem;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.15rem 1.2rem;transition:.12s}
+.apptile{display:flex;gap:1rem;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.15rem 1.2rem;transition:.12s}
+.apptile>div:last-child{display:flex;flex-direction:column}
 .apptile:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));transform:translateY(-1px)}
 .apptile .ico{width:60px;height:60px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.9rem;background:color-mix(in srgb,var(--accent) 14%,transparent);flex:0 0 auto;line-height:1}
 .apptile.off{opacity:.82}
@@ -405,7 +408,10 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .apptile .nm{font-weight:800;font-size:1.05rem;line-height:1.25}
 .apptile .apsub{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:.15rem}
 .apptile .ds{color:var(--muted);font-size:.85rem;margin:.45rem 0 .85rem;line-height:1.4}
-.apptile .acts{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.apptile .acts{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:auto;padding-top:.2rem}
+/* butoanele „mai goale" (Ghisee/Programari/Setari…) — aspect secundar distinct, nu simplu text */
+.apptile .acts .btn-ghost{border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 5%,transparent);color:var(--ink);font-weight:700}
+.apptile .acts .btn-ghost:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent)}
 .apptile .apt-off{font-size:.82rem;font-weight:700;color:var(--muted)}
 .btn-sm{padding:.4rem .8rem;font-size:.85rem}
 /* ----- Concierge / receptie (terminal virtual cu tab-uri) ----- */

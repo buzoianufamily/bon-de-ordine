@@ -146,6 +146,15 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
           <pre style="background:#101216;color:#7CFFB2;padding:.7rem;border-radius:8px;overflow:auto;font-size:.76rem;margin:0">*/15 * * * * curl -s "<?= e($cronUrl) ?>" >/dev/null 2>&1</pre>
         </div>
         <div style="margin-top:.9rem;border-top:1px solid #1e2128;padding-top:.7rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+          <span class="muted" style="font-size:.8rem">Configuratie (branding/texte/module):</span>
+          <a class="btn" href="<?= e(url('landlord/config-export')) ?>?host=<?= e(rawurlencode($r['main'] ? '' : $r['host'])) ?>">⬇ Exporta config (JSON)</a>
+          <form method="post" action="<?= e(url('landlord/config-import')) ?>" enctype="multipart/form-data" style="display:flex;gap:.4rem;align-items:center" data-confirm="Imporți configurația în <?= e($r['host']) ?>? Setările existente vor fi suprascrise (fără chei sensibile).">
+            <?= csrf_field() ?><input type="hidden" name="host" value="<?= e($r['host']) ?>">
+            <input type="file" name="file" accept="application/json,.json" style="max-width:180px;font-size:.78rem">
+            <button class="btn">⬆ Importa</button>
+          </form>
+        </div>
+        <div style="margin-top:.9rem;border-top:1px solid #1e2128;padding-top:.7rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
           <span class="muted" style="font-size:.8rem">Backup baza de date (date clienti):</span>
           <a class="btn" href="<?= e(url('landlord/backup')) ?>?host=<?= e(rawurlencode($r['main'] ? '' : $r['host'])) ?>">⬇ Descarca backup SQL</a>
           <form method="post" action="<?= e(url('landlord/backup-auto')) ?>" style="display:inline">

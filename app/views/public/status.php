@@ -4,7 +4,8 @@ $mmss = function($s){ $s=(int)$s; return $s>0 ? sprintf('%d:%02d', intdiv($s,60)
 ?>
 <body class="statuspage">
 <style>
-.statuspage{background:var(--bg,#0b0d12);color:#e8eaef;min-height:100vh;margin:0}
+.statuspage{background:#0b0d12;color:#e8eaef;min-height:100vh;margin:0}
+.statuspage h1{color:#f3f5f8}
 .stwrap{max-width:980px;margin:0 auto;padding:1.4rem 1rem 3rem}
 .sthead{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1.2rem}
 .sthead img{max-height:40px}

@@ -148,16 +148,15 @@ t "GET /admin/devices/qr"        200 "$(code -b "$JAR" $B/admin/devices/qr)"
 TODAY="$(date +%F)"
 CT_CSV="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/tickets/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export bilete CSV content-type" 'text/csv' "$CT_CSV"
-CFG_JSON="$(curl -s -b "$JAR" "$B/admin/settings/export")"
-tcontains "export config JSON" '"settings"' "$CFG_JSON"
-# reorganizare: backup DB mutat in landlord (client nu mai are acces); config export ramane
+# reorganizare: backup DB + export/clonare config mutate in landlord (clientul nu mai are acces)
 SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
 tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
-tcontains "Setari export config ramane la client" 'Exportă configurația' "$SET_PAGE"
+case "$SET_PAGE" in *'Backup / clonare configurație'*) FAIL=$((FAIL+1)); echo "FAIL: clientul inca are card clonare config";; *) PASS=$((PASS+1));; esac
 case "$SET_PAGE" in *'Descarcă backup SQL'*) FAIL=$((FAIL+1)); echo "FAIL: clientul inca are backup SQL in Setari";; *) PASS=$((PASS+1));; esac
-# rutele de backup ale clientului sunt inchise (mutate in landlord)
+# rutele de backup + export/import config ale clientului sunt inchise (mutate in landlord)
 t "client: POST /admin/backup/run -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
 t "client: GET /admin/backup/download -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=x.sql")"
+t "client: GET /admin/settings/export -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" "$B/admin/settings/export")"
 # verificare productie (readiness) a fost mutata in landlord -> nu mai apare in adminul clientului
 t "GET /admin/checkup -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" $B/admin/checkup)"
 # media: se accepta orice tip de fisier; SVG-ul e ACCEPTAT dar CURATAT de scripturi (anti-XSS stocat)
@@ -437,6 +436,8 @@ else FAIL=$((FAIL+1)); echo "FAIL: factura nu a fost creata (fara id in redirect
 CT_LBK="$(curl -s -b "$LJAR" -D - -o /dev/null "$B/landlord/backup?host=main" | grep -i 'content-type')"
 tcontains "landlord backup: content-type application/sql" 'application/sql' "$CT_LBK"
 tcontains "landlord backup: contine dump SQL" 'CREATE TABLE' "$(curl -s -b "$LJAR" "$B/landlord/backup?host=main")"
+# landlord: export configuratie (clonare) -> JSON cu setari
+tcontains "landlord config-export: JSON cu setari" '"settings"' "$(curl -s -b "$LJAR" "$B/landlord/config-export?host=main")"
 rm -f "$LJAR"
 
 # --- logout ---

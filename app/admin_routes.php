@@ -136,6 +136,7 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'media':
             if ($method === 'POST' && $a === 'upload') { admin_media_upload(); return; }
+            if ($method === 'POST' && $a === 'delete-bulk') { admin_media_bulk_delete(); return; }
             if ($method === 'POST' && $b === 'delete') { admin_media_delete((int)$a); return; }
             admin_media_list(); return;
 
@@ -149,8 +150,8 @@ function admin_dispatch(array $seg, string $method): void {
             admin_forms_list(); return;
 
         case 'settings':
-            if ($a === 'export') { admin_settings_export(); return; }
-            if ($method === 'POST' && $a === 'import') { admin_settings_import(); return; }
+            // export/import configuratie = unealta de furnizor -> mutata in panoul landlord (404 la client)
+            if ($a === 'export' || ($method === 'POST' && $a === 'import')) { http_response_code(404); echo 'Sectiune inexistenta.'; return; }
             if ($method === 'POST') { admin_settings_save(); return; }
             admin_settings_form(); return;
 
@@ -1674,6 +1675,22 @@ function admin_media_delete(int $id): void {
         q('DELETE FROM media WHERE id=?', [$id]);
         flash('Fisier sters.');
     }
+    redirect('admin/media');
+}
+/** Sterge mai multe fisiere media odata (selectie cu ctrl/shift/ctrl+A pe pagina Multimedia). */
+function admin_media_bulk_delete(): void {
+    csrf_check();
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['ids'] ?? [])))));
+    if (!$ids) { flash('Niciun fisier selectat.', 'error'); redirect('admin/media'); }
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $n = 0;
+    foreach (all("SELECT * FROM media WHERE id IN ($in)", $ids) as $m) {
+        $path = APP_ROOT . '/' . $m['path'];
+        if (is_file($path)) @unlink($path);
+        $n++;
+    }
+    q("DELETE FROM media WHERE id IN ($in)", $ids);
+    flash("$n fisier(e) sterse.");
     redirect('admin/media');
 }
 

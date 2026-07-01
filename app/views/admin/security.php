@@ -41,8 +41,9 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
       <li>Daca nu poti scana, introdu manual cheia: <code style="user-select:all"><?= e($secret) ?></code></li>
       <li>Introdu codul de 6 cifre afisat de aplicatie ca sa confirmi.</li>
     </ol>
+    <style>.qr2fa{background:#fff;border-radius:16px;padding:14px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;line-height:0;box-shadow:0 4px 16px rgba(0,0,0,.12)}.qr2fa svg{display:block;width:200px;height:200px}</style>
     <div style="display:flex;gap:1.4rem;align-items:center;flex-wrap:wrap;margin:.4rem 0 1rem">
-      <div role="img" aria-label="Cod QR pentru configurarea 2FA" style="background:#fff;border-radius:10px;padding:8px;border:1px solid var(--line);width:200px;height:200px"><?= $qrSvg ?></div>
+      <div role="img" aria-label="Cod QR pentru configurarea 2FA" class="qr2fa"><?= $qrSvg ?></div>
       <form method="post" action="<?= e(url('admin/security')) ?>" style="flex:1;min-width:220px">
         <?= csrf_field() ?><input type="hidden" name="act" value="enable">
         <div class="field"><label>Cod din aplicatie</label>
