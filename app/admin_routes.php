@@ -102,9 +102,13 @@ function admin_dispatch(array $seg, string $method): void {
                 if ($method === 'POST') { admin_player_save((int)$a); return; }
                 admin_player_builder((int)$a); return;
             }
-            if (ctype_digit((string)$a) && $b === 'dispenser') { // editor configurare dispenser
+            if (ctype_digit((string)$a) && $b === 'dispenser') { // editor configurare dispenser (clasic, form)
                 if ($method === 'POST') { admin_dispenser_save((int)$a); return; }
                 admin_dispenser_builder((int)$a); return;
+            }
+            if (ctype_digit((string)$a) && $b === 'dispenser-canvas') { // editor canvas dispenser (ca la TV)
+                if ($method === 'POST') { admin_dispenser_canvas_save((int)$a); return; }
+                admin_dispenser_canvas_builder((int)$a); return;
             }
             if ($a === 'qr') { admin_devices_qr(); return; }
             if ($a === 'new') { admin_device_form(null); return; }
@@ -1684,7 +1688,30 @@ function admin_dispenser_save(int $id): void {
     $raw = file_get_contents('php://input');
     $data = json_decode($raw, true);
     if (!is_array($data)) json_out(['ok' => false, 'error' => 'Config invalid'], 422);
+    // pastreaza layoutul canvas (editat separat) cand se salveaza editorul clasic
+    $dev = one('SELECT config FROM devices WHERE id=?', [$id]);
+    $cur = ($dev && $dev['config']) ? json_decode($dev['config'], true) : [];
+    if (is_array($cur) && isset($cur['canvas'])) $data['canvas'] = $cur['canvas'];
     q('UPDATE devices SET config=? WHERE id=?', [json_encode($data, JSON_UNESCAPED_UNICODE), $id]);
+    json_out(['ok' => true]);
+}
+/* Editor canvas pentru dispenser (acelasi motor ca afisorul TV) — layoutul sta in config->canvas */
+function admin_dispenser_canvas_builder(int $id): void {
+    $dev = one('SELECT * FROM devices WHERE id=?', [$id]);
+    if (!$dev) { http_response_code(404); echo 'Dispozitiv inexistent.'; return; }
+    view('admin/dispenser_canvas_builder', ['dev' => $dev]);
+}
+function admin_dispenser_canvas_save(int $id): void {
+    csrf_check();
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw, true);
+    if (!is_array($data) || empty($data['screens'])) json_out(['ok' => false, 'error' => 'Layout invalid'], 422);
+    // pastreaza config-ul editorului clasic (logic/appearance/texts/popup); doar cheia „canvas" e actualizata
+    $dev = one('SELECT config FROM devices WHERE id=?', [$id]);
+    $cfg = ($dev && $dev['config']) ? json_decode($dev['config'], true) : [];
+    if (!is_array($cfg)) $cfg = [];
+    $cfg['canvas'] = $data;
+    q('UPDATE devices SET config=? WHERE id=?', [json_encode($cfg, JSON_UNESCAPED_UNICODE), $id]);
     json_out(['ok' => true]);
 }
 

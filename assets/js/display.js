@@ -200,9 +200,31 @@
           <div style="margin-top:8px;color:#f5b301;font-size:${Math.max(13,H*.1)}px">★★★★★</div>
           <div style="margin-top:2px;opacity:.75;font-size:${Math.max(10,H*.06)}px">Scaneaza pentru a evalua</div>`;
         break; }
+      case 'service_grid': {
+        // grila interactiva de servicii (dispenser) — butoanele au aceleasi clase/atribute ca la kioskul clasic,
+        // deci fluxul din dispenser.js (delegare pe .svc-btn) le preia automat (emitere/print/formular/prioritar)
+        const svcs = cfg.services||[]; const cols = p.cols||'auto';
+        const gtc = cols==='list'?'1fr' : (/^[234]$/.test(String(cols))?`repeat(${cols},1fr)`:'repeat(auto-fit,minmax(200px,1fr))');
+        const gap = p.gap!=null?+p.gap:14;
+        el.style.padding=p.title?'8px':'2px'; el.style.overflow='auto'; el.style.background=p.bg||'transparent'; el.style.color='#fff';
+        const grid = svcs.length ? svcs.map(svcBtnHtml).join('')
+          : `<div style="opacity:.5;padding:1rem;grid-column:1/-1;text-align:center">${esc(cfg.noSvcText||'Momentan nu sunt servicii disponibile')}</div>`;
+        el.innerHTML = (p.title?`<div style="font-weight:800;font-size:${Math.max(14,H*.06)}px;margin-bottom:8px">${esc(pickML(p.title))}</div>`:'')
+          + `<div style="display:grid;grid-template-columns:${gtc};gap:${gap}px;align-content:start">${grid}</div>`;
+        break; }
       case 'weather': { paintWeather(el,p,H); break; }
       case 'playlist': { paintPlaylist(el,p); break; }
     }
+  }
+  /* butonul unui serviciu pentru widgetul „Grila servicii" (acelasi markup ca renderBtn din dispenser.php) */
+  function svcBtnHtml(s){
+    const open=!!s.open, grad=`background:linear-gradient(135deg,${esc(s.color)},${esc(s.color)}cc)`;
+    return `<button class="svc-btn${open?'':' closed'}" ${open?'':'disabled'} data-id="${+s.id}" data-color="${esc(s.color)}" data-priority="${s.priority?1:0}" data-name="${esc(s.name)}" data-desc="${esc(s.desc||'')}" style="${grad}">`
+      + (s.showWait?`<span class="wbadge" data-wc="${+s.id}" style="${s.wait?'':'display:none'}">👥 <b>${s.wait||0}</b></span>`:'')
+      + `<span class="pfx">${esc(s.prefix||'')}</span><span class="nm">${esc(s.name||'')}</span><span class="ds">${esc(s.hint||'')}</span>`
+      + (!open ? `<span class="pill" style="background:rgba(0,0,0,.4);color:#fff;align-self:flex-start;margin-top:.5rem">${esc(s.badge||'')}</span>`
+               : (s.prioLabel?`<span class="prio-btn pill" style="background:rgba(255,255,255,.25);color:#fff;align-self:flex-start;margin-top:.5rem">${esc(s.prioLabel)}</span>`:''))
+      + `</button>`;
   }
   function paintWeather(el,p,H){
     const mode=p.mode||'forecast', days=Math.max(1,Math.min(7,+(p.days||3)));

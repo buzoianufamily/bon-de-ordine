@@ -29,6 +29,7 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
           <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/player')) ?>" style="padding:.45rem .8rem">Configureaza</a>
         <?php elseif(in_array($d['type'],['dispenser','digital_ticket'],true)): ?>
           <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/dispenser')) ?>" style="padding:.45rem .8rem">Configureaza</a>
+          <a class="btn" href="<?= e(url('admin/devices/'.$d['id'].'/dispenser-canvas')) ?>" style="padding:.45rem .8rem" title="Editor canvas (ca la afisorul TV)">🎨 Canvas</a>
         <?php endif; ?>
       </div>
     </div>

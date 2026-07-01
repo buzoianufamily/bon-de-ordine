@@ -9,10 +9,13 @@
   const vurl=u=>(cfg.lang && cfg.lang!=='ro' && u) ? (u+(u.indexOf('?')>-1?'&':'?')+'lang='+encodeURIComponent(cfg.lang)) : u;
   let timer=null;
 
-  document.querySelectorAll('.svc-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ if(btn.disabled) return; startFlow(btn,false); });
-    const pr=btn.querySelector('.prio-btn');
-    if(pr) pr.addEventListener('click', e=>{ e.stopPropagation(); startFlow(btn,true); });
+  // delegare pe document: functioneaza si pentru butoanele statice (kiosk clasic),
+  // si pentru cele randate dinamic de editorul canvas (widget „Grila servicii")
+  document.addEventListener('click', e=>{
+    const pr = e.target.closest('.prio-btn');
+    if(pr){ const b=pr.closest('.svc-btn'); if(b && !b.disabled){ e.stopPropagation(); startFlow(b,true); } return; }
+    const btn = e.target.closest('.svc-btn');
+    if(btn && !btn.disabled) startFlow(btn,false);
   });
 
   function openModal(html){ modalBox.innerHTML=html; modal.classList.add('show'); }

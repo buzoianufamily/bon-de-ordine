@@ -8,6 +8,16 @@ accesare (`schema_version`); mai jos, capacitățile grupate pe teme.
 
 ---
 
+## Dispenser cu editor canvas (ca afisorul TV)
+- **Editor canvas pentru dispenser** (opt-in): acelasi motor ca afisorul TV — ecrane multiple,
+  orientare/aspect, fundal per ecran, widgeturi (ceas, vreme, imagine, logo, text, QR, ticker, liste bilete…),
+  plus un widget interactiv nou **„Grila servicii"** (butoanele care emit bonul).
+- Editorul clasic (form) ramane **implicit** si e pastrat ca fallback — dispozitivele existente NU se strica;
+  layoutul canvas se foloseste doar cand e construit si activat (`config.canvas.enabled`).
+- Fluxul de emitere (tip/politica/formular → bon → print/QR/check-in) e reutilizat integral prin delegare de
+  evenimente, deci functioneaza identic si pe butoanele randate de canvas.
+- Deschizi editorul din Dispozitive → „🎨 Canvas" sau din editorul clasic → „🎨 Editor canvas (ca la TV)".
+
 ## Cont, profil & separarea furnizor/client
 - **Meniul contului** (chip dreapta-sus): editare profil (nume, email, **telefon**, parolă) + **Iesire**.
 - Butonul **„Portal"** în bara laterală (înlocuiește „Iesire") — duce la pagina publică de start.
