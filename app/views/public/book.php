@@ -1,6 +1,6 @@
 <?php $lang = $lang ?? 'ro'; $pageLang = $lang; $L = book_i18n($lang);
 $lq = $lang !== 'ro' ? '?lang='.$lang : '';
-$title = $L['title']; require __DIR__.'/_head.php';
+$title = $L['title']; $publicTheme=true; require __DIR__.'/_head.php';
 $selId = (isset($svc) && $svc) ? (int)$svc['id'] : 0;
 if ($selId) {
   $prev=date('Y-m-d',strtotime($date.' -1 day')); $next=date('Y-m-d',strtotime($date.' +1 day')); $today=date('Y-m-d');

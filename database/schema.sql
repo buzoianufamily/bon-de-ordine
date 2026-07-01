@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS service_groups (
   branch_id  INT NOT NULL,
   name       VARCHAR(120) NOT NULL,
   color      VARCHAR(20)  NOT NULL DEFAULT '#64748b',
+  parent_id  INT NULL,                              -- grup parinte (subgrup); NULL = grup de nivel 0
   sort_order INT NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_sg_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,

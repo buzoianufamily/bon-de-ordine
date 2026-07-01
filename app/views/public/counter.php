@@ -1,4 +1,4 @@
-<?php $title='Ghiseu '.$counter['code']; require __DIR__.'/_head.php';
+<?php $title='Ghiseu '.$counter['code']; $publicTheme=true; require __DIR__.'/_head.php';
 $services = all('SELECT id,prefix,name,color FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order',[$counter['branch_id']]);
 $myStatus = (string)(val('SELECT work_status FROM users WHERE id=?', [$u['id']]) ?: 'offline'); ?>
 <body class="ctrpage"><div class="counter-wrap">

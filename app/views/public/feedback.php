@@ -1,6 +1,6 @@
 <?php $lang = $lang ?? 'ro'; $pageLang = $lang; $L = fb_i18n($lang);
-$title='Parerea ta · '.setting('brand_name','Bon de ordine'); require __DIR__.'/_head.php'; ?>
-<body class="portalpage"><div class="center"><div class="vt-card" style="max-width:420px;width:92%;text-align:center">
+$title='Parerea ta · '.setting('brand_name','Bon de ordine'); $publicTheme=true; require __DIR__.'/_head.php'; ?>
+<body class="portalpage"><div class="center"><div class="vt-card themed-card" style="max-width:420px;width:92%;text-align:center">
 <?php if (!empty($done)): ?>
   <div style="font-size:3rem;margin-bottom:.4rem">✅</div>
   <h2 style="margin:.2rem 0"><?= e($L['thanks_title']) ?></h2>

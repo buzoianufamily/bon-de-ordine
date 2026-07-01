@@ -75,6 +75,22 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
         <div class="field"><label>Inchidere automata bilet (sec)</label><input type="number" id="f__logic__auto_return_sec" value="<?= e($gd($L,'auto_return_sec',7)) ?>"></div>
         <div class="field"><label>Screensaver dupa (sec, 0=oprit)</label><input type="number" id="f__logic__screensaver_sec" value="<?= e($gd($L,'screensaver_sec',0)) ?>"></div>
       </div>
+      <div class="field"><label>Navigare servicii</label>
+        <?php $nm=$gd($L,'nav_mode','flat'); ?>
+        <select id="f__logic__nav_mode">
+          <option value="flat" <?= $nm==='flat'?'selected':'' ?>>Toate serviciile pe ecran (implicit)</option>
+          <option value="drill" <?= $nm==='drill'?'selected':'' ?>>Pe categorii (apesi pe grup si intri in el)</option>
+        </select>
+        <span class="muted" style="font-size:.76rem">„Pe categorii" foloseste <b>Grupuri &amp; subgrupuri</b> de servicii — util cand ai multe servicii (tableta 15").</span></div>
+      <div class="row2">
+        <div class="field"><label>Cand nu incap toate</label>
+          <?php $ov=$gd($L,'overflow','scroll'); ?>
+          <select id="f__logic__overflow">
+            <option value="scroll" <?= $ov==='scroll'?'selected':'' ?>>Scroll (derulare)</option>
+            <option value="paginate" <?= $ov==='paginate'?'selected':'' ?>>Pagini (◀ ▶ inainte/inapoi)</option>
+          </select></div>
+        <div class="field"><label>Butoane pe pagina (la „Pagini")</label><input type="number" id="f__logic__page_size" min="1" max="60" value="<?= e($gd($L,'page_size',9)) ?>"></div>
+      </div>
       <label class="chk"><input type="checkbox" id="f__logic__show_waiting" <?= $cb($gb($L,'show_waiting',false)) ?>> Arata pe butoane cati asteapta la fiecare serviciu (👥, live)</label>
       <label class="chk"><input type="checkbox" id="f__logic__appt_checkin" <?= $cb($gb($L,'appt_checkin',false)) ?>> Permite check-in la programari (clientul cu programare isi ia bonul aici)</label>
       <label class="chk"><input type="checkbox" id="f__logic__virtual_keyboard" <?= $cb($gb($L,'virtual_keyboard',false)) ?>> Tastatura pe ecran (pentru formulare/check-in, la touchscreen)</label>

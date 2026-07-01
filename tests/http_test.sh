@@ -266,9 +266,16 @@ ZZ_COUNT2="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
 tcontains "servicii: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/services")"
 tcontains "reorder servicii -> ok" '"ok":true' "$(curl -s -b "$JAR" -X POST $B/admin/services/reorder -H 'Content-Type: application/json' -H "X-CSRF: $ICSRF" -d "{\"ids\":[$SVC]}")"
 
-# --- grupuri: creeaza un grup, apoi verifica butoanele de reordonare a11y ---
-curl -s -o /dev/null -b "$JAR" -X POST $B/admin/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Grup CI" --data-urlencode "color=#64748b" --data-urlencode "sort_order=0"
-tcontains "grupuri: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/groups")"
+# --- grupuri + subgrupuri: creeaza un grup, apoi verifica pagina (arbore + parinte + atribuire) ---
+t "grupuri: creare grup -> 302" 302 "$(code -b "$JAR" -X POST $B/admin/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Grup CI" --data-urlencode "color=#64748b" --data-urlencode "sort_order=0")"
+GPAGE="$(curl -s -b "$JAR" "$B/admin/groups")"
+tcontains "grupuri: apare grupul creat" 'Grup CI' "$GPAGE"
+tcontains "grupuri: selector grup parinte (subgrupuri)" 'name="parent_id"' "$GPAGE"
+tcontains "grupuri: atribuire servicii la grup" 'admin/groups/assign' "$GPAGE"
+# creare subgrup + atribuire serviciu (parent_id/group_id validate server-side) -> 302
+curl -s -o /dev/null -b "$JAR" -X POST $B/admin/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Subgrup CI" --data-urlencode "color=#16a34a" --data-urlencode "sort_order=1"
+tcontains "grupuri: subgrup creat apare" 'Subgrup CI' "$(curl -s -b "$JAR" "$B/admin/groups")"
+t "grupuri: atribuire serviciu -> 302" 302 "$(code -b "$JAR" -X POST $B/admin/groups/assign --data-urlencode "_csrf=$ICSRF" --data-urlencode "service_id=$SVC" --data-urlencode "group_id=0")"
 
 # --- webhook de test (fara URL configurat -> eroare clara, fara 500) ---
 WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"

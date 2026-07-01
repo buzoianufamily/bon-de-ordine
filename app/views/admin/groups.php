@@ -1,15 +1,45 @@
-<?php $title='Grupuri servicii'; $active='groups'; require __DIR__.'/_header.php'; ?>
-<div class="topbar"><h1>Grupuri servicii</h1></div>
-<p class="muted" style="margin-top:-.6rem;max-width:680px">Grupeaza serviciile pe categorii (ex: „Acte", „Plati"). Pe dispenser, serviciile apar sub antetul grupului. Asociezi un serviciu unui grup din pagina serviciului.</p>
+<?php $title='Grupuri servicii'; $active='groups'; require __DIR__.'/_header.php';
+/* arbore: grupuri de nivel 0 + subgrupuri, pe filiala */
+$childrenOf = []; $topByBranch = [];
+foreach ($rows as $g) { $pid = (int)($g['parent_id'] ?? 0);
+  if ($pid) $childrenOf[$pid][] = $g; else $topByBranch[(int)$g['branch_id']][] = $g; }
+$groupById = []; foreach ($rows as $g) $groupById[(int)$g['id']] = $g;
+$svcByGroup = []; $ungroupedByBranch = [];
+foreach ($services as $s) { $gid=(int)($s['group_id']??0); if ($gid) $svcByGroup[$gid][]=$s; else $ungroupedByBranch[(int)$s['branch_id']][]=$s; }
+/* optiunile pentru „grup parinte" pe filiala (JSON pentru formular) */
+$parentOpts = [];
+foreach ($rows as $g) $parentOpts[(int)$g['branch_id']][] = ['id'=>(int)$g['id'],'name'=>$g['name'],'parent_id'=>(int)($g['parent_id']??0)];
+function grp_row(array $g, int $depth, array $childrenOf, array $svcByGroup): void {
+  $pad = 0.4 + $depth * 1.4; ?>
+  <tr data-id="<?= (int)$g['id'] ?>">
+    <td style="padding-left:<?= $pad ?>rem">
+      <?php if($depth>0): ?><span class="muted" style="margin-right:.3rem">↳</span><?php endif; ?>
+      <span class="tag" style="background:<?= e($g['color']) ?>;width:16px;height:16px"></span>
+      <strong><?= e($g['name']) ?></strong>
+      <span class="muted" style="font-size:.78rem;margin-left:.4rem"><?= (int)$g['svc'] ?> serv.<?= (int)$g['subgroups']>0 ? ' · '.(int)$g['subgroups'].' subgr.' : '' ?></span>
+    </td>
+    <td class="muted" style="font-size:.82rem"><?php $svcs=$svcByGroup[(int)$g['id']]??[]; echo $svcs ? e(implode(', ', array_map(fn($s)=>$s['prefix'].' '.$s['name'], array_slice($svcs,0,4)))).(count($svcs)>4?'…':'') : '—'; ?></td>
+    <td style="text-align:right;white-space:nowrap">
+      <a class="lnk" href="#" onclick='gEdit(<?= json_encode(["id"=>(int)$g["id"],"branch_id"=>(int)$g["branch_id"],"name"=>$g["name"],"color"=>$g["color"],"parent_id"=>(int)($g["parent_id"]??0),"sort_order"=>(int)$g["sort_order"]], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?>);return false'>Editeaza</a>
+      <form method="post" action="<?= e(url('admin/groups/'.$g['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi grupul? Serviciile raman (fara grup), iar subgrupurile devin grupuri de nivel 0."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+    </td>
+  </tr>
+  <?php foreach (($childrenOf[(int)$g['id']] ?? []) as $child) grp_row($child, $depth+1, $childrenOf, $svcByGroup);
+}
+?>
+<div class="topbar"><h1>Grupuri &amp; subgrupuri servicii</h1></div>
+<p class="muted" style="margin-top:-.6rem;max-width:760px">Organizeaza serviciile pe categorii și subcategorii (ex: <strong>Financiar → Casierie, Taxe</strong>). Pe dispenser, cu navigarea „pe categorii" activata (Configurare dispenser → Logic), clientul apasa pe categorie și vede serviciile din ea — util cand ai multe servicii.</p>
 
 <div class="row" style="align-items:flex-start">
   <form method="post" action="<?= e(url('admin/groups')) ?>" class="card pad" style="flex:0 0 320px"><?= csrf_field() ?>
     <input type="hidden" name="id" id="g_id" value="">
     <h3 style="margin-top:0" id="g_title">Grup nou</h3>
-    <div class="field"><label>Filiala</label><select name="branch_id" id="g_branch">
+    <div class="field"><label>Filiala</label><select name="branch_id" id="g_branch" onchange="gParents()">
       <?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?>
     </select></div>
     <div class="field"><label>Nume grup</label><input name="name" id="g_name" required></div>
+    <div class="field"><label>Grup parinte <span class="muted" style="font-weight:400">(optional — creeaza un subgrup)</span></label>
+      <select name="parent_id" id="g_parent"><option value="0">— fara (grup de nivel 0)</option></select></div>
     <div class="row">
       <div class="field"><label>Culoare</label><input type="color" name="color" id="g_color" value="#64748b"></div>
       <div class="field"><label>Ordine</label><input type="number" name="sort_order" id="g_sort" value="0"></div>
@@ -18,71 +48,60 @@
     <a class="btn btn-ghost" href="<?= e(url('admin/groups')) ?>" id="g_reset" style="display:none">Anuleaza</a>
   </form>
 
-  <div class="card pad" style="flex:1">
-    <p class="muted" style="margin-top:0;font-size:.82rem">Trage de ⠿ sau folosește ▲▼ ca să rearanjezi ordinea grupurilor (în interiorul fiecărei filiale).</p>
-    <table><thead><tr><th></th><th>Grup</th><th>Filiala</th><th>Servicii</th><th>Ordine</th><th></th></tr></thead><tbody id="grpRows">
-    <?php foreach($rows as $g): ?>
-      <tr data-id="<?= (int)$g['id'] ?>">
-        <td style="width:1%;white-space:nowrap;color:var(--muted)"><button type="button" class="mvbtn" data-mv="up" title="Mută mai sus" aria-label="Mută grupul mai sus" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;padding:0 .12rem">▲</button><button type="button" class="mvbtn" data-mv="down" title="Mută mai jos" aria-label="Mută grupul mai jos" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;padding:0 .12rem">▼</button> <span class="grip" title="Trage pentru a rearanja" style="cursor:grab">⠿</span></td>
-        <td><span class="tag" style="background:<?= e($g['color']) ?>;width:18px;height:18px"></span> <strong><?= e($g['name']) ?></strong></td>
-        <td class="muted"><?= e($g['branch_name']) ?></td>
-        <td><?= (int)$g['svc'] ?></td>
-        <td class="muted"><?= (int)$g['sort_order'] ?></td>
-        <td style="text-align:right;white-space:nowrap">
-          <a class="lnk" href="#" onclick='gEdit(<?= json_encode(["id"=>(int)$g["id"],"branch_id"=>(int)$g["branch_id"],"name"=>$g["name"],"color"=>$g["color"],"sort_order"=>(int)$g["sort_order"]], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?>);return false'>Editeaza</a>
-          <form method="post" action="<?= e(url('admin/groups/'.$g['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi grupul? Serviciile raman, dar fara grup."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+  <div class="card pad" style="flex:1;min-width:340px">
+    <?php foreach($branches as $b): $bid=(int)$b['id']; $tops=$topByBranch[$bid]??[]; if(!$tops && empty($ungroupedByBranch[$bid])) continue; ?>
+      <h3 style="margin:.2rem 0 .6rem"><?= e($b['name']) ?></h3>
+      <table style="margin-bottom:1rem"><thead><tr><th>Grup / subgrup</th><th>Servicii</th><th></th></tr></thead><tbody>
+        <?php foreach($tops as $g) grp_row($g, 0, $childrenOf, $svcByGroup); ?>
+        <?php if(!$tops): ?><tr><td colspan="3" class="muted">Niciun grup in aceasta filiala.</td></tr><?php endif; ?>
+      </tbody></table>
+    <?php endforeach; ?>
+    <?php if(!$rows): ?><p class="muted">Niciun grup. Creeaza primul in stanga.</p><?php endif; ?>
+  </div>
+</div>
+
+<div class="card pad" style="margin-top:1.2rem">
+  <h3 style="margin-top:0">Atribuie servicii la grupuri</h3>
+  <p class="muted" style="font-size:.82rem;margin-top:0">Muta fiecare serviciu intr-un grup (sau subgrup). Poti face asta si din pagina serviciului.</p>
+  <div style="overflow-x:auto"><table style="min-width:520px"><thead><tr><th>Serviciu</th><th>Filiala</th><th style="width:260px">Grup</th></tr></thead><tbody>
+    <?php foreach($services as $s): $bid=(int)$s['branch_id']; ?>
+      <tr>
+        <td><span class="tag" style="background:<?= e($s['color']) ?>;width:16px;height:16px"></span> <strong><?= e($s['prefix']) ?></strong> · <?= e($s['name']) ?></td>
+        <td class="muted"><?php $bn=''; foreach($branches as $b) if((int)$b['id']===$bid) $bn=$b['name']; echo e($bn); ?></td>
+        <td>
+          <form method="post" action="<?= e(url('admin/groups/assign')) ?>" style="display:flex;gap:.4rem"><?= csrf_field() ?>
+            <input type="hidden" name="service_id" value="<?= (int)$s['id'] ?>">
+            <select name="group_id" onchange="this.form.submit()" style="width:auto;flex:1">
+              <option value="0">— fara grup —</option>
+              <?php foreach($rows as $g): if((int)$g['branch_id']!==$bid) continue; $isSub=(int)($g['parent_id']??0)>0; ?>
+                <option value="<?= (int)$g['id'] ?>" <?= (int)($s['group_id']??0)===(int)$g['id']?'selected':'' ?>><?= $isSub?'   ↳ ':'' ?><?= e($g['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </form>
         </td>
       </tr>
     <?php endforeach; ?>
-    <?php if(!$rows): ?><tr><td colspan="6" class="muted">Niciun grup. Creeaza primul in stanga.</td></tr><?php endif; ?>
-    </tbody></table>
-  </div>
+    <?php if(!$services): ?><tr><td colspan="3" class="muted">Niciun serviciu activ.</td></tr><?php endif; ?>
+  </tbody></table></div>
 </div>
 <script>
+var G_PARENTS = <?= json_encode($parentOpts, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?>;
+var G_EDIT_ID = 0;
+function gParents(){
+  var branch = +document.getElementById('g_branch').value, sel = document.getElementById('g_parent'), cur = +sel.value||0;
+  var list = G_PARENTS[branch] || [];
+  sel.innerHTML = '<option value="0">— fara (grup de nivel 0)</option>' + list
+    .filter(function(g){ return g.id !== G_EDIT_ID; })   // nu poate fi propriul parinte
+    .map(function(g){ return '<option value="'+g.id+'"'+(g.id===cur?' selected':'')+'>'+(g.parent_id?'   ↳ ':'')+g.name.replace(/[<>&]/g,'')+'</option>'; }).join('');
+}
 function gEdit(g){
+  G_EDIT_ID = g.id;
   document.getElementById('g_id').value=g.id; document.getElementById('g_branch').value=g.branch_id;
   document.getElementById('g_name').value=g.name; document.getElementById('g_color').value=g.color||'#64748b';
   document.getElementById('g_sort').value=g.sort_order; document.getElementById('g_title').textContent='Editare grup';
+  gParents(); document.getElementById('g_parent').value = g.parent_id||0;
   document.getElementById('g_reset').style.display=''; window.scrollTo({top:0,behavior:'smooth'});
 }
-/* reordonare grupuri prin drag & drop (porneste din manerul ⠿) */
-window.addEventListener('load', function(){
-  var tb = document.getElementById('grpRows'); if(!tb) return;
-  var dragEl = null;
-  function saveOrder(){
-    var ids = Array.prototype.map.call(tb.querySelectorAll('tr[data-id]'), function(r){ return +r.dataset.id; });
-    QMS.api('admin/groups/reorder', {ids: ids}).then(function(r){
-      QMS.toast(r && r.ok ? 'Ordine salvata' : 'Eroare la salvare', r && r.ok ? 'ok' : 'error');
-    }).catch(function(){ QMS.toast('Eroare la salvare','error'); });
-  }
-  /* fallback la tastatura / atingere: butoanele ▲▼ */
-  tb.querySelectorAll('.mvbtn').forEach(function(b){
-    b.addEventListener('click', function(){
-      var row = b.closest('tr[data-id]'); if(!row) return;
-      if(b.dataset.mv === 'up'){ var p = row.previousElementSibling; if(!(p && p.hasAttribute('data-id'))) return; p.before(row); }
-      else { var n = row.nextElementSibling; if(!(n && n.hasAttribute('data-id'))) return; n.after(row); }
-      saveOrder(); b.focus();
-    });
-  });
-  tb.querySelectorAll('tr[data-id]').forEach(function(row){
-    var grip = row.querySelector('.grip'); if(!grip) return;
-    grip.addEventListener('mousedown', function(){ row.draggable = true; });
-    grip.addEventListener('touchstart', function(){ row.draggable = true; }, {passive:true});
-    row.addEventListener('dragstart', function(e){ dragEl = row; row.classList.add('dragging');
-      try{ e.dataTransfer.setData('text/plain',''); e.dataTransfer.effectAllowed='move'; }catch(_){} });
-    row.addEventListener('dragend', function(){
-      row.classList.remove('dragging'); row.draggable = false;
-      if(!dragEl) return; dragEl = null;
-      saveOrder();
-    });
-  });
-  tb.addEventListener('dragover', function(e){
-    e.preventDefault();
-    var t = e.target.closest ? e.target.closest('tr[data-id]') : null;
-    if(!t || !dragEl || t === dragEl) return;
-    var rows = Array.prototype.slice.call(tb.querySelectorAll('tr[data-id]'));
-    if(rows.indexOf(dragEl) < rows.indexOf(t)) t.after(dragEl); else t.before(dragEl);
-  });
-});
+gParents();
 </script>
 <?php require __DIR__.'/_footer.php'; ?>

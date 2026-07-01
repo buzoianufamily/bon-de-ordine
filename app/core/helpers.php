@@ -965,6 +965,9 @@ function run_migrations(): void {
     if (!$hasCol('counters','cd_hint_idle'))    $ddl("ALTER TABLE counters ADD COLUMN cd_hint_idle VARCHAR(80) NULL");
     if (!$hasCol('counters','cd_hint_serving')) $ddl("ALTER TABLE counters ADD COLUMN cd_hint_serving VARCHAR(80) NULL");
 
+    // v35: subgrupuri de servicii (grup parinte) — pentru navigare pe categorii la dispenser
+    if (!$hasCol('service_groups','parent_id')) $ddl("ALTER TABLE service_groups ADD COLUMN parent_id INT NULL");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -984,7 +987,8 @@ function run_migrations(): void {
             && $hasCol('users','must_change_pw')
             && $hasCol('appointments','consent_at') && $hasCol('appointments','consent_ip')
             && $hasCol('users','phone')
-            && $hasCol('counters','cd_hint_idle') && $hasCol('counters','cd_hint_serving')) {
+            && $hasCol('counters','cd_hint_idle') && $hasCol('counters','cd_hint_serving')
+            && $hasCol('service_groups','parent_id')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}

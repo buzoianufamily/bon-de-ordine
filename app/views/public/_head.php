@@ -12,6 +12,17 @@ $__vp = !empty($kiosk)
 <link rel="stylesheet" href="<?= e(asset('fonts.css')) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 <style>:root{--accent:<?= e($accent) ?>}</style>
+<?php if (!empty($publicTheme)): /* comutator tema dark/light pe paginile publice care il cer */ ?>
+<script>try{if(localStorage.getItem('bdo_ptheme')==='dark')document.documentElement.classList.add('pdark');}catch(e){}</script>
+<script>document.addEventListener('DOMContentLoaded',function(){
+  var b=document.createElement('button');b.className='ptheme-btn';b.type='button';
+  b.setAttribute('aria-label','Comuta tema deschisa sau inchisa');b.title='Comuta tema deschisa/inchisa';
+  function ic(){b.textContent=document.documentElement.classList.contains('pdark')?'☀️':'🌙';}
+  ic();b.addEventListener('click',function(){var d=document.documentElement.classList.toggle('pdark');
+    try{localStorage.setItem('bdo_ptheme',d?'dark':'light');}catch(e){}ic();});
+  document.body.appendChild(b);
+});</script>
+<?php endif; ?>
 <link rel="manifest" href="<?= e(url('manifest.webmanifest')) ?>">
 <meta name="theme-color" content="<?= e($accent) ?>">
 <link rel="apple-touch-icon" href="<?= e(asset('icon-192.png')) ?>">
