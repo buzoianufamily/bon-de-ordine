@@ -472,12 +472,14 @@ function auth_i18n(string $lang): array {
            'signin'=>'Intra in cont','forgot'=>'Ai uitat parola?','portal'=>'← Portal','back_login'=>'← Autentificare',
            'fp_title'=>'Resetare parola','fp_intro'=>'Introdu emailul contului. Iti trimitem un link pentru a-ti seta o parola noua.','fp_send'=>'Trimite linkul de resetare','fp_sent'=>'Daca adresa exista in sistem, ti-am trimis un email cu un link de resetare. Verifica si folderul Spam. Linkul expira in 60 de minute.','fp_back'=>'Inapoi la autentificare',
            'rp_title'=>'Parola noua','rp_h1'=>'Seteaza o parola noua','rp_invalid'=>'Linkul de resetare este invalid sau a expirat.','rp_newlink'=>'Cere un link nou','rp_intro'=>'Alege o parola noua pentru contul tau (minim 6 caractere).','rp_new'=>'Parola noua','rp_confirm'=>'Confirma parola','rp_save'=>'Salveaza parola',
-           'ac_title'=>'Contul meu','ac_change'=>'Schimba parola','ac_cur'=>'Parola curenta','ac_newmin'=>'Parola noua (min 6)','ac_confirm2'=>'Confirma parola noua','ac_back'=>'← Inapoi','ac_logout'=>'Iesire'];
+           'ac_title'=>'Contul meu','ac_change'=>'Schimba parola','ac_cur'=>'Parola curenta','ac_newmin'=>'Parola noua (min 6)','ac_confirm2'=>'Confirma parola noua','ac_back'=>'← Inapoi','ac_logout'=>'Iesire',
+           'ac_profile'=>'Date personale','ac_name'=>'Nume','ac_phone'=>'Telefon','ac_save'=>'Salveaza datele'];
     $tr = [
         'en'=>['title'=>'Sign in','subtitle'=>'Sign in to your account','email'=>'Email','password'=>'Password','signin'=>'Sign in','forgot'=>'Forgot your password?','portal'=>'← Portal','back_login'=>'← Sign in',
                'fp_title'=>'Reset password','fp_intro'=>'Enter your account email. We will send you a link to set a new password.','fp_send'=>'Send reset link','fp_sent'=>'If the address exists in the system, we have sent an email with a reset link. Check the Spam folder too. The link expires in 60 minutes.','fp_back'=>'Back to sign in',
                'rp_title'=>'New password','rp_h1'=>'Set a new password','rp_invalid'=>'The reset link is invalid or has expired.','rp_newlink'=>'Request a new link','rp_intro'=>'Choose a new password for your account (at least 6 characters).','rp_new'=>'New password','rp_confirm'=>'Confirm password','rp_save'=>'Save password',
-               'ac_title'=>'My account','ac_change'=>'Change password','ac_cur'=>'Current password','ac_newmin'=>'New password (min 6)','ac_confirm2'=>'Confirm new password','ac_back'=>'← Back','ac_logout'=>'Sign out'],
+               'ac_title'=>'My account','ac_change'=>'Change password','ac_cur'=>'Current password','ac_newmin'=>'New password (min 6)','ac_confirm2'=>'Confirm new password','ac_back'=>'← Back','ac_logout'=>'Sign out',
+               'ac_profile'=>'Personal details','ac_name'=>'Name','ac_phone'=>'Phone','ac_save'=>'Save details'],
         'de'=>['title'=>'Anmeldung','subtitle'=>'Bei Ihrem Konto anmelden','email'=>'E-Mail','password'=>'Passwort','signin'=>'Anmelden','forgot'=>'Passwort vergessen?','portal'=>'← Portal','back_login'=>'← Anmeldung',
                'fp_title'=>'Passwort zurücksetzen','fp_intro'=>'Geben Sie die E-Mail Ihres Kontos ein. Wir senden Ihnen einen Link, um ein neues Passwort festzulegen.','fp_send'=>'Reset-Link senden','fp_sent'=>'Falls die Adresse im System existiert, haben wir eine E-Mail mit einem Reset-Link gesendet. Prüfen Sie auch den Spam-Ordner. Der Link läuft in 60 Minuten ab.','fp_back'=>'Zurück zur Anmeldung',
                'rp_title'=>'Neues Passwort','rp_h1'=>'Neues Passwort festlegen','rp_invalid'=>'Der Reset-Link ist ungültig oder abgelaufen.','rp_newlink'=>'Neuen Link anfordern','rp_intro'=>'Wählen Sie ein neues Passwort (mindestens 6 Zeichen).','rp_new'=>'Neues Passwort','rp_confirm'=>'Passwort bestätigen','rp_save'=>'Passwort speichern',
@@ -949,6 +951,9 @@ function run_migrations(): void {
     // v32: accent implicit aliniat la verdele Moviik (doar daca instanta inca foloseste albastrul implicit vechi)
     try { if (val("SELECT v FROM settings WHERE k='accent_color'") === '#2563eb') set_setting('accent_color', '#00c375'); } catch (Throwable $e) {}
 
+    // v33: telefon pe conturi (editabil de fiecare utilizator in „Contul meu")
+    if (!$hasCol('users','phone')) $ddl("ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL AFTER email");
+
     // marcheaza versiunea DOAR daca schema chiar e completa acum (altfel nu reincearca degeaba)
     try {
         if ($hasTable('forms') && $hasTable('appointments')
@@ -966,10 +971,50 @@ function run_migrations(): void {
             && $hasTable('appointment_waitlist') && $hasCol('branches','open_hours')
             && $hasIdx('tickets','idx_tickets_svc_status') && $hasCol('users','totp_last_slice')
             && $hasCol('users','must_change_pw')
-            && $hasCol('appointments','consent_at') && $hasCol('appointments','consent_ip')) {
+            && $hasCol('appointments','consent_at') && $hasCol('appointments','consent_ip')
+            && $hasCol('users','phone')) {
             set_setting('schema_version', (string)$target);
         }
     } catch (Throwable $e) {}
+}
+
+/* ----------------------- Incarcare fisiere (media): dimensiuni + curatare SVG ----------------------- */
+/** Converteste o valoare din php.ini ("8M", "512K", "2G", "104857600") in octeti. */
+function bdo_ini_bytes(string $key): int {
+    $v = trim((string) ini_get($key));
+    if ($v === '') return 0;
+    $unit = strtolower(substr($v, -1));
+    $num = (int) $v;
+    switch ($unit) {
+        case 'g': $num *= 1024; // fallthrough
+        case 'm': $num *= 1024; // fallthrough
+        case 'k': $num *= 1024;
+    }
+    return $num;
+}
+/** Format prietenos pentru dimensiuni (ex: 512 MB). */
+function bdo_human_size(int $bytes): string {
+    if ($bytes >= 1024 * 1024 * 1024) return round($bytes / (1024 * 1024 * 1024), 1) . ' GB';
+    if ($bytes >= 1024 * 1024) return round($bytes / (1024 * 1024)) . ' MB';
+    if ($bytes >= 1024) return round($bytes / 1024) . ' KB';
+    return $bytes . ' B';
+}
+/**
+ * Curata un continut SVG de vectori de XSS (script, handlere de eveniment, javascript:,
+ * foreignObject, referinte externe). Permite SVG-ul sa fie randat in siguranta ca imagine.
+ */
+function bdo_sanitize_svg(string $svg): string {
+    // elimina complet <script>...</script> si <foreignObject>...</foreignObject>
+    $svg = preg_replace('#<\s*script\b[^>]*>.*?<\s*/\s*script\s*>#is', '', $svg);
+    $svg = preg_replace('#<\s*script\b[^>]*/\s*>#is', '', $svg);
+    $svg = preg_replace('#<\s*foreignObject\b[^>]*>.*?<\s*/\s*foreignObject\s*>#is', '', $svg);
+    // atribute de eveniment (on...="...") si stiluri cu expression()
+    $svg = preg_replace('/\son[a-z]+\s*=\s*"[^"]*"/i', '', $svg);
+    $svg = preg_replace("/\son[a-z]+\s*=\s*'[^']*'/i", '', $svg);
+    // URI-uri periculoase in href/xlink:href/src
+    $svg = preg_replace('/(href|xlink:href|src)\s*=\s*"(\s*javascript:|\s*data:text\/html)[^"]*"/i', '$1="#"', $svg);
+    $svg = preg_replace("/(href|xlink:href|src)\s*=\s*'(\s*javascript:|\s*data:text\/html)[^']*'/i", "$1='#'", $svg);
+    return $svg;
 }
 
 /* ----------------------- Backup baza de date (manual + automat) ----------------------- */

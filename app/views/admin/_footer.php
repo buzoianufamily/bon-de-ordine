@@ -74,6 +74,17 @@ document.addEventListener('click',function(e){
   if(bk) bk.addEventListener('click', closeNav);
   document.querySelectorAll('.side a').forEach(function(a){ a.addEventListener('click', closeNav); });
 })();
+/* meniul contului (chip dreapta-sus): editare profil + iesire */
+(function(){
+  var wrap=document.getElementById('usermenu'); if(!wrap)return;
+  var btn=document.getElementById('uchip-btn'), pop=document.getElementById('umpop');
+  if(!btn||!pop)return;
+  function openM(){ pop.hidden=false; btn.setAttribute('aria-expanded','true'); }
+  function closeM(){ pop.hidden=true; btn.setAttribute('aria-expanded','false'); }
+  btn.addEventListener('click',function(e){ e.stopPropagation(); pop.hidden?openM():closeM(); });
+  document.addEventListener('click',function(e){ if(!wrap.contains(e.target)) closeM(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeM(); });
+})();
 /* cautare globala Ctrl+K / Cmd+K */
 (function(){
   var pages=[]; document.querySelectorAll('.side a[href]').forEach(function(a){

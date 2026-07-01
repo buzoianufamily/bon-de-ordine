@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   name          VARCHAR(120) NOT NULL,
   email         VARCHAR(160) NOT NULL UNIQUE,
+  phone         VARCHAR(32)  NULL,
   password_hash VARCHAR(255) NOT NULL,
   role          ENUM('admin','manager','agent') NOT NULL DEFAULT 'agent',
   pin           VARCHAR(12)  NULL,

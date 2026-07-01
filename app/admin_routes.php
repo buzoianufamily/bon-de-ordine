@@ -193,10 +193,6 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $a === 'erase')  { admin_gdpr_erase(); return; }
             admin_gdpr_page(); return;
 
-        case 'checkup':
-            if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
-            view('admin/checkup', ['checks' => system_checkup()]); return;
-
         case 'help':
             view('admin/help', []); return;
 
@@ -1321,7 +1317,8 @@ function admin_settings_save(): void {
              'alert_called','alert_transfer','alert_delay','near_turn_alert','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
              'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min','feedback_alert_rating',
-             'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra','legal_privacy_text','legal_terms_text','legal_slug_privacy','legal_slug_terms','backup_keep','admin_idle_min'];
+             'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra','legal_privacy_text','legal_terms_text','legal_slug_privacy','legal_slug_terms','backup_keep','admin_idle_min',
+             'cd_hint_idle','cd_hint_serving'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
     set_setting('backup_auto_enabled', isset($_POST['backup_auto_enabled']) ? '1' : '0');
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
@@ -1624,21 +1621,38 @@ function admin_media_list(): void {
 function admin_media_upload(): void {
     csrf_check();
     if (empty($_FILES['file']) || !is_array($_FILES['file']['name'])) { flash('Niciun fisier selectat.', 'error'); redirect('admin/media'); }
-    // SVG exclus intentionat: poate contine <script> si, servit same-origin, ar permite XSS stocat
-    $allowed = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp',
-                'video/mp4'=>'mp4','video/webm'=>'webm'];
+    // Se accepta ORICE tip de fisier. Sunt blocate doar extensiile executabile pe server
+    // (protectie anti-RCE), iar SVG-ul este curatat de scripturi inainte de stocare.
+    // Folderul assets/uploads are oricum .htaccess care dezactiveaza executia (aparare in adancime).
+    $blockExt = ['php','php2','php3','php4','php5','php6','php7','php8','phtml','pht','phps','phar','phpt',
+                 'cgi','pl','py','asp','aspx','jsp','jspx','sh','bash','exe','bat','cmd','com','htaccess','htpasswd'];
     $dir = APP_ROOT . '/assets/uploads';
     if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    // plafon efectiv: cel mai mic dintre plafonul aplicatiei si limitele PHP (upload_max_filesize/post_max_size)
+    $appMax  = 512 * 1024 * 1024;                                             // plafon generos (512MB)
+    $iniMax  = min(bdo_ini_bytes('upload_max_filesize'), bdo_ini_bytes('post_max_size'));
+    $maxBytes = $iniMax > 0 ? min($appMax, $iniMax) : $appMax;
     $okCount = 0; $files = $_FILES['file'];
     for ($i = 0; $i < count($files['name']); $i++) {
-        if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
+        if ($files['error'][$i] !== UPLOAD_ERR_OK) {
+            if (in_array($files['error'][$i], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true))
+                flash('Fisier prea mare pentru limita serverului (max '.bdo_human_size($maxBytes).').', 'error');
+            continue;
+        }
         $tmp = $files['tmp_name'][$i];
+        if ($files['size'][$i] > $maxBytes) { flash('Fisier prea mare (max '.bdo_human_size($maxBytes).').', 'error'); continue; }
+        $orig = (string) $files['name'][$i];
+        $ext = strtolower(preg_replace('/[^a-z0-9]+/i', '', pathinfo($orig, PATHINFO_EXTENSION))) ?: 'bin';
+        if (in_array($ext, $blockExt, true)) { flash('Tip de fisier interzis din motive de securitate: .'.e($ext), 'error'); continue; }
         $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = (string) $finfo->file($tmp);   // tipul real (NU ne increddem in $_FILES['type'] de la client)
-        if (!isset($allowed[$mime])) { flash('Tip de fisier neacceptat: '.e($mime ?: 'necunoscut'), 'error'); continue; }
-        if ($files['size'][$i] > 25 * 1024 * 1024) { flash('Fisier prea mare (max 25MB).', 'error'); continue; }
-        $ext = $allowed[$mime];
-        $base = preg_replace('/[^a-zA-Z0-9_-]+/', '_', pathinfo($files['name'][$i], PATHINFO_FILENAME));
+        $mime = (string) $finfo->file($tmp) ?: 'application/octet-stream';
+        // SVG: curata scripturile inainte de stocare, ca sa poata fi randat in siguranta ca imagine
+        if ($ext === 'svg' || $ext === 'svgz' || $mime === 'image/svg+xml') {
+            $clean = bdo_sanitize_svg((string) @file_get_contents($tmp));
+            @file_put_contents($tmp, $clean);
+            $ext = 'svg'; $mime = 'image/svg+xml';
+        }
+        $base = preg_replace('/[^a-zA-Z0-9_-]+/', '_', pathinfo($orig, PATHINFO_FILENAME));
         $base = substr($base, 0, 40) ?: 'fisier';
         $fname = $base . '_' . substr(bin2hex(random_bytes(4)), 0, 6) . '.' . $ext;
         if (@move_uploaded_file($tmp, $dir . '/' . $fname)) {

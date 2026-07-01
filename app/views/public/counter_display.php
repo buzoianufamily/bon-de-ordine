@@ -1,11 +1,14 @@
-<?php $title='Ghiseu '.$counter['code'].' · Afisaj'; $kiosk=true; require __DIR__.'/_head.php'; ?>
+<?php $title='Ghiseu '.$counter['code'].' · Afisaj'; $kiosk=true; require __DIR__.'/_head.php';
+/* texte editabile din Setari -> Afisaj (fallback la formularile implicite) */
+$cdIdle    = trim((string) setting('cd_hint_idle', '')) ?: 'Asteptam urmatorul bon…';
+$cdServing = trim((string) setting('cd_hint_serving', '')) ?: 'Va rugam prezentati-va la ghiseu'; ?>
 <body style="margin:0;background:#0b0d12;color:#fff;overflow:hidden">
 <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1vh">
   <div style="font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9aa3b2;font-size:3.2vh"><?= e(setting('brand_name','')) ?></div>
   <div id="cdCode" style="font-family:var(--display);font-weight:800;font-size:14vh;line-height:1;color:var(--accent)"><?= e($counter['code']) ?></div>
   <div style="font-weight:700;color:#cdd3dc;font-size:3.4vh"><?= e($counter['name']) ?></div>
   <div id="cdNum" style="font-family:var(--display);font-weight:800;font-size:34vh;line-height:1;margin-top:1vh">—</div>
-  <div id="cdHint" class="muted" style="font-size:2.6vh;color:#7d8696">Asteptam urmatorul bon…</div>
+  <div id="cdHint" class="muted" style="font-size:2.6vh;color:#7d8696"><?= e($cdIdle) ?></div>
 </div>
 <?php $notice = active_notice(); ?>
 <div id="cdNotice" style="position:fixed;left:0;right:0;bottom:0;background:#3a2f12;color:#f5d98a;padding:1.4vh 2vw;text-align:center;font-size:2.4vh;font-weight:700;<?= $notice===''?'display:none':'' ?>"><?= $notice!=='' ? '📢 '.e($notice) : '' ?></div>
@@ -13,6 +16,7 @@
 <script>
 (function(){
   var branch = <?= (int)$counter['branch_id'] ?>, counterId = <?= (int)$counter['id'] ?>;
+  var TXT_IDLE = <?= json_encode($cdIdle, JSON_UNESCAPED_UNICODE) ?>, TXT_SERVING = <?= json_encode($cdServing, JSON_UNESCAPED_UNICODE) ?>;
   var elNum = document.getElementById('cdNum'), elHint = document.getElementById('cdHint');
   var lastLabel = null, firstPaint = true;
   function ding(){ try{ var ac=new(window.AudioContext||window.webkitAudioContext)(); var o=ac.createOscillator(),g=ac.createGain();
@@ -37,7 +41,7 @@
     }
     var label = c && c.current_label ? c.current_label : null;
     elNum.textContent = label || '—';
-    elHint.textContent = label ? 'Va rugam prezentati-va la ghiseu' : 'Asteptam urmatorul bon…';
+    elHint.textContent = label ? TXT_SERVING : TXT_IDLE;
     if(label && label !== lastLabel && !first){ flash(); ding(); }   // suna la orice bon nou (inclusiv din inactiv)
     lastLabel = label;
   }

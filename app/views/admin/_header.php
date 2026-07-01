@@ -52,7 +52,6 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
       <a href="<?= e(url('admin/api')) ?>" class="<?= ($active??'')==='api'?'active':'' ?>"><span class="ic">🔌</span><span class="lbl">API & Webhooks</span></a>
       <a href="<?= e(url('admin/audit')) ?>" class="<?= ($active??'')==='audit'?'active':'' ?>"><span class="ic">📜</span><span class="lbl">Jurnal audit</span></a>
       <a href="<?= e(url('admin/gdpr')) ?>" class="<?= ($active??'')==='gdpr'?'active':'' ?>"><span class="ic">⚖️</span><span class="lbl">GDPR</span></a>
-      <a href="<?= e(url('admin/checkup')) ?>" class="<?= ($active??'')==='checkup'?'active':'' ?>"><span class="ic">🩺</span><span class="lbl">Verificare</span></a>
     <?php elseif (can('settings')): ?>
       <div class="grp">Acces</div>
       <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
@@ -62,7 +61,7 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
       <a href="<?= e(url('admin/help')) ?>" class="<?= ($active??'')==='help'?'active':'' ?>"><span class="ic">❔</span><span class="lbl">Ajutor</span></a>
       <a href="<?= e(url('counter')) ?>"><span class="ic">▶</span><span class="lbl">Terminal operator</span></a>
       <?php if (setting('mod_concierge','1')==='1'): ?><a href="<?= e(url('concierge')) ?>"><span class="ic">🛎</span><span class="lbl">Concierge</span></a><?php endif; ?>
-      <a href="<?= e(url('logout')) ?>"><span class="ic">⇥</span><span class="lbl">Iesire</span></a>
+      <a href="<?= e(url('/')) ?>" title="Pagina principala (portal)"><span class="ic">⌂</span><span class="lbl">Portal</span></a>
     </div>
   </nav>
   <main class="main">
@@ -73,7 +72,18 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
       </div>
       <div class="right">
         <button class="themebtn" id="theme-toggle" title="Comuta tema deschisa/inchisa" aria-label="Comuta tema">🌙</button>
-        <span class="uchip"><span class="av"><?= e(mb_strtoupper(mb_substr($u['name'] ?? '?',0,1))) ?></span><?= e($u['name'] ?? '') ?></span>
+        <div class="usermenu" id="usermenu">
+          <button class="uchip" id="uchip-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Contul meu">
+            <span class="av"><?= e(mb_strtoupper(mb_substr($u['name'] ?? '?',0,1))) ?></span>
+            <span class="uname"><?= e($u['name'] ?? '') ?></span>
+            <span class="caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="umpop" id="umpop" role="menu" hidden>
+            <div class="umhead"><strong><?= e($u['name'] ?? '') ?></strong><span class="muted"><?= e($u['email'] ?? '') ?></span></div>
+            <a href="<?= e(url('account')) ?>" role="menuitem"><span class="ic">👤</span> Editare profil</a>
+            <a href="<?= e(url('logout')) ?>" role="menuitem"><span class="ic">⇥</span> Iesire</a>
+          </div>
+        </div>
       </div>
     </div>
     <div class="content" id="main-content">

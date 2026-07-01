@@ -8,7 +8,7 @@
 </div>
 <form method="post" action="<?= e(url('admin/devices')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
-  <div class="card pad" style="max-width:860px">
+  <div class="card pad">
 
     <div class="formsec">
       <div class="sech"><span class="ic">▭</span><div><h3>Date dispozitiv</h3><p>Filiala, tip si nume.</p></div></div>

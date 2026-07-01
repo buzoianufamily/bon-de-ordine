@@ -106,6 +106,21 @@ function change_own_password(int $uid, string $current, string $new, string $con
     return ['ok' => true, 'error' => ''];
 }
 
+/** Actualizeaza datele proprii de profil (nume, email, telefon). ['ok'=>bool,'error'=>string] */
+function change_own_profile(int $uid, string $name, string $email, string $phone): array {
+    $name  = trim($name);
+    $email = trim($email);
+    $phone = trim($phone);
+    if ($name === '') return ['ok' => false, 'error' => 'Numele nu poate fi gol.'];
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) return ['ok' => false, 'error' => 'Adresa de email nu este valida.'];
+    // emailul e identificator de autentificare -> trebuie sa ramana unic
+    $taken = one('SELECT id FROM users WHERE email=? AND id<>?', [$email, $uid]);
+    if ($taken) return ['ok' => false, 'error' => 'Aceasta adresa de email este deja folosita de alt cont.'];
+    if (mb_strlen($phone) > 32) $phone = mb_substr($phone, 0, 32);
+    q('UPDATE users SET name=?, email=?, phone=? WHERE id=?', [$name, $email, ($phone === '' ? null : $phone), $uid]);
+    return ['ok' => true, 'error' => ''];
+}
+
 /**
  * Creeaza un token de resetare pentru emailul dat si trimite linkul pe email.
  * Best-effort, fara a divulga daca emailul exista. Returneaza true daca un email a fost trimis.

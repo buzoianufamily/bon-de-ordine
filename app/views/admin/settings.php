@@ -91,6 +91,13 @@
       <label style="margin:.5rem 0;display:block"><input type="checkbox" name="counter_voice" <?= setting('counter_voice','0')==='1'?'checked':'' ?> style="width:auto"> Anunt vocal si la terminalul operatorului (la „Cheama urmatorul")</label>
       <p class="muted" style="font-size:.82rem">Aceste valori sunt folosite pe afisajele fara layout personalizat. Afisajele cu layout (editor canvas) au setarile lor de sunet.</p>
     </div>
+    <div class="card pad setcard">
+      <h3 style="margin-top:0">Afisaj de ghiseu (<code>/cd/…</code>)</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Ecranul mic de pe biroul operatorului (tableta/monitor) care arata bonul curent chemat la acel ghiseu. Deschide-l din <a href="<?= e(url('admin/counters')) ?>">Ghisee</a> (linkul „Afisaj ghiseu"). Aici personalizezi mesajele afisate:</p>
+      <div class="field"><label>Text cand nu e niciun bon chemat</label><input name="cd_hint_idle" value="<?= $s('cd_hint_idle') ?>" placeholder="Asteptam urmatorul bon…" maxlength="80"></div>
+      <div class="field"><label>Text cand un bon este chemat (deasupra numarului)</label><input name="cd_hint_serving" value="<?= $s('cd_hint_serving') ?>" placeholder="Va rugam prezentati-va la ghiseu" maxlength="80"></div>
+      <p class="muted" style="font-size:.8rem;margin-bottom:0">Ex: pune „Bonul curent este:" ca text pentru bonul chemat.</p>
+    </div>
   </div>
 
   <div class="settab dv-hidden" data-pane="digital">
@@ -217,7 +224,7 @@
   <button class="btn btn-primary btn-lg" style="margin-top:1.2rem">Salveaza setarile</button>
 </form>
 
-<div class="card pad" style="max-width:640px;margin-top:1.4rem">
+<div class="card pad" style="margin-top:1.4rem">
   <h3 style="margin-top:0">Backup / clonare configurație</h3>
   <p class="muted" style="font-size:.82rem;margin-top:0">Descarcă toate setările (branding, texte, alerte, module, automatizări) ca fișier JSON — pentru backup sau pentru a configura rapid o altă instanță. Cheile sensibile (chei API, token cron) <strong>nu</strong> se exportă.</p>
   <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
@@ -264,7 +271,7 @@
 </div>
 
 <?php if ((current_user()['role'] ?? '') === 'admin'): ?>
-<div class="card pad" style="max-width:640px;margin-top:1.4rem;border-color:#dc2626">
+<div class="card pad" style="margin-top:1.4rem;border-color:#dc2626">
   <h3 style="margin-top:0;color:#dc2626">⚠ Pregătire pentru producție</h3>
   <p class="muted" style="font-size:.82rem;margin-top:0">După ce ai terminat de testat, șterge <strong>datele de test</strong> (bilete, programări, feedback, sesiuni, jurnale de prezență/webhook) ca să pornești cu o evidență curată. <strong>Configurația rămâne intactă</strong> (filiale, servicii, ghișee, utilizatori, dispozitive, setări). Se face automat un <strong>backup de siguranță</strong> înainte. Acțiunea este ireversibilă (în afară de restaurarea backup-ului).</p>
   <form method="post" action="<?= e(url('admin/reset')) ?>" data-confirm="Sigur ștergi TOATE datele operaționale (bilete/programări/feedback)? Configurația rămâne. Se face backup automat înainte."><?= csrf_field() ?>
