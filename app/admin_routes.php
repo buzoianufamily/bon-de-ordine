@@ -71,9 +71,11 @@ function admin_dispatch(array $seg, string $method): void {
 
         case 'groups':
             if ($method === 'POST' && $a === 'reorder') { admin_groups_reorder(); return; }
+            if ($method === 'POST' && $a === 'assign') { admin_group_assign(); return; }
             if ($method === 'POST' && $a === null) { admin_group_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 q('UPDATE services SET group_id=NULL WHERE group_id=?', [(int)$a]);
+                q('UPDATE service_groups SET parent_id=NULL WHERE parent_id=?', [(int)$a]);  // subgrupurile devin grupuri de nivel 0
                 q('DELETE FROM service_groups WHERE id=?', [(int)$a]); audit('delete','group',(int)$a); flash('Grup sters.'); redirect('admin/groups'); }
             admin_groups_list(); return;
 
@@ -558,10 +560,14 @@ function admin_service_save(): void {
 
 /* ----------------------- SERVICE GROUPS ----------------------- */
 function admin_groups_list(): void {
-    $rows = all('SELECT g.*, b.name branch_name, (SELECT COUNT(*) FROM services s WHERE s.group_id=g.id) svc
+    $rows = all('SELECT g.*, b.name branch_name,
+                        (SELECT COUNT(*) FROM services s WHERE s.group_id=g.id) svc,
+                        (SELECT COUNT(*) FROM service_groups c WHERE c.parent_id=g.id) subgroups
                  FROM service_groups g JOIN branches b ON b.id=g.branch_id ORDER BY b.name, g.sort_order, g.name');
     $branches = all('SELECT id,name FROM branches ORDER BY name');
-    view('admin/groups', compact('rows','branches'));
+    // serviciile fiecarei filiale (pentru afisarea structurii + atribuire rapida)
+    $services = all('SELECT id,prefix,name,color,group_id,branch_id FROM services WHERE status="active" ORDER BY branch_id, sort_order, name');
+    view('admin/groups', compact('rows','branches','services'));
 }
 function admin_groups_reorder(): void {
     csrf_check();
@@ -575,8 +581,23 @@ function admin_groups_reorder(): void {
 function admin_group_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
-    $f = ['branch_id'=>(int)($_POST['branch_id'] ?? 1), 'name'=>trim($_POST['name'] ?? ''),
-          'color'=>trim($_POST['color'] ?? '#64748b'), 'sort_order'=>(int)($_POST['sort_order'] ?? 0)];
+    $branch = (int)($_POST['branch_id'] ?? 1);
+    $parent = (int)($_POST['parent_id'] ?? 0);
+    // valideaza grupul parinte: aceeasi filiala, nu el insusi, fara cicluri (subgrup al propriului descendent)
+    if ($parent > 0) {
+        $pg = one('SELECT id, branch_id, parent_id FROM service_groups WHERE id=?', [$parent]);
+        if (!$pg || (int)$pg['branch_id'] !== $branch || ($id && $parent === $id)) $parent = 0;
+        else {
+            $cur = $pg; $guard = 0;
+            while ($cur && !empty($cur['parent_id']) && $guard++ < 30) {
+                if ((int)$cur['parent_id'] === $id) { $parent = 0; break; }   // ciclu
+                $cur = one('SELECT id, parent_id FROM service_groups WHERE id=?', [(int)$cur['parent_id']]);
+            }
+        }
+    }
+    $f = ['branch_id'=>$branch, 'name'=>trim($_POST['name'] ?? ''),
+          'color'=>trim($_POST['color'] ?? '#64748b'), 'parent_id'=>($parent > 0 ? $parent : null),
+          'sort_order'=>(int)($_POST['sort_order'] ?? 0)];
     if ($f['name'] === '') { flash('Numele grupului este obligatoriu.', 'error'); redirect('admin/groups'); }
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
@@ -588,6 +609,23 @@ function admin_group_save(): void {
         flash('Grup creat.');
     }
     audit($id?'update':'create','group',$id ?: insert_id());
+    redirect('admin/groups');
+}
+/** Atribuie rapid un serviciu unui grup (din pagina Grupuri). group_id=0 => scoate din grup. */
+function admin_group_assign(): void {
+    csrf_check();
+    $sid = (int)($_POST['service_id'] ?? 0);
+    $gid = (int)($_POST['group_id'] ?? 0);
+    if ($sid <= 0) { flash('Serviciu invalid.', 'error'); redirect('admin/groups'); }
+    // grupul trebuie sa fie in aceeasi filiala ca serviciul
+    if ($gid > 0) {
+        $sv = one('SELECT branch_id FROM services WHERE id=?', [$sid]);
+        $g  = one('SELECT branch_id FROM service_groups WHERE id=?', [$gid]);
+        if (!$sv || !$g || (int)$sv['branch_id'] !== (int)$g['branch_id']) { flash('Grupul nu e din filiala serviciului.', 'error'); redirect('admin/groups'); }
+    }
+    q('UPDATE services SET group_id=? WHERE id=?', [$gid ?: null, $sid]);
+    audit('update', 'service', $sid, 'group_id='.$gid);
+    flash('Serviciu mutat.');
     redirect('admin/groups');
 }
 

@@ -225,6 +225,42 @@
     b.appendChild(s); setTimeout(()=>s.remove(), 600);
   }, {passive:true});
 
+  /* ---- navigare „pe categorii" (drill-down): tile-uri de grup <-> panouri ---- */
+  (function(){
+    var panels = document.querySelectorAll('.drillpanel'); if(!panels.length) return;
+    var byId = {}; panels.forEach(function(p){ byId[p.dataset.panel] = p; });
+    var stack = ['root'];
+    function show(id){ panels.forEach(function(p){ p.classList.toggle('on', p.dataset.panel===id); }); try{ window.scrollTo(0,0); }catch(e){} }
+    document.addEventListener('click', function(e){
+      var open = e.target.closest('[data-open]');
+      if(open){ var id=open.getAttribute('data-open'); if(byId[id]){ stack.push(id); show(id); } return; }
+      var back = e.target.closest('[data-back]');
+      if(back){ if(stack.length>1){ stack.pop(); show(stack[stack.length-1]); } }
+    });
+    // dupa ce se inchide biletul (auto sau „Gata") revenim la ecranul principal, pentru urmatorul client
+    var ov=document.getElementById('overlay');
+    if(ov && window.MutationObserver){ new MutationObserver(function(){ if(!ov.classList.contains('show')){ stack=['root']; show('root'); } }).observe(ov,{attributes:true,attributeFilter:['class']}); }
+  })();
+
+  /* ---- paginare (◀ ▶) cand serviciile nu incap: optiune per dozator ---- */
+  if(cfg.overflow==='paginate'){
+    var ps = Math.max(1, +cfg.pageSize || 9);
+    document.querySelectorAll('.svc-grid').forEach(function(grid){
+      var btns = [].slice.call(grid.children).filter(function(c){ return c.classList && c.classList.contains('svc-btn'); });
+      if(btns.length <= ps) return;
+      var page=0, pages=Math.ceil(btns.length/ps);
+      var nav=document.createElement('div'); nav.className='pg-nav';
+      nav.innerHTML='<button type="button" class="pg-prev" aria-label="Pagina anterioara">◀</button><span class="pg-ind"></span><button type="button" class="pg-next" aria-label="Pagina urmatoare">▶</button>';
+      grid.parentNode.insertBefore(nav, grid.nextSibling);
+      var prev=nav.querySelector('.pg-prev'), next=nav.querySelector('.pg-next'), ind=nav.querySelector('.pg-ind');
+      function render(){ btns.forEach(function(b,i){ b.style.display=(i>=page*ps && i<(page+1)*ps)?'':'none'; });
+        ind.textContent=(page+1)+' / '+pages; prev.disabled=page===0; next.disabled=page>=pages-1; }
+      prev.addEventListener('click', function(){ if(page>0){ page--; render(); } });
+      next.addEventListener('click', function(){ if(page<pages-1){ page++; render(); } });
+      render();
+    });
+  }
+
   setInterval(()=> QMS.api('api/heartbeat',{device_key:cfg.key}).catch(()=>{}), 45000);
   QMS.api('api/heartbeat',{device_key:cfg.key}).catch(()=>{});
 

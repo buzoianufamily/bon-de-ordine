@@ -37,12 +37,26 @@ parse_str((string)parse_url($__uri, PHP_URL_QUERY), $__qs); unset($__qs['lang'])
 $revertUrl = $__path . ($__qs ? '?'.http_build_query($__qs) : '');
 $langHref = function($code) use ($__path,$__qs){ $q=$__qs; $q['lang']=$code; return $__path.'?'.http_build_query($q); };
 $langMeta = disp_lang_meta();
-// ---- grupare servicii pe dispenser ----
-$groupsById = [];
-try { foreach (all('SELECT id,name,color,sort_order FROM service_groups WHERE branch_id=? ORDER BY sort_order,name', [$branch['id']]) as $g) $groupsById[(int)$g['id']] = $g; } catch (Throwable $e) {}
+// ---- grupare servicii pe dispenser (grupuri + subgrupuri) ----
+$groupsById = []; $childGroups = [];   // childGroups[parentId] = [subgrupuri]; parentId 0 = nivel 0
+try { foreach (all('SELECT id,name,color,sort_order,parent_id FROM service_groups WHERE branch_id=? ORDER BY sort_order,name', [$branch['id']]) as $g) {
+    $groupsById[(int)$g['id']] = $g; $childGroups[(int)($g['parent_id'] ?? 0)][] = $g;
+} } catch (Throwable $e) {}
 $grouped = []; $ungrouped = [];
 foreach ($services as $s) { $gid=(int)($s['group_id']??0); if ($gid && isset($groupsById[$gid])) $grouped[$gid][]=$s; else $ungrouped[]=$s; }
 $hasGroups = !empty($grouped);
+// mod de navigare + comportament la depasire (din configurarea dozatorului)
+$navMode  = $gd($L,'nav_mode','flat');
+$overflow = $gd($L,'overflow','scroll');
+$pageSize = max(1, (int)$gd($L,'page_size',9));
+// „pe categorii" (drill-down) doar daca exista grupuri cu continut
+$useDrill = ($navMode === 'drill') && !empty($groupsById);
+// numar total de servicii (direct + recursiv) dintr-un grup — pentru contorul de pe categorie
+$groupCount = function(int $gid) use (&$groupCount, $grouped, $childGroups): int {
+    $n = count($grouped[$gid] ?? []);
+    foreach ($childGroups[$gid] ?? [] as $c) $n += $groupCount((int)$c['id']);
+    return $n;
+};
 // randeaza un buton de serviciu (folosit si in mod plat, si grupat)
 // (optional) cati asteapta acum la fiecare serviciu — afisat pe butoane si actualizat live
 $showWait = $gb($L,'show_waiting',false);
@@ -81,6 +95,24 @@ $renderBtn = function(array $s) use ($tr,$gd,$gb,$T,$PU,$svcName,$svcDesc,$showW
         <?php endif; ?>
       </button>
 <?php };
+// ---- navigare „pe categorii" (drill-down): tile de grup + panouri ascunse randate recursiv ----
+$renderCat = function(array $g) use ($groupCount) { $n = $groupCount((int)$g['id']); ?>
+      <button type="button" class="cat-tile" data-open="g<?= (int)$g['id'] ?>" style="border-left:8px solid <?= e($g['color']) ?>">
+        <span class="cat-nm"><?= e($g['name']) ?></span>
+        <span class="cat-ct"><?= (int)$n ?> servicii ›</span>
+      </button>
+<?php };
+$renderPanel = function(int $gid) use (&$renderPanel, $childGroups, $grouped, $ungrouped, $groupsById, $renderBtn, $renderCat, $tr, $gd, $T) {
+    $subs = $childGroups[$gid] ?? [];
+    $svcs = $gid ? ($grouped[$gid] ?? []) : $ungrouped; ?>
+  <div class="drillpanel<?= $gid ? '' : ' on' ?>" data-panel="<?= $gid ? 'g'.$gid : 'root' ?>">
+    <?php if ($gid): ?><div class="drill-bar"><button type="button" class="drill-back" data-back="1">‹ Inapoi</button><span class="drill-title"><?= e($groupsById[$gid]['name'] ?? '') ?></span></div><?php endif; ?>
+    <?php if ($subs): ?><div class="cat-grid"><?php foreach ($subs as $c) $renderCat($c); ?></div><?php endif; ?>
+    <?php if ($svcs): ?><div class="svc-grid drill-svc"><?php foreach ($svcs as $s) $renderBtn($s); ?></div><?php endif; ?>
+    <?php if (!$subs && !$svcs): ?><p class="muted knosvc" style="text-align:center;padding:1.5rem"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p><?php endif; ?>
+  </div>
+  <?php foreach ($subs as $c) $renderPanel((int)$c['id']);
+};
 // formulare atasate serviciilor afisate
 $svcForms = [];
 $fids = array_values(array_unique(array_filter(array_map(fn($s)=>(int)($s['form_id']??0), $services))));
@@ -190,6 +222,23 @@ $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
 .grp-head{font-weight:800;font-size:1.3rem;color:#1a1d23;margin:1.4rem auto .2rem;max-width:1100px;width:100%;padding:.3rem .8rem;background:rgba(0,0,0,.04);border-radius:8px}
 .grp-head:first-of-type{margin-top:.4rem}
 .wbadge{position:absolute;top:.7rem;right:.8rem;background:rgba(0,0,0,.35);color:#fff;border-radius:999px;padding:.25rem .7rem;font-weight:700;font-size:.95rem;line-height:1.2}
+/* navigare pe categorii (drill-down) */
+.drillwrap{max-width:1100px;margin:0 auto;width:100%;padding:0 1rem}
+.drillpanel{display:none}.drillpanel.on{display:block}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.1rem;padding:1rem 0}
+.cat-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.3rem;text-align:left;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:20px;padding:1.5rem 1.4rem;cursor:pointer;font:inherit;box-shadow:0 4px 16px rgba(0,0,0,.06);transition:.12s;min-height:120px}
+.cat-tile:active{transform:scale(.98)}
+.cat-tile .cat-nm{font-family:var(--display);font-weight:800;font-size:1.55rem;color:#1a1d23;line-height:1.1}
+.cat-tile .cat-ct{color:#6b7280;font-weight:700}
+.drill-bar{display:flex;align-items:center;gap:1rem;max-width:1100px;margin:.6rem auto .2rem;width:100%}
+.drill-back{background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:.7rem 1.2rem;font-weight:800;font-size:1.1rem;cursor:pointer;color:#1a1d23}
+.drill-back:active{transform:scale(.97)}
+.drill-title{font-family:var(--display);font-weight:800;font-size:1.5rem;color:#1a1d23}
+/* paginare (◀ ▶) cand nu incap toate */
+.pg-nav{display:flex;align-items:center;justify-content:center;gap:1.4rem;margin:.4rem auto 1.6rem;max-width:1100px}
+.pg-nav button{width:62px;height:62px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:#fff;font-size:1.5rem;cursor:pointer;color:#1a1d23;font-weight:800;line-height:1}
+.pg-nav button:disabled{opacity:.32;cursor:default}
+.pg-ind{font-weight:800;font-size:1.2rem;color:#1a1d23;min-width:72px;text-align:center}
 </style>
 <body><div class="kiosk">
   <?php if(count($enabledLangs)>1): ?>
@@ -220,6 +269,8 @@ $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
   <?php endif; ?>
   <?php if(!$services): ?>
     <div class="svc-grid"><p class="muted knosvc" style="text-align:center;grid-column:1/-1"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p></div>
+  <?php elseif($useDrill): ?>
+    <div class="drillwrap"><?php $renderPanel(0); ?></div>
   <?php elseif($hasGroups): ?>
     <?php foreach($groupsById as $gid=>$g): if(empty($grouped[$gid])) continue; ?>
       <div class="grp-head" style="border-left:5px solid <?= e($g['color']) ?>"><?= e($g['name']) ?></div>
@@ -262,6 +313,7 @@ $nosvcColor=$col($gd($A,'nosvc_color','')); $nosvcSize=$gd($A,'nosvc_size','');
   branch:<?= jsenc($branch['name']) ?>, footer:<?= jsenc($footer) ?>,
   virtual:<?= setting('virtual_enabled','1')==='1'?'true':'false' ?>, logo:<?= jsenc($logo) ?>,
   branchId:<?= (int)$branch['id'] ?>, showWaiting:<?= $showWait?'true':'false' ?>,
+  overflow:<?= jsenc($overflow) ?>, pageSize:<?= (int)$pageSize ?>,
   apptCheckin:<?= $apptCheckin?'true':'false' ?>, virtualKeyboard:<?= $vkbd?'true':'false' ?>,
   forms:<?= jsenc($svcForms, JSON_UNESCAPED_UNICODE) ?>,
   lang:<?= jsenc($lang) ?>, revertUrl:<?= jsenc($revertUrl) ?>,
