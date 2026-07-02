@@ -225,21 +225,25 @@
     b.appendChild(s); setTimeout(()=>s.remove(), 600);
   }, {passive:true});
 
+  /* resetoare de paginare (fiecare grila isi readuce prima pagina) — apelate la revenirea la ecranul principal */
+  var pgResets = [];
+
   /* ---- navigare „pe categorii" (drill-down): tile-uri de grup <-> panouri ---- */
   (function(){
     var panels = document.querySelectorAll('.drillpanel'); if(!panels.length) return;
     var byId = {}; panels.forEach(function(p){ byId[p.dataset.panel] = p; });
     var stack = ['root'];
     function show(id){ panels.forEach(function(p){ p.classList.toggle('on', p.dataset.panel===id); }); try{ window.scrollTo(0,0); }catch(e){} }
+    function toRoot(){ stack=['root']; show('root'); pgResets.forEach(function(fn){ fn(); }); }
     document.addEventListener('click', function(e){
       var open = e.target.closest('[data-open]');
       if(open){ var id=open.getAttribute('data-open'); if(byId[id]){ stack.push(id); show(id); } return; }
       var back = e.target.closest('[data-back]');
       if(back){ if(stack.length>1){ stack.pop(); show(stack[stack.length-1]); } }
     });
-    // dupa ce se inchide biletul (auto sau „Gata") revenim la ecranul principal, pentru urmatorul client
+    // dupa ce se inchide biletul (auto sau „Gata") revenim la ecranul principal + prima pagina, pentru urmatorul client
     var ov=document.getElementById('overlay');
-    if(ov && window.MutationObserver){ new MutationObserver(function(){ if(!ov.classList.contains('show')){ stack=['root']; show('root'); } }).observe(ov,{attributes:true,attributeFilter:['class']}); }
+    if(ov && window.MutationObserver){ new MutationObserver(function(){ if(!ov.classList.contains('show')) toRoot(); }).observe(ov,{attributes:true,attributeFilter:['class']}); }
   })();
 
   /* ---- paginare (◀ ▶) cand serviciile nu incap: optiune per dozator ---- */
@@ -257,6 +261,7 @@
         ind.textContent=(page+1)+' / '+pages; prev.disabled=page===0; next.disabled=page>=pages-1; }
       prev.addEventListener('click', function(){ if(page>0){ page--; render(); } });
       next.addEventListener('click', function(){ if(page<pages-1){ page++; render(); } });
+      pgResets.push(function(){ if(page!==0){ page=0; render(); } });   // revenire la prima pagina dupa bilet
       render();
     });
   }

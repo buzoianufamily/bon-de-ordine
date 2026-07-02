@@ -20,8 +20,8 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
   <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
     <h1 style="margin:0">🧾 Facturare</h1>
     <span style="margin-left:auto;display:flex;gap:.5rem">
-      <a class="btn" href="<?= e(url('landlord')) ?>">← Instanțe</a>
-      <a class="btn" href="<?= e(url('landlord/logout')) ?>">Ieșire</a>
+      <a class="btn" href="<?= e(url(ll_path())) ?>">← Instanțe</a>
+      <a class="btn" href="<?= e(url(ll_path('logout'))) ?>">Ieșire</a>
     </span>
   </div>
   <?php foreach (get_flashes() as $f): ?>
@@ -29,7 +29,7 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
   <?php endforeach; ?>
 
   <div class="row" style="align-items:flex-start">
-    <form method="post" action="<?= e(url('landlord/invoice-save')) ?>" class="card pad" style="flex:1;min-width:340px"><?= csrf_field() ?>
+    <form method="post" action="<?= e(url(ll_path('invoice-save'))) ?>" class="card pad" style="flex:1;min-width:340px"><?= csrf_field() ?>
       <h3 style="margin-top:0">Factură nouă</h3>
       <?php if (empty($b['name'])): ?><div class="pill" style="display:block;background:#fef3c7;color:#92400e;padding:.5rem .8rem;margin-bottom:.6rem">Completează întâi datele emitentului (dreapta).</div><?php endif; ?>
       <div class="field"><label>Client (instanță)</label>
@@ -61,7 +61,7 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
       <button class="btn btn-primary">Emite factura</button>
     </form>
 
-    <form method="post" action="<?= e(url('landlord/billing-settings')) ?>" class="card pad" style="flex:1;min-width:340px"><?= csrf_field() ?>
+    <form method="post" action="<?= e(url(ll_path('billing-settings'))) ?>" class="card pad" style="flex:1;min-width:340px"><?= csrf_field() ?>
       <h3 style="margin-top:0">Datele emitentului (firma ta)</h3>
       <div class="field"><label>Denumire</label><input name="b_name" value="<?= e($b['name'] ?? '') ?>" required></div>
       <div class="row">
@@ -96,9 +96,9 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
           <td class="muted"><?= e($iv['due_date'] ?? '') ?></td>
           <td><?php if (!empty($iv['paid_at'])): ?><span style="color:#16a34a;font-weight:700">✓ plătită</span><br><span class="muted" style="font-size:.72rem"><?= e($iv['paid_at']) ?></span><?php else: ?><span style="color:#d97706;font-weight:700">neîncasată</span><?php endif; ?></td>
           <td style="text-align:right;white-space:nowrap">
-            <a class="lnk" style="color:var(--accent);font-weight:700" target="_blank" href="<?= e(url('landlord/invoice').'?id='.rawurlencode($iv['id'])) ?>">Vezi / printează</a>
-            <form method="post" action="<?= e(url('landlord/invoice-paid')) ?>" style="display:inline;margin-left:.6rem"><?= csrf_field() ?><input type="hidden" name="id" value="<?= e($iv['id']) ?>"><button class="lnk" style="background:none;border:none;cursor:pointer;color:#16a34a;font:inherit;font-weight:700"><?= !empty($iv['paid_at'])?'Marchează neîncasată':'Marchează plătită' ?></button></form>
-            <form method="post" action="<?= e(url('landlord/invoice-delete')) ?>" style="display:inline;margin-left:.6rem" data-confirm="Ștergi factura din evidență?"><?= csrf_field() ?><input type="hidden" name="id" value="<?= e($iv['id']) ?>"><button class="lnk del" style="background:none;border:none;cursor:pointer;color:#dc2626;font:inherit;font-weight:700">Șterge</button></form>
+            <a class="lnk" style="color:var(--accent);font-weight:700" target="_blank" href="<?= e(url(ll_path('invoice')).'?id='.rawurlencode($iv['id'])) ?>">Vezi / printează</a>
+            <form method="post" action="<?= e(url(ll_path('invoice-paid'))) ?>" style="display:inline;margin-left:.6rem"><?= csrf_field() ?><input type="hidden" name="id" value="<?= e($iv['id']) ?>"><button class="lnk" style="background:none;border:none;cursor:pointer;color:#16a34a;font:inherit;font-weight:700"><?= !empty($iv['paid_at'])?'Marchează neîncasată':'Marchează plătită' ?></button></form>
+            <form method="post" action="<?= e(url(ll_path('invoice-delete'))) ?>" style="display:inline;margin-left:.6rem" data-confirm="Ștergi factura din evidență?"><?= csrf_field() ?><input type="hidden" name="id" value="<?= e($iv['id']) ?>"><button class="lnk del" style="background:none;border:none;cursor:pointer;color:#dc2626;font:inherit;font-weight:700">Șterge</button></form>
           </td>
         </tr>
       <?php endforeach; ?>

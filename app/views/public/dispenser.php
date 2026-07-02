@@ -39,9 +39,12 @@ $langHref = function($code) use ($__path,$__qs){ $q=$__qs; $q['lang']=$code; ret
 $langMeta = disp_lang_meta();
 // ---- grupare servicii pe dispenser (grupuri + subgrupuri) ----
 $groupsById = []; $childGroups = [];   // childGroups[parentId] = [subgrupuri]; parentId 0 = nivel 0
-try { foreach (all('SELECT id,name,color,sort_order,parent_id FROM service_groups WHERE branch_id=? ORDER BY sort_order,name', [$branch['id']]) as $g) {
-    $groupsById[(int)$g['id']] = $g; $childGroups[(int)($g['parent_id'] ?? 0)][] = $g;
-} } catch (Throwable $e) {}
+$allG = [];
+try { $allG = all('SELECT id,name,color,sort_order,parent_id FROM service_groups WHERE branch_id=? ORDER BY sort_order,name', [$branch['id']]); } catch (Throwable $e) {}
+foreach ($allG as $g) $groupsById[(int)$g['id']] = $g;
+foreach ($allG as $g) { $pid = (int)($g['parent_id'] ?? 0);
+    if ($pid && !isset($groupsById[$pid])) $pid = 0;   // parinte inexistent in filiala -> tratat ca nivel 0
+    $childGroups[$pid][] = $g; }
 $grouped = []; $ungrouped = [];
 foreach ($services as $s) { $gid=(int)($s['group_id']??0); if ($gid && isset($groupsById[$gid])) $grouped[$gid][]=$s; else $ungrouped[]=$s; }
 $hasGroups = !empty($grouped);
@@ -49,12 +52,13 @@ $hasGroups = !empty($grouped);
 $navMode  = $gd($L,'nav_mode','flat');
 $overflow = $gd($L,'overflow','scroll');
 $pageSize = max(1, (int)$gd($L,'page_size',9));
-// „pe categorii" (drill-down) doar daca exista grupuri cu continut
-$useDrill = ($navMode === 'drill') && !empty($groupsById);
-// numar total de servicii (direct + recursiv) dintr-un grup — pentru contorul de pe categorie
-$groupCount = function(int $gid) use (&$groupCount, $grouped, $childGroups): int {
+// „pe categorii" (drill-down) doar daca exista categorii de nivel 0 de navigat
+$useDrill = ($navMode === 'drill') && !empty($childGroups[0]);
+// numar total de servicii (direct + recursiv) dintr-un grup — cu protectie anti-ciclu (date corupte)
+$groupCount = function(int $gid, array $seen = []) use (&$groupCount, $grouped, $childGroups): int {
+    if (isset($seen[$gid])) return 0; $seen[$gid] = true;
     $n = count($grouped[$gid] ?? []);
-    foreach ($childGroups[$gid] ?? [] as $c) $n += $groupCount((int)$c['id']);
+    foreach ($childGroups[$gid] ?? [] as $c) $n += $groupCount((int)$c['id'], $seen);
     return $n;
 };
 // randeaza un buton de serviciu (folosit si in mod plat, si grupat)
@@ -102,7 +106,9 @@ $renderCat = function(array $g) use ($groupCount) { $n = $groupCount((int)$g['id
         <span class="cat-ct"><?= (int)$n ?> servicii ›</span>
       </button>
 <?php };
-$renderPanel = function(int $gid) use (&$renderPanel, $childGroups, $grouped, $ungrouped, $groupsById, $renderBtn, $renderCat, $tr, $gd, $T) {
+$renderPanel = function(int $gid, array $seen = []) use (&$renderPanel, $childGroups, $grouped, $ungrouped, $groupsById, $renderBtn, $renderCat, $tr, $gd, $T) {
+    if ($gid && isset($seen[$gid])) return;   // protectie anti-ciclu (date corupte)
+    $seen[$gid] = true;
     $subs = $childGroups[$gid] ?? [];
     $svcs = $gid ? ($grouped[$gid] ?? []) : $ungrouped; ?>
   <div class="drillpanel<?= $gid ? '' : ' on' ?>" data-panel="<?= $gid ? 'g'.$gid : 'root' ?>">
@@ -111,7 +117,7 @@ $renderPanel = function(int $gid) use (&$renderPanel, $childGroups, $grouped, $u
     <?php if ($svcs): ?><div class="svc-grid drill-svc"><?php foreach ($svcs as $s) $renderBtn($s); ?></div><?php endif; ?>
     <?php if (!$subs && !$svcs): ?><p class="muted knosvc" style="text-align:center;padding:1.5rem"><?= e($tr('no_services',$gd($T,'no_services','Momentan nu sunt servicii disponibile'))) ?></p><?php endif; ?>
   </div>
-  <?php foreach ($subs as $c) $renderPanel((int)$c['id']);
+  <?php foreach ($subs as $c) $renderPanel((int)$c['id'], $seen);
 };
 // formulare atasate serviciilor afisate
 $svcForms = [];

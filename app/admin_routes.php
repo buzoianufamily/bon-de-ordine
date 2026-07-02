@@ -588,10 +588,13 @@ function admin_group_save(): void {
         $pg = one('SELECT id, branch_id, parent_id FROM service_groups WHERE id=?', [$parent]);
         if (!$pg || (int)$pg['branch_id'] !== $branch || ($id && $parent === $id)) $parent = 0;
         else {
-            $cur = $pg; $guard = 0;
-            while ($cur && !empty($cur['parent_id']) && $guard++ < 30) {
-                if ((int)$cur['parent_id'] === $id) { $parent = 0; break; }   // ciclu
-                $cur = one('SELECT id, parent_id FROM service_groups WHERE id=?', [(int)$cur['parent_id']]);
+            // urca lantul parintilor; daca reaparem la $id sau la un nod deja vizitat => ciclu (indiferent de adancime)
+            $cur = $pg; $seen = [];
+            while ($cur && !empty($cur['parent_id'])) {
+                $pid = (int)$cur['parent_id'];
+                if ($pid === $id || isset($seen[$pid])) { $parent = 0; break; }
+                $seen[$pid] = true;
+                $cur = one('SELECT id, parent_id FROM service_groups WHERE id=?', [$pid]);
             }
         }
     }

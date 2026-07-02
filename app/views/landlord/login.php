@@ -13,7 +13,7 @@
     <?php foreach (get_flashes() as $f): ?>
       <div class="pill" style="display:block;text-align:center;background:#fee2e2;color:#b91c1c;margin-bottom:.8rem"><?= e($f['msg']) ?></div>
     <?php endforeach; ?>
-    <form method="post" action="<?= e(url('landlord')) ?>">
+    <form method="post" action="<?= e(url(ll_path())) ?>">
       <?= csrf_field() ?>
       <div class="field"><label>Parola landlord</label><input type="password" name="password" required autofocus></div>
       <button class="btn btn-primary btn-lg" style="width:100%">Intra</button>
