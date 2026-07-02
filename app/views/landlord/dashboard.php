@@ -30,9 +30,9 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
     <h1 style="margin:0">🏢 Landlord</h1>
     <span class="muted">instante: <?= count($rows) ?> · <span style="color:#16a34a">✔ <?= $okCnt ?> ok</span><?= $errCnt ? ' · <span style="color:#dc2626">✖ '.$errCnt.' cu erori</span>' : '' ?><?= $suspCnt ? ' · ⏸ '.$suspCnt.' suspendate' : '' ?></span>
     <span style="margin-left:auto;display:flex;gap:.5rem">
-      <a class="btn" href="<?= e(url('landlord/billing')) ?>">🧾 Facturare</a>
-      <a class="btn" href="<?= e(url('landlord')) ?>">↻ Reverifica</a>
-      <a class="btn" href="<?= e(url('landlord/logout')) ?>">Iesire</a>
+      <a class="btn" href="<?= e(url(ll_path('billing'))) ?>">🧾 Facturare</a>
+      <a class="btn" href="<?= e(url(ll_path())) ?>">↻ Reverifica</a>
+      <a class="btn" href="<?= e(url(ll_path('logout'))) ?>">Iesire</a>
     </span>
   </div>
 
@@ -87,11 +87,11 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
           <td><?= !empty($h['ok']) ? (int)$h['users'] : '—' ?></td>
           <td style="text-align:right;white-space:nowrap">
             <?php if (!$r['main']): ?>
-              <a class="lnk" style="color:var(--accent);font-weight:700" href="<?= e(url('landlord')) ?>?edit=<?= e(rawurlencode($r['host'])) ?>#frm">Editeaza</a>
-              <form method="post" action="<?= e(url('landlord/toggle')) ?>" style="display:inline;margin-left:.6rem"><?= csrf_field() ?>
+              <a class="lnk" style="color:var(--accent);font-weight:700" href="<?= e(url(ll_path())) ?>?edit=<?= e(rawurlencode($r['host'])) ?>#frm">Editeaza</a>
+              <form method="post" action="<?= e(url(ll_path('toggle'))) ?>" style="display:inline;margin-left:.6rem"><?= csrf_field() ?>
                 <input type="hidden" name="host" value="<?= e($r['host']) ?>">
                 <button class="lnk" style="background:none;border:none;cursor:pointer;color:#d97706;font-weight:700;font:inherit"><?= $r['active'] ? '⏸ Suspenda' : '▶ Activeaza' ?></button></form>
-              <form method="post" action="<?= e(url('landlord/delete')) ?>" style="display:inline;margin-left:.6rem" data-confirm="Scoti instanta din registru? Baza de date NU se sterge, dar subdomeniul nu va mai functiona."><?= csrf_field() ?>
+              <form method="post" action="<?= e(url(ll_path('delete'))) ?>" style="display:inline;margin-left:.6rem" data-confirm="Scoti instanta din registru? Baza de date NU se sterge, dar subdomeniul nu va mai functiona."><?= csrf_field() ?>
                 <input type="hidden" name="host" value="<?= e($r['host']) ?>">
                 <button class="lnk del" style="background:none;border:none;cursor:pointer;color:#dc2626;font-weight:700;font:inherit">Sterge</button></form>
             <?php endif; ?>
@@ -147,8 +147,8 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
         </div>
         <div style="margin-top:.9rem;border-top:1px solid #1e2128;padding-top:.7rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
           <span class="muted" style="font-size:.8rem">Configuratie (branding/texte/module):</span>
-          <a class="btn" href="<?= e(url('landlord/config-export')) ?>?host=<?= e(rawurlencode($r['main'] ? '' : $r['host'])) ?>">⬇ Exporta config (JSON)</a>
-          <form method="post" action="<?= e(url('landlord/config-import')) ?>" enctype="multipart/form-data" style="display:flex;gap:.4rem;align-items:center" data-confirm="Imporți configurația în <?= e($r['host']) ?>? Setările existente vor fi suprascrise (fără chei sensibile).">
+          <a class="btn" href="<?= e(url(ll_path('config-export'))) ?>?host=<?= e(rawurlencode($r['main'] ? '' : $r['host'])) ?>">⬇ Exporta config (JSON)</a>
+          <form method="post" action="<?= e(url(ll_path('config-import'))) ?>" enctype="multipart/form-data" style="display:flex;gap:.4rem;align-items:center" data-confirm="Imporți configurația în <?= e($r['host']) ?>? Setările existente vor fi suprascrise (fără chei sensibile).">
             <?= csrf_field() ?><input type="hidden" name="host" value="<?= e($r['host']) ?>">
             <input type="file" name="file" accept="application/json,.json" style="max-width:180px;font-size:.78rem">
             <button class="btn">⬆ Importa</button>
@@ -156,8 +156,8 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
         </div>
         <div style="margin-top:.9rem;border-top:1px solid #1e2128;padding-top:.7rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
           <span class="muted" style="font-size:.8rem">Backup baza de date (date clienti):</span>
-          <a class="btn" href="<?= e(url('landlord/backup')) ?>?host=<?= e(rawurlencode($r['main'] ? '' : $r['host'])) ?>">⬇ Descarca backup SQL</a>
-          <form method="post" action="<?= e(url('landlord/backup-auto')) ?>" style="display:inline">
+          <a class="btn" href="<?= e(url(ll_path('backup'))) ?>?host=<?= e(rawurlencode($r['main'] ? '' : $r['host'])) ?>">⬇ Descarca backup SQL</a>
+          <form method="post" action="<?= e(url(ll_path('backup-auto'))) ?>" style="display:inline">
             <?= csrf_field() ?><input type="hidden" name="host" value="<?= e($r['host']) ?>">
             <?php if (!empty($h['backup_auto'])): ?>
               <span style="color:#16a34a;font-size:.82rem">✔ backup automat zilnic activ</span>
@@ -177,7 +177,7 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
   </div>
 
   <div class="row" style="align-items:flex-start">
-    <form method="post" action="<?= e(url('landlord/save')) ?>" class="card pad" style="flex:1;min-width:320px" id="frm"><?= csrf_field() ?>
+    <form method="post" action="<?= e(url(ll_path('save'))) ?>" class="card pad" style="flex:1;min-width:320px" id="frm"><?= csrf_field() ?>
       <h3 style="margin-top:0"><?= $edit ? 'Editare instanta' : 'Instanta noua' ?></h3>
       <input type="hidden" name="orig" value="<?= e($edit['host'] ?? '') ?>">
       <div class="field"><label>Host (subdomeniu)</label><input name="host" value="<?= e($edit['host'] ?? '') ?>" placeholder="client1.domeniul-tau.ro" required></div>
@@ -207,7 +207,7 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
       <label style="display:block;margin:.4rem 0"><input type="checkbox" name="active" <?= ($edit === null || !empty($edit['active'])) ? 'checked' : '' ?> style="width:auto"> Activa</label>
       <div style="display:flex;gap:.5rem;margin-top:.6rem">
         <button class="btn btn-primary">Salveaza instanta</button>
-        <?php if ($edit): ?><a class="btn" href="<?= e(url('landlord')) ?>">Renunta</a><?php endif; ?>
+        <?php if ($edit): ?><a class="btn" href="<?= e(url(ll_path())) ?>">Renunta</a><?php endif; ?>
       </div>
     </form>
 

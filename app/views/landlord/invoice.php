@@ -32,7 +32,7 @@ td.r,th.r{text-align:right}
 @media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border-radius:0;max-width:none}.toolbar{display:none}}
 </style></head><body>
 <div class="toolbar">
-  <a class="btn" href="<?= e(url('landlord/billing')) ?>">← Înapoi</a>
+  <a class="btn" href="<?= e(url(ll_path('billing'))) ?>">← Înapoi</a>
   <button class="btn btn-primary" onclick="window.print()">🖨 Printează / Salvează PDF</button>
 </div>
 <div class="sheet">

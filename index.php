@@ -36,9 +36,16 @@ function input(string $key, $default = null) {
 
 try {
     // ===================== LANDLORD (administrare instante clienti, multi-tenant) =====================
-    if ($seg[0] === 'landlord') {
+    // Pe hostul dedicat (landlord_host, ex: clienti.bonordine.ro) panoul e servit chiar la RADACINA
+    // (fara /landlord): tot ce nu e infrastructura (assets/health/etc.) merge la panou.
+    $__llHost = strtolower(trim((string) cfg('landlord_host', '')));
+    $__onLL   = $__llHost !== '' && strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === $__llHost;
+    $__infra  = ['assets','api','health','cron','sw.js','manifest.webmanifest','robots.txt','qr','favicon.ico'];
+    if ($seg[0] === 'landlord' || ($__onLL && !in_array($seg[0], $__infra, true))) {
         require APP_ROOT . '/app/landlord.php';
-        landlord_dispatch($seg, $method);
+        // pe hostul dedicat actiunea e la $seg[0]; o normalizam la forma asteptata de landlord_dispatch (prefix 'landlord')
+        $lseg = ($seg[0] === 'landlord') ? $seg : array_merge(['landlord'], $seg);
+        landlord_dispatch($lseg, $method);
         return;
     }
 
@@ -411,11 +418,7 @@ SWJS;
 
     // ===================== PAGINI PUBLICE =====================
     if ($route === '/') {
-        // host dedicat landlord (ex: clienti.bonordine.ro) -> portalul furnizorului, nu aplicatia
-        $llHost = strtolower(trim((string) cfg('landlord_host', '')));
-        if ($llHost !== '' && strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === $llHost) {
-            redirect('landlord');
-        }
+        // (pe hostul dedicat de landlord, radacina e deja servita de panou mai sus)
         // logat -> ecran de alegere (backoffice / terminal / concierge / status), nu direct dashboard
         if ($u = current_user()) { view('public/hub', ['u' => $u]); return; }
         view('public/portal');

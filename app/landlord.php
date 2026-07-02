@@ -5,7 +5,18 @@
  * protejat cu parola din config/config.php ('landlord_pass').
  * Registrul instantelor sta in config/tenants.json (host -> baza de date).
  * Nu depinde de nicio baza de date: functioneaza si cand una dintre ele e picata.
+ * Pe hostul dedicat (config 'landlord_host', ex: clienti.bonordine.ro) panoul e servit la RADACINA
+ * (fara /landlord); pe restul hosturilor ramane sub /landlord (compatibil cu instanta principala).
  */
+
+/** Calea de rutare a unei actiuni landlord: '' / 'billing' -> „/" resp. „/billing" pe hostul dedicat,
+ *  altfel „landlord" / „landlord/billing". Folosita de toate linkurile si redirecturile panoului. */
+function ll_path(string $sub = ''): string {
+    $llHost = strtolower(trim((string) cfg('landlord_host', '')));
+    $cur    = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+    if ($llHost !== '' && $cur === $llHost) return $sub;                 // host dedicat: fara prefix
+    return 'landlord' . ($sub !== '' ? '/' . $sub : '');                // altfel: /landlord[/...]
+}
 
 function landlord_tenants_save(array $tenants): bool {
     $json = json_encode(['tenants' => array_values($tenants)],
@@ -228,7 +239,7 @@ function landlord_dispatch(array $seg, string $method): void {
     }
 
     $a = $seg[1] ?? '';
-    if ($a === 'logout') { unset($_SESSION['landlord_ok']); redirect('landlord'); }
+    if ($a === 'logout') { unset($_SESSION['landlord_ok']); redirect(ll_path()); }
 
     // ---- autentificare separata de conturile instantelor ----
     if (empty($_SESSION['landlord_ok'])) {
@@ -239,11 +250,11 @@ function landlord_dispatch(array $seg, string $method): void {
             if (hash_equals($pass, (string)($_POST['password'] ?? ''))) {
                 session_regenerate_id(true);
                 $_SESSION['landlord_ok'] = 1; $_SESSION['ll_tries'] = 0;
-                redirect('landlord');
+                redirect(ll_path());
             }
             $_SESSION['ll_tries']++;
             flash('Parola incorecta.', 'error');
-            redirect('landlord');
+            redirect(ll_path());
         }
         view('landlord/login');
         return;
@@ -259,13 +270,13 @@ function landlord_dispatch(array $seg, string $method): void {
             $host = strtolower(trim((string)($_POST['host'] ?? '')));
             $host = preg_replace('#^https?://#', '', $host);
             $host = preg_replace('#[/?].*$#', '', $host);
-            if (!preg_match('/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/', $host)) { flash('Host invalid. Exemplu: client1.domeniu.ro', 'error'); redirect('landlord'); }
+            if (!preg_match('/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/', $host)) { flash('Host invalid. Exemplu: client1.domeniu.ro', 'error'); redirect(ll_path()); }
             $dbName = trim((string)($_POST['db_name'] ?? '')); $dbUser = trim((string)($_POST['db_user'] ?? ''));
-            if ($dbName === '' || $dbUser === '') { flash('Completeaza numele bazei de date si utilizatorul.', 'error'); redirect('landlord'); }
+            if ($dbName === '' || $dbUser === '') { flash('Completeaza numele bazei de date si utilizatorul.', 'error'); redirect(ll_path()); }
             // host duplicat la alta instanta?
             foreach ($tenants as $t) {
                 if (strtolower((string)$t['host']) === $host && strtolower((string)$t['host']) !== $orig) {
-                    flash('Exista deja o instanta pe acest host.', 'error'); redirect('landlord');
+                    flash('Exista deja o instanta pe acest host.', 'error'); redirect(ll_path());
                 }
             }
             $prev = null;
@@ -291,10 +302,10 @@ function landlord_dispatch(array $seg, string $method): void {
             $tenants = array_values(array_filter($tenants, fn($t) => strtolower((string)$t['host']) !== ($orig ?: $host)));
             $tenants[] = $entry;
             usort($tenants, fn($x, $y) => strcmp($x['host'], $y['host']));
-            if (!landlord_tenants_save($tenants)) { flash('Nu am putut scrie config/tenants.json — verifica permisiunile folderului config/.', 'error'); redirect('landlord'); }
+            if (!landlord_tenants_save($tenants)) { flash('Nu am putut scrie config/tenants.json — verifica permisiunile folderului config/.', 'error'); redirect(ll_path()); }
             $h = landlord_health($entry['db']);
             flash('Instanta salvata.' . ($h['ok'] ? ' Conexiunea la baza de date functioneaza ✔' : ' ATENTIE: conexiunea DB a esuat — ' . $h['error']), $h['ok'] ? 'info' : 'error');
-            redirect('landlord');
+            redirect(ll_path());
         }
 
         if ($a === 'toggle') {
@@ -303,7 +314,7 @@ function landlord_dispatch(array $seg, string $method): void {
             unset($t);
             landlord_tenants_save($tenants);
             flash('Stare schimbata.');
-            redirect('landlord');
+            redirect(ll_path());
         }
 
         if ($a === 'delete') {
@@ -311,32 +322,32 @@ function landlord_dispatch(array $seg, string $method): void {
             $tenants = array_values(array_filter($tenants, fn($t) => strtolower((string)$t['host']) !== $host));
             landlord_tenants_save($tenants);
             flash('Instanta scoasa din registru (baza de date NU a fost stearsa).');
-            redirect('landlord');
+            redirect(ll_path());
         }
 
         // ---- backup automat per instanta (scrie backup_auto_enabled in baza instantei) ----
         if ($a === 'backup-auto') {
             $host = strtolower(trim((string)($_POST['host'] ?? '')));
             $db = landlord_db_for_host($host, $tenants);
-            if (!$db) { flash('Instanta inexistenta.', 'error'); redirect('landlord'); }
+            if (!$db) { flash('Instanta inexistenta.', 'error'); redirect(ll_path()); }
             try {
                 $pdo = landlord_pdo($db);
                 $pdo->prepare("INSERT INTO settings (k,v) VALUES ('backup_auto_enabled',?) ON DUPLICATE KEY UPDATE v=VALUES(v)")
                     ->execute([isset($_POST['on']) ? '1' : '0']);
                 flash('Backup automat ' . (isset($_POST['on']) ? 'activat' : 'oprit') . ' pentru ' . $host . '.');
             } catch (Throwable $e) { flash('Nu am putut actualiza instanta: ' . $e->getMessage(), 'error'); }
-            redirect('landlord');
+            redirect(ll_path());
         }
 
         // ---- clonare configuratie: import setari dintr-un JSON in baza unei instante ----
         if ($a === 'config-import') {
             $host = strtolower(trim((string)($_POST['host'] ?? '')));
             $db = landlord_db_for_host($host, $tenants);
-            if (!$db) { flash('Instanta inexistenta.', 'error'); redirect('landlord'); }
+            if (!$db) { flash('Instanta inexistenta.', 'error'); redirect(ll_path()); }
             $raw = (isset($_FILES['file']) && is_uploaded_file($_FILES['file']['tmp_name'] ?? '')) ? (string)@file_get_contents($_FILES['file']['tmp_name']) : '';
             $data = json_decode($raw, true);
             $kv = is_array($data['settings'] ?? null) ? $data['settings'] : (is_array($data) ? $data : null);
-            if (!is_array($kv)) { flash('Fisier invalid: nu contine setari.', 'error'); redirect('landlord'); }
+            if (!is_array($kv)) { flash('Fisier invalid: nu contine setari.', 'error'); redirect(ll_path()); }
             try {
                 $pdo = landlord_pdo($db);
                 $st = $pdo->prepare("INSERT INTO settings (k,v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=VALUES(v)");
@@ -346,7 +357,7 @@ function landlord_dispatch(array $seg, string $method): void {
                     $st->execute([$k, (string)$v]); $n++; }
                 flash("Configuratie importata in $host ($n setari).");
             } catch (Throwable $e) { flash('Import esuat: ' . $e->getMessage(), 'error'); }
-            redirect('landlord');
+            redirect(ll_path());
         }
 
         // ---- facturare ----
@@ -365,13 +376,13 @@ function landlord_dispatch(array $seg, string $method): void {
             ];
             landlord_billing_save($b);
             flash('Datele de facturare au fost salvate.');
-            redirect('landlord/billing');
+            redirect(ll_path('billing'));
         }
 
         if ($a === 'invoice-save') {
             $billing = landlord_billing_load();
-            if (empty($billing['name'])) { flash('Completeaza intai datele emitentului (firma ta).', 'error'); redirect('landlord/billing'); }
-            if (trim((string)($_POST['client_name'] ?? '')) === '') { flash('Completeaza numele clientului pe factura.', 'error'); redirect('landlord/billing'); }
+            if (empty($billing['name'])) { flash('Completeaza intai datele emitentului (firma ta).', 'error'); redirect(ll_path('billing')); }
+            if (trim((string)($_POST['client_name'] ?? '')) === '') { flash('Completeaza numele clientului pe factura.', 'error'); redirect(ll_path('billing')); }
             $series = (string)($billing['series'] ?? 'BDO');
             $year = (int) date('Y');
             $isPro = isset($_POST['proforma']);
@@ -408,9 +419,9 @@ function landlord_dispatch(array $seg, string $method): void {
                 landlord_billing_save($billing);
                 return $inv;
             });
-            if (!$inv) { flash('Nu am putut scrie config/invoices.json — verifica permisiunile folderului config/.', 'error'); redirect('landlord/billing'); }
+            if (!$inv) { flash('Nu am putut scrie config/invoices.json — verifica permisiunile folderului config/.', 'error'); redirect(ll_path('billing')); }
             flash('Factura ' . landlord_invoice_label($inv) . ' a fost creata.');
-            redirect('landlord/invoice?id=' . $inv['id']);
+            redirect(ll_path('invoice') . '?id=' . $inv['id']);
         }
 
         if ($a === 'invoice-paid') {
@@ -420,7 +431,7 @@ function landlord_dispatch(array $seg, string $method): void {
             unset($iv);
             landlord_invoices_save($invoices);
             flash('Stare plata actualizata.');
-            redirect('landlord/billing');
+            redirect(ll_path('billing'));
         }
 
         if ($a === 'invoice-delete') {
@@ -428,10 +439,10 @@ function landlord_dispatch(array $seg, string $method): void {
             $invoices = array_values(array_filter(landlord_invoices_load(), fn($iv) => ($iv['id'] ?? '') !== $id));
             landlord_invoices_save($invoices);
             flash('Factura a fost stearsa.');
-            redirect('landlord/billing');
+            redirect(ll_path('billing'));
         }
 
-        redirect('landlord');
+        redirect(ll_path());
     }
 
     // ---- backup baza de date per instanta (GET): descarca un .sql cu datele instantei ----
