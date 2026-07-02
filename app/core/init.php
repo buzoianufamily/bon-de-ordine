@@ -137,10 +137,16 @@ require __DIR__ . '/xlsx.php';
 $__lpath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
 $__lsdir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
 $__lroute = '/' . ltrim(substr($__lpath, strlen($__lsdir)), '/');
-define('IS_LANDLORD_REQ', str_starts_with($__lroute, '/landlord'));
+$__lseg0  = explode('/', trim($__lroute, '/'))[0] ?? '';
+// pe hostul dedicat (landlord_host) panoul e la radacina, deci ruta NU incepe cu /landlord:
+// tratam ca „landlord" tot ce nu e infrastructura, ca sa NU ceara baza de date (landlord = DB-free)
+$__llhost = strtolower(trim((string) cfg('landlord_host', '')));
+$__onLL   = $__llhost !== '' && strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === $__llhost;
+$__llInfra = in_array($__lseg0, ['assets','api','cron','health','sw.js','manifest.webmanifest','robots.txt','qr','favicon.ico'], true);
+define('IS_LANDLORD_REQ', str_starts_with($__lroute, '/landlord') || ($__onLL && !$__llInfra));
 // /health = sonda de uptime: nu rula migrari (verifica singura conexiunea, fara a muri)
 define('IS_HEALTH_REQ', rtrim($__lroute, '/') === '/health');
-unset($__lpath, $__lsdir, $__lroute);
+unset($__lpath, $__lsdir, $__lroute, $__lseg0, $__llhost, $__onLL, $__llInfra);
 
 // migrare automata a schemei (idempotent)
 if (!IS_LANDLORD_REQ && !IS_HEALTH_REQ) run_migrations();
