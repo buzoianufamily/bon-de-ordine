@@ -37,10 +37,12 @@ function input(string $key, $default = null) {
 try {
     // ===================== LANDLORD (administrare instante clienti, multi-tenant) =====================
     // Pe hostul dedicat (landlord_host, ex: clienti.bonordine.ro) panoul e servit chiar la RADACINA
-    // (fara /landlord): tot ce nu e infrastructura (assets/health/etc.) merge la panou.
+    // (fara /landlord): tot ce nu e infrastructura pur statica/inline (assets/health/sw.js/manifest/
+    // robots/favicon) merge la panou. In special api/cron/qr merg la panou, ca instalarea „clienti"
+    // sa poata exclude fisierele lor (app/api_v1.php, app/cron.php, app/core/qr.php).
     $__llHost = strtolower(trim((string) cfg('landlord_host', '')));
     $__onLL   = $__llHost !== '' && strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === $__llHost;
-    $__infra  = ['assets','api','health','cron','sw.js','manifest.webmanifest','robots.txt','qr','favicon.ico'];
+    $__infra  = ['assets','health','sw.js','manifest.webmanifest','robots.txt','favicon.ico'];
     if ($seg[0] === 'landlord' || ($__onLL && !in_array($seg[0], $__infra, true))) {
         require APP_ROOT . '/app/landlord.php';
         // pe hostul dedicat actiunea e la $seg[0]; o normalizam la forma asteptata de landlord_dispatch (prefix 'landlord')
