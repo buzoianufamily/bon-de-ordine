@@ -21,7 +21,7 @@ cat > config/config.php <<EOF
 EOF
 
 SRV=""
-cleanup(){ [ -n "$SRV" ] && kill "$SRV" 2>/dev/null; [ -f "$CFGBAK" ] && mv "$CFGBAK" config/config.php; rm -f "$JAR" "$SRVLOG" config/billing.json config/invoices.json; }
+cleanup(){ [ -n "$SRV" ] && kill "$SRV" 2>/dev/null; [ -f "$CFGBAK" ] && mv "$CFGBAK" config/config.php; rm -f "$JAR" "$SRVLOG"; }
 trap cleanup EXIT
 
 # instaleaza schema + ia id-uri necesare (foloseste env, nu config.php)
@@ -423,22 +423,12 @@ t "API call-next pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{ht
 t "API counter-pause pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/counter-pause -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
 rm -f "$PJAR"
 
-# --- facturare landlord (login separat, emitere factura, pagina printabila) ---
+# --- landlord (login separat, backup + clonare configuratie per instanta) ---
 LJAR="$(mktemp)"
 LCSRF="$(curl -s -c "$LJAR" "$B/landlord" | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
 curl -s -o /dev/null -b "$LJAR" -c "$LJAR" -X POST "$B/landlord" -d "_csrf=$LCSRF&password=httppass"
-LCSRF2="$(curl -s -b "$LJAR" "$B/landlord/billing" | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
-t "GET /landlord/billing (autentificat) -> 200" 200 "$(code -b "$LJAR" "$B/landlord/billing")"
-tcontains "landlord billing: formular emitent" 'name="b_name"' "$(curl -s -b "$LJAR" "$B/landlord/billing")"
-curl -s -o /dev/null -b "$LJAR" -X POST "$B/landlord/billing-settings" -d "_csrf=$LCSRF2&b_name=Firma+CI&b_series=BDO&b_currency=RON&b_vat=19"
-INV_LOC="$(curl -s -b "$LJAR" -o /dev/null -D - -X POST "$B/landlord/invoice-save" --data-urlencode "_csrf=$LCSRF2" --data-urlencode "client_name=Client CI" --data-urlencode "amount=49" --data-urlencode "vat_percent=19" | grep -i '^location:' | tr -d '\r')"
-INV_ID="$(printf '%s' "$INV_LOC" | grep -oE 'id=[a-f0-9]+' | head -1 | cut -d= -f2)"
-if [ -n "$INV_ID" ]; then
-  INV_HTML="$(curl -s -b "$LJAR" "$B/landlord/invoice?id=$INV_ID")"
-  tcontains "factura printabila: total cu TVA 19% (49 -> 58.31)" '58.31' "$INV_HTML"
-  tcontains "factura printabila: serie/numar BDO 00001" 'BDO 00001' "$INV_HTML"
-  tcontains "factura printabila: buton print" 'window.print()' "$INV_HTML"
-else FAIL=$((FAIL+1)); echo "FAIL: factura nu a fost creata (fara id in redirect)"; fi
+t "GET /landlord (autentificat) -> 200" 200 "$(code -b "$LJAR" "$B/landlord")"
+tcontains "landlord dashboard: instanta principala" 'instanta principala' "$(curl -s -b "$LJAR" "$B/landlord")"
 # landlord: backup DB al instantei principale -> .sql descarcabil (mutat aici din adminul clientului)
 CT_LBK="$(curl -s -b "$LJAR" -D - -o /dev/null "$B/landlord/backup?host=main" | grep -i 'content-type')"
 tcontains "landlord backup: content-type application/sql" 'application/sql' "$CT_LBK"

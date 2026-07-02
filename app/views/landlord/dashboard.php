@@ -30,7 +30,6 @@ code{background:#101216;color:#7CFFB2;padding:.12rem .4rem;border-radius:5px}
     <h1 style="margin:0">🏢 Landlord</h1>
     <span class="muted">instante: <?= count($rows) ?> · <span style="color:#16a34a">✔ <?= $okCnt ?> ok</span><?= $errCnt ? ' · <span style="color:#dc2626">✖ '.$errCnt.' cu erori</span>' : '' ?><?= $suspCnt ? ' · ⏸ '.$suspCnt.' suspendate' : '' ?></span>
     <span style="margin-left:auto;display:flex;gap:.5rem">
-      <a class="btn" href="<?= e(url(ll_path('billing'))) ?>">🧾 Facturare</a>
       <a class="btn" href="<?= e(url(ll_path())) ?>">↻ Reverifica</a>
       <a class="btn" href="<?= e(url(ll_path('logout'))) ?>">Iesire</a>
     </span>
