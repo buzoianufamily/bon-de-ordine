@@ -27,13 +27,6 @@ function complete_login(int $uid): void {
     $_SESSION['uid'] = $uid;
 }
 
-function attempt_login(string $email, string $password): bool {
-    $u = verify_credentials($email, $password);
-    if (!$u) return false;
-    complete_login((int)$u['id']);
-    return true;
-}
-
 function logout(): void {
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {

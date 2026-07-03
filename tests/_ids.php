@@ -10,7 +10,7 @@ $host = getenv('BDO_DB_HOST') ?: '127.0.0.1'; $port = getenv('BDO_DB_PORT') ?: '
 $GLOBALS['__config_override'] = [
     'db'  => ['host' => $host . ';port=' . $port, 'name' => getenv('BDO_DB_NAME') ?: 'bon',
               'user' => getenv('BDO_DB_USER') ?: 'root', 'pass' => getenv('BDO_DB_PASS') ?: '', 'charset' => 'utf8mb4'],
-    'app' => ['name'=>'HTTP','base_url'=>'','env'=>'dev','timezone'=>'Europe/Bucharest','locale'=>'ro'], 'landlord_pass'=>'httppass',
+    'app' => ['name'=>'HTTP','base_url'=>'','env'=>'dev','timezone'=>'Europe/Bucharest','locale'=>'ro'],
 ];
 $_SERVER['HTTP_HOST']='ci.local'; $_SERVER['REQUEST_URI']='/'; $_SERVER['SCRIPT_NAME']='/index.php';
 $_SERVER['REQUEST_METHOD']='GET'; $_SERVER['REMOTE_ADDR']='127.0.0.1';

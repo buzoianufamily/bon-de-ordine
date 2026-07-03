@@ -1,7 +1,5 @@
 # Date specifice instantei — NU se urca in git (contin secrete / fisiere incarcate)
 /config/tenants.json
-/config/billing.json
-/config/invoices.json
 /config/*.lock
 /assets/uploads/*
 !/assets/uploads/.gitkeep

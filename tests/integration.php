@@ -14,7 +14,6 @@ $GLOBALS['__config_override'] = [
     'db'  => ['host' => $host . ';port=' . $port, 'name' => getenv('BDO_DB_NAME') ?: 'bon',
               'user' => getenv('BDO_DB_USER') ?: 'root', 'pass' => getenv('BDO_DB_PASS') ?: '', 'charset' => 'utf8mb4'],
     'app' => ['name' => 'CI', 'base_url' => '', 'env' => 'dev', 'timezone' => 'Europe/Bucharest', 'locale' => 'ro'],
-    'landlord_pass' => 'ci-pass',
 ];
 $_SERVER['HTTP_HOST'] = 'ci.local'; $_SERVER['REQUEST_URI'] = '/'; $_SERVER['SCRIPT_NAME'] = '/index.php';
 $_SERVER['REQUEST_METHOD'] = 'GET'; $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
@@ -73,6 +72,12 @@ if ($svc2) { $t3 = issue_ticket($svc, false, 'paper'); transfer_ticket((int)$t3[
     $ctr2 = (int)val("SELECT id FROM counters WHERE branch_id=$br AND id<>$ctr LIMIT 1");
     if ($ctr2) { transfer_to_counter((int)$t3['id'], $ctr2); chk((int)val("SELECT target_counter_id FROM tickets WHERE id=".(int)$t3['id']) === $ctr2, 'transfer: to counter'); }
 }
+// garda de status: un bilet INCHIS (anulat) NU trebuie reinviat la rand de un transfer tarziu
+$tc = issue_ticket($svc, false, 'paper'); cancel_ticket((int)$tc['id']);   // -> 'cancelled'
+transfer_ticket((int)$tc['id'], $svc2 ?: $svc);
+chk(val("SELECT status FROM tickets WHERE id=".(int)$tc['id']) === 'cancelled', 'transfer: biletul anulat ramane anulat (nu revine la rand)');
+transfer_to_counter((int)$tc['id'], $ctr);
+chk(val("SELECT status FROM tickets WHERE id=".(int)$tc['id']) === 'cancelled', 'transfer-ghiseu: biletul inchis ramane inchis');
 
 /* ---- 5b. Bilet directionat la un ghiseu nu e furat de „urmatorul pe serviciu" de la alt ghiseu ---- */
 q("INSERT INTO counters (branch_id, code, name, all_services, status) VALUES (?, 'CIX', 'CI dir', 1, 'open')", [$br]);
@@ -525,18 +530,6 @@ chk((int)val("SELECT COUNT(*) FROM appointment_waitlist WHERE customer_email='c2
 $wlFail=false; try { appt_waitlist_add($svc, $slotWl, 'X', 'not-an-email'); } catch (Throwable $e) { $wlFail=true; }
 chk($wlFail, 'wl: email invalid -> respins');
 
-/* ---- 36. Ciclu de abonament (bdo_tenant_state): ok / suspendat / expirat + gratie ---- */
-$now = strtotime('2026-06-24 12:00:00');
-chk(bdo_tenant_state(['active'=>0], $now) === 'suspended', 'abonament: active=0 -> suspendat');
-chk(bdo_tenant_state(['active'=>1], $now) === 'ok', 'abonament: fara data -> ok (fara expirare)');
-chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-12-31'], $now) === 'ok', 'abonament: platit in viitor -> ok');
-chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-24'], $now) === 'ok', 'abonament: platit pana azi -> ok (in ziua curenta)');
-chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23'], $now) === 'expired', 'abonament: expirat ieri, fara gratie -> expirat');
-chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23', 'grace_days'=>5], $now) === 'ok', 'abonament: expirat ieri dar in gratie -> ok');
-chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-10', 'grace_days'=>5], $now) === 'expired', 'abonament: dincolo de gratie -> expirat');
-chk(bdo_tenant_state(['active'=>0, 'paid_until'=>'2026-12-31'], $now) === 'suspended', 'abonament: suspendarea manuala bate abonamentul valid');
-chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'data-gresita'], $now) === 'ok', 'abonament: data invalida ignorata -> ok');
-
 /* ---- 37. Subsol legal public (linkuri confidentialitate/termeni, multilingv) ---- */
 set_setting('brand_name', 'CI Brand');
 $footRo = public_legal_footer('ro');
@@ -640,20 +633,6 @@ q("UPDATE users SET must_change_pw=1 WHERE role='admin' LIMIT 1");
 chk($lvl(system_checkup(),'Parol') === 'crit', 'checkup: admin cu parola implicita -> critic');
 q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
 $GLOBALS['__config']['app']['env'] = $prevEnv2;
-
-/* ---- 42. Limite de plan per instanta (abonament) ---- */
-$GLOBALS['__tenant'] = null;
-chk(tenant_limit('services') === 0 && tenant_limit_reached('services') === false, 'plan: fara tenant -> nelimitat');
-$svcCount = (int) val("SELECT COUNT(*) FROM services");
-$GLOBALS['__tenant'] = ['limits' => ['services' => $svcCount + 1]];
-chk(tenant_limit('services') === $svcCount + 1 && tenant_limit_reached('services') === false, 'plan: sub limita -> permis');
-$GLOBALS['__tenant'] = ['limits' => ['services' => $svcCount]];
-chk(tenant_limit_reached('services') === true, 'plan: la limita -> blocat');
-$GLOBALS['__tenant'] = ['limits' => ['services' => 0]];
-chk(tenant_limit_reached('services') === false, 'plan: limita 0 -> nelimitat');
-$GLOBALS['__tenant'] = ['limits' => ['counters' => 1]];
-chk(tenant_limit('services') === 0 && tenant_limit_reached('services') === false, 'plan: limita pe alt tip nu afecteaza serviciile');
-$GLOBALS['__tenant'] = null;   // restaureaza contextul
 
 /* ---- 44. Auto-delogare la inactivitate (script gated pe setare) ---- */
 set_setting('admin_idle_min', '0');

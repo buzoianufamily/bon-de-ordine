@@ -1,6 +1,6 @@
 # Sistem de Bon de Ordine (Queue Management)
 
-Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a Moviik / Q‑net, în **PHP + MySQL**, gata de instalat pe **cPanel**. White‑label (personalizabil per client), **multi‑tenant** (un panou „landlord" pentru toți clienții tăi), cu anunț vocal în română, dispenser multilingv, 2FA, API + webhooks și aplicație Android pentru imprimante USB.
+Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a Moviik / Q‑net, în **PHP + MySQL**, gata de instalat pe **cPanel**. White‑label (nume, logo, culori, texte), cu anunț vocal în română, dispenser multilingv, 2FA, API + webhooks și aplicație Android pentru imprimante USB.
 
 > **Instalare fără pași manuali:** completezi datele bazei de date în `config/config.php`, urci fișierele și deschizi site‑ul. Schema, datele demo și un cont de admin se creează **automat** la prima accesare (nu există fișier `install.php`).
 
@@ -20,8 +20,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; **pagină de status live** (numărătoare inversă până la programare, butonul de check‑in apare automat când se deschide fereastra, se actualizează singură dacă recepția schimbă starea); în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. Când vine din biletul digital, evaluarea se **leagă de bonul servit** (serviciu/ghișeu), vizibil în Admin → Feedback pentru CSAT pe serviciu. | `…/feedback` |
 | **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
-| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, **CSAT pe serviciu**, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, backup DB, **export/import configurație**, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
-| **Landlord** | Panoul TĂU multi‑tenant: instanțele tuturor clienților, cu **health‑check** (funcționează / eroare / suspendată), adăugare/suspendare clienți. | `…/landlord` |
+| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, **CSAT pe serviciu**, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
 
 ### Funcționalități cheie
 - **Servicii** cu prefix + culoare, interval de numere, reset zilnic automat, bilete prioritare, KPI, **program de funcționare** (orar pe zile, cu mesaj „închis" configurabil), **zile închise / sărbători** (per filială sau globale), **pauză temporară** per serviciu (oprește emiterea fără a schimba programul), **formular** la emitere, **programări online**, **traduceri** nume/descriere, **grupuri**, ordonare prin **drag & drop**.
@@ -41,7 +40,6 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set; pagina **Bilete** are **export CSV** al listei filtrate.
 - **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit** (cu filtrare + export CSV), **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
 - **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, ghișee, statistici, **programări online** — sloturi/rezervare/status) — documentate în Admin → API & Webhooks. Evenimente webhook pentru tot ciclul biletului + **`sla.breach`** (cozi peste țintă) + **`feedback.low`** (notă mică de la client, cu serviciul/operatorul bonului). Endpoint **`/health`** (JSON) pentru monitorizare uptime.
-- **Multi‑tenant**: subdomeniu + bază de date per client, panou **landlord** cu health‑check și suspendare instanțe.
 - **Temă deschisă/închisă** (cu auto după sistemul de operare), admin **responsive pe mobil**, căutare globală **Ctrl+K**, checklist de onboarding.
 - **White‑label**: nume, logo, culoare, texte — din Setări (pe taburi).
 
@@ -50,18 +48,16 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 ## Cum e construit (arhitectură)
 
 ```
-index.php             ← front controller (rutează tot: public, API, cron, PWA, landlord)
-config/config.php     ← date DB + parola landlord
-config/tenants.json   ← registrul instanțelor (multi-tenant; creat de panoul landlord)
+index.php             ← front controller (rutează tot: public, API, cron, PWA)
+config/config.php     ← date DB + setări aplicație
 database/             ← schema.sql (structura) + seed.sql (date demo)
-app/core/             ← init (rezolvare tenant + migrări), db (PDO), helpers,
+app/core/             ← init (bootstrap + migrări), db (PDO), helpers,
                         auth, totp (2FA), ticket (logica cozii), appointments,
                         printer (ESC/POS), mailer (SMTP), xlsx (Excel cu grafice)
 app/admin_routes.php  ← rutare + CRUD administrare
 app/api_v1.php        ← API public REST v1 (cheie + rate-limit)
 app/cron.php          ← sarcini programate (remindere, raport zilnic, curățare)
-app/landlord.php      ← panoul multi-tenant (health-check clienți)
-app/views/            ← paginile (public/ + admin/ + landlord/)
+app/views/            ← paginile (public/ + admin/)
 assets/               ← css + js (dispenser, counter, display, player builder, app)
 android/launcher/     ← aplicația Android (kiosk WebView + printare USB ESC/POS)
 .github/workflows/    ← build automat al APK-ului
@@ -69,7 +65,7 @@ android/launcher/     ← aplicația Android (kiosk WebView + printare USB ESC/P
 
 - **Fără framework greu** — PHP simplu cu PDO, ușor de găzduit și întreținut.
 - **Migrare automată a schemei**: la fiecare acces, baza se aduce la zi (adaugă tabele/coloane noi) fără SQL manual și fără pierderi de date.
-- **Securitate**: sesiuni cu cookie restrâns la host (izolare între subdomenii), protecție CSRF, parole bcrypt, foldere sensibile blocate prin `.htaccess`.
+- **Securitate**: sesiuni cu cookie restrâns la host, protecție CSRF, parole bcrypt, foldere sensibile blocate prin `.htaccess`.
 - Vezi **`INSTALL.md`** pentru instalarea pas cu pas.
 
 ---
@@ -101,21 +97,6 @@ Cod sursă complet în **`android/launcher/`**. Pe scurt:
 4. Conectează imprimanta Bixolon pe USB → la apăsarea pe ecran, bonul se tipărește.
 
 Detalii și depanare: `android/README.md`.
-
----
-
-## Multi‑tenant: mai mulți clienți pe aceeași instalare
-Implementat complet: fiecare client primește un **subdomeniu** (`client1.domeniu.ro`) și o **bază de date proprie** (izolare totală), pe **același cod** — un singur upload actualizează toți clienții.
-
-**Cum funcționează:** la fiecare cerere, aplicația se uită la host și alege baza de date din `config/tenants.json`. Fără fișier, totul merge ca o instanță unică (nimic nu se schimbă).
-
-**Panoul landlord** (`…/landlord`, parola din `config/config.php → landlord_pass`):
-- vede TOATE instanțele cu **health‑check live**: conexiune DB, versiunea schemei (marcată „veche" dacă nu e la zi), bilete azi, ultimul bon, dispozitive online, utilizatori — știi imediat dacă „li s‑a stricat ceva" unui client;
-- adaugi/editezi instanțe (host + datele bazei), cu test de conexiune la salvare;
-- **suspenzi/reactivezi** un client dintr‑un click (clientul vede o pagină „instanță suspendată"; nimic nu se șterge);
-- e independent de bazele de date — funcționează chiar dacă una dintre instanțe e picată.
-
-**Onboarding client nou (3 minute):** creezi subdomeniul + baza de date în cPanel → înregistrezi instanța în landlord → prima accesare a subdomeniului instalează automat schema + adminul implicit. Pași detaliați în `INSTALL.md`.
 
 ---
 

@@ -109,40 +109,10 @@ Ghid complet (build, kiosk, depanare): **`android/README.md`**.
 
 ---
 
-## Multi‑tenant — mai mulți clienți pe aceeași instalare
-Cu o singură instalare poți deservi oricâți clienți, fiecare pe subdomeniul lui și cu baza lui de date (izolare completă).
-
-### Activare (o singură dată)
-1. În `config/config.php` setează o parolă lungă la `'landlord_pass' => '…'`.
-2. Deschide `https://domeniul-tau.ro/landlord` și autentifică‑te cu acea parolă.
-
-**Izolarea panoului (recomandat):** ca panoul de administrare a clienților să fie complet separat de aplicație și **invizibil pentru clienți**, dedică‑i un subdomeniu (ex: `clienti.domeniul-tau.ro`) și pune‑l în `config/config.php`:
-
-```php
-'landlord_host' => 'clienti.domeniul-tau.ro',
-```
-
-Cu această setare, `/landlord` funcționează **doar** pe acel host (accesarea rădăcinii lui redirecționează direct la panou), iar pe subdomeniile clienților și pe instanța‑aplicație `/landlord` întoarce **404** — clienții nu află că pagina există. Dacă lași `landlord_host` gol, panoul rămâne disponibil (ca înainte) doar pe instanța principală, ascuns pe subdomeniile clienților.
-
-### Adaugi un client nou (~3 minute)
-1. **Subdomeniu:** cPanel → **Domains** → creează `client1.domeniul-tau.ro` cu **același document root** ca aplicația (sau creează o singură dată un subdomeniu wildcard `*`).
-2. **Bază de date:** cPanel → **MySQL Databases** → creează o bază + un utilizator noi, cu **ALL PRIVILEGES**.
-3. **Înregistrare:** în panoul `/landlord`, completează formularul (host + datele bazei) → **Salvează** (îți confirmă pe loc dacă conexiunea DB merge).
-4. **Prima accesare** a subdomeniului instalează automat schema, datele demo și adminul implicit — la prima logare clientul este obligat să schimbe parola implicită.
-5. Dacă clientul folosește emailuri (remindere/raport): adaugă în cPanel câte un **Cron Job** per instanță, cu URL‑ul de cron afișat în `/landlord` → **„🩺 Verificare & cron per instanță"** (linkul de cron pentru fiecare instanță).
-
-### Operare zilnică
-- Tabelul din `/landlord` arată pentru fiecare instanță: **Funcționează / EROARE** (cu mesajul erorii), versiunea schemei (marcată „veche" dacă instanța n‑a fost accesată după un update — se actualizează singură la prima accesare), bilete azi, ultimul bon, dispozitive online, utilizatori.
-- **Suspendă** un client (neplată etc.) dintr‑un click — subdomeniul lui afișează „instanță suspendată"; **Activează** îl repune instant. **Șterge** doar scoate instanța din registru (baza de date rămâne neatinsă).
-- Un singur upload de fișiere actualizează **toți** clienții (migrările de schemă rulează automat per instanță).
-
----
-
-## Vânzare pe abonament (pentru furnizor)
-- **Verificare „pregătit de producție":** în `/landlord` → **„🩺 Verificare & cron per instanță"** — listă de control automată **per instanță** (parolă implicită, 2FA, email, backup, cron, retenție, date legale), citită direct din baza de date a fiecărui client. Rezolvă avertismentele înainte de a preda instanța. (A fost mutată din adminul clientului în panoul furnizorului.)
-- **Limite de plan:** în `/landlord`, la fiecare client poți seta limite (filiale/ghișee/utilizatori/servicii) — aplicația le impune automat. `0 = nelimitat`.
-- **Pregătire pentru producție:** după testare, Admin → Setări → **Pregătire pentru producție** șterge datele de test (bilete/programări/feedback) păstrând toată configurația; face automat un backup de siguranță înainte. Necesită confirmarea „STERGE".
-- **Documente contractuale (modele):** vezi `docs/contracte/` — `DPA-model.md` (acord de prelucrare a datelor, GDPR art. 28) și `contract-abonament-SLA-model.md`. **Sunt modele orientative — validează‑le cu un jurist.**
+## Pregătire pentru producție
+- **Curățare date de test:** după testare, Admin → Setări → **Pregătire pentru producție** șterge datele de test (bilete/programări/feedback) păstrând toată configurația. Necesită confirmarea „STERGE".
+- **Backup bază de date:** fă backup periodic la nivel de server (cPanel → **Backup**, sau un cron care exportă baza) — datele nu trebuie pierdute.
+- **Document contractual (model):** vezi `docs/contracte/DPA-model.md` (acord de prelucrare a datelor, GDPR art. 28). **Model orientativ — validează‑l cu un jurist.**
 
 ## Monitorizare & parole
 - **Monitorizare uptime:** configurează serviciul de monitorizare (UptimeRobot, BetterStack etc.) pe `https://coada.firma-ta.ro/health`. Răspunde cu JSON `{"ok":true,"db":"up",…}` și cod **200** când totul e funcțional, sau **503** dacă baza de date e picată.

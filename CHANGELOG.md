@@ -1,10 +1,19 @@
 # Istoric versiuni — Bon de ordine
 
-Sistem de gestionare a cozilor (multi-tenant, PHP 8 + MySQL/MariaDB), pregătit pentru
-vânzare pe abonament. Versiunea schemei bazei de date este urcată automat la fiecare
-accesare (`schema_version`); mai jos, capacitățile grupate pe teme.
+Sistem de gestionare a cozilor (o singură instanță, PHP 8 + MySQL/MariaDB). Versiunea
+schemei bazei de date este urcată automat la fiecare accesare (`schema_version`);
+mai jos, capacitățile grupate pe teme.
 
 ## Schema curentă: v33
+
+---
+
+## Eliminare landlord / multi-tenant
+- **Scos complet** panoul „landlord" și mecanismul multi-tenant: rutarea bazei de date
+  după host (`config/tenants.json`), stările de abonament (suspendat/expirat), limitele
+  de plan per instanță și facturarea. Aplicația servește o **singură instanță** (un
+  `config/config.php` + o bază de date). Fiecare client se instalează separat, în folderul
+  lui, cu propria configurație. Rămas: cod mai simplu, fără cuplaje pe host/tenant.
 
 ---
 

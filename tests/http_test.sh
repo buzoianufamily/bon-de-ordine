@@ -17,7 +17,7 @@ JAR="$(mktemp)"; SRVLOG="$(mktemp)"; CFGBAK="$(mktemp)"
 cp config/config.php "$CFGBAK" 2>/dev/null || true
 cat > config/config.php <<EOF
 <?php return ['db'=>['host'=>'${DBH};port=${DBP}','name'=>'${DBN}','user'=>'${DBU}','pass'=>'${DBW}','charset'=>'utf8mb4'],
-'app'=>['name'=>'HTTP','base_url'=>'','env'=>'dev','timezone'=>'Europe/Bucharest','locale'=>'ro'],'landlord_pass'=>'httppass'];
+'app'=>['name'=>'HTTP','base_url'=>'','env'=>'dev','timezone'=>'Europe/Bucharest','locale'=>'ro']];
 EOF
 
 SRV=""
@@ -148,17 +148,17 @@ t "GET /admin/devices/qr"        200 "$(code -b "$JAR" $B/admin/devices/qr)"
 TODAY="$(date +%F)"
 CT_CSV="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/tickets/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export bilete CSV content-type" 'text/csv' "$CT_CSV"
-# reorganizare: backup DB + export/clonare config mutate in landlord (clientul nu mai are acces)
+# backup DB + export/clonare config nu sunt in panoul de administrare (operatiuni la nivel de server)
 SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
 tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
-case "$SET_PAGE" in *'Backup / clonare configurație'*) FAIL=$((FAIL+1)); echo "FAIL: clientul inca are card clonare config";; *) PASS=$((PASS+1));; esac
-case "$SET_PAGE" in *'Descarcă backup SQL'*) FAIL=$((FAIL+1)); echo "FAIL: clientul inca are backup SQL in Setari";; *) PASS=$((PASS+1));; esac
-# rutele de backup + export/import config ale clientului sunt inchise (mutate in landlord)
-t "client: POST /admin/backup/run -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
-t "client: GET /admin/backup/download -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=x.sql")"
-t "client: GET /admin/settings/export -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" "$B/admin/settings/export")"
-# verificare productie (readiness) a fost mutata in landlord -> nu mai apare in adminul clientului
-t "GET /admin/checkup -> 404 (mutat in landlord)" 404 "$(code -b "$JAR" $B/admin/checkup)"
+case "$SET_PAGE" in *'Backup / clonare configurație'*) FAIL=$((FAIL+1)); echo "FAIL: adminul inca are card clonare config";; *) PASS=$((PASS+1));; esac
+case "$SET_PAGE" in *'Descarcă backup SQL'*) FAIL=$((FAIL+1)); echo "FAIL: adminul inca are backup SQL in Setari";; *) PASS=$((PASS+1));; esac
+# rutele de backup + export/import config sunt inchise (indisponibile din panou)
+t "admin: POST /admin/backup/run -> 404" 404 "$(code -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
+t "admin: GET /admin/backup/download -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=x.sql")"
+t "admin: GET /admin/settings/export -> 404" 404 "$(code -b "$JAR" "$B/admin/settings/export")"
+# verificare productie (readiness) nu apare in panoul de administrare
+t "GET /admin/checkup -> 404" 404 "$(code -b "$JAR" $B/admin/checkup)"
 # media: se accepta orice tip de fisier; SVG-ul e ACCEPTAT dar CURATAT de scripturi (anti-XSS stocat)
 SVGF="$(mktemp)"; printf '%s' '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' > "$SVGF"
 curl -s -o /dev/null -b "$JAR" -X POST "$B/admin/media/upload" -F "_csrf=$CSRF" -F "file[]=@$SVGF;type=image/svg+xml;filename=evil.svg"
@@ -423,19 +423,8 @@ t "API call-next pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{ht
 t "API counter-pause pe ghiseu nepermis -> 403" 403 "$(curl -s -o /dev/null -w '%{http_code}' -b "$PJAR" -X POST $B/api/counter-pause -H "X-CSRF: $PACSRF" -H 'Content-Type: application/json' -d "{\"counter_id\":$CTR}")"
 rm -f "$PJAR"
 
-# --- landlord (login separat, backup + clonare configuratie per instanta) ---
-LJAR="$(mktemp)"
-LCSRF="$(curl -s -c "$LJAR" "$B/landlord" | grep -oE 'name="_csrf" value="[^"]+"' | head -1 | sed -E 's/.*value="([^"]+)".*/\1/')"
-curl -s -o /dev/null -b "$LJAR" -c "$LJAR" -X POST "$B/landlord" -d "_csrf=$LCSRF&password=httppass"
-t "GET /landlord (autentificat) -> 200" 200 "$(code -b "$LJAR" "$B/landlord")"
-tcontains "landlord dashboard: instanta principala" 'instanta principala' "$(curl -s -b "$LJAR" "$B/landlord")"
-# landlord: backup DB al instantei principale -> .sql descarcabil (mutat aici din adminul clientului)
-CT_LBK="$(curl -s -b "$LJAR" -D - -o /dev/null "$B/landlord/backup?host=main" | grep -i 'content-type')"
-tcontains "landlord backup: content-type application/sql" 'application/sql' "$CT_LBK"
-tcontains "landlord backup: contine dump SQL" 'CREATE TABLE' "$(curl -s -b "$LJAR" "$B/landlord/backup?host=main")"
-# landlord: export configuratie (clonare) -> JSON cu setari
-tcontains "landlord config-export: JSON cu setari" '"settings"' "$(curl -s -b "$LJAR" "$B/landlord/config-export?host=main")"
-rm -f "$LJAR"
+# --- landlord: eliminat complet -> /landlord nu mai exista (404) ---
+t "GET /landlord -> 404 (panou eliminat)" 404 "$(code "$B/landlord")"
 
 # --- logout ---
 t "GET /logout -> 302"   302 "$(code -b "$JAR" $B/logout)"

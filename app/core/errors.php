@@ -15,6 +15,7 @@ function fail_page(int $code, string $title, string $msg, ?string $detail = null
     // raspuns JSON pentru clientii de API/AJAX
     if (stripos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false
         || stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false) {
+        if (!headers_sent()) header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['ok' => false, 'error' => $msg]);
         exit;
     }

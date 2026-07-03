@@ -161,11 +161,6 @@ function log_user_status(int $userId, string $status): void {
     } catch (Throwable $e) {}
 }
 
-/** Imparte un CSV in linii, scotand BOM-ul UTF-8 din fata (fisiere exportate/Excel). */
-function _csv_lines(string $csv): array {
-    return preg_split('/\r?\n/', preg_replace('/^\xEF\xBB\xBF/', '', $csv));
-}
-
 /**
  * Parseaza un CSV in randuri de campuri respectand ghilimelele (RFC 4180): un camp poate
  * contine virgule, ghilimele escape-uite ("") si chiar newline-uri. Scoate BOM-ul; sare
@@ -1090,17 +1085,6 @@ function backup_prune(int $keep): int {
     return $del;
 }
 
-/* ----------------------- Limite de plan per instanta (abonament) ----------------------- */
-/**
- * Limita planului pentru un tip de resursa (branches/counters/users/services); 0 = nelimitat.
- * Limitele se seteaza per client in panoul landlord (config/tenants.json). Instanta principala
- * (fara tenant) e mereu nelimitata.
- */
-function tenant_limit(string $what): int {
-    $t = $GLOBALS['__tenant'] ?? null;
-    if (!is_array($t) || empty($t['limits']) || !is_array($t['limits'])) return 0;
-    return max(0, (int)($t['limits'][$what] ?? 0));
-}
 /**
  * Script de auto-delogare la inactivitate (PC-uri partajate la ghisee/backoffice).
  * Returneaza '' daca e dezactivat (setarea admin_idle_min = 0). Urmareste activitatea
@@ -1115,14 +1099,4 @@ function idle_logout_script(): string {
          . 'function r(){clearTimeout(t);t=setTimeout(function(){location.href=U;},L);}'
          . "['mousemove','keydown','mousedown','touchstart','scroll'].forEach(function(e){document.addEventListener(e,r,{passive:true});});"
          . 'r();})();</script>';
-}
-
-/** A atins instanta limita de plan pentru $what? (numara randurile din tabelul corespunzator) */
-function tenant_limit_reached(string $what): bool {
-    $lim = tenant_limit($what);
-    if ($lim <= 0) return false;
-    $tables = ['branches' => 'branches', 'counters' => 'counters', 'users' => 'users', 'services' => 'services'];
-    if (!isset($tables[$what])) return false;                 // whitelist tabel (fara interpolare nesigura)
-    try { return (int) val("SELECT COUNT(*) FROM `{$tables[$what]}`") >= $lim; }
-    catch (Throwable $e) { return false; }
 }

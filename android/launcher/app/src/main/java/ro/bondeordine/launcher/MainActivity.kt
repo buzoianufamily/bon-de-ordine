@@ -7,8 +7,10 @@ import android.os.Bundle
 import android.util.Base64
 import android.view.View
 import android.view.WindowManager
+import android.net.Uri
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -44,7 +46,17 @@ class MainActivity : Activity() {
             useWideViewPort = true
             loadWithOverviewMode = true
         }
-        web.webViewClient = WebViewClient()
+        // Securitate kiosk: pastreaza navigarea pe acelasi host ca linkul configurat. Pagina expune
+        // puntea nativa AndroidPrinter (imprimanta USB); daca WebView-ul ar ajunge (prin link/redirect/
+        // continut injectat pe HTTP) pe un site strain, acela ar putea comanda imprimanta. loadUrl()
+        // programatic (provizionare din meniul de administrare) NU trece prin aceasta verificare.
+        web.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+                !allowNav(request.url)
+            @Deprecated("Deprecated in Java")
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
+                !allowNav(Uri.parse(url))
+        }
         web.webChromeClient = WebChromeClient()
         web.addJavascriptInterface(Bridge(), "AndroidPrinter")
         setContentView(web)
@@ -116,6 +128,13 @@ class MainActivity : Activity() {
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
 
+    /** Navigarea e permisa doar pe acelasi host ca linkul configurat (sau daca nu e inca setat). */
+    private fun allowNav(target: Uri): Boolean {
+        val saved = try { Uri.parse(prefs.getString("url", "") ?: "").host } catch (_: Exception) { null }
+        val th = target.host
+        return saved.isNullOrEmpty() || th.isNullOrEmpty() || th == saved
+    }
+
     /** Obiectul expus paginii web ca window.AndroidPrinter */
     inner class Bridge {
         @JavascriptInterface
@@ -129,11 +148,5 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun getStatus(): String = UsbEscPosPrinter.status(this@MainActivity)
-
-        @JavascriptInterface
-        fun setConfig(url: String) {
-            prefs.edit().putString("url", url).apply()
-            runOnUiThread { web.loadUrl(url) }
-        }
     }
 }
