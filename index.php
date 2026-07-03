@@ -659,6 +659,18 @@ SWJS;
                     redirect('book/'.$svc['id'].'?date='.urlencode(substr((string)input('slot_start',''),0,10) ?: date('Y-m-d')).($lang!=='ro'?'&lang='.$lang:''));
                 }
                 $slot = (string)input('slot_start', '');
+                // pe pagina publica, acceptam DOAR sloturi oferite de grila (orar + aliniere + neexpirat):
+                // altfel un POST fabricat ar putea rezerva ore in afara programului sau neincadrate in grila.
+                $slotDate = preg_match('/^(\d{4}-\d{2}-\d{2})/', $slot, $m) ? $m[1] : '';
+                $slotKey  = $slotDate !== '' ? date('Y-m-d H:i:00', strtotime($slot)) : '';
+                $validSlot = false;
+                if ($slotKey !== '') foreach (appt_slots($svc, $slotDate) as $sl) {
+                    if ($sl['start'] === $slotKey && empty($sl['past'])) { $validSlot = true; break; }
+                }
+                if (!$validSlot) {
+                    flash('Intervalul ales nu este valid. Alege un interval din cele afisate.', 'error');
+                    redirect('book/'.$svc['id'].'?date='.urlencode($slotDate ?: date('Y-m-d')).($lang!=='ro'?'&lang='.$lang:''));
+                }
                 $name = trim((string)input('name','')); $phone = trim((string)input('phone','')); $email = trim((string)input('email',''));
                 try { $appt = appt_book((int)$svc['id'], $slot, $name ?: null, $phone ?: null, $email ?: null); }
                 catch (Throwable $ex) { flash($ex->getMessage(), 'error'); redirect('book/'.$svc['id'].'?date='.urlencode(substr($slot,0,10) ?: date('Y-m-d')).'&lang='.$lang); }

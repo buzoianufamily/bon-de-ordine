@@ -161,11 +161,6 @@ function log_user_status(int $userId, string $status): void {
     } catch (Throwable $e) {}
 }
 
-/** Imparte un CSV in linii, scotand BOM-ul UTF-8 din fata (fisiere exportate/Excel). */
-function _csv_lines(string $csv): array {
-    return preg_split('/\r?\n/', preg_replace('/^\xEF\xBB\xBF/', '', $csv));
-}
-
 /**
  * Parseaza un CSV in randuri de campuri respectand ghilimelele (RFC 4180): un camp poate
  * contine virgule, ghilimele escape-uite ("") si chiar newline-uri. Scoate BOM-ul; sare

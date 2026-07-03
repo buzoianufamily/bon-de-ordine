@@ -92,7 +92,12 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $a === 'import') { admin_users_import(); return; }
             if ($a === 'export') { admin_users_export(); return; }
             if ($method === 'POST' && $a === null) { admin_user_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); audit('delete','user',(int)$a); flash('Utilizator sters.'); redirect('admin/users'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check();
+                // un non-admin nu poate sterge un cont de administrator (anti-escaladare/sabotaj)
+                if (current_user()['role'] !== 'admin' && (string) val('SELECT role FROM users WHERE id=?', [(int)$a]) === 'admin') {
+                    flash('Doar un administrator poate sterge un cont de administrator.', 'error'); redirect('admin/users');
+                }
+                q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); audit('delete','user',(int)$a); flash('Utilizator sters.'); redirect('admin/users'); }
             if ($a === 'new') { admin_user_form(null); return; }
             if (ctype_digit((string)$a)) { admin_user_form((int)$a); return; }
             admin_users_list(); return;
@@ -732,6 +737,14 @@ function admin_user_save(): void {
     $id = (int)($_POST['id'] ?? 0);
     $name=trim($_POST['name']??''); $email=trim($_POST['email']??''); $role=$_POST['role']??'agent';
     if (!in_array($role, ['admin','manager','agent'], true)) $role = 'agent';   // whitelist (defense-in-depth)
+    // anti-escaladare de privilegii: un non-admin (ex: manager cu dreptul 'users') NU poate crea/promova
+    // un administrator, nici modifica un cont existent de administrator (i-ar putea schimba parola/prelua contul).
+    if (($actor = current_user()) && ($actor['role'] ?? '') !== 'admin') {
+        if ($role === 'admin') { flash('Doar un administrator poate atribui rolul de administrator.', 'error'); redirect('admin/users'); }
+        if ($id && (string) val('SELECT role FROM users WHERE id=?', [$id]) === 'admin') {
+            flash('Doar un administrator poate modifica un cont de administrator.', 'error'); redirect('admin/users');
+        }
+    }
     $active=isset($_POST['active'])?1:0; $pass=(string)($_POST['password']??'');
     $notify=isset($_POST['notify_browser'])?1:0;
     $allowed = implode(',', array_filter(array_map('intval', (array)($_POST['allowed_counters'] ?? [])))) ?: null;

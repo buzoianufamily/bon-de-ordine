@@ -73,6 +73,12 @@ if ($svc2) { $t3 = issue_ticket($svc, false, 'paper'); transfer_ticket((int)$t3[
     $ctr2 = (int)val("SELECT id FROM counters WHERE branch_id=$br AND id<>$ctr LIMIT 1");
     if ($ctr2) { transfer_to_counter((int)$t3['id'], $ctr2); chk((int)val("SELECT target_counter_id FROM tickets WHERE id=".(int)$t3['id']) === $ctr2, 'transfer: to counter'); }
 }
+// garda de status: un bilet INCHIS (anulat) NU trebuie reinviat la rand de un transfer tarziu
+$tc = issue_ticket($svc, false, 'paper'); cancel_ticket((int)$tc['id']);   // -> 'cancelled'
+transfer_ticket((int)$tc['id'], $svc2 ?: $svc);
+chk(val("SELECT status FROM tickets WHERE id=".(int)$tc['id']) === 'cancelled', 'transfer: biletul anulat ramane anulat (nu revine la rand)');
+transfer_to_counter((int)$tc['id'], $ctr);
+chk(val("SELECT status FROM tickets WHERE id=".(int)$tc['id']) === 'cancelled', 'transfer-ghiseu: biletul inchis ramane inchis');
 
 /* ---- 5b. Bilet directionat la un ghiseu nu e furat de „urmatorul pe serviciu" de la alt ghiseu ---- */
 q("INSERT INTO counters (branch_id, code, name, all_services, status) VALUES (?, 'CIX', 'CI dir', 1, 'open')", [$br]);
@@ -536,6 +542,19 @@ chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-23', 'grace_days'=>5],
 chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'2026-06-10', 'grace_days'=>5], $now) === 'expired', 'abonament: dincolo de gratie -> expirat');
 chk(bdo_tenant_state(['active'=>0, 'paid_until'=>'2026-12-31'], $now) === 'suspended', 'abonament: suspendarea manuala bate abonamentul valid');
 chk(bdo_tenant_state(['active'=>1, 'paid_until'=>'data-gresita'], $now) === 'ok', 'abonament: data invalida ignorata -> ok');
+
+/* ---- 36b. Registru tenanti corupt = fail-closed (nu cade silentios pe baza principala) ---- */
+$__tf = qms_tenants_file();
+$__tfBak = is_file($__tf) ? (string)file_get_contents($__tf) : null;
+unset($GLOBALS['__tenants_corrupt']);
+file_put_contents($__tf, '{ this is not json');
+qms_tenants_load();
+chk(!empty($GLOBALS['__tenants_corrupt']), 'tenants: JSON corupt -> semnalat (fail-closed pe subdomenii)');
+file_put_contents($__tf, '{"tenants":[]}');
+qms_tenants_load();
+chk(empty($GLOBALS['__tenants_corrupt']), 'tenants: JSON valid gol -> nu e marcat corupt');
+if ($__tfBak !== null) file_put_contents($__tf, $__tfBak); else @unlink($__tf);
+unset($GLOBALS['__tenants_corrupt']);
 
 /* ---- 37. Subsol legal public (linkuri confidentialitate/termeni, multilingv) ---- */
 set_setting('brand_name', 'CI Brand');

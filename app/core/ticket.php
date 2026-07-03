@@ -308,10 +308,11 @@ function ticket_event(int $ticket_id, string $event): void {
 function transfer_to_counter(int $ticket_id, int $target_counter_id): void {
     $c = one('SELECT * FROM counters WHERE id = ?', [$target_counter_id]);
     if (!$c) throw new RuntimeException('Ghiseu inexistent');
-    q("UPDATE tickets SET status = 'waiting', counter_id = NULL, agent_id = NULL,
+    // garda de status: transferam doar bilete active (nu reinviem bilete inchise/anulate/neprezentate)
+    $st = q("UPDATE tickets SET status = 'waiting', counter_id = NULL, agent_id = NULL,
         called_at = NULL, served_at = NULL, finished_at = NULL, target_counter_id = ?
-       WHERE id = ?", [$target_counter_id, $ticket_id]);
-    ticket_event($ticket_id, 'ticket.transferred');
+       WHERE id = ? AND status IN ('waiting','called','serving')", [$target_counter_id, $ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.transferred');
 }
 
 /** Salveaza o nota interna pe bilet (operator). Gol = sterge nota. */
@@ -356,10 +357,11 @@ function cancel_ticket(int $ticket_id): void {
 }
 /** Transfera biletul catre alt serviciu (revine in asteptare). */
 function transfer_ticket(int $ticket_id, int $service_id): void {
-    q("UPDATE tickets SET service_id = ?, status = 'waiting', counter_id = NULL, agent_id = NULL,
+    // garda de status: doar bilete active pot fi mutate la alt serviciu (nu reinviem bilete inchise)
+    $st = q("UPDATE tickets SET service_id = ?, status = 'waiting', counter_id = NULL, agent_id = NULL,
         called_at = NULL, served_at = NULL, finished_at = NULL, target_counter_id = NULL, recall_count = 0
-       WHERE id = ?", [$service_id, $ticket_id]);
-    ticket_event($ticket_id, 'ticket.transferred');
+       WHERE id = ? AND status IN ('waiting','called','serving')", [$service_id, $ticket_id]);
+    if ($st->rowCount() > 0) ticket_event($ticket_id, 'ticket.transferred');
 }
 
 /** Elibereaza biletele directionate catre un ghiseu (in asteptare) inapoi in coada generala a serviciului. */
@@ -431,7 +433,7 @@ function queue_state(int $branch_id, bool $withEstimates = false): array {
          FROM tickets t
          JOIN services s ON s.id = t.service_id
          LEFT JOIN counters c ON c.id = t.counter_id
-         WHERE t.branch_id = ? AND t.status IN ('called','serving')
+         WHERE t.branch_id = ? AND t.status IN ('called','serving') AND DATE(t.issued_at) = CURDATE()
          ORDER BY t.called_at DESC
          LIMIT 8", [$branch_id]);
 

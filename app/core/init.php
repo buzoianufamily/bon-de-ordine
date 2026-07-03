@@ -23,7 +23,11 @@ function qms_tenants_file(): string { return APP_ROOT . '/config/tenants.json'; 
 function qms_tenants_load(): array {
     $f = qms_tenants_file();
     if (!is_file($f)) return [];
-    $j = json_decode((string)@file_get_contents($f), true);
+    $raw = (string)@file_get_contents($f);
+    $j = json_decode($raw, true);
+    // fisier prezent dar necitibil/corupt (JSON invalid): semnaleaza, ca sa NU cada silentios
+    // subdomeniile clientilor pe baza de date principala a proprietarului (izolare multi-tenant).
+    $GLOBALS['__tenants_corrupt'] = ($raw !== '' && !is_array($j));
     return is_array($j['tenants'] ?? null) ? $j['tenants'] : [];
 }
 /**
@@ -75,7 +79,10 @@ foreach ($__tenants as $__t) {
 // host neinregistrat: daca exista un registru de tenanti si un primary_host configurat,
 // nu servi pe baza de date principala un domeniu necunoscut (anti-configurare gresita/spoof)
 $__primary = strtolower(trim((string)($config['primary_host'] ?? '')));
-if (!$__matched && $__primary !== '' && $__host !== $__primary && $__hostNoWww !== $__primary && $__tenants) {
+if (!$__matched && $__primary !== '' && $__host !== $__primary && $__hostNoWww !== $__primary
+        && ($__tenants || !empty($GLOBALS['__tenants_corrupt']))) {
+    // host neinregistrat SAU registru corupt -> nu servi baza de date principala pe alt domeniu
+    // (registru corupt = fail-closed: mai bine 404 decat sa scurga datele proprietarului pe subdomenii)
     fail_page(404, 'Domeniu neconfigurat', 'Acest domeniu nu este configurat pe platformă.', null, false);
 }
 unset($__host, $__hostNoWww, $__t, $__th, $__tenants, $__matched, $__state, $__primary);
