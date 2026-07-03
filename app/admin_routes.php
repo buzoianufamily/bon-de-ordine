@@ -182,10 +182,6 @@ function admin_dispatch(array $seg, string $method): void {
             if ($a === 'export') { admin_audit_export(); return; }
             admin_audit_list(); return;
 
-        case 'backup':
-            // Backup-ul bazei de date se face la nivel de server (cPanel / cron), nu din aplicatie.
-            http_response_code(404); echo 'Sectiune inexistenta.'; return;
-
         case 'security':
             if ($method === 'POST') { admin_security_save(); return; }
             admin_security_page(); return;
@@ -263,12 +259,7 @@ function system_checkup(): array {
         ? $add('ok', 'Email', 'Trimiterea de emailuri este activă (reset parolă, remindere, rapoarte).')
         : $add('warn', 'Email', 'Emailul nu este configurat: resetarea parolei, reminderele și rapoartele nu funcționează. Configurează SMTP în Setări → Email.');
 
-    // 5) Backup automat
-    (setting('backup_auto_enabled', '0') === '1')
-        ? $add('ok', 'Backup automat', 'Backup-ul automat zilnic este activ.')
-        : $add('warn', 'Backup automat', 'Backup-ul automat este oprit. Activează-l în Setări → Backup (necesită cron).');
-
-    // 6) Cron rulează?
+    // Cron rulează?
     $last = (int) setting('cron_last_run', '0');
     if ($last === 0) $add('warn', 'Cron', 'Cron-ul nu a rulat încă niciodată. Configurează un Cron Job către /cron?key=… (remindere, backup, curățare).');
     elseif (time() - $last > 7200) $add('warn', 'Cron', 'Cron-ul nu a mai rulat de peste 2 ore (ultima dată: ' . date('d.m.Y H:i', $last) . '). Verifică Cron Job-ul din cPanel.');
@@ -1131,52 +1122,6 @@ function admin_gdpr_erase(): void {
     redirect('admin/gdpr');
 }
 
-/* ----------------------- BACKUP BAZA DE DATE ----------------------- */
-function admin_db_backup(): void {
-    csrf_check();
-    audit('backup', 'database');
-    while (ob_get_level() > 0) @ob_end_clean();    // dump direct, fara buffering (fisiere mari)
-    header('Content-Type: application/sql; charset=utf-8');
-    header('Content-Disposition: attachment; filename="backup_' . date('Ymd_His') . '.sql"');
-    db_dump_write(function (string $s) { echo $s; });
-    exit;
-}
-/** Ruleaza un backup pe server (scris in backups/) + curata vechile copii. */
-function admin_backup_run(): void {
-    csrf_check();
-    $name = backup_to_file();
-    if ($name === '') { flash('Backup eșuat: nu pot scrie în folderul backups/ (verifică permisiunile).', 'error'); redirect('admin/settings'); }
-    $pruned = backup_prune((int) setting('backup_keep', '14'));
-    audit('backup', 'database', null, $name . ($pruned ? " (sterse $pruned vechi)" : ''));
-    flash("Backup creat pe server: $name" . ($pruned ? " · $pruned copii vechi șterse" : ''));
-    redirect('admin/settings');
-}
-/** Descarca un backup existent din backups/ (nume validat strict, fara traversare de cai). */
-function admin_backup_download(): void {
-    $name = basename((string)($_GET['file'] ?? ''));
-    if (!preg_match('/^backup_\d{8}_\d{6}\.sql$/', $name)) { http_response_code(404); echo 'Fisier inexistent.'; return; }
-    $path = backup_dir() . '/' . $name;
-    if (!is_file($path)) { http_response_code(404); echo 'Fisier inexistent.'; return; }
-    audit('download', 'backup', null, $name);
-    while (ob_get_level() > 0) @ob_end_clean();
-    header('Content-Type: application/sql; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $name . '"');
-    header('Content-Length: ' . (string)filesize($path));
-    readfile($path);
-    exit;
-}
-/** Sterge un backup existent (nume validat strict). */
-function admin_backup_delete(): void {
-    csrf_check();
-    $name = basename((string)($_POST['file'] ?? ''));
-    if (preg_match('/^backup_\d{8}_\d{6}\.sql$/', $name)) {
-        $path = backup_dir() . '/' . $name;
-        if (is_file($path) && @unlink($path)) { audit('delete', 'backup', null, $name); flash('Backup șters.'); }
-        else flash('Nu am putut șterge fișierul.', 'error');
-    }
-    redirect('admin/settings');
-}
-
 /* ----------------------- PREGATIRE PRODUCTIE: stergerea datelor de test ----------------------- */
 /**
  * Sterge datele OPERATIONALE (de test) la trecerea in productie, pastrand TOATA configuratia
@@ -1201,7 +1146,7 @@ function admin_reset_data(): void {
         flash('Confirmare incorecta. Scrie STERGE (cu majuscule) pentru a continua.', 'error'); redirect('admin/settings');
     }
     $bk = '';
-    try { $bk = backup_to_file(); backup_prune((int) setting('backup_keep', '14')); } catch (Throwable $e) {}
+    try { $bk = backup_to_file(); backup_prune(14); } catch (Throwable $e) {}
     $n = reset_operational_data();
     $total = array_sum($n);
     audit('reset', 'operational_data', null, ($bk !== '' ? "backup=$bk; " : 'fara backup; ') . json_encode($n));
@@ -1293,47 +1238,6 @@ function admin_webhook_log_export(): void {
 
 /* ----------------------- SETTINGS ----------------------- */
 function admin_settings_form(): void { view('admin/settings'); }
-/** Chei excluse la export/import config (specifice instantei / sensibile / runtime). */
-function settings_export_denylist(): array {
-    return ['schema_version','api_key','cron_token','webhook_secret','onboarding_dismissed',
-            'last_daily_report','sla_alert_last','backup_last','cron_last_run'];
-}
-/** Export config (settings) ca JSON — pentru backup sau clonare pe alta instanta. */
-function admin_settings_export(): void {
-    $deny = settings_export_denylist();
-    $out = [];
-    foreach (all('SELECT k, v FROM settings ORDER BY k') as $r)
-        if (!in_array($r['k'], $deny, true)) $out[$r['k']] = $r['v'];
-    audit('export', 'settings');
-    header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: attachment; filename="config_' . date('Ymd_His') . '.json"');
-    echo json_encode(['brand' => setting('brand_name',''), 'exported_at' => date('c'), 'settings' => $out],
-        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-/** Import config dintr-un JSON exportat (fisier sau text). Suprascrie cheile (mai putin cele excluse). */
-function admin_settings_import(): void {
-    csrf_check();
-    $raw = '';
-    if (!empty($_FILES['file']['tmp_name']) && is_uploaded_file($_FILES['file']['tmp_name']))
-        $raw = (string) file_get_contents($_FILES['file']['tmp_name']);
-    elseif (trim((string)($_POST['json'] ?? '')) !== '')
-        $raw = (string) $_POST['json'];
-    if ($raw === '') { flash('Adauga un fisier .json sau lipeste continutul.', 'error'); redirect('admin/settings'); }
-    $data = json_decode($raw, true);
-    $kv = is_array($data['settings'] ?? null) ? $data['settings'] : (is_array($data) ? $data : null);
-    if (!is_array($kv)) { flash('Fisier invalid: nu contine setari.', 'error'); redirect('admin/settings'); }
-    $deny = settings_export_denylist();
-    $n = 0;
-    foreach ($kv as $k => $v) {
-        $k = (string)$k;
-        if ($k === '' || in_array($k, $deny, true) || !is_scalar($v)) continue;
-        set_setting($k, (string)$v); $n++;
-    }
-    audit('import', 'settings', null, $n.' chei');
-    flash($n > 0 ? ("Configuratie importata ($n setari). Verifica branding/texte.") : 'Nicio setare valida de importat.', $n>0?'info':'error');
-    redirect('admin/settings');
-}
 function admin_settings_save(): void {
     csrf_check();
     $keys = ['brand_name','accent_color','brand_logo','language','display_voice','display_repeat',
@@ -1341,10 +1245,9 @@ function admin_settings_save(): void {
              'alert_called','alert_transfer','alert_delay','near_turn_alert','notice_text','notice_until',
              'mail_from','mail_from_name','smtp_host','smtp_port','smtp_user','smtp_pass','daily_report_to','retention_months',
              'sla_alert_to','sla_alert_min','sla_alert_cooldown_min','auto_close_min','auto_offline_min','appt_noshow_min','feedback_alert_rating',
-             'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra','legal_privacy_text','legal_terms_text','legal_slug_privacy','legal_slug_terms','backup_keep','admin_idle_min',
+             'legal_operator','legal_address','legal_email','privacy_url','terms_url','legal_extra','legal_privacy_text','legal_terms_text','legal_slug_privacy','legal_slug_terms','admin_idle_min',
              'cd_hint_idle','cd_hint_serving'];
     foreach ($keys as $k) if (isset($_POST[$k])) set_setting($k, trim((string)$_POST[$k]));
-    // backup_auto_enabled nu se controleaza din UI (backup se face la nivel de server)
     if (isset($_POST['smtp_secure']) && in_array($_POST['smtp_secure'], ['tls','ssl','none'], true)) set_setting('smtp_secure', $_POST['smtp_secure']);
     set_setting('mail_enabled', isset($_POST['mail_enabled']) ? '1' : '0');
     set_setting('reminder_enabled', isset($_POST['reminder_enabled']) ? '1' : '0');
