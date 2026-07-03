@@ -35,22 +35,6 @@ function input(string $key, $default = null) {
 }
 
 try {
-    // ===================== LANDLORD (administrare instante clienti, multi-tenant) =====================
-    // Pe hostul dedicat (landlord_host, ex: clienti.bonordine.ro) panoul e servit chiar la RADACINA
-    // (fara /landlord): tot ce nu e infrastructura pur statica/inline (assets/health/sw.js/manifest/
-    // robots/favicon) merge la panou. In special api/cron/qr merg la panou, ca instalarea „clienti"
-    // sa poata exclude fisierele lor (app/api_v1.php, app/cron.php, app/core/qr.php).
-    $__llHost = strtolower(trim((string) cfg('landlord_host', '')));
-    $__onLL   = $__llHost !== '' && strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === $__llHost;
-    $__infra  = ['assets','health','sw.js','manifest.webmanifest','robots.txt','favicon.ico'];
-    if ($seg[0] === 'landlord' || ($__onLL && !in_array($seg[0], $__infra, true))) {
-        require APP_ROOT . '/app/landlord.php';
-        // pe hostul dedicat actiunea e la $seg[0]; o normalizam la forma asteptata de landlord_dispatch (prefix 'landlord')
-        $lseg = ($seg[0] === 'landlord') ? $seg : array_merge(['landlord'], $seg);
-        landlord_dispatch($lseg, $method);
-        return;
-    }
-
     // ===================== CRON (sarcini programate, protejat cu token) =====================
     if ($seg[0] === 'cron') {
         $token = (string) setting('cron_token', '');
@@ -70,7 +54,7 @@ try {
             $pdo = new PDO("mysql:host={$c['host']};dbname={$c['name']};charset={$c['charset']}",
                 $c['user'], $c['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 3]);
             $ok = ((int) $pdo->query('SELECT 1')->fetchColumn() === 1);
-            // versiunea schemei: detecteaza instante cu migrare esuata/in urma (monitorizare multi-tenant)
+            // versiunea schemei: detecteaza o migrare esuata/in urma (monitorizare uptime)
             try { $schema = (int) ($pdo->query("SELECT v FROM settings WHERE k='schema_version'")->fetchColumn() ?: 0); } catch (Throwable $e) {}
         } catch (Throwable $e) { $err = 'db'; }
         $expected = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : 0;
@@ -420,7 +404,6 @@ SWJS;
 
     // ===================== PAGINI PUBLICE =====================
     if ($route === '/') {
-        // (pe hostul dedicat de landlord, radacina e deja servita de panou mai sus)
         // logat -> ecran de alegere (backoffice / terminal / concierge / status), nu direct dashboard
         if ($u = current_user()) { view('public/hub', ['u' => $u]); return; }
         view('public/portal');

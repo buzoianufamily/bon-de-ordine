@@ -18,14 +18,9 @@ return [
     // ---- Aplicatie ----
     'app' => [
         'name'      => 'Sistem Bon de Ordine',
-        'base_url'  => '',                // lasa gol pt auto-detectare; sau ex: https://client1.domeniu.ro
+        'base_url'  => '',                // lasa gol pt auto-detectare; sau ex: https://cozi.domeniu.ro
         'env'       => 'production',      // 'production' sau 'dev' (dev = arata erorile)
         'timezone'  => 'Europe/Bucharest',
         'locale'    => 'ro',
     ],
-
-    // ---- Multi-tenant (optional) ----
-    // Parola panoului /landlord (administrarea instantelor clientilor).
-    // Gol = panoul e dezactivat. Pune un sir lung si aleatoriu cand il folosesti.
-    'landlord_pass' => 'demobondeordine',
 ];
