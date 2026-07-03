@@ -68,7 +68,6 @@ mai jos, capacitățile grupate pe teme.
   email/telefon (programări, listă de așteptare, bilete + bilete legate).
 - Retenție automată completă (bilete în loturi, programări, listă de așteptare, jurnale).
 - **Fonturi găzduite local** (fără Google Fonts → niciun IP de vizitator la terți).
-- Modele contractuale: `docs/contracte/` (DPA conform art. 28 GDPR + contract abonament/SLA).
 
 ### Securitate
 - Schimbarea **obligatorie** a parolei implicite la prima logare (în producție).

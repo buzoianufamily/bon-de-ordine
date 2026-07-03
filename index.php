@@ -162,7 +162,7 @@ SWJS;
         // un SSE persistent sau un poll lent ar bloca toate celelalte cereri ale aceleiasi sesiuni
         // (alte taburi, navigare) -> „se blocheaza toata aplicatia". Inchidem sesiunea acum: $_SESSION
         // ramane CITIBIL (require_login citeste uid-ul), doar scrierile nu mai persista — iar toate
-        // mutatiile API sunt POST (raman cu sesiunea deschisa pentru CSRF / pin-switch).
+        // mutatiile API sunt POST (raman cu sesiunea deschisa pentru CSRF).
         if ($method === 'GET' && PHP_SESSION_ACTIVE === session_status()) session_write_close();
 
         // ---- endpoint-uri publice (folosite de dispozitive) ----
@@ -302,14 +302,6 @@ SWJS;
                 catch (Throwable $ex) { json_out(['ok' => false, 'error' => $ex->getMessage()], 422); }
                 json_out(['ok' => true, 'ticket' => $t, 'position' => ticket_position($t),
                           'virtual_url' => url('t/' . $t['public_token'])]);
-            }
-            case 'pin-switch': {
-                if (!rate_limit_ok('pin:' . (int)$u['id'], 10, 300))   // anti brute-force PIN
-                    json_out(['ok' => false, 'error' => 'Prea multe incercari. Asteapta cateva minute.'], 429);
-                $nu = pin_switch((string) input('pin', ''));
-                if (!$nu) json_out(['ok' => false, 'error' => 'PIN invalid']);
-                audit('pin_switch', 'auth', $nu['id']);
-                json_out(['ok' => true, 'name' => $nu['name']]);
             }
             case 'call-next':
                 $guardCounter((int)input('counter_id', 0));

@@ -169,7 +169,7 @@
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Ciclu de viață date</h3>
       <div class="field"><label>Sterge automat biletele mai vechi de … luni (0 = pastreaza tot)</label><input type="number" name="retention_months" min="0" max="120" value="<?= $s('retention_months','0') ?>">
-        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Curatarea ruleaza prin cron (nu necesita email activ). Statisticile pentru perioadele sterse dispar — fa un backup inainte.</p></div>
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Curatarea ruleaza prin cron (nu necesita email activ). Statisticile pentru perioadele sterse dispar — fa un backup la nivel de server inainte.</p></div>
       <div class="field"><label>Închide automat biletele uitate după … minute (0 = oprit)</label><input type="number" name="auto_close_min" min="0" max="1440" value="<?= $s('auto_close_min','0') ?>">
         <p class="muted" style="font-size:.78rem;margin-top:.3rem">Prin cron: biletele rămase „în servire" devin <strong>finalizate</strong>, iar cele „chemate" neprezentate devin <strong>neprezentate</strong>. Pune o valoare generoasă (ex: 30–60) ca să nu închizi servirile lungi.</p></div>
       <div class="field"><label>Marchează operatorii inactivi drept „offline" după … minute</label><input type="number" name="auto_offline_min" min="2" max="240" value="<?= $s('auto_offline_min','10') ?>">

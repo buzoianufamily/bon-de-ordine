@@ -19,7 +19,7 @@ $_SERVER['HTTP_HOST'] = 'ci.local'; $_SERVER['REQUEST_URI'] = '/'; $_SERVER['SCR
 $_SERVER['REQUEST_METHOD'] = 'GET'; $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
 require __DIR__ . '/../app/core/init.php';            // conecteaza + auto_install + run_migrations
-require __DIR__ . '/../app/admin_routes.php';         // pentru build_stats_xlsx / settings_export_denylist
+require __DIR__ . '/../app/admin_routes.php';         // pentru build_stats_xlsx si alte helper-e admin
 require __DIR__ . '/../app/api_v1.php';
 
 $ok = 0; $fail = 0; $F = [];
@@ -220,8 +220,7 @@ chk(Xlsx::x("normal & <ok>") === 'normal &amp; &lt;ok&gt;', 'xlsx: escaping XML 
 $xlCtrl = build_stats_xlsx("Brand\x01CI",'Toate','2026-01-01','2026-01-31',['total'=>1,'served'=>1,'no_show'=>0,'cancelled'=>0,'avg_wait'=>0,'avg_service'=>0],[],[],[],[],'#2563eb',[],['total'=>0,'booked'=>0,'checked_in'=>0,'no_show'=>0,'cancelled'=>0],[],[]);
 chk(substr($xlCtrl->build(),0,2) === 'PK', 'xlsx: raport valid chiar cu byte de control in brand (nu corupe fisierul)');
 
-/* ---- 13. API v1 + denylist ---- */
-chk(in_array('api_key', settings_export_denylist(), true) && in_array('cron_token', settings_export_denylist(), true), 'settings: denylist excludes secrets');
+/* ---- 13. API v1 ---- */
 set_setting('api_key', 'ci-key-123456');
 chk(hash_equals('ci-key-123456','ci-key-123456'), 'api: key set');
 
@@ -247,17 +246,6 @@ set_setting('priority_escalate_min','5');
 [$oldB,$newB] = $setup(); $pickB = call_next($ctr, $adminId, 0);
 chk($pickB && (int)$pickB['id'] === $oldB, 'escalate on: old normal ticket called before newer priority');
 set_setting('priority_escalate_min','0');
-
-/* ---- 16. Schimbare operator prin PIN ---- */
-q("DELETE FROM users WHERE email='agentpin@ci.ro'");
-q("INSERT INTO users (name,email,role,active,pin,password_hash) VALUES ('Agent PIN','agentpin@ci.ro','agent',1,'4321',?)", [password_hash('x', PASSWORD_DEFAULT)]);
-$agId = (int) val("SELECT id FROM users WHERE email='agentpin@ci.ro'");
-$sw = pin_switch('4321'); chk($sw && (int)$sw['id'] === $agId, 'pin: switch to agent by pin');
-chk(pin_switch('0000') === null, 'pin: wrong pin rejected');
-chk(pin_switch('') === null, 'pin: empty pin rejected');
-q("UPDATE users SET pin='9999' WHERE id=$adminId");           // adminul nu trebuie sa fie comutabil prin PIN
-chk(pin_switch('9999') === null, 'pin: admin not switchable (no escalation)');
-q("UPDATE users SET pin=NULL WHERE id=$adminId");
 
 /* ---- 17. Eliberare bilete directionate la pauza ghiseu ---- */
 q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
@@ -600,14 +588,6 @@ foreach (['backup_20200101_000001.sql','backup_20200102_000002.sql','backup_2020
 }
 $pruned = backup_prune(2);
 chk($pruned >= 1 && count(backup_list()) === 2, 'backup: retentia pastreaza doar cele mai noi 2');
-foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);
-// calea prin cron: activat + nerulat azi -> creeaza un backup; nu repeta in aceeasi zi
-set_setting('backup_auto_enabled','1'); set_setting('backup_last','2000-01-01'); set_setting('backup_keep','5');
-$cr = run_cron_jobs();
-chk(!empty($cr['backup']) && count(backup_list()) === 1, 'backup: cron creeaza backup cand e activat');
-chk(setting('backup_last','') === date('Y-m-d'), 'backup: cron marcheaza ziua curenta');
-chk(run_cron_jobs()['backup'] === false, 'backup: cron nu repeta in aceeasi zi');
-set_setting('backup_auto_enabled','0');
 foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);             // curatenie test
 chk(count(backup_list()) === 0, 'backup: curatenie dupa test');
 
@@ -615,19 +595,17 @@ chk(count(backup_list()) === 0, 'backup: curatenie dupa test');
 $lvl = function (array $checks, string $frag): string { foreach ($checks as $c) if (mb_strpos($c['title'], $frag) !== false) return $c['level']; return ''; };
 $prevEnv2 = $GLOBALS['__config']['app']['env'] ?? 'dev';
 $GLOBALS['__config']['app']['env'] = 'production';
-set_setting('backup_auto_enabled','1'); set_setting('retention_months','6'); set_setting('cron_last_run',(string)time());
+set_setting('retention_months','6'); set_setting('cron_last_run',(string)time());
 q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
 $cu1 = system_checkup();
 chk(count($cu1) >= 8, 'checkup: produce o lista de verificari');
 chk($lvl($cu1,'Mediu') === 'ok', 'checkup: env=production -> ok');
-chk($lvl($cu1,'Backup') === 'ok', 'checkup: backup activ -> ok');
 chk($lvl($cu1,'Cron') === 'ok', 'checkup: cron recent -> ok');
 chk($lvl($cu1,'Reten') === 'ok', 'checkup: retentie setata -> ok');
 $GLOBALS['__config']['app']['env'] = 'dev';
-set_setting('backup_auto_enabled','0'); set_setting('cron_last_run','0');
+set_setting('cron_last_run','0');
 $cu2 = system_checkup();
 chk($lvl($cu2,'Mediu') === 'warn', 'checkup: env=dev -> warn');
-chk($lvl($cu2,'Backup') === 'warn', 'checkup: backup oprit -> warn');
 chk($lvl($cu2,'Cron') === 'warn', 'checkup: cron nerulat -> warn');
 q("UPDATE users SET must_change_pw=1 WHERE role='admin' LIMIT 1");
 chk($lvl(system_checkup(),'Parol') === 'crit', 'checkup: admin cu parola implicita -> critic');

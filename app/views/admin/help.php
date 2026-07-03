@@ -37,7 +37,7 @@ $ver = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : '—';
     <a class="card pad" href="<?= e(url('admin/services')) ?>"><strong>Servicii</strong><br><span class="muted" style="font-size:.85rem">prefix, interval, program, pauză temporară, drag&drop</span></a>
     <a class="card pad" href="<?= e(url('admin/branches')) ?>"><strong>Filiale & zile închise</strong><br><span class="muted" style="font-size:.85rem">locații + sărbători/zile fără emitere</span></a>
     <a class="card pad" href="<?= e(url('admin/devices')) ?>"><strong>Dispozitive</strong><br><span class="muted" style="font-size:.85rem">dispensere, afișaje TV, coduri QR de instalare</span></a>
-    <a class="card pad" href="<?= e(url('admin/settings')) ?>"><strong>Setări</strong><br><span class="muted" style="font-size:.85rem">brand, bilet, voce, email, anunț, module, backup config</span></a>
+    <a class="card pad" href="<?= e(url('admin/settings')) ?>"><strong>Setări</strong><br><span class="muted" style="font-size:.85rem">brand, bilet, voce, email, anunț, module</span></a>
     <a class="card pad" href="<?= e(url('admin/statistics')) ?>"><strong>Statistici</strong><br><span class="muted" style="font-size:.85rem">KPI, heatmap, export Excel/CSV, raport printabil</span></a>
     <a class="card pad" href="<?= e(url('admin/api')) ?>"><strong>API & Webhooks</strong><br><span class="muted" style="font-size:.85rem">cheie API, webhooks (inclusiv alerte SLA)</span></a>
     <a class="card pad" href="<?= e(url('admin/security')) ?>"><strong>Securitate</strong><br><span class="muted" style="font-size:.85rem">2FA, schimbare parolă, politici</span></a>
