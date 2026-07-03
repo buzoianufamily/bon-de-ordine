@@ -575,43 +575,6 @@ $erL = gdpr_erase($lEmail, '');   // doar email, fara telefon
 chk($erL['tickets'] >= 1, 'gdpr: stergerea dupa email raporteaza biletul legat curatat');
 chk(val("SELECT customer_phone FROM tickets WHERE id=?", [$lTk]) === null && val("SELECT form_data FROM tickets WHERE id=?", [$lTk]) === null, 'gdpr: biletul legat de programare e curatat la stergerea dupa email (nu mai ramane PII)');
 
-/* ---- 40. Backup baza de date (dump reutilizabil + retentie) ---- */
-foreach (glob(backup_dir().'/backup_*.sql') ?: [] as $f) @unlink($f);   // start curat
-$bname = backup_to_file();
-chk($bname !== '' && is_file(backup_dir().'/'.$bname), 'backup: fisier creat in backups/');
-$bcontent = (string) file_get_contents(backup_dir().'/'.$bname);
-chk(strpos($bcontent, '-- Backup') === 0 && strpos($bcontent, 'CREATE TABLE') !== false
-    && strpos($bcontent, 'INSERT INTO `settings`') !== false, 'backup: dump contine structura + date');
-chk(is_file(backup_dir().'/.htaccess'), 'backup: folderul e protejat de acces web (.htaccess)');
-foreach (['backup_20200101_000001.sql','backup_20200102_000002.sql','backup_20200103_000003.sql'] as $i => $fn) {
-    file_put_contents(backup_dir().'/'.$fn, '-- test'); @touch(backup_dir().'/'.$fn, strtotime('2020-01-0'.($i+1)));
-}
-$pruned = backup_prune(2);
-chk($pruned >= 1 && count(backup_list()) === 2, 'backup: retentia pastreaza doar cele mai noi 2');
-foreach (backup_list() as $b) @unlink(backup_dir().'/'.$b['name']);             // curatenie test
-chk(count(backup_list()) === 0, 'backup: curatenie dupa test');
-
-/* ---- 41. Verificare productie (system_checkup) ---- */
-$lvl = function (array $checks, string $frag): string { foreach ($checks as $c) if (mb_strpos($c['title'], $frag) !== false) return $c['level']; return ''; };
-$prevEnv2 = $GLOBALS['__config']['app']['env'] ?? 'dev';
-$GLOBALS['__config']['app']['env'] = 'production';
-set_setting('retention_months','6'); set_setting('cron_last_run',(string)time());
-q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
-$cu1 = system_checkup();
-chk(count($cu1) >= 8, 'checkup: produce o lista de verificari');
-chk($lvl($cu1,'Mediu') === 'ok', 'checkup: env=production -> ok');
-chk($lvl($cu1,'Cron') === 'ok', 'checkup: cron recent -> ok');
-chk($lvl($cu1,'Reten') === 'ok', 'checkup: retentie setata -> ok');
-$GLOBALS['__config']['app']['env'] = 'dev';
-set_setting('cron_last_run','0');
-$cu2 = system_checkup();
-chk($lvl($cu2,'Mediu') === 'warn', 'checkup: env=dev -> warn');
-chk($lvl($cu2,'Cron') === 'warn', 'checkup: cron nerulat -> warn');
-q("UPDATE users SET must_change_pw=1 WHERE role='admin' LIMIT 1");
-chk($lvl(system_checkup(),'Parol') === 'crit', 'checkup: admin cu parola implicita -> critic');
-q("UPDATE users SET must_change_pw=0 WHERE role='admin'");
-$GLOBALS['__config']['app']['env'] = $prevEnv2;
-
 /* ---- 44. Auto-delogare la inactivitate (script gated pe setare) ---- */
 set_setting('admin_idle_min', '0');
 chk(idle_logout_script() === '', 'idle: dezactivat (0) -> niciun script');

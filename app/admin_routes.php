@@ -227,79 +227,6 @@ function admin_apps(): void {
 }
 
 /* ----------------------- VERIFICARE PRODUCTIE (readiness) ----------------------- */
-/**
- * Diagnoza „pregatit de productie?": semnaleaza proactiv configurari gresite
- * inainte sa devina reclamatii. Returneaza o lista de [level, title, detail],
- * level in 'ok' | 'warn' | 'crit'.
- */
-function system_checkup(): array {
-    $c = [];
-    $add = function (string $level, string $title, string $detail) use (&$c) { $c[] = compact('level', 'title', 'detail'); };
-    $cfg = $GLOBALS['__config'] ?? [];
-
-    // 1) Parola implicita de admin inca activa
-    $defPw = 0;
-    try { $defPw = (int) val("SELECT COUNT(*) FROM users WHERE role='admin' AND must_change_pw=1"); } catch (Throwable $e) {}
-    $defPw > 0
-        ? $add('crit', 'Parolă de admin implicită', "$defPw cont(uri) de admin încă folosesc parola implicită. Schimbă-le din „Contul meu”.")
-        : $add('ok', 'Parole admin', 'Niciun admin nu mai folosește parola implicită.');
-
-    // 2) HTTPS
-    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        ? $add('ok', 'HTTPS', 'Conexiunea este criptată.')
-        : $add('warn', 'HTTPS', 'Pagina nu pare servită prin HTTPS. Activează un certificat (Let’s Encrypt din cPanel) și redirect HTTP→HTTPS.');
-
-    // 3) Mediu
-    (($cfg['app']['env'] ?? 'production') === 'production')
-        ? $add('ok', 'Mediu', 'env=production (erorile nu se afișează vizitatorilor).')
-        : $add('warn', 'Mediu', 'env nu este „production": detaliile erorilor pot fi afișate. Setează app.env=production în config/config.php.');
-
-    // 4) Email
-    (function_exists('mail_enabled') && mail_enabled())
-        ? $add('ok', 'Email', 'Trimiterea de emailuri este activă (reset parolă, remindere, rapoarte).')
-        : $add('warn', 'Email', 'Emailul nu este configurat: resetarea parolei, reminderele și rapoartele nu funcționează. Configurează SMTP în Setări → Email.');
-
-    // Cron rulează?
-    $last = (int) setting('cron_last_run', '0');
-    if ($last === 0) $add('warn', 'Cron', 'Cron-ul nu a rulat încă niciodată. Configurează un Cron Job către /cron?key=… (remindere, backup, curățare).');
-    elseif (time() - $last > 7200) $add('warn', 'Cron', 'Cron-ul nu a mai rulat de peste 2 ore (ultima dată: ' . date('d.m.Y H:i', $last) . '). Verifică Cron Job-ul din cPanel.');
-    else $add('ok', 'Cron', 'Cron-ul a rulat recent (' . date('d.m.Y H:i', $last) . ').');
-
-    // 7) 2FA pe conturile de admin
-    try {
-        $admins = (int) val("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1");
-        $with2fa = (int) val("SELECT COUNT(*) FROM users WHERE role='admin' AND active=1 AND totp_enabled=1");
-        if ($admins > 0 && $with2fa < $admins)
-            $add('warn', 'Autentificare în doi pași', "$with2fa din $admins admini au 2FA activ. Recomandat pentru toți (Securitate → 2FA; poți și impune-o).");
-        else $add('ok', 'Autentificare în doi pași', 'Toți adminii activi au 2FA.');
-    } catch (Throwable $e) {}
-
-    // 8) Webhook fara secret
-    if (trim((string) setting('webhook_url', '')) !== '' && trim((string) setting('webhook_secret', '')) === '')
-        $add('warn', 'Webhook fără secret', 'Ai un URL de webhook fără secret de semnătură. Adaugă un secret în API & Webhooks ca destinatarul să verifice autenticitatea.');
-
-    // 9) Retentie date (minimizare GDPR)
-    ((int) setting('retention_months', '0') > 0)
-        ? $add('ok', 'Retenție date', 'Datele vechi se șterg automat (minimizarea datelor).')
-        : $add('warn', 'Retenție date', 'Nu este setată ștergerea automată a datelor vechi (Setări → Automatizări). GDPR cere păstrarea doar cât e necesar.');
-
-    // 10) Date operator pentru paginile legale
-    (trim((string) setting('legal_operator', '')) !== '' || trim((string) setting('legal_email', '')) !== '')
-        ? $add('ok', 'Date legale', 'Datele operatorului pentru paginile legale sunt completate.')
-        : $add('warn', 'Date legale', 'Completează datele operatorului (Setări → Legal & GDPR) pentru paginile de confidențialitate/termeni.');
-
-    // 11) Foldere scriibile
-    $root = defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__);
-    $unwritable = [];
-    if (!is_writable($root . '/config')) $unwritable[] = 'config/';
-    if (is_dir($root . '/assets/uploads') && !is_writable($root . '/assets/uploads')) $unwritable[] = 'assets/uploads/';
-    $unwritable
-        ? $add('warn', 'Permisiuni foldere', 'Nu sunt scriibile: ' . implode(', ', $unwritable) . '. Setează 755/775 pe ele.')
-        : $add('ok', 'Permisiuni foldere', 'Folderele necesare sunt scriibile.');
-
-    return $c;
-}
-
 /* ----------------------- DASHBOARD ----------------------- */
 function admin_dashboard(): void {
     $today = date('Y-m-d');
@@ -1145,14 +1072,10 @@ function admin_reset_data(): void {
     if (mb_strtoupper(trim((string)($_POST['confirm'] ?? ''))) !== 'STERGE') {
         flash('Confirmare incorecta. Scrie STERGE (cu majuscule) pentru a continua.', 'error'); redirect('admin/settings');
     }
-    $bk = '';
-    try { $bk = backup_to_file(); backup_prune(14); } catch (Throwable $e) {}
     $n = reset_operational_data();
     $total = array_sum($n);
-    audit('reset', 'operational_data', null, ($bk !== '' ? "backup=$bk; " : 'fara backup; ') . json_encode($n));
-    flash("Date de test sterse: $total inregistrari (bilete, programari, feedback, sesiuni)."
-        . ($bk !== '' ? " Backup de siguranta creat: $bk." : ' ATENTIE: nu am putut crea backup automat — verifica permisiunile folderului backups/.'),
-        $bk !== '' ? 'info' : 'error');
+    audit('reset', 'operational_data', null, json_encode($n));
+    flash("Date de test sterse: $total inregistrari (bilete, programari, feedback, sesiuni).");
     redirect('admin/settings');
 }
 
