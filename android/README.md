@@ -23,7 +23,11 @@ Metode expuse paginii (interfața `AndroidPrinter`):
 |---|---|
 | `printBase64(b64)` | decodează base64 → octeți ESC/POS → trimite pe USB |
 | `getStatus()` | stare imprimantă ca JSON (`{"ready":true,...}`) |
-| `setConfig(url)` | schimbă linkul încărcat (opțional, pentru provizionare) |
+
+> Notă de securitate: linkul dispenserului se schimbă doar din meniul nativ de administrare
+> (butonul „înapoi" → „Schimbă linkul"), nu dintr-o metodă expusă paginii web. Aplicația
+> păstrează navigarea pe același host ca linkul configurat, ca o pagină străină (link/redirect/
+> conținut injectat pe HTTP) să nu poată comanda imprimanta USB.
 
 ---
 
