@@ -112,7 +112,6 @@ Ghid complet (build, kiosk, depanare): **`android/README.md`**.
 ## Pregătire pentru producție
 - **Curățare date de test:** după testare, Admin → Setări → **Pregătire pentru producție** șterge datele de test (bilete/programări/feedback) păstrând toată configurația. Necesită confirmarea „STERGE".
 - **Backup bază de date:** fă backup periodic la nivel de server (cPanel → **Backup**, sau un cron care exportă baza) — datele nu trebuie pierdute.
-- **Document contractual (model):** vezi `docs/contracte/DPA-model.md` (acord de prelucrare a datelor, GDPR art. 28). **Model orientativ — validează‑l cu un jurist.**
 
 ## Monitorizare & parole
 - **Monitorizare uptime:** configurează serviciul de monitorizare (UptimeRobot, BetterStack etc.) pe `https://coada.firma-ta.ro/health`. Răspunde cu JSON `{"ok":true,"db":"up",…}` și cod **200** când totul e funcțional, sau **503** dacă baza de date e picată.

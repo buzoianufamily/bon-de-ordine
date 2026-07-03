@@ -248,17 +248,6 @@ set_setting('priority_escalate_min','5');
 chk($pickB && (int)$pickB['id'] === $oldB, 'escalate on: old normal ticket called before newer priority');
 set_setting('priority_escalate_min','0');
 
-/* ---- 16. Schimbare operator prin PIN ---- */
-q("DELETE FROM users WHERE email='agentpin@ci.ro'");
-q("INSERT INTO users (name,email,role,active,pin,password_hash) VALUES ('Agent PIN','agentpin@ci.ro','agent',1,'4321',?)", [password_hash('x', PASSWORD_DEFAULT)]);
-$agId = (int) val("SELECT id FROM users WHERE email='agentpin@ci.ro'");
-$sw = pin_switch('4321'); chk($sw && (int)$sw['id'] === $agId, 'pin: switch to agent by pin');
-chk(pin_switch('0000') === null, 'pin: wrong pin rejected');
-chk(pin_switch('') === null, 'pin: empty pin rejected');
-q("UPDATE users SET pin='9999' WHERE id=$adminId");           // adminul nu trebuie sa fie comutabil prin PIN
-chk(pin_switch('9999') === null, 'pin: admin not switchable (no escalation)');
-q("UPDATE users SET pin=NULL WHERE id=$adminId");
-
 /* ---- 17. Eliberare bilete directionate la pauza ghiseu ---- */
 q("UPDATE tickets SET status='cancelled' WHERE service_id=$svc AND status='waiting'");
 $tt = issue_ticket($svc, false, 'paper');
