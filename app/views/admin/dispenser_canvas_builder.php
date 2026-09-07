@@ -65,7 +65,7 @@ hr{border:none;border-top:1px solid #1c2029;margin:1rem 0}
   <span class="muted">cheie <?= e($dev['connection_key']) ?></span>
   <span class="sp"></span>
   <a class="pb-btn" href="<?= e(url('backoffice/devices/'.$dev['id'].'/dispenser')) ?>">⚙ Editor clasic</a>
-  <a class="pb-btn" target="_blank" href="<?= e(url('launcher?key='.$dev['connection_key'])) ?>">▶ Deschide dispenser</a>
+  <a class="pb-btn" target="_blank" href="<?= e(device_url($dev)) ?>">▶ Deschide dispenser</a>
   <button class="pb-btn primary" id="btnSave">💾 Salveaza</button>
 </div>
 <div class="pb-wrap">

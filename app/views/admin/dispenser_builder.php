@@ -57,7 +57,7 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
   <span class="muted">cheie <?= e($dev['connection_key']) ?></span>
   <span class="sp"></span>
   <a class="btn" href="<?= e(url('backoffice/devices/'.$dev['id'].'/dispenser-canvas')) ?>">🎨 Editor canvas (ca la TV)</a>
-  <a class="btn" target="_blank" href="<?= e(url('launcher?key='.$dev['connection_key'])) ?>">▶ Deschide</a>
+  <a class="btn" target="_blank" href="<?= e(device_url($dev)) ?>">▶ Deschide</a>
   <button class="btn primary" id="btnSave">💾 Salveaza</button>
 </div>
 <div class="wrap">

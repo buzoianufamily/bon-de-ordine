@@ -61,7 +61,7 @@ $badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>
 <?php else: ?>
   <div class="topbar" style="margin-bottom:1rem"><h3 style="margin:0">Dispozitive</h3><a class="btn btn-primary" href="<?= e(url('backoffice/devices/new?branch='.$bid)) ?>">+ Dispozitiv</a></div>
   <div class="cardgrid">
-  <?php foreach($devices as $d): $du=url('launcher?key='.$d['connection_key']); ?>
+  <?php foreach($devices as $d): $du=device_url($d); ?>
     <div class="mcard">
       <div class="mhead"><span class="badge" style="background:#2a2f3a;font-size:.78rem"><?= e($badge[$d['type']]??'?') ?></span>
         <div style="flex:1"><div class="nm"><?= e($d['name']) ?></div><div class="sub muted"><?= e($labels[$d['type']]??$d['type']) ?></div></div></div>

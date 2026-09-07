@@ -90,7 +90,7 @@ class MainActivity : Activity() {
 
     private fun askUrl(first: Boolean) {
         val input = EditText(this).apply {
-            hint = "https://server/launcher?key=CHEIE"
+            hint = "https://server/device/dispenser/CHEIE"
             setText(prefs.getString("url", "") ?: "")
         }
         val pad = (16 * resources.displayMetrics.density).toInt()

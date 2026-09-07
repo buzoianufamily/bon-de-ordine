@@ -63,7 +63,7 @@ hr{border:none;border-top:1px solid #1c2029;margin:1rem 0}
   <span class="ttl">Editor afisaj · <?= e($dev['name']) ?></span>
   <span class="muted">cheie <?= e($dev['connection_key']) ?></span>
   <span class="sp"></span>
-  <a class="pb-btn" target="_blank" href="<?= e(url('launcher?key='.$dev['connection_key'])) ?>">▶ Deschide afisaj</a>
+  <a class="pb-btn" target="_blank" href="<?= e(device_url($dev)) ?>">▶ Deschide afisaj</a>
   <button class="pb-btn primary" id="btnSave">💾 Salveaza</button>
 </div>
 <div class="pb-wrap">

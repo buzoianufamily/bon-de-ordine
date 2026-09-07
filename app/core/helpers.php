@@ -678,6 +678,15 @@ function user_counter_allowed(int $userId, int $counterId): bool {
     return empty($ids) || in_array($counterId, $ids, true);
 }
 
+/** Eticheta de tip folosita in adresa publica a dispozitivului (descriptiva, pt claritate in URL). */
+function device_slug(string $type): string {
+    return ['dispenser' => 'dispenser', 'player' => 'tv', 'widget_player' => 'tv-widget', 'digital_ticket' => 'qr'][$type] ?? 'device';
+}
+/** Adresa publica a unui dispozitiv: /device/{tip}/{cheie}. Cheia identifica dispozitivul; tipul e descriptiv. */
+function device_url(array $d): string {
+    return url('device/' . device_slug((string)($d['type'] ?? '')) . '/' . (string)($d['connection_key'] ?? ''));
+}
+
 /** Render view cu layout. $view relativ la app/views. */
 function view(string $view, array $data = []): void {
     extract($data, EXTR_SKIP);

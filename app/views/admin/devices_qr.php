@@ -24,7 +24,7 @@ $labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>
 </div>
 <p class="muted noprint" style="margin-top:-.6rem;max-width:720px">Scanează codul cu camera mini‑PC‑ului/tabletei (sau introdu linkul în aplicația Android) ca să deschizi dispozitivul. Pagină optimizată pentru printare — lipește fiecare cod lângă dispozitivul lui.</p>
 <div class="qrgrid">
-<?php foreach($rows as $d): $u=url('launcher?key='.$d['connection_key']); ?>
+<?php foreach($rows as $d): $u=device_url($d); ?>
   <div class="qrcard">
     <div role="img" aria-label="QR <?= e($d['name']) ?>" style="width:200px;height:200px;margin:0 auto"><?= QR::svg($u, 200) ?></div>
     <div class="nm"><?= e($d['name']) ?></div>

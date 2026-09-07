@@ -27,7 +27,7 @@ if ($hasAppt && setting('mod_booking','1')==='1') $tiles[] = ['Programare online
   <div class="card pad" style="margin-top:1.2rem">
     <strong>Dispozitive (dispenser / afisaj / bilet digital)</strong>
     <p class="muted" style="margin:.4rem 0">Fiecare dispozitiv se deschide cu cheia lui de conectare:</p>
-    <code style="display:block;background:#0f1115;color:#7CFFB2;padding:.7rem;border-radius:8px;font-size:.85rem"><?= e(url('launcher?key=CHEIE')) ?></code>
+    <code style="display:block;background:#0f1115;color:#7CFFB2;padding:.7rem;border-radius:8px;font-size:.85rem"><?= e(url('device/dispenser/CHEIE')) ?></code>
     <p class="muted" style="margin-top:.5rem;font-size:.85rem">Vezi cheile in Backoffice → Dispozitive.</p>
   </div>
   <?= public_legal_footer('ro') ?>

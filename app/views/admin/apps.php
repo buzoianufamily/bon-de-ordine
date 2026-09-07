@@ -65,7 +65,7 @@ if($apps['dispenser']){
   app_tile([
     'icon'=>'🎟️', 'name'=>'Dozator bilete', 'tag'=>e($apps['dispenser']['name']),
     'desc'=>'Chioscul de la intrare de unde clientii isi iau bon de ordine pe ecran tactil.',
-    'open'=>['url'=>url('launcher?key='.$apps['dispenser']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
+    'open'=>['url'=>device_url($apps['dispenser']), 'label'=>'Deschide', 'blank'=>true],
     'cfg'=>['url'=>url('backoffice/devices/'.$apps['dispenser']['id'].'/dispenser'), 'label'=>'Configureaza'],
   ]);
 } else {
@@ -82,7 +82,7 @@ if($apps['player']){
   app_tile([
     'icon'=>'📺', 'name'=>'Afisaj TV', 'tag'=>e($apps['player']['name']),
     'desc'=>'Ecranul din sala de asteptare cu bonul curent, urmatoarele la rand si continut media.',
-    'open'=>['url'=>url('launcher?key='.$apps['player']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
+    'open'=>['url'=>device_url($apps['player']), 'label'=>'Deschide', 'blank'=>true],
     'cfg'=>['url'=>url('backoffice/devices/'.$apps['player']['id'].'/player'), 'label'=>'Editor afisaj'],
   ]);
 } else {
@@ -99,7 +99,7 @@ if($apps['digital_ticket']){
   app_tile([
     'icon'=>'📱', 'name'=>'Bilet digital', 'tag'=>e($apps['digital_ticket']['name']),
     'desc'=>'Clientul scaneaza un cod QR si primeste bonul pe telefon, urmarind randul live.',
-    'open'=>['url'=>url('launcher?key='.$apps['digital_ticket']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
+    'open'=>['url'=>device_url($apps['digital_ticket']), 'label'=>'Deschide', 'blank'=>true],
     'cfg'=>['url'=>url('backoffice/devices/'.$apps['digital_ticket']['id'].'/dispenser'), 'label'=>'Configureaza'],
   ]);
 } else {

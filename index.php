@@ -533,9 +533,17 @@ SWJS;
         return;
     }
 
-    // dispozitiv prin connection key:  /launcher?key=XXX  sau  /d/XXX  /screen/XXX
-    if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen') {
-        $key = $_GET['key'] ?? $_GET['connection_key'] ?? ($seg[1] ?? '');
+    // dispozitiv prin cheie de conectare:  /device/{tip}/{cheie}  (forma noua)
+    // compatibilitate cu dispozitivele deja instalate:  /launcher?key=XXX  ·  /d/XXX  ·  /screen/XXX
+    if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen' || $seg[0] === 'device') {
+        if ($seg[0] === 'device') {
+            // /device/{tip}/{cheie} — toleram si forma /device/{tip}/key=CHEIE
+            $key = (string)($seg[2] ?? '');
+            if (str_starts_with($key, 'key=')) $key = substr($key, 4);
+            if ($key === '') $key = (string)($_GET['key'] ?? '');
+        } else {
+            $key = $_GET['key'] ?? $_GET['connection_key'] ?? ($seg[1] ?? '');
+        }
         $dev = device_by_key((string)$key);
         if (!$dev) { http_response_code(404); view('public/device_404', ['key' => $key]); return; }
         q('UPDATE devices SET last_seen = NOW() WHERE id = ?', [$dev['id']]);

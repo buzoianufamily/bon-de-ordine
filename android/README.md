@@ -9,7 +9,7 @@ Codul sursă complet este în `android/launcher/`.
 ## Cum funcționează
 ```
 [Server PHP]  --HTTP-->  [WebView pe mini-PC]  --JS bridge-->  [cod Kotlin]  --USB-->  [Bixolon BK3-31ZC]
- (dispenser)              (pagina /launcher?key=...)        (AndroidPrinter)     (octeti ESC/POS)
+ (dispenser)              (pagina /device/dispenser/...)        (AndroidPrinter)     (octeti ESC/POS)
 ```
 Octeții bonului (layout, QR, tăiere) sunt construiți **pe server** (`app/core/printer.php`), identic pentru toate canalele. Aplicația doar îi trimite la imprimantă — deci bonul arată la fel peste tot.
 
@@ -53,7 +53,7 @@ gradle assembleDebug      # sau ./gradlew assembleDebug daca ai wrapper-ul
 
 ## 2) Instalează pe mini‑PC
 1. Copiază `app-debug.apk` pe mini‑PC (USB stick / link) și deschide‑l (permite „Surse necunoscute").
-2. La prima pornire, aplicația cere **linkul dispenserului** — lipești linkul din **Backoffice → Dispozitive → (dispenserul tău) → Deschide** (forma `https://site/launcher?key=CHEIE`).
+2. La prima pornire, aplicația cere **linkul dispenserului** — lipești linkul din **Backoffice → Dispozitive → (dispenserul tău) → Deschide** (forma `https://site/device/dispenser/CHEIE`).
 3. Gata: pagina se încarcă pe tot ecranul.
 
 > Butonul **Înapoi** deschide meniul de administrare (Reîncarcă / Schimbă linkul / Test imprimantă / Ieșire) — util ca să nu se închidă accidental.
