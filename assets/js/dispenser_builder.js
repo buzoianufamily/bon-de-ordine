@@ -71,7 +71,7 @@
     const target=btn.dataset.pick; const grid=document.querySelector(`[data-grid="${target}"]`);
     btn.onclick=async()=>{
       if(grid.style.display==='grid'){ grid.style.display='none'; return; }
-      const r=await QMS.api('admin/media?format=json',null,'GET'); if(!r||!r.ok)return;
+      const r=await QMS.api('backoffice/media?format=json',null,'GET'); if(!r||!r.ok)return;
       grid.style.display='grid';
       grid.innerHTML=(r.media||[]).filter(m=>m.mime&&m.mime.startsWith('image')).map(m=>`<img src="${m.url}" data-u="${m.url}">`).join('')||'<div class="muted" style="grid-column:1/-1">Galerie goala — incarca in Multimedia.</div>';
       grid.querySelectorAll('img').forEach(im=>im.onclick=()=>{ $(target).value=im.dataset.u; grid.style.display='none'; updatePreview(); });

@@ -16,7 +16,7 @@ if ($t['finished_at'])$tl[] = [ucfirst($s[0]), $t['finished_at'], '✔️', $t['
 $form = $t['form_data'] ? json_decode($t['form_data'], true) : null;
 ?>
 <div class="topbar"><h1>Bilet <span class="tag" style="background:<?= e($t['color']) ?>"><?= e($t['prefix']) ?></span> <?= e($t['label']) ?></h1>
-  <a class="btn btn-ghost" href="<?= e(url('admin/tickets').'?date='.substr($t['issued_at'],0,10)) ?>">← Bilete</a>
+  <a class="btn btn-ghost" href="<?= e(url('backoffice/tickets').'?date='.substr($t['issued_at'],0,10)) ?>">← Bilete</a>
 </div>
 
 <div class="row" style="align-items:flex-start">

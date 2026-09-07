@@ -18,7 +18,7 @@ $labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>
 </style>
 <div class="topbar"><h1>Coduri QR dispozitive</h1>
   <div style="display:flex;gap:.5rem">
-    <a class="btn btn-ghost" href="<?= e(url('admin/devices')) ?>">← Dispozitive</a>
+    <a class="btn btn-ghost" href="<?= e(url('backoffice/devices')) ?>">← Dispozitive</a>
     <button class="btn btn-primary noprint" onclick="window.print()">🖨 Printează</button>
   </div>
 </div>

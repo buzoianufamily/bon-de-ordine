@@ -5,12 +5,12 @@ $bdayNames = [1=>'Luni',2=>'Marti',3=>'Miercuri',4=>'Joi',5=>'Vineri',6=>'Sambat
 $bdayVal = function($d) use ($bsched){ return $bsched['days'][$d] ?? ($bsched['days'][(string)$d] ?? null); }; ?>
 <div class="topbar">
   <div>
-    <div class="crumb"><a href="<?= e(url('admin/branches')) ?>">Filiale</a> › <?= $row?e($row['name']):'Filiala noua' ?></div>
+    <div class="crumb"><a href="<?= e(url('backoffice/branches')) ?>">Filiale</a> › <?= $row?e($row['name']):'Filiala noua' ?></div>
     <h1 style="margin:.1rem 0"><?= $row?'Editare filiala':'Filiala noua' ?></h1>
   </div>
-  <a class="btn btn-ghost" href="<?= e(url('admin/branches')) ?>">← Inapoi</a>
+  <a class="btn btn-ghost" href="<?= e(url('backoffice/branches')) ?>">← Inapoi</a>
 </div>
-<form method="post" action="<?= e(url('admin/branches')) ?>"><?= csrf_field() ?>
+<form method="post" action="<?= e(url('backoffice/branches')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
   <div class="card pad">
 

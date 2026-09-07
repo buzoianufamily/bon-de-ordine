@@ -2,7 +2,7 @@
 $logo = setting('brand_logo','');
 $hasAppt = (int) val('SELECT COUNT(*) FROM services WHERE appt_enabled=1 AND status="active"') > 0;
 $tiles = [
-  ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('admin'), '🗂'],
+  ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('backoffice/dashboard'), '🗂'],
   ['Terminal operator', 'Apeleaza si gestioneaza bilete de la ghiseu.', url('counter'), '🖥'],
 ];
 if (setting('mod_concierge','1')==='1') $tiles[] = ['Concierge', 'Receptie: cheama orice bilet la orice ghiseu.', url('concierge'), '🛎'];

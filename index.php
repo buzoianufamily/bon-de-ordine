@@ -759,11 +759,18 @@ SWJS;
     }
 
     // ===================== ADMIN (backoffice) =====================
-    if ($seg[0] === 'admin') {
+    if ($seg[0] === 'backoffice') {
         require_role(['admin','manager']);
         require APP_ROOT . '/app/admin_routes.php';
         admin_dispatch($seg, $method);
         return;
+    }
+    // compatibilitate: vechiul /admin/... trimite permanent la /backoffice/... (bookmark-uri, linkuri salvate)
+    if ($seg[0] === 'admin') {
+        $__rest = implode('/', array_slice($seg, 1));
+        $__qs   = (string)($_SERVER['QUERY_STRING'] ?? '');
+        header('Location: ' . url('backoffice' . ($__rest !== '' ? '/' . $__rest : '')) . ($__qs !== '' ? '?' . $__qs : ''), true, 301);
+        exit;
     }
 
     fail_page(404, 'Pagină negăsită', 'Pagina căutată nu există sau a fost mutată.');

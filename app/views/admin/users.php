@@ -1,10 +1,10 @@
 <?php $title='Utilizatori'; $active='users'; require __DIR__.'/_header.php';
 $roleLabel=['admin'=>'Administrator','manager'=>'Manager','agent'=>'Operator']; ?>
-<div class="topbar"><h1>Utilizatori</h1><a class="btn btn-primary" href="<?= e(url('admin/users/new')) ?>">+ Utilizator nou</a></div>
+<div class="topbar"><h1>Utilizatori</h1><a class="btn btn-primary" href="<?= e(url('backoffice/users/new')) ?>">+ Utilizator nou</a></div>
 <details class="card pad" style="margin-bottom:1rem">
   <summary style="cursor:pointer;font-weight:700">⤓ Import / export utilizatori (CSV)</summary>
-  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/users/export')) ?>">⬆ Exportă utilizatorii (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/users/export?template=1')) ?>">⬇ Șablon gol</a> <span class="muted" style="font-size:.78rem">— exportul e fără parole</span></p>
-  <form method="post" action="<?= e(url('admin/users/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('backoffice/users/export')) ?>">⬆ Exportă utilizatorii (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('backoffice/users/export?template=1')) ?>">⬇ Șablon gol</a> <span class="muted" style="font-size:.78rem">— exportul e fără parole</span></p>
+  <form method="post" action="<?= e(url('backoffice/users/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
     <?= csrf_field() ?>
     <div class="field" style="margin:0"><label>Linii CSV: <code>nume,email,rol,parola</code> <span class="muted">(rol: admin / manager / agent — implicit agent)</span></label>
       <textarea name="csv" rows="4" placeholder="Ion Popescu,ion@firma.ro,agent,Parola123&#10;Ana Ionescu,ana@firma.ro,manager,Secret456"></textarea></div>
@@ -28,12 +28,12 @@ $roleLabel=['admin'=>'Administrator','manager'=>'Manager','agent'=>'Operator']; 
     <div class="card-foot">
       <span class="st <?= $r['active']?'on':'' ?>"><span class="d"></span><?= $r['active']?'Activ':'Inactiv' ?></span>
       <span>
-        <a class="lnk" href="<?= e(url('admin/users/'.$r['id'])) ?>">Editeaza</a>
-        <?php if($r['id']!=current_user()['id']): ?><form method="post" action="<?= e(url('admin/users/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi utilizatorul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form><?php endif; ?>
+        <a class="lnk" href="<?= e(url('backoffice/users/'.$r['id'])) ?>">Editeaza</a>
+        <?php if($r['id']!=current_user()['id']): ?><form method="post" action="<?= e(url('backoffice/users/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi utilizatorul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form><?php endif; ?>
       </span>
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty"><div class="eic">◉</div><p>Niciun utilizator inca.</p><a class="btn btn-primary" href="<?= e(url('admin/users/new')) ?>">+ Adauga utilizator</a></div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">◉</div><p>Niciun utilizator inca.</p><a class="btn btn-primary" href="<?= e(url('backoffice/users/new')) ?>">+ Adauga utilizator</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

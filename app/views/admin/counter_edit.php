@@ -1,12 +1,12 @@
 <?php $title=$row?'Editare ghiseu':'Ghiseu nou'; $active='counters'; require __DIR__.'/_header.php'; $v=fn($k,$d='')=>e($row[$k]??$d); ?>
 <div class="topbar">
   <div>
-    <div class="crumb"><a href="<?= e(url('admin/counters')) ?>">Ghisee</a> › <?= $row?e($row['name']):'Ghiseu nou' ?></div>
+    <div class="crumb"><a href="<?= e(url('backoffice/counters')) ?>">Ghisee</a> › <?= $row?e($row['name']):'Ghiseu nou' ?></div>
     <h1 style="margin:.1rem 0"><?= $row?'Editare ghiseu':'Ghiseu nou' ?></h1>
   </div>
-  <a class="btn btn-ghost" href="<?= e(url('admin/counters')) ?>">← Inapoi</a>
+  <a class="btn btn-ghost" href="<?= e(url('backoffice/counters')) ?>">← Inapoi</a>
 </div>
-<form method="post" action="<?= e(url('admin/counters')) ?>"><?= csrf_field() ?>
+<form method="post" action="<?= e(url('backoffice/counters')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
   <div class="card pad">
 
@@ -53,7 +53,7 @@
         <?php if($row): ?><p class="muted" style="margin-top:0;font-size:.84rem">Link afisaj: <a href="<?= e(url('cd/'.(int)$row['id'])) ?>" target="_blank"><code><?= e(url('cd/'.(int)$row['id'])) ?></code></a></p><?php endif; ?>
         <div class="field"><label>Text cand nu e niciun bon chemat</label><input name="cd_hint_idle" value="<?= $v('cd_hint_idle') ?>" maxlength="80" placeholder="<?= e($defIdle) ?>"></div>
         <div class="field"><label>Text cand un bon este chemat (deasupra numarului)</label><input name="cd_hint_serving" value="<?= $v('cd_hint_serving') ?>" maxlength="80" placeholder="<?= e($defServ) ?>">
-          <p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se foloseste textul implicit din <a href="<?= e(url('admin/settings')) ?>">Setari → Afisaj</a> (afisat ca sugestie mai sus). Ex: pune „Bonul curent este:" pentru bonul chemat.</p></div>
+          <p class="muted" style="font-size:.78rem;margin-top:.3rem">Gol = se foloseste textul implicit din <a href="<?= e(url('backoffice/settings')) ?>">Setari → Afisaj</a> (afisat ca sugestie mai sus). Ex: pune „Bonul curent este:" pentru bonul chemat.</p></div>
       </div>
     </div>
 

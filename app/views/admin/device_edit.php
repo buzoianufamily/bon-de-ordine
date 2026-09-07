@@ -1,12 +1,12 @@
 <?php $title=$row?'Editare dispozitiv':'Dispozitiv nou'; $active='devices'; require __DIR__.'/_header.php'; $v=fn($k,$d='')=>e($row[$k]??$d); ?>
 <div class="topbar">
   <div>
-    <div class="crumb"><a href="<?= e(url('admin/devices')) ?>">Dispozitive</a> › <?= $row?e($row['name']):'Dispozitiv nou' ?></div>
+    <div class="crumb"><a href="<?= e(url('backoffice/devices')) ?>">Dispozitive</a> › <?= $row?e($row['name']):'Dispozitiv nou' ?></div>
     <h1 style="margin:.1rem 0"><?= $row?'Editare dispozitiv':'Dispozitiv nou' ?></h1>
   </div>
-  <a class="btn btn-ghost" href="<?= e(url('admin/devices')) ?>">← Inapoi</a>
+  <a class="btn btn-ghost" href="<?= e(url('backoffice/devices')) ?>">← Inapoi</a>
 </div>
-<form method="post" action="<?= e(url('admin/devices')) ?>"><?= csrf_field() ?>
+<form method="post" action="<?= e(url('backoffice/devices')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
   <div class="card pad">
 

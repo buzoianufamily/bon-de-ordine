@@ -1,10 +1,10 @@
 <?php $title='Servicii'; $active='services'; require __DIR__.'/_header.php'; ?>
-<div class="topbar"><h1>Servicii</h1><a class="btn btn-primary" href="<?= e(url('admin/services/new')) ?>">+ Serviciu nou</a></div>
+<div class="topbar"><h1>Servicii</h1><a class="btn btn-primary" href="<?= e(url('backoffice/services/new')) ?>">+ Serviciu nou</a></div>
 <?php if(!empty($branches)): ?>
 <details class="card pad" style="margin-bottom:1rem">
   <summary style="cursor:pointer;font-weight:700">⤓ Import / export servicii (CSV)</summary>
-  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/services/export')) ?>">⬆ Exportă serviciile (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/services/export?template=1')) ?>">⬇ Șablon gol</a></p>
-  <form method="post" action="<?= e(url('admin/services/import')) ?>" enctype="multipart/form-data" style="margin-top:.8rem">
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('backoffice/services/export')) ?>">⬆ Exportă serviciile (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('backoffice/services/export?template=1')) ?>">⬇ Șablon gol</a></p>
+  <form method="post" action="<?= e(url('backoffice/services/import')) ?>" enctype="multipart/form-data" style="margin-top:.8rem">
     <?= csrf_field() ?>
     <div class="row" style="align-items:flex-end">
       <div class="field" style="margin:0"><label>Filiala</label><select name="branch_id"><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select></div>
@@ -39,14 +39,14 @@
     <div class="card-foot">
       <span class="st <?= $r['status']==='active'?'on':'' ?>"><span class="d"></span><?= $r['status']==='active'?'Activ':'Inactiv' ?><?php if($open!==null): ?> · <?= $open?'deschis acum':'inchis acum' ?><?php endif; ?></span>
       <span>
-        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/pause')) ?>" style="display:inline" data-pause="<?= empty($r['paused'])?'1':'0' ?>"><?= csrf_field() ?><input type="hidden" name="note" value=""><button class="lnk" style="background:none;border:none;cursor:pointer;color:#d97706;font-weight:700;font:inherit"><?= !empty($r['paused']) ? '▶ Reia' : '⏸ Pauza' ?></button></form>
-        <a class="lnk" href="<?= e(url('admin/services/'.$r['id'])) ?>" style="margin-left:.7rem">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Ștergi serviciul? Se șterg DEFINITIV și toate biletele și statisticile lui. Ca să-l ascunzi fără pierdere de date, setează-l mai bine Inactiv."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <form method="post" action="<?= e(url('backoffice/services/'.$r['id'].'/pause')) ?>" style="display:inline" data-pause="<?= empty($r['paused'])?'1':'0' ?>"><?= csrf_field() ?><input type="hidden" name="note" value=""><button class="lnk" style="background:none;border:none;cursor:pointer;color:#d97706;font-weight:700;font:inherit"><?= !empty($r['paused']) ? '▶ Reia' : '⏸ Pauza' ?></button></form>
+        <a class="lnk" href="<?= e(url('backoffice/services/'.$r['id'])) ?>" style="margin-left:.7rem">Editeaza</a>
+        <form method="post" action="<?= e(url('backoffice/services/'.$r['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Ștergi serviciul? Se șterg DEFINITIV și toate biletele și statisticile lui. Ca să-l ascunzi fără pierdere de date, setează-l mai bine Inactiv."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty"><div class="eic">◆</div><p>Niciun serviciu inca. Serviciile sunt categoriile pentru care clientii iau bon (ex: Casierie, Acte).</p><a class="btn btn-primary" href="<?= e(url('admin/services/new')) ?>">+ Creeaza primul serviciu</a></div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">◆</div><p>Niciun serviciu inca. Serviciile sunt categoriile pentru care clientii iau bon (ex: Casierie, Acte).</p><a class="btn btn-primary" href="<?= e(url('backoffice/services/new')) ?>">+ Creeaza primul serviciu</a></div><?php endif; ?>
 </div>
 <script>
 /* reordonare servicii prin drag & drop (porneste doar din manerul ⠿) */
@@ -55,7 +55,7 @@ window.addEventListener('load', function(){
   var dragEl = null;
   function saveOrder(){
     var ids = Array.prototype.map.call(grid.querySelectorAll('.mcard'), function(c){ return +c.dataset.id; });
-    QMS.api('admin/services/reorder', {ids: ids}).then(function(r){
+    QMS.api('backoffice/services/reorder', {ids: ids}).then(function(r){
       QMS.toast(r && r.ok ? 'Ordine salvata' : 'Eroare la salvare', r && r.ok ? 'ok' : 'error');
     }).catch(function(){ QMS.toast('Eroare la salvare','error'); });
   }

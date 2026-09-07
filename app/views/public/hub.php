@@ -5,7 +5,7 @@ $hasAppt = (int) val('SELECT COUNT(*) FROM services WHERE appt_enabled=1 AND sta
 $tiles = [];
 // Backoffice: doar pentru roluri care au acces la admin (nu operatorii simpli)
 if (in_array($role, ['admin','manager'], true))
-    $tiles[] = ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('admin'), '🗂'];
+    $tiles[] = ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('backoffice/dashboard'), '🗂'];
 // Terminalul operator: oricine autentificat poate opera un ghiseu
 $tiles[] = ['Terminal operator', 'Apeleaza si gestioneaza bilete de la ghiseu.', url('counter'), '🖥'];
 if (setting('mod_concierge','1')==='1')

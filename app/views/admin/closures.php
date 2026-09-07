@@ -3,12 +3,12 @@ $today = date('Y-m-d');
 $zileRo = ['Duminică','Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă'];
 $dowRo = fn($d) => $zileRo[(int)date('w', strtotime($d))];
 ?>
-<div class="topbar"><h1>Zile închise / sărbători</h1><a class="btn btn-ghost" href="<?= e(url('admin/branches')) ?>">← Filiale</a></div>
+<div class="topbar"><h1>Zile închise / sărbători</h1><a class="btn btn-ghost" href="<?= e(url('backoffice/branches')) ?>">← Filiale</a></div>
 <p class="muted" style="margin-top:-.6rem;max-width:720px">În zilele marcate aici nu se mai emit bonuri (dispenserul afișează serviciile ca „închis"). O zi setată „toate filialele" acoperă întreaga instanță. Programul săptămânal normal se setează per serviciu.</p>
 <details class="card pad" style="margin-bottom:1rem">
   <summary style="cursor:pointer;font-weight:700">⤓ Import / export zile închise (CSV)</summary>
-  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('admin/closures/export')) ?>">⬆ Exportă zilele globale (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('admin/closures/export?template=1')) ?>">⬇ Șablon gol</a></p>
-  <form method="post" action="<?= e(url('admin/closures/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
+  <p style="margin:.6rem 0"><a class="btn" href="<?= e(url('backoffice/closures/export')) ?>">⬆ Exportă zilele globale (CSV)</a> <a class="btn btn-ghost" href="<?= e(url('backoffice/closures/export?template=1')) ?>">⬇ Șablon gol</a></p>
+  <form method="post" action="<?= e(url('backoffice/closures/import')) ?>" enctype="multipart/form-data" style="margin-top:.4rem">
     <?= csrf_field() ?>
     <div class="field" style="margin:0"><label>Filiala</label>
       <select name="branch_id"><option value="0">Toate filialele</option><?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>"><?= e($b['name']) ?></option><?php endforeach; ?></select></div>
@@ -21,7 +21,7 @@ $dowRo = fn($d) => $zileRo[(int)date('w', strtotime($d))];
 </details>
 
 <div class="row" style="align-items:flex-start">
-  <form method="post" action="<?= e(url('admin/closures')) ?>" class="card pad" style="flex:1;min-width:300px;max-width:380px"><?= csrf_field() ?>
+  <form method="post" action="<?= e(url('backoffice/closures')) ?>" class="card pad" style="flex:1;min-width:300px;max-width:380px"><?= csrf_field() ?>
     <h3 style="margin-top:0">Adaugă o zi închisă</h3>
     <div class="field"><label>Data</label><input type="date" name="closed_date" min="<?= e($today) ?>" required></div>
     <div class="field"><label>Filiala</label>
@@ -46,7 +46,7 @@ $dowRo = fn($d) => $zileRo[(int)date('w', strtotime($d))];
         <td><?= $r['branch_id'] ? e($r['branch_name']) : '<span class="pill" style="background:#e0e7ff;color:#3730a3">Toate</span>' ?></td>
         <td class="muted"><?= e($r['reason'] ?? '—') ?></td>
         <td style="text-align:right">
-          <form method="post" action="<?= e(url('admin/closures/'.$r['id'].'/delete')) ?>" data-confirm="Stergi aceasta zi inchisa?"><?= csrf_field() ?>
+          <form method="post" action="<?= e(url('backoffice/closures/'.$r['id'].'/delete')) ?>" data-confirm="Stergi aceasta zi inchisa?"><?= csrf_field() ?>
             <button class="lnk del" style="background:none;border:none;cursor:pointer;color:var(--danger);font-weight:700">Șterge</button></form>
         </td>
       </tr>

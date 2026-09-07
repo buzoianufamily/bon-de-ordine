@@ -123,8 +123,8 @@ CSRF="$(curl -s -c "$JAR" $B/login | grep -oE 'name="_csrf" value="[^"]+"' | hea
 [ -n "$CSRF" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: extract login CSRF"; }
 t "POST /login bad creds -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=GRESIT")"
 t "POST /login ok -> 302"        302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST $B/login -d "_csrf=$CSRF&email=admin@example.ro&password=123456")"
-DASH="$(curl -s -b "$JAR" "$B/admin")"
-t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/admin)"
+DASH="$(curl -s -b "$JAR" "$B/backoffice")"
+t "GET /admin (autentificat)"    200 "$(code -b "$JAR" $B/backoffice)"
 # securitate: actiunile de operator care modifica starea resping GET (anti-CSRF prin GET)
 t "API mutatie (cancel) prin GET -> 405" 405 "$(code -b "$JAR" "$B/api/cancel?ticket_id=1")"
 t "API mutatie (finish) prin GET -> 405" 405 "$(code -b "$JAR" "$B/api/finish?ticket_id=1")"
@@ -132,86 +132,86 @@ t "API counter-state read-only prin GET -> 200" 200 "$(code -b "$JAR" "$B/api/co
 tcontains "checklist onboarding are pasul operatori" 'Adauga operatori' "$DASH"
 tcontains "a11y: toggle grafic/tabel are aria-pressed" 'aria-pressed' "$DASH"
 tcontains "a11y: SVG-uri date au role=img" 'role="img"' "$DASH"
-t "GET /admin/statistics"        200 "$(code -b "$JAR" $B/admin/statistics)"
-tcontains "statistici au sectiunea Programari online" 'Programari online' "$(curl -s -b "$JAR" "$B/admin/statistics")"
-t "GET /admin/closures"          200 "$(code -b "$JAR" $B/admin/closures)"
-t "GET /admin/help"              200 "$(code -b "$JAR" $B/admin/help)"
-tcontains "help documenteaza formatele CSV" 'nume,email,rol,parola' "$(curl -s -b "$JAR" "$B/admin/help")"
-t "GET /admin/apps"              200 "$(code -b "$JAR" $B/admin/apps)"
-APPS_PAGE="$(curl -s -b "$JAR" "$B/admin/apps")"
+t "GET /backoffice/statistics"        200 "$(code -b "$JAR" $B/backoffice/statistics)"
+tcontains "statistici au sectiunea Programari online" 'Programari online' "$(curl -s -b "$JAR" "$B/backoffice/statistics")"
+t "GET /backoffice/closures"          200 "$(code -b "$JAR" $B/backoffice/closures)"
+t "GET /backoffice/help"              200 "$(code -b "$JAR" $B/backoffice/help)"
+tcontains "help documenteaza formatele CSV" 'nume,email,rol,parola' "$(curl -s -b "$JAR" "$B/backoffice/help")"
+t "GET /backoffice/apps"              200 "$(code -b "$JAR" $B/backoffice/apps)"
+APPS_PAGE="$(curl -s -b "$JAR" "$B/backoffice/apps")"
 tcontains "apps: lansator are terminalul operator" 'Terminal operator' "$APPS_PAGE"
 tcontains "apps: lansator are afisajul TV"          'Afisaj TV'        "$APPS_PAGE"
 tcontains "apps: lansator are biletul digital"      'Bilet digital'    "$APPS_PAGE"
-t "GET /admin/devices/qr"        200 "$(code -b "$JAR" $B/admin/devices/qr)"
+t "GET /backoffice/devices/qr"        200 "$(code -b "$JAR" $B/backoffice/devices/qr)"
 
 # --- exporturi (autentificat) ---
 TODAY="$(date +%F)"
-CT_CSV="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/tickets/export?date=$TODAY" | grep -i 'content-type')"
+CT_CSV="$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/tickets/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export bilete CSV content-type" 'text/csv' "$CT_CSV"
 # backup DB + export/clonare config nu sunt in panoul de administrare (operatiuni la nivel de server)
-SET_PAGE="$(curl -s -b "$JAR" "$B/admin/settings")"
+SET_PAGE="$(curl -s -b "$JAR" "$B/backoffice/settings")"
 tcontains "Setari are tab Automatizari" 'data-tab="auto"' "$SET_PAGE"
 case "$SET_PAGE" in *'Backup / clonare configurație'*) FAIL=$((FAIL+1)); echo "FAIL: adminul inca are card clonare config";; *) PASS=$((PASS+1));; esac
 case "$SET_PAGE" in *'Descarcă backup SQL'*) FAIL=$((FAIL+1)); echo "FAIL: adminul inca are backup SQL in Setari";; *) PASS=$((PASS+1));; esac
 # rutele de backup + export/import config sunt inchise (indisponibile din panou)
-t "admin: POST /admin/backup/run -> 404" 404 "$(code -b "$JAR" -X POST "$B/admin/backup/run" -d "_csrf=$CSRF")"
-t "admin: GET /admin/backup/download -> 404" 404 "$(code -b "$JAR" "$B/admin/backup/download?file=x.sql")"
-t "admin: GET /admin/settings/export -> 404" 404 "$(code -b "$JAR" "$B/admin/settings/export")"
+t "admin: POST /backoffice/backup/run -> 404" 404 "$(code -b "$JAR" -X POST "$B/backoffice/backup/run" -d "_csrf=$CSRF")"
+t "admin: GET /backoffice/backup/download -> 404" 404 "$(code -b "$JAR" "$B/backoffice/backup/download?file=x.sql")"
+t "admin: GET /backoffice/settings/export -> 404" 404 "$(code -b "$JAR" "$B/backoffice/settings/export")"
 # verificare productie (readiness) nu apare in panoul de administrare
-t "GET /admin/checkup -> 404" 404 "$(code -b "$JAR" $B/admin/checkup)"
+t "GET /backoffice/checkup -> 404" 404 "$(code -b "$JAR" $B/backoffice/checkup)"
 # media: se accepta orice tip de fisier; SVG-ul e ACCEPTAT dar CURATAT de scripturi (anti-XSS stocat)
 SVGF="$(mktemp)"; printf '%s' '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' > "$SVGF"
-curl -s -o /dev/null -b "$JAR" -X POST "$B/admin/media/upload" -F "_csrf=$CSRF" -F "file[]=@$SVGF;type=image/svg+xml;filename=evil.svg"
+curl -s -o /dev/null -b "$JAR" -X POST "$B/backoffice/media/upload" -F "_csrf=$CSRF" -F "file[]=@$SVGF;type=image/svg+xml;filename=evil.svg"
 rm -f "$SVGF"
-SVGPATH="$(curl -s -b "$JAR" "$B/admin/media" | grep -oE 'assets/uploads/evil_[a-z0-9]+\.svg' | head -1)"
+SVGPATH="$(curl -s -b "$JAR" "$B/backoffice/media" | grep -oE 'assets/uploads/evil_[a-z0-9]+\.svg' | head -1)"
 if [ -n "$SVGPATH" ]; then
   PASS=$((PASS+1))
   case "$(curl -s -b "$JAR" "$B/$SVGPATH")" in *"<script"*) FAIL=$((FAIL+1)); echo "FAIL: SVG stocat inca contine <script> (risc XSS)";; *) PASS=$((PASS+1));; esac
 else FAIL=$((FAIL+1)); echo "FAIL: SVG nu a fost acceptat la upload media"; fi
 # pregatire productie: resetul cere confirmarea exacta „STERGE" (altfel respins, fara stergere)
-t "POST /admin/reset confirmare gresita -> 302 (respins)" 302 "$(code -b "$JAR" -X POST "$B/admin/reset" -d "_csrf=$CSRF&confirm=nu")"
-tcontains "settings: card de pregatire productie (admin)" 'Pregătire pentru producție' "$(curl -s -b "$JAR" "$B/admin/settings")"
-CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/appointments/export?date=$TODAY" | grep -i 'content-type')"
+t "POST /backoffice/reset confirmare gresita -> 302 (respins)" 302 "$(code -b "$JAR" -X POST "$B/backoffice/reset" -d "_csrf=$CSRF&confirm=nu")"
+tcontains "settings: card de pregatire productie (admin)" 'Pregătire pentru producție' "$(curl -s -b "$JAR" "$B/backoffice/settings")"
+CT_APPT="$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/appointments/export?date=$TODAY" | grep -i 'content-type')"
 tcontains "export programari CSV content-type" 'text/csv' "$CT_APPT"
-APPT_ADMIN="$(curl -s -b "$JAR" "$B/admin/appointments")"
+APPT_ADMIN="$(curl -s -b "$JAR" "$B/backoffice/appointments")"
 tcontains "admin appointments are lista de asteptare" 'Listă de așteptare' "$APPT_ADMIN"
 tcontains "admin appointments: rail servicii (master-detail)" 'id="apptSvcs"' "$APPT_ADMIN"
 tcontains "admin appointments: cautare programari" 'id="apptSearch"' "$APPT_ADMIN"
 # GDPR: pagina drepturilor persoanei vizate (export/anonimizare) — doar admin
-t "GET /admin/gdpr -> 200" 200 "$(code -b "$JAR" $B/admin/gdpr)"
-tcontains "gdpr: formular de cautare email" 'name="q_email"' "$(curl -s -b "$JAR" "$B/admin/gdpr")"
-GDPR_EXPORT_CT="$(curl -s -b "$JAR" -D - -o /dev/null -X POST "$B/admin/gdpr/export" -d "_csrf=$CSRF&q_email=nobody@ci.ro" | grep -i 'content-type')"
+t "GET /backoffice/gdpr -> 200" 200 "$(code -b "$JAR" $B/backoffice/gdpr)"
+tcontains "gdpr: formular de cautare email" 'name="q_email"' "$(curl -s -b "$JAR" "$B/backoffice/gdpr")"
+GDPR_EXPORT_CT="$(curl -s -b "$JAR" -D - -o /dev/null -X POST "$B/backoffice/gdpr/export" -d "_csrf=$CSRF&q_email=nobody@ci.ro" | grep -i 'content-type')"
 tcontains "gdpr export -> JSON" 'application/json' "$GDPR_EXPORT_CT"
-CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/feedback/export" | grep -i 'content-type')"
+CT_FB="$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/feedback/export" | grep -i 'content-type')"
 tcontains "export feedback CSV content-type" 'text/csv' "$CT_FB"
 # injectie de formule: un comentariu public care incepe cu '=' e neutralizat in exportul CSV
 curl -s -o /dev/null -X POST "$B/feedback?branch=$BR" --data-urlencode 'rating=3' --data-urlencode 'comment==DANGER123'
-tcontains "export feedback neutralizeaza injectia de formule" "'=DANGER123" "$(curl -s -b "$JAR" "$B/admin/feedback/export")"
+tcontains "export feedback neutralizeaza injectia de formule" "'=DANGER123" "$(curl -s -b "$JAR" "$B/backoffice/feedback/export")"
 # feedback public legat de bonul servit (din biletul digital) -> apare in admin cu eticheta bonului
 if [ -n "${VTOK:-}" ]; then
   VLABEL="$(printf '%s' "$ISS" | python3 -c "import sys,json;print(json.load(sys.stdin)['ticket']['label'])" 2>/dev/null)"
   VID="$(printf '%s' "$ISS" | python3 -c "import sys,json;print(json.load(sys.stdin)['ticket']['id'])" 2>/dev/null)"
   # serveste bonul (admin la ghiseul CTR) ca sa aiba operator -> activeaza CSAT pe operator
-  ACSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+  ACSRF="$(curl -s -b "$JAR" $B/backoffice | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
   curl -s -o /dev/null -b "$JAR" -X POST $B/api/call-specific -H "X-CSRF: $ACSRF" -H 'Content-Type: application/json' -d "{\"ticket_id\":$VID,\"counter_id\":$CTR}"
   curl -s -o /dev/null -b "$JAR" -X POST $B/api/finish -H "X-CSRF: $ACSRF" -H 'Content-Type: application/json' -d "{\"ticket_id\":$VID}"
   curl -s -o /dev/null -X POST "$B/feedback?t=$VTOK" --data-urlencode 'rating=5' --data-urlencode 'comment=CI feedback legat de bon'
-  tcontains "feedback public retine eticheta bonului in admin" "$VLABEL" "$(curl -s -b "$JAR" "$B/admin/feedback")"
+  tcontains "feedback public retine eticheta bonului in admin" "$VLABEL" "$(curl -s -b "$JAR" "$B/backoffice/feedback")"
   tcontains "pagina feedback poarta tokenul bonului (camp ascuns)" 'name="t"' "$(curl -s "$B/feedback?t=$VTOK&branch=$BR")"
   # CSAT pe serviciu + pe operator in statistici (feedback legat de bon servit de un operator)
-  STAT_PAGE="$(curl -s -b "$JAR" "$B/admin/statistics?from=$TODAY&to=$TODAY")"
+  STAT_PAGE="$(curl -s -b "$JAR" "$B/backoffice/statistics?from=$TODAY&to=$TODAY")"
   tcontains "statistici au sectiunea CSAT pe serviciu" 'Nota medie pe serviciu' "$STAT_PAGE"
   tcontains "statistici au sectiunea CSAT pe operator" 'Nota medie pe operator' "$STAT_PAGE"
-  tcontains "export CSAT pe serviciu CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=csat&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
-  tcontains "export CSAT pe operator CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=csat_op&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
+  tcontains "export CSAT pe serviciu CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/statistics?export=csv&dataset=csat&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
+  tcontains "export CSAT pe operator CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/statistics?export=csv&dataset=csat_op&from=$TODAY&to=$TODAY" | grep -i 'content-type')"
 fi
-XLSX_SIG="$(curl -s -b "$JAR" "$B/admin/statistics?export=xlsx" | head -c 2)"
+XLSX_SIG="$(curl -s -b "$JAR" "$B/backoffice/statistics?export=xlsx" | head -c 2)"
 [ "$XLSX_SIG" = "PK" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: stats xlsx not a zip (got '$XLSX_SIG')"; }
-CT_OPA="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/statistics?export=csv&dataset=op_activity" | grep -i 'content-type')"
+CT_OPA="$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/statistics?export=csv&dataset=op_activity" | grep -i 'content-type')"
 tcontains "export activitate operatori CSV" 'text/csv' "$CT_OPA"
 
 # --- Concierge / receptie (terminal virtual cu tab-uri: Bon nou / Chemare / Programari) ---
-CGCSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+CGCSRF="$(curl -s -b "$JAR" $B/backoffice | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
 CG_PAGE="$(curl -s -b "$JAR" "$B/concierge")"
 t "GET /concierge (autentificat) -> 200" 200 "$(code -b "$JAR" "$B/concierge")"
 tcontains "concierge: tab Bon nou"    'Bon nou'      "$CG_PAGE"
@@ -248,83 +248,83 @@ t "api/ticket-checkin fara cheie -> 403" 403 "$(curl -s -o /dev/null -w '%{http_
 t "api/ticket-checkin cod inexistent -> 404" 404 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/ticket-checkin -H 'Content-Type: application/json' -d "{\"device_key\":\"$DKEY\",\"code\":\"nuexista_xyz\"}")"
 
 # --- export/import servicii din CSV (autentificat) ---
-CT_SVC="$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/services/export" | grep -i 'content-type')"
+CT_SVC="$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/services/export" | grep -i 'content-type')"
 tcontains "export servicii CSV content-type" 'text/csv' "$CT_SVC"
-ICSRF="$(curl -s -b "$JAR" $B/admin | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
-t "POST /admin/services/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Serviciu Importat CI,#16a34a')"
-tcontains "serviciul importat apare in lista" 'Serviciu Importat CI' "$(curl -s -b "$JAR" "$B/admin/services")"
+ICSRF="$(curl -s -b "$JAR" $B/backoffice | grep -oE 'name="csrf" content="[^"]+"' | sed -E 's/.*content="([^"]+)".*/\1/')"
+t "POST /backoffice/services/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/backoffice/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Serviciu Importat CI,#16a34a')"
+tcontains "serviciul importat apare in lista" 'Serviciu Importat CI' "$(curl -s -b "$JAR" "$B/backoffice/services")"
 # re-import acelasi prefix -> nu se dubleaza
-curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Duplicat,#000000'
-ZZ_COUNT="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
+curl -s -o /dev/null -b "$JAR" -X POST $B/backoffice/services/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=ZZ,Duplicat,#000000'
+ZZ_COUNT="$(curl -s -b "$JAR" "$B/backoffice/services/export" | grep -c '^ZZ,')"
 [ "$ZZ_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat la re-import (count=$ZZ_COUNT)"; }
 # formularul manual respinge prefixul duplicat (prefix unic pe filiala)
-curl -s -o /dev/null -b "$JAR" -X POST $B/admin/services --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "prefix=ZZ" --data-urlencode "name=Manual Dup"
-ZZ_COUNT2="$(curl -s -b "$JAR" "$B/admin/services/export" | grep -c '^ZZ,')"
+curl -s -o /dev/null -b "$JAR" -X POST $B/backoffice/services --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "prefix=ZZ" --data-urlencode "name=Manual Dup"
+ZZ_COUNT2="$(curl -s -b "$JAR" "$B/backoffice/services/export" | grep -c '^ZZ,')"
 [ "$ZZ_COUNT2" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: prefix ZZ duplicat acceptat din formular (count=$ZZ_COUNT2)"; }
 
 # --- reordonare servicii: butoane a11y + endpoint ---
-tcontains "servicii: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/admin/services")"
-tcontains "reorder servicii -> ok" '"ok":true' "$(curl -s -b "$JAR" -X POST $B/admin/services/reorder -H 'Content-Type: application/json' -H "X-CSRF: $ICSRF" -d "{\"ids\":[$SVC]}")"
+tcontains "servicii: butoane reordonare (a11y)" 'data-mv="up"' "$(curl -s -b "$JAR" "$B/backoffice/services")"
+tcontains "reorder servicii -> ok" '"ok":true' "$(curl -s -b "$JAR" -X POST $B/backoffice/services/reorder -H 'Content-Type: application/json' -H "X-CSRF: $ICSRF" -d "{\"ids\":[$SVC]}")"
 
 # --- grupuri + subgrupuri: creeaza un grup, apoi verifica pagina (arbore + parinte + atribuire) ---
-t "grupuri: creare grup -> 302" 302 "$(code -b "$JAR" -X POST $B/admin/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Grup CI" --data-urlencode "color=#64748b" --data-urlencode "sort_order=0")"
-GPAGE="$(curl -s -b "$JAR" "$B/admin/groups")"
+t "grupuri: creare grup -> 302" 302 "$(code -b "$JAR" -X POST $B/backoffice/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Grup CI" --data-urlencode "color=#64748b" --data-urlencode "sort_order=0")"
+GPAGE="$(curl -s -b "$JAR" "$B/backoffice/groups")"
 tcontains "grupuri: apare grupul creat" 'Grup CI' "$GPAGE"
 tcontains "grupuri: selector grup parinte (subgrupuri)" 'name="parent_id"' "$GPAGE"
-tcontains "grupuri: atribuire servicii la grup" 'admin/groups/assign' "$GPAGE"
+tcontains "grupuri: atribuire servicii la grup" 'backoffice/groups/assign' "$GPAGE"
 # creare subgrup + atribuire serviciu (parent_id/group_id validate server-side) -> 302
-curl -s -o /dev/null -b "$JAR" -X POST $B/admin/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Subgrup CI" --data-urlencode "color=#16a34a" --data-urlencode "sort_order=1"
-tcontains "grupuri: subgrup creat apare" 'Subgrup CI' "$(curl -s -b "$JAR" "$B/admin/groups")"
-t "grupuri: atribuire serviciu -> 302" 302 "$(code -b "$JAR" -X POST $B/admin/groups/assign --data-urlencode "_csrf=$ICSRF" --data-urlencode "service_id=$SVC" --data-urlencode "group_id=0")"
+curl -s -o /dev/null -b "$JAR" -X POST $B/backoffice/groups --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "name=Subgrup CI" --data-urlencode "color=#16a34a" --data-urlencode "sort_order=1"
+tcontains "grupuri: subgrup creat apare" 'Subgrup CI' "$(curl -s -b "$JAR" "$B/backoffice/groups")"
+t "grupuri: atribuire serviciu -> 302" 302 "$(code -b "$JAR" -X POST $B/backoffice/groups/assign --data-urlencode "_csrf=$ICSRF" --data-urlencode "service_id=$SVC" --data-urlencode "group_id=0")"
 
 # --- webhook de test (fara URL configurat -> eroare clara, fara 500) ---
-WHT="$(curl -s -b "$JAR" -X POST $B/admin/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
+WHT="$(curl -s -b "$JAR" -X POST $B/backoffice/api/test-webhook --data-urlencode "_csrf=$ICSRF")"
 tcontains "test-webhook fara URL -> ok:false" '"ok":false' "$WHT"
 tcontains "test-webhook mesaj despre URL" 'URL' "$WHT"
-API_PAGE="$(curl -s -b "$JAR" "$B/admin/api")"
+API_PAGE="$(curl -s -b "$JAR" "$B/backoffice/api")"
 tcontains "pagina API are jurnal livrari webhook" 'Jurnal livrări webhook' "$API_PAGE"
 tcontains "pagina API listeaza evenimentul feedback.low" 'feedback.low' "$API_PAGE"
-tcontains "export jurnal webhook CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/api/webhook-log-export" | grep -i 'content-type')"
+tcontains "export jurnal webhook CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/api/webhook-log-export" | grep -i 'content-type')"
 
 # --- export/import ghisee din CSV (autentificat) ---
-tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/counters/export" | grep -i 'content-type')"
-t "POST /admin/counters/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/counters/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=GCI,Ghiseu Importat CI')"
-tcontains "ghiseul importat apare in lista" 'Ghiseu Importat CI' "$(curl -s -b "$JAR" "$B/admin/counters")"
+tcontains "export ghisee CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/counters/export" | grep -i 'content-type')"
+t "POST /backoffice/counters/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/backoffice/counters/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode $'csv=GCI,Ghiseu Importat CI')"
+tcontains "ghiseul importat apare in lista" 'Ghiseu Importat CI' "$(curl -s -b "$JAR" "$B/backoffice/counters")"
 # formularul manual respinge codul de ghiseu duplicat (cod unic pe filiala)
-curl -s -o /dev/null -b "$JAR" -X POST $B/admin/counters --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "code=GCI" --data-urlencode "name=Dup ghiseu"
-GCI_COUNT="$(curl -s -b "$JAR" "$B/admin/counters/export" | grep -c '^GCI,')"
+curl -s -o /dev/null -b "$JAR" -X POST $B/backoffice/counters --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=$BR" --data-urlencode "code=GCI" --data-urlencode "name=Dup ghiseu"
+GCI_COUNT="$(curl -s -b "$JAR" "$B/backoffice/counters/export" | grep -c '^GCI,')"
 [ "$GCI_COUNT" = "1" ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "FAIL: cod GCI duplicat acceptat din formular (count=$GCI_COUNT)"; }
 
 # --- export/import filiale din CSV (autentificat) ---
-tcontains "export filiale CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/branches/export" | grep -i 'content-type')"
-t "POST /admin/branches/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/branches/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Filiala Importata CI,Cluj,Str. Test 1')"
-tcontains "filiala importata apare in lista" 'Filiala Importata CI' "$(curl -s -b "$JAR" "$B/admin/branches")"
+tcontains "export filiale CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/branches/export" | grep -i 'content-type')"
+t "POST /backoffice/branches/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/backoffice/branches/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Filiala Importata CI,Cluj,Str. Test 1')"
+tcontains "filiala importata apare in lista" 'Filiala Importata CI' "$(curl -s -b "$JAR" "$B/backoffice/branches")"
 
 # --- export/import utilizatori din CSV (autentificat) ---
-tcontains "export utilizatori CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/users/export" | grep -i 'content-type')"
+tcontains "export utilizatori CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/users/export" | grep -i 'content-type')"
 # exportul NU trebuie sa contina hash-uri de parola
-USR_EXP="$(curl -s -b "$JAR" "$B/admin/users/export")"
+USR_EXP="$(curl -s -b "$JAR" "$B/backoffice/users/export")"
 case "$USR_EXP" in *'$2y$'*) FAIL=$((FAIL+1)); echo "FAIL: export utilizatori contine hash parola";; *) PASS=$((PASS+1));; esac
-t "POST /admin/users/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/users/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Operator Importat CI,opci@firma.ro,agent,ParolaCI123')"
-tcontains "utilizatorul importat apare in lista" 'Operator Importat CI' "$(curl -s -b "$JAR" "$B/admin/users")"
+t "POST /backoffice/users/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/backoffice/users/import --data-urlencode "_csrf=$ICSRF" --data-urlencode $'csv=Operator Importat CI,opci@firma.ro,agent,ParolaCI123')"
+tcontains "utilizatorul importat apare in lista" 'Operator Importat CI' "$(curl -s -b "$JAR" "$B/backoffice/users")"
 
 # --- export/import zile inchise din CSV (autentificat) ---
-tcontains "export zile inchise CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/admin/closures/export" | grep -i 'content-type')"
-t "POST /admin/closures/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/closures/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=0" --data-urlencode $'csv=2030-12-25,Craciun CI')"
-tcontains "ziua inchisa importata apare in lista" 'Craciun CI' "$(curl -s -b "$JAR" "$B/admin/closures")"
+tcontains "export zile inchise CSV content-type" 'text/csv' "$(curl -s -b "$JAR" -D - -o /dev/null "$B/backoffice/closures/export" | grep -i 'content-type')"
+t "POST /backoffice/closures/import -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/backoffice/closures/import --data-urlencode "_csrf=$ICSRF" --data-urlencode "branch_id=0" --data-urlencode $'csv=2030-12-25,Craciun CI')"
+tcontains "ziua inchisa importata apare in lista" 'Craciun CI' "$(curl -s -b "$JAR" "$B/backoffice/closures")"
 
 # --- sabloane CSV goale (doar antetul, fara date) ---
-BR_TMPL="$(curl -s -b "$JAR" "$B/admin/branches/export?template=1")"
+BR_TMPL="$(curl -s -b "$JAR" "$B/backoffice/branches/export?template=1")"
 tcontains "sablon filiale are antetul" 'nume,oras,adresa' "$BR_TMPL"
 case "$BR_TMPL" in *'Filiala Importata CI'*) FAIL=$((FAIL+1)); echo "FAIL: sablonul filiale contine date";; *) PASS=$((PASS+1));; esac
 # sablonul utilizatori include coloana 'parola' (spre deosebire de exportul real)
-USR_TMPL="$(curl -s -b "$JAR" "$B/admin/users/export?template=1")"
+USR_TMPL="$(curl -s -b "$JAR" "$B/backoffice/users/export?template=1")"
 tcontains "sablon utilizatori include coloana parola" 'nume,email,rol,parola' "$USR_TMPL"
 
 # --- import prin INCARCARE FISIER .csv (multipart $_FILES) ---
 CSVUP="$(mktemp)"; printf 'nume,oras,adresa\nFiliala Fisier CI,Iasi,Bd. Upload 9\n' > "$CSVUP"
-t "POST /admin/branches/import (fisier) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/admin/branches/import -F "_csrf=$ICSRF" -F "file=@$CSVUP;type=text/csv")"
-tcontains "filiala din fisier apare in lista" 'Filiala Fisier CI' "$(curl -s -b "$JAR" "$B/admin/branches")"
+t "POST /backoffice/branches/import (fisier) -> 302" 302 "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST $B/backoffice/branches/import -F "_csrf=$ICSRF" -F "file=@$CSVUP;type=text/csv")"
+tcontains "filiala din fisier apare in lista" 'Filiala Fisier CI' "$(curl -s -b "$JAR" "$B/backoffice/branches")"
 rm -f "$CSVUP"
 
 # --- CSRF lipsa pe POST autentificat => respins (419) ---
@@ -402,7 +402,7 @@ DAT="$(date -d '+2 day' +%F 2>/dev/null || date -v+2d +%F)"
 CSLOT="$(curl -s -H "X-Api-Key: $AKEY" "$B/api/v1/slots?service_id=$SVC&date=$DAT" | python3 -c "import sys,json;d=json.load(sys.stdin);s=[x['start'] for x in d.get('slots',[]) if not x['full'] and not x['past']];print(s[0] if s else '')" 2>/dev/null)"
 if [ -n "$CSLOT" ]; then
   t "POST /book/{id} cu consimtamant -> 302 (succes)" 302 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/book/$SVC --data-urlencode "slot_start=$CSLOT" --data-urlencode 'name=Consent CI' --data-urlencode 'email=consent-ci@ci.ro' --data-urlencode 'consent=1')"
-  GEXP="$(curl -s -b "$JAR" -X POST "$B/admin/gdpr/export" -d "_csrf=$CSRF&q_email=consent-ci@ci.ro")"
+  GEXP="$(curl -s -b "$JAR" -X POST "$B/backoffice/gdpr/export" -d "_csrf=$CSRF&q_email=consent-ci@ci.ro")"
   tcontains "consent: dovada (consent_at) in exportul GDPR" 'consent_at' "$GEXP"
   tcontains "consent: emailul rezervarii apare in export" 'consent-ci@ci.ro' "$GEXP"
 else
@@ -411,7 +411,7 @@ fi
 
 # --- IDOR: allowed_counters aplicat si pe API, nu doar in UI ---
 # agent legat de un ghiseu inexistent (999999) => orice ghiseu real ii e interzis
-curl -s -o /dev/null -b "$JAR" -X POST $B/admin/users --data-urlencode "_csrf=$ICSRF" \
+curl -s -o /dev/null -b "$JAR" -X POST $B/backoffice/users --data-urlencode "_csrf=$ICSRF" \
   --data-urlencode "name=Pinned CI" --data-urlencode "email=pinnedci@firma.ro" \
   --data-urlencode "role=agent" --data-urlencode "active=1" \
   --data-urlencode "password=PinnedCI123" --data-urlencode "allowed_counters[]=999999"

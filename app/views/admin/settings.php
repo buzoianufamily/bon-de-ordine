@@ -10,7 +10,7 @@
   <a data-tab="module"><span class="ic">🧩</span>Module</a>
   <a data-tab="legal"><span class="ic">⚖️</span>Legal &amp; GDPR</a>
 </div>
-<form method="post" action="<?= e(url('admin/settings')) ?>"><?= csrf_field() ?>
+<form method="post" action="<?= e(url('backoffice/settings')) ?>"><?= csrf_field() ?>
 
   <div class="settab" data-pane="general">
     <div class="card pad setcard">
@@ -93,7 +93,7 @@
     </div>
     <div class="card pad setcard">
       <h3 style="margin-top:0">Afisaj de ghiseu (<code>/cd/…</code>) — text implicit</h3>
-      <p class="muted" style="font-size:.82rem;margin-top:0">Ecranul mic de pe biroul operatorului (tableta/monitor) care arata bonul curent chemat la acel ghiseu (linkul „Afisaj" din <a href="<?= e(url('admin/counters')) ?>">Ghisee</a>). Textele de mai jos sunt <strong>implicite pentru toate ghiseele</strong>; le poti suprascrie individual din <a href="<?= e(url('admin/counters')) ?>">editarea fiecarui ghiseu</a>.</p>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Ecranul mic de pe biroul operatorului (tableta/monitor) care arata bonul curent chemat la acel ghiseu (linkul „Afisaj" din <a href="<?= e(url('backoffice/counters')) ?>">Ghisee</a>). Textele de mai jos sunt <strong>implicite pentru toate ghiseele</strong>; le poti suprascrie individual din <a href="<?= e(url('backoffice/counters')) ?>">editarea fiecarui ghiseu</a>.</p>
       <div class="field"><label>Text cand nu e niciun bon chemat</label><input name="cd_hint_idle" value="<?= $s('cd_hint_idle') ?>" placeholder="Asteptam urmatorul bon…" maxlength="80"></div>
       <div class="field"><label>Text cand un bon este chemat (deasupra numarului)</label><input name="cd_hint_serving" value="<?= $s('cd_hint_serving') ?>" placeholder="Va rugam prezentati-va la ghiseu" maxlength="80"></div>
       <p class="muted" style="font-size:.8rem;margin-bottom:0">Ex: pune „Bonul curent este:" ca text pentru bonul chemat.</p>
@@ -153,7 +153,7 @@
   <div class="settab dv-hidden" data-pane="auto">
     <div class="card pad setcard">
       <h3 style="margin-top:0">Automatizări (necesită cron)</h3>
-      <p class="muted" style="font-size:.82rem;margin-top:0">Aceste sarcini rulează prin job-ul cron — configurează-l în <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>. Remindere și raportul zilnic necesită și email activ (tabul <strong>Email</strong>).</p>
+      <p class="muted" style="font-size:.82rem;margin-top:0">Aceste sarcini rulează prin job-ul cron — configurează-l în <a href="<?= e(url('backoffice/api')) ?>">API &amp; Webhooks</a>. Remindere și raportul zilnic necesită și email activ (tabul <strong>Email</strong>).</p>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="reminder_enabled" <?= setting('reminder_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>reminder</strong> pe email cu ~24h inainte de programare</label>
       <label style="margin:.4rem 0;display:block"><input type="checkbox" name="daily_report_enabled" <?= setting('daily_report_enabled','0')==='1'?'checked':'' ?> style="width:auto"> Trimite <strong>raport zilnic</strong> pe email (despre ziua precedenta)</label>
       <div class="field"><label>Destinatari raport zilnic (gol = toti adminii)</label><input name="daily_report_to" value="<?= $s('daily_report_to') ?>" placeholder="a@x.ro, b@y.ro"></div>
@@ -165,7 +165,7 @@
       </div>
       <p class="muted" style="font-size:.78rem;margin-top:.3rem">Alerta se trimite cel mult o data la „pauza" minute, doar daca numarul de bilete peste tinta atinge pragul. Tinta per serviciu = „timp asteptare" din editarea serviciului.</p>
       <div class="field"><label>Alertă webhook la notă mică de feedback (≤ … stele; 0 = oprit)</label><input type="number" name="feedback_alert_rating" min="0" max="5" value="<?= $s('feedback_alert_rating','2') ?>">
-        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Când un client lasă o notă sub acest prag, se trimite evenimentul webhook <code>feedback.low</code> (cu serviciul/operatorul bonului, dacă evaluarea e legată de un bon) și — dacă emailul e activ — o alertă pe email către managerii de la alerta SLA / raportul zilnic. Configurează URL-ul în <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>.</p></div>
+        <p class="muted" style="font-size:.78rem;margin-top:.3rem">Când un client lasă o notă sub acest prag, se trimite evenimentul webhook <code>feedback.low</code> (cu serviciul/operatorul bonului, dacă evaluarea e legată de un bon) și — dacă emailul e activ — o alertă pe email către managerii de la alerta SLA / raportul zilnic. Configurează URL-ul în <a href="<?= e(url('backoffice/api')) ?>">API &amp; Webhooks</a>.</p></div>
       <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
       <h3 style="margin-top:0">Ciclu de viață date</h3>
       <div class="field"><label>Sterge automat biletele mai vechi de … luni (0 = pastreaza tot)</label><input type="number" name="retention_months" min="0" max="120" value="<?= $s('retention_months','0') ?>">
@@ -187,7 +187,7 @@
       <label class="switch" style="margin:.7rem 0;align-items:flex-start"><input type="checkbox" name="mod_booking" <?= setting('mod_booking','1')==='1'?'checked':'' ?>><span class="track"></span> <span><strong>Programari online</strong> — pagina publica <code><?= e(url('book')) ?></code></span></label>
       <label class="switch" style="margin:.7rem 0;align-items:flex-start"><input type="checkbox" name="mod_feedback" <?= setting('mod_feedback','1')==='1'?'checked':'' ?>><span class="track"></span> <span><strong>Feedback clienti</strong> — pagina publica <code><?= e(url('feedback')) ?></code> + sondaj pe biletul digital</span></label>
       <label class="switch" style="margin:.7rem 0;align-items:flex-start"><input type="checkbox" name="mod_concierge" <?= setting('mod_concierge','1')==='1'?'checked':'' ?>><span class="track"></span> <span><strong>Concierge</strong> — receptia cheama orice bilet la orice ghiseu</span></label>
-      <p class="muted" style="font-size:.8rem;margin-bottom:0">Module care necesita conturi externe (SMS / WhatsApp / Telegram) nu sunt incluse; pot fi integrate prin <a href="<?= e(url('admin/api')) ?>">API &amp; Webhooks</a>.</p>
+      <p class="muted" style="font-size:.8rem;margin-bottom:0">Module care necesita conturi externe (SMS / WhatsApp / Telegram) nu sunt incluse; pot fi integrate prin <a href="<?= e(url('backoffice/api')) ?>">API &amp; Webhooks</a>.</p>
     </div>
   </div>
 
@@ -228,7 +228,7 @@
   <h3 style="margin-top:0;color:#dc2626">⚠ Pregătire pentru producție</h3>
   <p class="muted" style="font-size:.82rem;margin-top:0">După ce ai terminat de testat, șterge <strong>datele de test</strong> (bilete, programări, feedback, sesiuni, jurnale de prezență/webhook) ca să pornești cu o evidență curată. <strong>Configurația rămâne intactă</strong> (filiale, servicii, ghișee, utilizatori, dispozitive, setări). <strong>Acțiunea este ireversibilă</strong> — dacă vrei o plasă de siguranță, fă un backup la nivel de server (cPanel) înainte.</p>
   <p class="muted" style="font-size:.8rem;margin-top:.2rem"><strong>Diferența față de „Reset bonuri" (Bilete):</strong> acolo se șterg <em>doar biletele</em> și repornește numerotarea; aici se curăță <em>toate</em> datele operaționale (bilete + programări + feedback + sesiuni) — pentru predarea instanței în producție.</p>
-  <form method="post" action="<?= e(url('admin/reset')) ?>" data-confirm="Sigur ștergi TOATE datele operaționale (bilete/programări/feedback)? Configurația rămâne. Acțiunea e ireversibilă."><?= csrf_field() ?>
+  <form method="post" action="<?= e(url('backoffice/reset')) ?>" data-confirm="Sigur ștergi TOATE datele operaționale (bilete/programări/feedback)? Configurația rămâne. Acțiunea e ireversibilă."><?= csrf_field() ?>
     <div class="field" style="max-width:280px"><label>Scrie <code>STERGE</code> pentru confirmare</label><input name="confirm" autocomplete="off" placeholder="STERGE"></div>
     <button class="btn btn-danger">Șterge datele de test</button>
   </form>
@@ -275,7 +275,7 @@
 })();
 /* selector logo din galerie */
 document.getElementById('logoPick').onclick=async()=>{ const g=document.getElementById('logoGrid');
-  const r=await QMS.api('admin/media?format=json',null,'GET'); if(!r||!r.ok)return;
+  const r=await QMS.api('backoffice/media?format=json',null,'GET'); if(!r||!r.ok)return;
   g.style.display='grid';
   g.innerHTML=(r.media||[]).filter(m=>m.mime&&m.mime.startsWith('image')).map(m=>`<img src="${m.url}" data-u="${m.url}" style="width:100%;height:50px;object-fit:contain;background:#0e1117;border-radius:6px;cursor:pointer;padding:3px;border:1px solid #2a2f3a">`).join('')||'<div class="muted" style="grid-column:1/-1">Galerie goala — incarca in Multimedia.</div>';
   g.querySelectorAll('img').forEach(im=>im.onclick=()=>{ document.getElementById('brandLogo').value=im.dataset.u; });

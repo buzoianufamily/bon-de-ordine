@@ -267,7 +267,7 @@
     ['x','y','w','h'].forEach(k=>{const i=document.getElementById('f_'+k); if(i)i.addEventListener('input',()=>{w[k]=clamp(+i.value,0,100); renderStage();});});
     document.getElementById('delW').onclick=()=>{ screen().widgets=screen().widgets.filter(x=>x.id!==sel); sel=null; renderStage(); renderInspector(); };
     if(w.type==='image'){ const pm=document.getElementById('pickMedia'), grid=document.getElementById('mediaGrid');
-      pm.onclick=async()=>{ const r=await QMS.api('admin/media?format=json',null,'GET'); if(!r||!r.ok)return;
+      pm.onclick=async()=>{ const r=await QMS.api('backoffice/media?format=json',null,'GET'); if(!r||!r.ok)return;
         grid.style.display='grid';
         grid.innerHTML=(r.media||[]).filter(m=>m.mime&&m.mime.startsWith('image')).map(m=>`<img src="${m.url}" data-u="${m.url}" style="width:100%;height:46px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #2a2f3a">`).join('')||'<div class="muted" style="grid-column:1/-1">Galerie goala — incarca in Multimedia.</div>';
         grid.querySelectorAll('img').forEach(im=>im.onclick=()=>{ w.props.url=im.dataset.u; const u=document.getElementById('p_url'); if(u)u.value=im.dataset.u; renderStage(); }); };
@@ -304,7 +304,7 @@
     document.getElementById('s_bgimg').addEventListener('input',e=>{s.bg_image=e.target.value.trim(); renderStage();});
     document.getElementById('s_bgfit').addEventListener('change',e=>{s.bg_fit=e.target.value; renderStage();});
     { const pm=document.getElementById('pickScreenBg'), grid=document.getElementById('screenBgGrid');
-      pm.onclick=async()=>{ if(grid.style.display==='grid'){grid.style.display='none';return;} const r=await QMS.api('admin/media?format=json',null,'GET'); if(!r||!r.ok)return;
+      pm.onclick=async()=>{ if(grid.style.display==='grid'){grid.style.display='none';return;} const r=await QMS.api('backoffice/media?format=json',null,'GET'); if(!r||!r.ok)return;
         grid.style.display='grid';
         grid.innerHTML=(r.media||[]).filter(m=>m.mime&&m.mime.startsWith('image')).map(m=>`<img src="${m.url}" data-u="${m.url}" style="width:100%;height:46px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #2a2f3a">`).join('')||'<div class="muted" style="grid-column:1/-1">Galerie goala.</div>';
         grid.querySelectorAll('img').forEach(im=>im.onclick=()=>{ s.bg_image=im.dataset.u; const u=document.getElementById('s_bgimg'); if(u)u.value=im.dataset.u; grid.style.display='none'; renderStage(); }); }; }

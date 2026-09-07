@@ -52,11 +52,11 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
 .pv-btn .ds{font-size:.75rem;opacity:.9;z-index:1}
 </style></head><body>
 <div class="top">
-  <a class="btn" href="<?= e(url('admin/devices')) ?>">← Dispozitive</a>
+  <a class="btn" href="<?= e(url('backoffice/devices')) ?>">← Dispozitive</a>
   <span class="ttl">Configurare dispenser · <?= e($dev['name']) ?></span>
   <span class="muted">cheie <?= e($dev['connection_key']) ?></span>
   <span class="sp"></span>
-  <a class="btn" href="<?= e(url('admin/devices/'.$dev['id'].'/dispenser-canvas')) ?>">🎨 Editor canvas (ca la TV)</a>
+  <a class="btn" href="<?= e(url('backoffice/devices/'.$dev['id'].'/dispenser-canvas')) ?>">🎨 Editor canvas (ca la TV)</a>
   <a class="btn" target="_blank" href="<?= e(url('launcher?key='.$dev['connection_key'])) ?>">▶ Deschide</a>
   <button class="btn primary" id="btnSave">💾 Salveaza</button>
 </div>
@@ -287,7 +287,7 @@ body{margin:0;font-family:"Manrope",system-ui,sans-serif;background:#0b0d12;colo
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
 window.DBUILD = {
-  saveUrl: <?= json_encode('admin/devices/'.$dev['id'].'/dispenser') ?>,
+  saveUrl: <?= json_encode('backoffice/devices/'.$dev['id'].'/dispenser') ?>,
   accent: <?= json_encode($accent) ?>,
   globalLogo: <?= json_encode(setting('brand_logo','')) ?>
 };

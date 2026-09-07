@@ -2,7 +2,7 @@
 <div class="topbar">
   <h1>Multimedia</h1>
 </div>
-<form method="post" action="<?= e(url('admin/media/upload')) ?>" enctype="multipart/form-data" id="upForm">
+<form method="post" action="<?= e(url('backoffice/media/upload')) ?>" enctype="multipart/form-data" id="upForm">
   <?= csrf_field() ?>
   <input type="file" name="file[]" id="fileInput" multiple style="display:none" onchange="document.getElementById('upForm').submit()">
   <div id="dropzone" class="mediadrop">
@@ -27,7 +27,7 @@
   <span class="muted" style="font-size:.8rem">clic = selecteaza · Ctrl/Shift = mai multe · Ctrl+A = toate · Esc = deselecteaza</span>
   <span style="margin-left:auto;display:flex;gap:.5rem">
     <button type="button" class="btn btn-ghost" id="mbClear">Deselecteaza</button>
-    <form method="post" action="<?= e(url('admin/media/delete-bulk')) ?>" id="mbForm" data-confirm="Stergi fisierele selectate?"><?= csrf_field() ?><span id="mbInputs"></span><button class="btn btn-danger">🗑 Sterge selectia</button></form>
+    <form method="post" action="<?= e(url('backoffice/media/delete-bulk')) ?>" id="mbForm" data-confirm="Stergi fisierele selectate?"><?= csrf_field() ?><span id="mbInputs"></span><button class="btn btn-danger">🗑 Sterge selectia</button></form>
   </span>
 </div>
 <?php endif; ?>
@@ -51,7 +51,7 @@
         </div>
         <div style="display:flex;gap:.35rem">
           <button class="btn btn-ghost" style="font-size:.8rem;padding:.4rem .6rem" onclick="copyUrl(this,'<?= e($m['url']) ?>')">⧉ Copiaza URL</button>
-          <form method="post" action="<?= e(url('admin/media/'.$m['id'].'/delete')) ?>" style="margin-left:auto" data-confirm="Stergi fisierul?"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger);font-size:.8rem;padding:.4rem .6rem">🗑</button></form>
+          <form method="post" action="<?= e(url('backoffice/media/'.$m['id'].'/delete')) ?>" style="margin-left:auto" data-confirm="Stergi fisierul?"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger);font-size:.8rem;padding:.4rem .6rem">🗑</button></form>
         </div>
       </div>
     </div>

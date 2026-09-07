@@ -10,7 +10,7 @@ function admin_dispatch(array $seg, string $method): void {
     $area = $res ?: 'dashboard';
     if (!in_array($area, ['dashboard',''], true)) {
         if ($area === 'roles') { if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; } }
-        elseif (in_array($area, array_keys(perm_areas()), true) && !can($area)) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
+        elseif (in_array($area, array_keys(perm_areas()), true) && !can($area)) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('backoffice/dashboard'); }
     }
 
     // ---- politica: adminii sunt obligati sa aiba 2FA activ (pot accesa doar pagina Securitate) ----
@@ -18,14 +18,14 @@ function admin_dispatch(array $seg, string $method): void {
         try {
             if ((int) val('SELECT totp_enabled FROM users WHERE id=?', [current_user()['id']]) !== 1) {
                 flash('Politica de securitate: activeaza autentificarea in doi pasi (2FA) pentru a continua.', 'error');
-                redirect('admin/security');
+                redirect('backoffice/security');
             }
         } catch (Throwable $e) {}
     }
 
     switch ($res) {
         case 'dashboard': case '':
-            if ($method === 'POST' && $a === 'dismiss-onboarding') { csrf_check(); set_setting('onboarding_dismissed', '1'); redirect('admin'); }
+            if ($method === 'POST' && $a === 'dismiss-onboarding') { csrf_check(); set_setting('onboarding_dismissed', '1'); redirect('backoffice/dashboard'); }
             admin_dashboard(); return;
 
         case 'search': admin_global_search(); return;
@@ -39,7 +39,7 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 if ((int)val('SELECT COUNT(*) FROM branches') > 1) { q('DELETE FROM branches WHERE id=?', [(int)$a]); audit('delete','branch',(int)$a); flash('Filiala stearsa.'); }
                 else flash('Nu poti sterge ultima filiala.', 'error');
-                redirect('admin/branches'); }
+                redirect('backoffice/branches'); }
             if ($method === 'POST' && $b === 'duplicate') { admin_branch_duplicate((int)$a); return; }
             if ($a === 'new') { admin_branch_form(null); return; }
             if (ctype_digit((string)$a) && $b === 'edit') { admin_branch_form((int)$a); return; }
@@ -47,7 +47,7 @@ function admin_dispatch(array $seg, string $method): void {
             admin_branches_list(); return;
 
         case 'closures':
-            if (!can('branches')) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('admin'); }
+            if (!can('branches')) { flash('Nu ai acces la sectiunea respectiva.', 'error'); redirect('backoffice/dashboard'); }
             if ($method === 'POST' && $a === 'import') { admin_closures_import(); return; }
             if ($a === 'export') { admin_closures_export(); return; }
             if ($method === 'POST' && $a === null) { admin_closure_save(); return; }
@@ -62,9 +62,9 @@ function admin_dispatch(array $seg, string $method): void {
                 $p = (int)!val('SELECT paused FROM services WHERE id=?', [(int)$a]);
                 $note = $p ? (mb_substr(trim((string)($_POST['note'] ?? '')), 0, 120) ?: null) : null;
                 q('UPDATE services SET paused=?, pause_note=? WHERE id=?', [$p, $note, (int)$a]); audit('update','service',(int)$a, $p?'pauza':'reluat');
-                flash($p ? 'Serviciu oprit temporar.' : 'Serviciu reluat.'); redirect('admin/services'); }
+                flash($p ? 'Serviciu oprit temporar.' : 'Serviciu reluat.'); redirect('backoffice/services'); }
             if ($method === 'POST' && $a === null) { admin_service_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM services WHERE id=?', [(int)$a]); audit('delete','service',(int)$a); flash('Serviciu sters.'); redirect('admin/services'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM services WHERE id=?', [(int)$a]); audit('delete','service',(int)$a); flash('Serviciu sters.'); redirect('backoffice/services'); }
             if ($a === 'new') { admin_service_form(null); return; }
             if (ctype_digit((string)$a)) { admin_service_form((int)$a); return; }
             admin_services_list(); return;
@@ -76,14 +76,14 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 q('UPDATE services SET group_id=NULL WHERE group_id=?', [(int)$a]);
                 q('UPDATE service_groups SET parent_id=NULL WHERE parent_id=?', [(int)$a]);  // subgrupurile devin grupuri de nivel 0
-                q('DELETE FROM service_groups WHERE id=?', [(int)$a]); audit('delete','group',(int)$a); flash('Grup sters.'); redirect('admin/groups'); }
+                q('DELETE FROM service_groups WHERE id=?', [(int)$a]); audit('delete','group',(int)$a); flash('Grup sters.'); redirect('backoffice/groups'); }
             admin_groups_list(); return;
 
         case 'counters':
             if ($method === 'POST' && $a === 'import') { admin_counters_import(); return; }
             if ($a === 'export') { admin_counters_export(); return; }
             if ($method === 'POST' && $a === null) { admin_counter_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); audit('delete','counter',(int)$a); flash('Ghiseu sters.'); redirect('admin/counters'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM counters WHERE id=?', [(int)$a]); audit('delete','counter',(int)$a); flash('Ghiseu sters.'); redirect('backoffice/counters'); }
             if ($a === 'new') { admin_counter_form(null); return; }
             if (ctype_digit((string)$a)) { admin_counter_form((int)$a); return; }
             admin_counters_list(); return;
@@ -95,16 +95,16 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 // un non-admin nu poate sterge un cont de administrator (anti-escaladare/sabotaj)
                 if (current_user()['role'] !== 'admin' && (string) val('SELECT role FROM users WHERE id=?', [(int)$a]) === 'admin') {
-                    flash('Doar un administrator poate sterge un cont de administrator.', 'error'); redirect('admin/users');
+                    flash('Doar un administrator poate sterge un cont de administrator.', 'error'); redirect('backoffice/users');
                 }
-                q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); audit('delete','user',(int)$a); flash('Utilizator sters.'); redirect('admin/users'); }
+                q('DELETE FROM users WHERE id=? AND id<>?', [(int)$a, current_user()['id']]); audit('delete','user',(int)$a); flash('Utilizator sters.'); redirect('backoffice/users'); }
             if ($a === 'new') { admin_user_form(null); return; }
             if (ctype_digit((string)$a)) { admin_user_form((int)$a); return; }
             admin_users_list(); return;
 
         case 'devices':
             if ($method === 'POST' && $a === null) { admin_device_save(); return; }
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM devices WHERE id=?', [(int)$a]); audit('delete','device',(int)$a); flash('Dispozitiv sters.'); redirect('admin/devices'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM devices WHERE id=?', [(int)$a]); audit('delete','device',(int)$a); flash('Dispozitiv sters.'); redirect('backoffice/devices'); }
             if (ctype_digit((string)$a) && $b === 'player') {   // editor canvas afisaj
                 if ($method === 'POST') { admin_player_save((int)$a); return; }
                 admin_player_builder((int)$a); return;
@@ -129,13 +129,13 @@ function admin_dispatch(array $seg, string $method): void {
             admin_tickets(); return;
 
         case 'feedback':
-            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM feedback WHERE id=?', [(int)$a]); audit('delete','feedback',(int)$a); flash('Feedback sters.'); redirect('admin/feedback'); }
+            if ($method === 'POST' && $b === 'delete') { csrf_check(); q('DELETE FROM feedback WHERE id=?', [(int)$a]); audit('delete','feedback',(int)$a); flash('Feedback sters.'); redirect('backoffice/feedback'); }
             if ($a === 'export') { admin_feedback_export(); return; }
             admin_feedback_list(); return;
 
         case 'appointments':
             if ($method === 'POST' && $a === null) { admin_appointment_create(); return; }
-            if ($method === 'POST' && $a === 'waitlist-del') { csrf_check(); q('DELETE FROM appointment_waitlist WHERE id=?', [(int)$b]); audit('delete','waitlist',(int)$b); flash('Intrare stearsa din lista de asteptare.'); redirect('admin/appointments'); }
+            if ($method === 'POST' && $a === 'waitlist-del') { csrf_check(); q('DELETE FROM appointment_waitlist WHERE id=?', [(int)$b]); audit('delete','waitlist',(int)$b); flash('Intrare stearsa din lista de asteptare.'); redirect('backoffice/appointments'); }
             if ($method === 'POST' && $b === 'checkin') { admin_appointment_action((int)$a, 'checkin'); return; }
             if ($method === 'POST' && $b === 'cancel')  { admin_appointment_action((int)$a, 'cancel'); return; }
             if ($a === 'export') { admin_appointments_export(); return; }
@@ -151,7 +151,7 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST' && $a === null) { admin_form_save(); return; }
             if ($method === 'POST' && $b === 'delete') { csrf_check();
                 q('DELETE FROM forms WHERE id=?', [(int)$a]); q('UPDATE services SET form_id=NULL WHERE form_id=?', [(int)$a]);
-                flash('Formular sters.'); redirect('admin/forms'); }
+                flash('Formular sters.'); redirect('backoffice/forms'); }
             if ($a === 'new') { admin_form_builder(null); return; }
             if (ctype_digit((string)$a)) { admin_form_builder((int)$a); return; }
             admin_forms_list(); return;
@@ -166,14 +166,14 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST') { csrf_check();
                 $m = []; foreach (array_keys(perm_areas()) as $ar) $m[$ar] = isset($_POST['manager'][$ar]);
                 set_setting('role_perms', json_encode(['manager'=>$m], JSON_UNESCAPED_UNICODE));
-                audit('update','roles'); flash('Salvat cu succes.'); redirect('admin/roles'); }
+                audit('update','roles'); flash('Salvat cu succes.'); redirect('backoffice/roles'); }
             admin_roles(); return;
 
         case 'api':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             if ($method === 'POST' && $a === 'test-webhook') { admin_api_test_webhook(); return; }
             if ($a === 'webhook-log-export') { admin_webhook_log_export(); return; }
-            if ($method === 'POST' && $a === 'clear-webhook-log') { csrf_check(); q('DELETE FROM webhook_log'); audit('clear','webhook_log'); flash('Jurnal webhook golit.'); redirect('admin/api'); }
+            if ($method === 'POST' && $a === 'clear-webhook-log') { csrf_check(); q('DELETE FROM webhook_log'); audit('clear','webhook_log'); flash('Jurnal webhook golit.'); redirect('backoffice/api'); }
             if ($method === 'POST') { admin_api_save(); return; }
             admin_api_page(); return;
 
@@ -189,7 +189,7 @@ function admin_dispatch(array $seg, string $method): void {
         case 'reset':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
             if ($method === 'POST') { admin_reset_data(); return; }
-            redirect('admin/settings');
+            redirect('backoffice/settings');
 
         case 'gdpr':
             if (current_user()['role'] !== 'admin') { http_response_code(403); echo 'Acces interzis.'; return; }
@@ -309,13 +309,13 @@ function admin_dashboard(): void {
     if (setting('onboarding_dismissed', '0') !== '1' && current_user()['role'] === 'admin') {
         $defaultAdmin = (int) val("SELECT COUNT(*) FROM users WHERE email='admin@example.ro' AND active=1") > 0;
         $onboarding = [
-            ['done' => !$defaultAdmin, 'label' => 'Schimba contul implicit de admin (admin@example.ro)', 'url' => url('admin/users')],
-            ['done' => setting('brand_name', '') !== '' && setting('brand_name') !== 'Compania Mea', 'label' => 'Seteaza numele si culoarea brandului', 'url' => url('admin/settings')],
-            ['done' => (int) val('SELECT COUNT(*) FROM services') > 0, 'label' => 'Creeaza serviciile tale', 'url' => url('admin/services')],
-            ['done' => (int) val('SELECT COUNT(*) FROM counters') > 0, 'label' => 'Creeaza ghiseele', 'url' => url('admin/counters')],
-            ['done' => (int) val("SELECT COUNT(*) FROM users WHERE role IN ('agent','manager')") > 0, 'label' => 'Adauga operatori (deservesc ghiseele)', 'url' => url('admin/users')],
-            ['done' => (int) val('SELECT COUNT(*) FROM devices') > 0, 'label' => 'Configureaza un dispozitiv (dispenser / afisaj)', 'url' => url('admin/devices')],
-            ['done' => (int) val('SELECT COUNT(*) FROM tickets') > 0, 'label' => 'Emite primul bon de test', 'url' => url('admin/devices')],
+            ['done' => !$defaultAdmin, 'label' => 'Schimba contul implicit de admin (admin@example.ro)', 'url' => url('backoffice/users')],
+            ['done' => setting('brand_name', '') !== '' && setting('brand_name') !== 'Compania Mea', 'label' => 'Seteaza numele si culoarea brandului', 'url' => url('backoffice/settings')],
+            ['done' => (int) val('SELECT COUNT(*) FROM services') > 0, 'label' => 'Creeaza serviciile tale', 'url' => url('backoffice/services')],
+            ['done' => (int) val('SELECT COUNT(*) FROM counters') > 0, 'label' => 'Creeaza ghiseele', 'url' => url('backoffice/counters')],
+            ['done' => (int) val("SELECT COUNT(*) FROM users WHERE role IN ('agent','manager')") > 0, 'label' => 'Adauga operatori (deservesc ghiseele)', 'url' => url('backoffice/users')],
+            ['done' => (int) val('SELECT COUNT(*) FROM devices') > 0, 'label' => 'Configureaza un dispozitiv (dispenser / afisaj)', 'url' => url('backoffice/devices')],
+            ['done' => (int) val('SELECT COUNT(*) FROM tickets') > 0, 'label' => 'Emite primul bon de test', 'url' => url('backoffice/devices')],
         ];
         if (!array_filter($onboarding, fn($s) => !$s['done'])) $onboarding = []; // tot bifat -> nu mai aratam
     }
@@ -386,7 +386,7 @@ function admin_services_import(): void {
     audit('import', 'services', $branch, $n . ' servicii');
     $msg = $n > 0 ? "$n servicii importate." : 'Niciun serviciu nou de importat.';
     if ($skipped) $msg .= " $skipped sarite (prefix existent).";    flash($msg, $n > 0 ? 'info' : 'error');
-    redirect('admin/services');
+    redirect('backoffice/services');
 }
 function admin_service_form(?int $id): void {
     $row = $id ? one('SELECT * FROM services WHERE id=?', [$id]) : null;
@@ -449,10 +449,10 @@ function admin_service_save(): void {
         'appt_slot_min'=>max(5,(int)($_POST['appt_slot_min'] ?? 15)),
         'appt_capacity'=>max(1,(int)($_POST['appt_capacity'] ?? 1)),
     ];
-    if ($f['name'] === '' || $f['prefix'] === '') { flash('Nume si prefix obligatorii.', 'error'); redirect('admin/services' . ($id ? "/$id" : '/new')); }
+    if ($f['name'] === '' || $f['prefix'] === '') { flash('Nume si prefix obligatorii.', 'error'); redirect('backoffice/services' . ($id ? "/$id" : '/new')); }
     // prefix unic pe filiala (evita bilete ambigue cu acelasi prefix)
     $dup = (int) val('SELECT COUNT(*) FROM services WHERE branch_id=? AND prefix=? AND id<>?', [$branchId, $prefix, $id]);
-    if ($dup > 0) { flash('Există deja un serviciu cu prefixul „'.$prefix.'" în această filială. Alege alt prefix.', 'error'); redirect('admin/services' . ($id ? "/$id" : '/new')); }
+    if ($dup > 0) { flash('Există deja un serviciu cu prefixul „'.$prefix.'" în această filială. Alege alt prefix.', 'error'); redirect('backoffice/services' . ($id ? "/$id" : '/new')); }
     $isNew = !$id;
     if ($id) {
         $set = implode(', ', array_map(fn($k) => "$k=?", array_keys($f)));
@@ -464,7 +464,7 @@ function admin_service_save(): void {
     }
     audit($isNew ? 'create' : 'update', 'service', $id);
     flash('Salvat cu succes.');
-    redirect('admin/services/' . $id);
+    redirect('backoffice/services/' . $id);
 }
 
 /* ----------------------- SERVICE GROUPS ----------------------- */
@@ -511,7 +511,7 @@ function admin_group_save(): void {
     $f = ['branch_id'=>$branch, 'name'=>trim($_POST['name'] ?? ''),
           'color'=>trim($_POST['color'] ?? '#64748b'), 'parent_id'=>($parent > 0 ? $parent : null),
           'sort_order'=>(int)($_POST['sort_order'] ?? 0)];
-    if ($f['name'] === '') { flash('Numele grupului este obligatoriu.', 'error'); redirect('admin/groups'); }
+    if ($f['name'] === '') { flash('Numele grupului este obligatoriu.', 'error'); redirect('backoffice/groups'); }
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE service_groups SET $set WHERE id=?", array_merge(array_values($f), [$id]));
@@ -522,24 +522,24 @@ function admin_group_save(): void {
     }
     audit($isNewGroup ? 'create' : 'update', 'group', $id);
     flash('Salvat cu succes.');
-    redirect('admin/groups');
+    redirect('backoffice/groups');
 }
 /** Atribuie rapid un serviciu unui grup (din pagina Grupuri). group_id=0 => scoate din grup. */
 function admin_group_assign(): void {
     csrf_check();
     $sid = (int)($_POST['service_id'] ?? 0);
     $gid = (int)($_POST['group_id'] ?? 0);
-    if ($sid <= 0) { flash('Serviciu invalid.', 'error'); redirect('admin/groups'); }
+    if ($sid <= 0) { flash('Serviciu invalid.', 'error'); redirect('backoffice/groups'); }
     // grupul trebuie sa fie in aceeasi filiala ca serviciul
     if ($gid > 0) {
         $sv = one('SELECT branch_id FROM services WHERE id=?', [$sid]);
         $g  = one('SELECT branch_id FROM service_groups WHERE id=?', [$gid]);
-        if (!$sv || !$g || (int)$sv['branch_id'] !== (int)$g['branch_id']) { flash('Grupul nu e din filiala serviciului.', 'error'); redirect('admin/groups'); }
+        if (!$sv || !$g || (int)$sv['branch_id'] !== (int)$g['branch_id']) { flash('Grupul nu e din filiala serviciului.', 'error'); redirect('backoffice/groups'); }
     }
     q('UPDATE services SET group_id=? WHERE id=?', [$gid ?: null, $sid]);
     audit('update', 'service', $sid, 'group_id='.$gid);
     flash('Serviciu mutat.');
-    redirect('admin/groups');
+    redirect('backoffice/groups');
 }
 
 /** Salveaza ordinea serviciilor (drag & drop): sort_order = pozitia in lista primita. */
@@ -590,7 +590,7 @@ function admin_counters_import(): void {
     audit('import', 'counters', $branch, $n . ' ghisee');
     $msg = $n > 0 ? "$n ghisee importate." : 'Niciun ghiseu nou de importat.';
     if ($skipped) $msg .= " $skipped sarite (cod existent).";    flash($msg, $n > 0 ? 'info' : 'error');
-    redirect('admin/counters');
+    redirect('backoffice/counters');
 }
 function admin_counter_form(?int $id): void {
     $row = $id ? one('SELECT * FROM counters WHERE id=?', [$id]) : null;
@@ -607,10 +607,10 @@ function admin_counter_save(): void {
           'cd_hint_idle'=>mb_substr(trim((string)($_POST['cd_hint_idle'] ?? '')), 0, 80),
           'cd_hint_serving'=>mb_substr(trim((string)($_POST['cd_hint_serving'] ?? '')), 0, 80),
           'all_services'=>isset($_POST['all_services'])?1:0, 'priority'=>(int)($_POST['priority'] ?? 0)];
-    if ($f['code'] === '' || $f['name'] === '') { flash('Cod si nume obligatorii.', 'error'); redirect('admin/counters'); }
+    if ($f['code'] === '' || $f['name'] === '') { flash('Cod si nume obligatorii.', 'error'); redirect('backoffice/counters'); }
     // cod unic pe filiala (evita ghisee ambigue)
     if ((int) val('SELECT COUNT(*) FROM counters WHERE branch_id=? AND code=? AND id<>?', [$f['branch_id'], $f['code'], $id]) > 0) {
-        flash('Există deja un ghișeu cu codul „'.$f['code'].'" în această filială.', 'error'); redirect('admin/counters');
+        flash('Există deja un ghișeu cu codul „'.$f['code'].'" în această filială.', 'error'); redirect('backoffice/counters');
     }
     $isNew = !$id;
     if ($id) {
@@ -624,7 +624,7 @@ function admin_counter_save(): void {
     if (!$f['all_services']) foreach (($_POST['services'] ?? []) as $sid) q('INSERT IGNORE INTO counter_services (counter_id,service_id) VALUES (?,?)', [$id,(int)$sid]);
     audit($isNew ? 'create' : 'update', 'counter', $id);
     flash('Salvat cu succes.');
-    redirect('admin/counters/' . $id);
+    redirect('backoffice/counters/' . $id);
 }
 
 /* ----------------------- USERS ----------------------- */
@@ -642,28 +642,28 @@ function admin_user_save(): void {
     // anti-escaladare de privilegii: un non-admin (ex: manager cu dreptul 'users') NU poate crea/promova
     // un administrator, nici modifica un cont existent de administrator (i-ar putea schimba parola/prelua contul).
     if (($actor = current_user()) && ($actor['role'] ?? '') !== 'admin') {
-        if ($role === 'admin') { flash('Doar un administrator poate atribui rolul de administrator.', 'error'); redirect('admin/users'); }
+        if ($role === 'admin') { flash('Doar un administrator poate atribui rolul de administrator.', 'error'); redirect('backoffice/users'); }
         if ($id && (string) val('SELECT role FROM users WHERE id=?', [$id]) === 'admin') {
-            flash('Doar un administrator poate modifica un cont de administrator.', 'error'); redirect('admin/users');
+            flash('Doar un administrator poate modifica un cont de administrator.', 'error'); redirect('backoffice/users');
         }
     }
     $active=isset($_POST['active'])?1:0; $pass=(string)($_POST['password']??'');
     $notify=isset($_POST['notify_browser'])?1:0;
     $allowed = implode(',', array_filter(array_map('intval', (array)($_POST['allowed_counters'] ?? [])))) ?: null;
-    if ($name==='' || $email==='') { flash('Nume si email obligatorii.', 'error'); redirect('admin/users'); }
+    if ($name==='' || $email==='') { flash('Nume si email obligatorii.', 'error'); redirect('backoffice/users'); }
     if ($id) {
         if ($pass !== '') q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=?,password_hash=? WHERE id=?',
             [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT),$id]);
         else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$id]);
-    } else {        if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
+    } else {        if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('backoffice/users/new'); }
         try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,password_hash) VALUES (?,?,?,?,?,?,?)',
             [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT)]); $id = insert_id(); }
-        catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
+        catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('backoffice/users/new'); }
     }
     if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
     audit($isNewUser ? 'create' : 'update', 'user', $id);
     flash('Salvat cu succes.');
-    redirect($id ? 'admin/users/' . $id : 'admin/users');
+    redirect($id ? 'backoffice/users/' . $id : 'backoffice/users');
 }
 /** Export operatori (CSV: nume,email,rol). NU exporta parole/hash-uri din motive de securitate. */
 function admin_users_export(): void {
@@ -696,7 +696,7 @@ function admin_users_import(): void {
     audit('import', 'users', null, $n . ' utilizatori');
     $msg = $n > 0 ? "$n utilizatori importati." : 'Niciun utilizator nou de importat.';
     if ($skipped) $msg .= " $skipped sariti (email existent sau date invalide).";    flash($msg, $n > 0 ? 'info' : 'error');
-    redirect('admin/users');
+    redirect('backoffice/users');
 }
 
 /* ----------------------- DEVICES ----------------------- */
@@ -724,10 +724,10 @@ function admin_device_save(): void {
           'name'=>trim($_POST['name'] ?? ''), 'all_services'=>isset($_POST['all_services'])?1:0,
           'printer_mode'=>$_POST['printer_mode'] ?? 'browser', 'printer_ip'=>trim($_POST['printer_ip'] ?? ''),
           'printer_port'=>(int)($_POST['printer_port'] ?? 9100)];
-    if ($f['name'] === '') { flash('Nume obligatoriu.', 'error'); redirect('admin/devices'); }
+    if ($f['name'] === '') { flash('Nume obligatoriu.', 'error'); redirect('backoffice/devices'); }
     // printarea in retea deschide o conexiune catre IP-ul configurat -> accepta doar un IP valid (anti-SSRF)
     if ($f['printer_mode'] === 'network' && $f['printer_ip'] !== '' && !filter_var($f['printer_ip'], FILTER_VALIDATE_IP)) {
-        flash('IP imprimanta invalid (introdu o adresa IP, ex: 192.168.1.50).', 'error'); redirect('admin/devices');
+        flash('IP imprimanta invalid (introdu o adresa IP, ex: 192.168.1.50).', 'error'); redirect('backoffice/devices');
     }
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
@@ -742,7 +742,7 @@ function admin_device_save(): void {
     if (!$f['all_services']) foreach (($_POST['services'] ?? []) as $sid) q('INSERT IGNORE INTO device_services (device_id,service_id) VALUES (?,?)', [$id,(int)$sid]);
     audit($isNewDev ? 'create' : 'update', 'device', $id);
     flash('Salvat cu succes.');
-    redirect('admin/devices/' . $id);
+    redirect('backoffice/devices/' . $id);
 }
 
 /* ----------------------- TICKETS ----------------------- */
@@ -847,11 +847,11 @@ function admin_tickets_reset(): void {
     } catch (Throwable $e) {
         if (db()->inTransaction()) db()->rollBack();
         flash('Resetarea a esuat: '.$e->getMessage(), 'error');
-        redirect('admin/tickets');
+        redirect('backoffice/tickets');
     }
     audit('reset','tickets', $branch ?: 'all');
     flash('Bonuri sterse complet: coada, statisticile si numerotarea au fost resetate de la 0.');
-    redirect('admin/tickets');
+    redirect('backoffice/tickets');
 }
 
 /* ----------------------- FEEDBACK ----------------------- */
@@ -899,22 +899,22 @@ function admin_global_search(): void {
     };
     if (can('services'))
         foreach (all("SELECT id, prefix, name FROM services WHERE name LIKE ? OR prefix LIKE ? LIMIT 5", [$like, $like]) as $r)
-            $add('Servicii', $r['prefix'].' · '.$r['name'], url('admin/services/'.$r['id']));
+            $add('Servicii', $r['prefix'].' · '.$r['name'], url('backoffice/services/'.$r['id']));
     if (can('counters'))
         foreach (all("SELECT id, code, name FROM counters WHERE name LIKE ? OR code LIKE ? LIMIT 5", [$like, $like]) as $r)
-            $add('Ghisee', $r['code'].' · '.$r['name'], url('admin/counters/'.$r['id']));
+            $add('Ghisee', $r['code'].' · '.$r['name'], url('backoffice/counters/'.$r['id']));
     if (can('branches'))
         foreach (all("SELECT id, name, city FROM branches WHERE name LIKE ? OR city LIKE ? LIMIT 5", [$like, $like]) as $r)
-            $add('Filiale', $r['name'], url('admin/branches/'.$r['id']), $r['city'] ?? '');
+            $add('Filiale', $r['name'], url('backoffice/branches/'.$r['id']), $r['city'] ?? '');
     if (can('devices'))
         foreach (all("SELECT id, name, type, connection_key FROM devices WHERE name LIKE ? OR connection_key LIKE ? LIMIT 5", [$like, $like]) as $r)
-            $add('Dispozitive', $r['name'], url('admin/devices/'.$r['id']), $r['type'].' · '.$r['connection_key']);
+            $add('Dispozitive', $r['name'], url('backoffice/devices/'.$r['id']), $r['type'].' · '.$r['connection_key']);
     if (can('users'))
         foreach (all("SELECT id, name, email FROM users WHERE name LIKE ? OR email LIKE ? LIMIT 5", [$like, $like]) as $r)
-            $add('Utilizatori', $r['name'], url('admin/users/'.$r['id']), $r['email']);
+            $add('Utilizatori', $r['name'], url('backoffice/users/'.$r['id']), $r['email']);
     if (can('tickets'))
         foreach (all("SELECT label, DATE(issued_at) d FROM tickets WHERE label LIKE ? ORDER BY issued_at DESC LIMIT 5", [$like]) as $r)
-            $add('Bilete', $r['label'], url('admin/tickets').'?date='.$r['d'].'&q='.rawurlencode($r['label']), $r['d']);
+            $add('Bilete', $r['label'], url('backoffice/tickets').'?date='.$r['d'].'&q='.rawurlencode($r['label']), $r['d']);
     json_out(['ok' => true, 'results' => array_slice($out, 0, 20)]);
 }
 
@@ -975,7 +975,7 @@ function admin_security_save(): void {
         audit('update', 'security_policy');
         flash('Politica de securitate salvata.');
     }
-    redirect('admin/security');
+    redirect('backoffice/security');
 }
 
 /* ----------------------- GDPR: drepturile persoanei vizate ----------------------- */
@@ -1039,7 +1039,7 @@ function admin_gdpr_export(): void {
     csrf_check();
     $email = trim((string)($_POST['q_email'] ?? ''));
     $phone = trim((string)($_POST['q_phone'] ?? ''));
-    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('admin/gdpr'); }
+    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('backoffice/gdpr'); }
     $data = gdpr_find($email, $phone);
     audit('gdpr_export', 'subject', null, trim($email . ' ' . $phone));
     header('Content-Type: application/json; charset=utf-8');
@@ -1052,14 +1052,14 @@ function admin_gdpr_erase(): void {
     csrf_check();
     $email = trim((string)($_POST['q_email'] ?? ''));
     $phone = trim((string)($_POST['q_phone'] ?? ''));
-    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('admin/gdpr'); }
+    if ($email === '' && $phone === '') { flash('Completeaza email sau telefon.', 'error'); redirect('backoffice/gdpr'); }
     $n = gdpr_erase($email, $phone);
     audit('gdpr_erase', 'subject', null, trim($email . ' ' . $phone) . ' → ' . json_encode($n));
     $total = array_sum($n);
     flash($total > 0
         ? "Date anonimizate: {$n['appointments']} programari, {$n['waitlist']} lista de asteptare, {$n['tickets']} bilete."
         : 'Nicio inregistrare gasita pentru aceste date.', $total > 0 ? 'info' : 'error');
-    redirect('admin/gdpr');
+    redirect('backoffice/gdpr');
 }
 
 /* ----------------------- PREGATIRE PRODUCTIE: stergerea datelor de test ----------------------- */
@@ -1083,13 +1083,13 @@ function reset_operational_data(): array {
 function admin_reset_data(): void {
     csrf_check();
     if (mb_strtoupper(trim((string)($_POST['confirm'] ?? ''))) !== 'STERGE') {
-        flash('Confirmare incorecta. Scrie STERGE (cu majuscule) pentru a continua.', 'error'); redirect('admin/settings');
+        flash('Confirmare incorecta. Scrie STERGE (cu majuscule) pentru a continua.', 'error'); redirect('backoffice/settings');
     }
     $n = reset_operational_data();
     $total = array_sum($n);
     audit('reset', 'operational_data', null, json_encode($n));
     flash("Date de test sterse: $total inregistrari (bilete, programari, feedback, sesiuni).");
-    redirect('admin/settings');
+    redirect('backoffice/settings');
 }
 
 /* ----------------------- AUDIT LOG ----------------------- */
@@ -1144,7 +1144,7 @@ function admin_api_page(): void {
 }
 function admin_api_save(): void {
     csrf_check();
-    if (isset($_POST['regen'])) { set_setting('api_key', bin2hex(random_bytes(24))); audit('regenerate','api_key'); flash('Cheie API regenerata.'); redirect('admin/api'); }
+    if (isset($_POST['regen'])) { set_setting('api_key', bin2hex(random_bytes(24))); audit('regenerate','api_key'); flash('Cheie API regenerata.'); redirect('backoffice/api'); }
     set_setting('webhook_url', trim((string)($_POST['webhook_url'] ?? '')));
     set_setting('webhook_secret', trim((string)($_POST['webhook_secret'] ?? '')));
     $valid = ['ticket.created','ticket.called','ticket.serving','ticket.served','ticket.no_show','ticket.cancelled','ticket.transferred','ticket.recalled',
@@ -1152,7 +1152,7 @@ function admin_api_save(): void {
     $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
     set_setting('webhook_events', implode(',', $evs));
     audit('update','webhook');
-    flash('Salvat cu succes.'); redirect('admin/api');
+    flash('Salvat cu succes.'); redirect('backoffice/api');
 }
 /** Trimite un webhook de test ('ping') si raporteaza rezultatul (AJAX). */
 function admin_api_test_webhook(): void {
@@ -1210,15 +1210,15 @@ function admin_settings_save(): void {
     // email de test (dupa salvare, cu valorile proaspete)
     if (isset($_POST['mail_test'])) {
         $to = trim((string)($_POST['mail_test_to'] ?? '')) ?: (string)(current_user()['email'] ?? '');
-        if ($to === '') { flash('Completeaza adresa pentru emailul de test.', 'error'); redirect('admin/settings'); }
-        if (!mail_enabled()) { flash('Setari salvate, dar trimiterea de emailuri nu este activata (bifeaza optiunea).', 'error'); redirect('admin/settings'); }
+        if ($to === '') { flash('Completeaza adresa pentru emailul de test.', 'error'); redirect('backoffice/settings'); }
+        if (!mail_enabled()) { flash('Setari salvate, dar trimiterea de emailuri nu este activata (bifeaza optiunea).', 'error'); redirect('backoffice/settings'); }
         $ok = send_mail($to, 'Test email — ' . setting('brand_name', 'Bon de ordine'),
             mail_template('Functioneaza!', '<p>Acesta este un email de test trimis din setarile aplicatiei <strong>Bon de ordine</strong>.</p><p>Daca il citesti, configurarea emailului este corecta.</p>'));
         flash($ok ? ('Setari salvate. Email de test trimis catre ' . $to . '.')
                   : 'Setari salvate, dar emailul de test NU a putut fi trimis. Verifica host/port/user/parola SMTP (sau lasa hostul gol pentru mail() de pe server).', $ok ? 'info' : 'error');
-        redirect('admin/settings');
+        redirect('backoffice/settings');
     }
-    flash('Salvat cu succes.'); redirect('admin/settings');
+    flash('Salvat cu succes.'); redirect('backoffice/settings');
 }
 
 /* ----------------------- PLAYER (editor afisaj canvas) ----------------------- */
@@ -1277,7 +1277,7 @@ function admin_branches_import(): void {
     audit('import', 'branches', null, $n . ' filiale');
     $msg = $n > 0 ? "$n filiale importate." : 'Nicio filiala noua de importat.';
     if ($skipped) $msg .= " $skipped sarite (nume existent).";    flash($msg, $n > 0 ? 'info' : 'error');
-    redirect('admin/branches');
+    redirect('backoffice/branches');
 }
 
 /* ----------------------- ZILE INCHISE / SARBATORI ----------------------- */
@@ -1294,20 +1294,20 @@ function admin_closure_save(): void {
     $date   = trim((string)($_POST['closed_date'] ?? ''));
     $bid    = (int)($_POST['branch_id'] ?? 0);            // 0 = toate filialele (global)
     $reason = mb_substr(trim((string)($_POST['reason'] ?? '')), 0, 120);
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { flash('Alege o data valida.', 'error'); redirect('admin/closures'); }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { flash('Alege o data valida.', 'error'); redirect('backoffice/closures'); }
     // evita dubluri (UNIQUE nu prinde branch_id NULL in MySQL) — sterge apoi insereaza
     if ($bid) q("DELETE FROM branch_closures WHERE branch_id=? AND closed_date=?", [$bid, $date]);
     else      q("DELETE FROM branch_closures WHERE branch_id IS NULL AND closed_date=?", [$date]);
     q("INSERT INTO branch_closures (branch_id, closed_date, reason) VALUES (?,?,?)",
       [$bid ?: null, $date, $reason !== '' ? $reason : null]);
     audit('create', 'closure', $bid ?: 'all', $date);
-    flash('Zi inchisa adaugata.'); redirect('admin/closures');
+    flash('Zi inchisa adaugata.'); redirect('backoffice/closures');
 }
 function admin_closure_delete(int $id): void {
     csrf_check();
     q("DELETE FROM branch_closures WHERE id=?", [$id]);
     audit('delete', 'closure', $id);
-    flash('Zi inchisa stearsa.'); redirect('admin/closures');
+    flash('Zi inchisa stearsa.'); redirect('backoffice/closures');
 }
 /** Export zile inchise (CSV: data,motiv). ?branch=N pentru o filiala, implicit cele globale. ?template=1 = doar antet. */
 function admin_closures_export(): void {
@@ -1346,7 +1346,7 @@ function admin_closures_import(): void {
     $msg = $n > 0 ? "$n zile inchise importate." : 'Nicio zi noua de importat.';
     if ($skipped) $msg .= " $skipped sarite (data existenta).";
     flash($msg, $n > 0 ? 'info' : 'error');
-    redirect('admin/closures');
+    redirect('backoffice/closures');
 }
 function admin_branch_save(): void {
     csrf_check();
@@ -1367,7 +1367,7 @@ function admin_branch_save(): void {
           'country'=>trim($_POST['country'] ?? 'Romania'), 'address'=>trim($_POST['address'] ?? ''),
           'timezone'=>trim($_POST['timezone'] ?? 'Europe/Bucharest'), 'open_hours'=>$oh,
           'active'=>isset($_POST['active'])?1:0];
-    if ($f['name'] === '') { flash('Numele filialei este obligatoriu.', 'error'); redirect('admin/branches'); }
+    if ($f['name'] === '') { flash('Numele filialei este obligatoriu.', 'error'); redirect('backoffice/branches'); }
     $isNew = !$id;
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
@@ -1379,13 +1379,13 @@ function admin_branch_save(): void {
     }
     audit($isNew ? 'create' : 'update', 'branch', $id);
     flash('Salvat cu succes.');
-    redirect('admin/branches/' . $id . '/edit');
+    redirect('backoffice/branches/' . $id . '/edit');
 }
 /** Duplica o filiala impreuna cu serviciile, ghiseele si dispozitivele ei (chei noi). */
 function admin_branch_duplicate(int $id): void {
     csrf_check();
     $src = one('SELECT * FROM branches WHERE id=?', [$id]);
-    if (!$src) { flash('Filiala inexistenta.', 'error'); redirect('admin/branches'); }    try {
+    if (!$src) { flash('Filiala inexistenta.', 'error'); redirect('backoffice/branches'); }    try {
         db()->beginTransaction();
 
         // 1) filiala noua (numarul de copii este urcat in nume)
@@ -1441,11 +1441,11 @@ function admin_branch_duplicate(int $id): void {
     } catch (Throwable $e) {
         if (db()->inTransaction()) db()->rollBack();
         flash('Duplicarea a esuat: '.$e->getMessage(), 'error');
-        redirect('admin/branches');
+        redirect('backoffice/branches');
     }
     audit('duplicate','branch',$newBranch);
     flash('Filiala duplicata (servicii, ghisee si dispozitive incluse).');
-    redirect('admin/branches');
+    redirect('backoffice/branches');
 }
 function admin_branch_detail(int $id): void {
     $branch = one('SELECT * FROM branches WHERE id=?', [$id]);
@@ -1476,7 +1476,7 @@ function admin_media_list(): void {
 }
 function admin_media_upload(): void {
     csrf_check();
-    if (empty($_FILES['file']) || !is_array($_FILES['file']['name'])) { flash('Niciun fisier selectat.', 'error'); redirect('admin/media'); }
+    if (empty($_FILES['file']) || !is_array($_FILES['file']['name'])) { flash('Niciun fisier selectat.', 'error'); redirect('backoffice/media'); }
     // Se accepta ORICE tip de fisier. Sunt blocate doar extensiile executabile pe server
     // (protectie anti-RCE), iar SVG-ul este curatat de scripturi inainte de stocare.
     // Folderul assets/uploads are oricum .htaccess care dezactiveaza executia (aparare in adancime).
@@ -1518,7 +1518,7 @@ function admin_media_upload(): void {
         }
     }
     if ($okCount) flash("$okCount fisier(e) incarcate.");
-    redirect('admin/media');
+    redirect('backoffice/media');
 }
 function admin_media_delete(int $id): void {
     csrf_check();
@@ -1529,13 +1529,13 @@ function admin_media_delete(int $id): void {
         q('DELETE FROM media WHERE id=?', [$id]);
         flash('Fisier sters.');
     }
-    redirect('admin/media');
+    redirect('backoffice/media');
 }
 /** Sterge mai multe fisiere media odata (selectie cu ctrl/shift/ctrl+A pe pagina Multimedia). */
 function admin_media_bulk_delete(): void {
     csrf_check();
     $ids = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['ids'] ?? [])))));
-    if (!$ids) { flash('Niciun fisier selectat.', 'error'); redirect('admin/media'); }
+    if (!$ids) { flash('Niciun fisier selectat.', 'error'); redirect('backoffice/media'); }
     $in = implode(',', array_fill(0, count($ids), '?'));
     $n = 0;
     foreach (all("SELECT * FROM media WHERE id IN ($in)", $ids) as $m) {
@@ -1545,7 +1545,7 @@ function admin_media_bulk_delete(): void {
     }
     q("DELETE FROM media WHERE id IN ($in)", $ids);
     flash("$n fisier(e) sterse.");
-    redirect('admin/media');
+    redirect('backoffice/media');
 }
 
 /* ----------------------- DISPENSER (editor configurare) ----------------------- */
@@ -2004,16 +2004,16 @@ function admin_appointment_create(): void {
     csrf_check();
     $sid = (int)($_POST['service_id'] ?? 0); $d = $_POST['date'] ?? ''; $tm = $_POST['time'] ?? '';
     $ts = strtotime(trim($d.' '.$tm));
-    if (!$sid || !$ts) { flash('Completeaza serviciul, data si ora.', 'error'); redirect('admin/appointments'); }
+    if (!$sid || !$ts) { flash('Completeaza serviciul, data si ora.', 'error'); redirect('backoffice/appointments'); }
     try { appt_book($sid, date('Y-m-d H:i:00', $ts), trim($_POST['name'] ?? '') ?: null,
             trim($_POST['phone'] ?? '') ?: null, trim($_POST['email'] ?? '') ?: null, 'manual'); flash('Programare creata.'); }
     catch (Throwable $e) { flash($e->getMessage(), 'error'); }
-    redirect('admin/appointments?date='.urlencode($d ?: date('Y-m-d')));
+    redirect('backoffice/appointments?date='.urlencode($d ?: date('Y-m-d')));
 }
 function admin_appointment_action(int $id, string $act): void {
     csrf_check();
     $a = one('SELECT * FROM appointments WHERE id=?', [$id]);
-    if (!$a) redirect('admin/appointments');
+    if (!$a) redirect('backoffice/appointments');
     if ($act === 'checkin') { try { appt_checkin($a); flash('Check-in efectuat, bilet generat.'); } catch (Throwable $e) { flash($e->getMessage(), 'error'); } }
     elseif ($act === 'cancel') {
         appt_cancel($id);   // status -> cancelled + webhook
@@ -2029,7 +2029,7 @@ function admin_appointment_action(int $id, string $act): void {
         }
         flash('Programare anulata.');
     }
-    redirect('admin/appointments?date='.urlencode(substr($a['slot_start'],0,10)));
+    redirect('backoffice/appointments?date='.urlencode(substr($a['slot_start'],0,10)));
 }
 
 /* ----------------------- ROLES (permisiuni) ----------------------- */

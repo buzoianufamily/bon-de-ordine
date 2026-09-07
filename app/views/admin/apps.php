@@ -39,25 +39,25 @@ app_tile([
   'icon'=>'🖥️', 'name'=>'Terminal operator', 'tag'=>$counts['counters'].' '.($counts['counters']==1?'ghiseu':'ghisee'),
   'desc'=>'Ecranul operatorului de la ghiseu: cheama urmatorul, serveste si finalizeaza bonurile, cu cronometru si transfer.',
   'open'=>['url'=>url('counter'), 'label'=>'Deschide', 'blank'=>true],
-  'cfg'=>['url'=>url('admin/counters'), 'label'=>'Ghisee'],
+  'cfg'=>['url'=>url('backoffice/counters'), 'label'=>'Ghisee'],
 ]);
 
 /* 2. Concierge (receptie) */
 app_tile([
   'icon'=>'🛎️', 'name'=>'Concierge', 'tag'=>'receptie',
   'desc'=>'Receptia cheama orice bon la orice ghiseu — triere si indrumare la intrare.',
-  'off'=>!$modConcierge, 'offhint'=>url('admin/settings'),
+  'off'=>!$modConcierge, 'offhint'=>url('backoffice/settings'),
   'open'=>['url'=>url('concierge'), 'label'=>'Deschide', 'blank'=>true],
-  'cfg'=>['url'=>url('admin/settings'), 'label'=>'Setari'],
+  'cfg'=>['url'=>url('backoffice/settings'), 'label'=>'Setari'],
 ]);
 
 /* 3. Programari (Appointments) */
 app_tile([
   'icon'=>'📅', 'name'=>'Programari', 'tag'=>$counts['appt'].' '.($counts['appt']==1?'serviciu':'servicii'),
   'desc'=>'Clientii isi rezerva online o ora; la sosire fac check-in si primesc bon automat.',
-  'off'=>!$modBooking, 'offhint'=>url('admin/settings'),
+  'off'=>!$modBooking, 'offhint'=>url('backoffice/settings'),
   'open'=>['url'=>url('book'), 'label'=>'Deschide', 'blank'=>true],
-  'cfg'=>['url'=>url('admin/appointments'), 'label'=>'Programari'],
+  'cfg'=>['url'=>url('backoffice/appointments'), 'label'=>'Programari'],
 ]);
 
 /* 4. Dozator bilete (Ticket Dispenser / kiosk) */
@@ -66,14 +66,14 @@ if($apps['dispenser']){
     'icon'=>'🎟️', 'name'=>'Dozator bilete', 'tag'=>e($apps['dispenser']['name']),
     'desc'=>'Chioscul de la intrare de unde clientii isi iau bon de ordine pe ecran tactil.',
     'open'=>['url'=>url('launcher?key='.$apps['dispenser']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
-    'cfg'=>['url'=>url('admin/devices/'.$apps['dispenser']['id'].'/dispenser'), 'label'=>'Configureaza'],
+    'cfg'=>['url'=>url('backoffice/devices/'.$apps['dispenser']['id'].'/dispenser'), 'label'=>'Configureaza'],
   ]);
 } else {
   app_tile([
     'icon'=>'🎟️', 'name'=>'Dozator bilete', 'tag'=>'niciun dispozitiv',
     'desc'=>'Chioscul de la intrare de unde clientii isi iau bon de ordine pe ecran tactil.',
-    'off'=>true, 'offhint'=>url('admin/devices/new'),
-    'cfg'=>['url'=>url('admin/devices'), 'label'=>'Dispozitive'],
+    'off'=>true, 'offhint'=>url('backoffice/devices/new'),
+    'cfg'=>['url'=>url('backoffice/devices'), 'label'=>'Dispozitive'],
   ]);
 }
 
@@ -83,14 +83,14 @@ if($apps['player']){
     'icon'=>'📺', 'name'=>'Afisaj TV', 'tag'=>e($apps['player']['name']),
     'desc'=>'Ecranul din sala de asteptare cu bonul curent, urmatoarele la rand si continut media.',
     'open'=>['url'=>url('launcher?key='.$apps['player']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
-    'cfg'=>['url'=>url('admin/devices/'.$apps['player']['id'].'/player'), 'label'=>'Editor afisaj'],
+    'cfg'=>['url'=>url('backoffice/devices/'.$apps['player']['id'].'/player'), 'label'=>'Editor afisaj'],
   ]);
 } else {
   app_tile([
     'icon'=>'📺', 'name'=>'Afisaj TV', 'tag'=>'niciun dispozitiv',
     'desc'=>'Ecranul din sala de asteptare cu bonul curent, urmatoarele la rand si continut media.',
-    'off'=>true, 'offhint'=>url('admin/devices/new'),
-    'cfg'=>['url'=>url('admin/devices'), 'label'=>'Dispozitive'],
+    'off'=>true, 'offhint'=>url('backoffice/devices/new'),
+    'cfg'=>['url'=>url('backoffice/devices'), 'label'=>'Dispozitive'],
   ]);
 }
 
@@ -100,14 +100,14 @@ if($apps['digital_ticket']){
     'icon'=>'📱', 'name'=>'Bilet digital', 'tag'=>e($apps['digital_ticket']['name']),
     'desc'=>'Clientul scaneaza un cod QR si primeste bonul pe telefon, urmarind randul live.',
     'open'=>['url'=>url('launcher?key='.$apps['digital_ticket']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
-    'cfg'=>['url'=>url('admin/devices/'.$apps['digital_ticket']['id'].'/dispenser'), 'label'=>'Configureaza'],
+    'cfg'=>['url'=>url('backoffice/devices/'.$apps['digital_ticket']['id'].'/dispenser'), 'label'=>'Configureaza'],
   ]);
 } else {
   app_tile([
     'icon'=>'📱', 'name'=>'Bilet digital', 'tag'=>'niciun dispozitiv',
     'desc'=>'Clientul scaneaza un cod QR si primeste bonul pe telefon, urmarind randul live.',
-    'off'=>true, 'offhint'=>url('admin/devices/new'),
-    'cfg'=>['url'=>url('admin/devices'), 'label'=>'Dispozitive'],
+    'off'=>true, 'offhint'=>url('backoffice/devices/new'),
+    'cfg'=>['url'=>url('backoffice/devices'), 'label'=>'Dispozitive'],
   ]);
 }
 ?>

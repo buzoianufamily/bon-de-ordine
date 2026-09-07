@@ -2,7 +2,7 @@
 $labels=['dispenser'=>'Dispenser bilete','player'=>'Afisaj TV','widget_player'=>'Afisaj TV (widget)','digital_ticket'=>'Bilet digital QR','launcher'=>'Launcher'];
 $badge=['dispenser'=>'D','player'=>'TV','widget_player'=>'TV','digital_ticket'=>'QR','launcher'=>'L'];
 function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
-<div class="topbar"><h1>Dispozitive</h1><div style="display:flex;gap:.5rem"><a class="btn btn-ghost" href="<?= e(url('admin/devices/qr')) ?>">🔳 Coduri QR</a><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Dispozitiv nou</a></div></div>
+<div class="topbar"><h1>Dispozitive</h1><div style="display:flex;gap:.5rem"><a class="btn btn-ghost" href="<?= e(url('backoffice/devices/qr')) ?>">🔳 Coduri QR</a><a class="btn btn-primary" href="<?= e(url('backoffice/devices/new')) ?>">+ Dispozitiv nou</a></div></div>
 <?= list_toolbar('Cauta dispozitiv...') ?>
 <div class="filterpills" id="devfilter" role="group" aria-label="Filtreaza dupa tip">
   <button class="on" data-dtype="all">Toate</button>
@@ -26,22 +26,22 @@ function dev_url($d){ return url('launcher?key='.$d['connection_key']); } ?>
       <div style="margin-top:.7rem;display:flex;gap:.4rem;flex-wrap:wrap">
         <a class="btn btn-ghost" target="_blank" href="<?= e($u) ?>" style="padding:.45rem .7rem">Deschide</a>
         <?php if(in_array($d['type'],['player','widget_player'],true)): ?>
-          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/player')) ?>" style="padding:.45rem .8rem">Configureaza</a>
+          <a class="btn btn-primary" href="<?= e(url('backoffice/devices/'.$d['id'].'/player')) ?>" style="padding:.45rem .8rem">Configureaza</a>
         <?php elseif(in_array($d['type'],['dispenser','digital_ticket'],true)): ?>
-          <a class="btn btn-primary" href="<?= e(url('admin/devices/'.$d['id'].'/dispenser')) ?>" style="padding:.45rem .8rem">Configureaza</a>
+          <a class="btn btn-primary" href="<?= e(url('backoffice/devices/'.$d['id'].'/dispenser')) ?>" style="padding:.45rem .8rem">Configureaza</a>
         <?php endif; ?>
       </div>
     </div>
     <div class="card-foot">
       <span class="st <?= $d['online']?'on':'' ?>"><span class="d"></span><?= $d['online']?'Online':'Offline' ?></span>
       <span>
-        <a class="lnk" href="<?= e(url('admin/devices/'.$d['id'])) ?>">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/devices/'.$d['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi dispozitivul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <a class="lnk" href="<?= e(url('backoffice/devices/'.$d['id'])) ?>">Editeaza</a>
+        <form method="post" action="<?= e(url('backoffice/devices/'.$d['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi dispozitivul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty"><div class="eic">▭</div><p>Niciun dispozitiv inca. Creeaza un dispenser (emitere bonuri) sau un afisaj TV.</p><a class="btn btn-primary" href="<?= e(url('admin/devices/new')) ?>">+ Creeaza primul dispozitiv</a></div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">▭</div><p>Niciun dispozitiv inca. Creeaza un dispenser (emitere bonuri) sau un afisaj TV.</p><a class="btn btn-primary" href="<?= e(url('backoffice/devices/new')) ?>">+ Creeaza primul dispozitiv</a></div><?php endif; ?>
 </div>
 <script>(function(){
   var bar=document.getElementById('devfilter'), grid=document.getElementById('devgrid');

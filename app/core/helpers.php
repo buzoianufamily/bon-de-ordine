@@ -399,7 +399,7 @@ function feedback_low_email(int $rating, ?string $comment, array $ctx): void {
           . '<p style="color:#6b7280;font-size:13px">Verifica si, daca e cazul, urmareste cu operatorul / clientul.</p>';
     foreach ($recipients as $addr)
         send_mail($addr, '⚠ Feedback slab (' . (int)$rating . '/5) · ' . setting('brand_name', 'Bon de ordine'),
-            mail_template('Feedback cu nota mica', $body, 'Vezi feedback', url('admin/feedback')));
+            mail_template('Feedback cu nota mica', $body, 'Vezi feedback', url('backoffice/feedback')));
 }
 
 /**
