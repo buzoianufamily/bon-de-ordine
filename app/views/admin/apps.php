@@ -3,7 +3,6 @@
    rutele/builderele care EXISTA deja — e un hub, nu o duplicare de functii. */
 $modConcierge = setting('mod_concierge','1')==='1';
 $modBooking   = setting('mod_booking','1')==='1';
-$modStatus    = setting('mod_public_status','0')==='1';
 $modFeedback  = setting('mod_feedback','1')==='1';
 
 /* helper: deseneaza un card de aplicatie.
@@ -39,7 +38,7 @@ function app_tile(array $a): void {
 app_tile([
   'icon'=>'🖥️', 'name'=>'Terminal operator', 'tag'=>$counts['counters'].' '.($counts['counters']==1?'ghiseu':'ghisee'),
   'desc'=>'Ecranul operatorului de la ghiseu: cheama urmatorul, serveste si finalizeaza bonurile, cu cronometru si transfer.',
-  'open'=>['url'=>url('counter'), 'label'=>'Deschide terminalul', 'blank'=>true],
+  'open'=>['url'=>url('counter'), 'label'=>'Deschide', 'blank'=>true],
   'cfg'=>['url'=>url('admin/counters'), 'label'=>'Ghisee'],
 ]);
 
@@ -48,7 +47,7 @@ app_tile([
   'icon'=>'🛎️', 'name'=>'Concierge', 'tag'=>'receptie',
   'desc'=>'Receptia cheama orice bon la orice ghiseu — triere si indrumare la intrare.',
   'off'=>!$modConcierge, 'offhint'=>url('admin/settings'),
-  'open'=>['url'=>url('concierge'), 'label'=>'Deschide concierge', 'blank'=>true],
+  'open'=>['url'=>url('concierge'), 'label'=>'Deschide', 'blank'=>true],
   'cfg'=>['url'=>url('admin/settings'), 'label'=>'Setari'],
 ]);
 
@@ -57,7 +56,7 @@ app_tile([
   'icon'=>'📅', 'name'=>'Programari', 'tag'=>$counts['appt'].' '.($counts['appt']==1?'serviciu':'servicii'),
   'desc'=>'Clientii isi rezerva online o ora; la sosire fac check-in si primesc bon automat.',
   'off'=>!$modBooking, 'offhint'=>url('admin/settings'),
-  'open'=>['url'=>url('book'), 'label'=>'Pagina de programari', 'blank'=>true],
+  'open'=>['url'=>url('book'), 'label'=>'Deschide', 'blank'=>true],
   'cfg'=>['url'=>url('admin/appointments'), 'label'=>'Programari'],
 ]);
 
@@ -66,7 +65,7 @@ if($apps['dispenser']){
   app_tile([
     'icon'=>'🎟️', 'name'=>'Dozator bilete', 'tag'=>e($apps['dispenser']['name']),
     'desc'=>'Chioscul de la intrare de unde clientii isi iau bon de ordine pe ecran tactil.',
-    'open'=>['url'=>url('launcher?key='.$apps['dispenser']['connection_key']), 'label'=>'Deschide dozatorul', 'blank'=>true],
+    'open'=>['url'=>url('launcher?key='.$apps['dispenser']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
     'cfg'=>['url'=>url('admin/devices/'.$apps['dispenser']['id'].'/dispenser'), 'label'=>'Configureaza'],
   ]);
 } else {
@@ -83,7 +82,7 @@ if($apps['player']){
   app_tile([
     'icon'=>'📺', 'name'=>'Afisaj TV', 'tag'=>e($apps['player']['name']),
     'desc'=>'Ecranul din sala de asteptare cu bonul curent, urmatoarele la rand si continut media.',
-    'open'=>['url'=>url('launcher?key='.$apps['player']['connection_key']), 'label'=>'Deschide afisajul', 'blank'=>true],
+    'open'=>['url'=>url('launcher?key='.$apps['player']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
     'cfg'=>['url'=>url('admin/devices/'.$apps['player']['id'].'/player'), 'label'=>'Editor afisaj'],
   ]);
 } else {
@@ -100,7 +99,7 @@ if($apps['digital_ticket']){
   app_tile([
     'icon'=>'📱', 'name'=>'Bilet digital', 'tag'=>e($apps['digital_ticket']['name']),
     'desc'=>'Clientul scaneaza un cod QR si primeste bonul pe telefon, urmarind randul live.',
-    'open'=>['url'=>url('launcher?key='.$apps['digital_ticket']['connection_key']), 'label'=>'Deschide ecranul QR', 'blank'=>true],
+    'open'=>['url'=>url('launcher?key='.$apps['digital_ticket']['connection_key']), 'label'=>'Deschide', 'blank'=>true],
     'cfg'=>['url'=>url('admin/devices/'.$apps['digital_ticket']['id'].'/dispenser'), 'label'=>'Configureaza'],
   ]);
 } else {
@@ -111,15 +110,6 @@ if($apps['digital_ticket']){
     'cfg'=>['url'=>url('admin/devices'), 'label'=>'Dispozitive'],
   ]);
 }
-
-/* 7. Coada virtuala publica (Organization Virtual Queue) */
-app_tile([
-  'icon'=>'🌐', 'name'=>'Coada virtuala', 'tag'=>'pagina publica',
-  'desc'=>'Starea cozii afisata public (fara cheie), de pus pe site-ul institutiei.',
-  'off'=>!$modStatus, 'offhint'=>url('admin/settings'),
-  'open'=>['url'=>url('status'), 'label'=>'Deschide pagina', 'blank'=>true],
-  'cfg'=>['url'=>url('admin/settings'), 'label'=>'Setari'],
-]);
 ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

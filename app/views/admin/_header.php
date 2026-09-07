@@ -92,6 +92,6 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
           <div class="toast srv-toast <?= $f['type']==='error'?'error':'ok' ?>"><?= e($f['msg']) ?></div>
         <?php endforeach; ?>
       </div>
-      <script>setTimeout(function(){document.querySelectorAll('.srv-toast').forEach(function(t){t.remove();});},4000);</script>
+      <script>setTimeout(function(){document.querySelectorAll('.srv-toast').forEach(function(t){t.remove();});},3000);</script>
     <?php endif; ?>
     <div class="content" id="main-content">

@@ -1,4 +1,4 @@
-<?php $title='Alege · '.setting('brand_name','Bon de ordine'); require __DIR__.'/_head.php';
+<?php $title='Alege · '.setting('brand_name','Bon de ordine'); $publicTheme=true; require __DIR__.'/_head.php';
 $logo = setting('brand_logo','');
 $role = $u['role'] ?? '';
 $hasAppt = (int) val('SELECT COUNT(*) FROM services WHERE appt_enabled=1 AND status="active"') > 0;
@@ -12,8 +12,6 @@ if (setting('mod_concierge','1')==='1')
     $tiles[] = ['Concierge', 'Receptie: cheama orice bilet la orice ghiseu.', url('concierge'), '🛎'];
 if ($hasAppt && setting('mod_booking','1')==='1')
     $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu.', url('book'), '📅'];
-if (setting('mod_public_status','0')==='1')
-    $tiles[] = ['Status coada', 'Vezi live ce se serveste si cati sunt la rand.', url('status'), '📊'];
 ?>
 <body class="portalpage"><div class="center"><div class="portal">
   <div style="text-align:center;margin-bottom:1.6rem">

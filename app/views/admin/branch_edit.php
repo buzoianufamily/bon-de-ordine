@@ -23,7 +23,17 @@ $bdayVal = function($d) use ($bsched){ return $bsched['days'][$d] ?? ($bsched['d
           <div class="field"><label>Tara</label><input name="country" value="<?= $v('country','Romania') ?>" maxlength="80"></div>
         </div>
         <div class="field"><label>Adresa</label><input name="address" value="<?= $v('address') ?>" maxlength="255"></div>
-        <div class="field"><label>Fus orar</label><input name="timezone" value="<?= $v('timezone','Europe/Bucharest') ?>"></div>
+        <?php $tzCur = $row['timezone'] ?? 'Europe/Bucharest'; if ($tzCur === '') $tzCur = 'Europe/Bucharest';
+              $tzList = DateTimeZone::listIdentifiers(DateTimeZone::EUROPE);
+              if (!in_array($tzCur, $tzList, true)) array_unshift($tzList, $tzCur); ?>
+        <div class="field"><label>Fus orar</label>
+          <select name="timezone">
+            <?php foreach($tzList as $tz): ?>
+              <option value="<?= e($tz) ?>" <?= $tz===$tzCur?'selected':'' ?>><?= e($tz) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <p class="muted" style="font-size:.78rem;margin-top:.3rem">Implicit <code>Europe/Bucharest</code>. Determina orele afisate pe bilete, afisaje si rapoarte pentru aceasta filiala.</p>
+        </div>
         <label class="switch" style="margin-top:.3rem"><input type="checkbox" name="active" <?= ($row['active']??1)?'checked':'' ?>><span class="track"></span> Filiala activa</label>
       </div>
     </div>

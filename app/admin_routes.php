@@ -166,7 +166,7 @@ function admin_dispatch(array $seg, string $method): void {
             if ($method === 'POST') { csrf_check();
                 $m = []; foreach (array_keys(perm_areas()) as $ar) $m[$ar] = isset($_POST['manager'][$ar]);
                 set_setting('role_perms', json_encode(['manager'=>$m], JSON_UNESCAPED_UNICODE));
-                audit('update','roles'); flash('Permisiuni salvate.'); redirect('admin/roles'); }
+                audit('update','roles'); flash('Salvat cu succes.'); redirect('admin/roles'); }
             admin_roles(); return;
 
         case 'api':
@@ -453,16 +453,18 @@ function admin_service_save(): void {
     // prefix unic pe filiala (evita bilete ambigue cu acelasi prefix)
     $dup = (int) val('SELECT COUNT(*) FROM services WHERE branch_id=? AND prefix=? AND id<>?', [$branchId, $prefix, $id]);
     if ($dup > 0) { flash('Există deja un serviciu cu prefixul „'.$prefix.'" în această filială. Alege alt prefix.', 'error'); redirect('admin/services' . ($id ? "/$id" : '/new')); }
+    $isNew = !$id;
     if ($id) {
         $set = implode(', ', array_map(fn($k) => "$k=?", array_keys($f)));
         q("UPDATE services SET $set WHERE id=?", array_merge(array_values($f), [$id]));
-        flash('Serviciu actualizat.');
-    } else {        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
+    } else {
+        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO services ($cols) VALUES ($ph)", array_values($f));
-        flash('Serviciu creat.');
+        $id = insert_id();
     }
-    audit($id?'update':'create','service',$id ?: insert_id());
-    redirect('admin/services');
+    audit($isNew ? 'create' : 'update', 'service', $id);
+    flash('Salvat cu succes.');
+    redirect('admin/services/' . $id);
 }
 
 /* ----------------------- SERVICE GROUPS ----------------------- */
@@ -488,6 +490,7 @@ function admin_groups_reorder(): void {
 function admin_group_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
+    $isNewGroup = !$id;
     $branch = (int)($_POST['branch_id'] ?? 1);
     $parent = (int)($_POST['parent_id'] ?? 0);
     // valideaza grupul parinte: aceeasi filiala, nu el insusi, fara cicluri (subgrup al propriului descendent)
@@ -512,13 +515,13 @@ function admin_group_save(): void {
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE service_groups SET $set WHERE id=?", array_merge(array_values($f), [$id]));
-        flash('Grup actualizat.');
     } else {
         $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO service_groups ($cols) VALUES ($ph)", array_values($f));
-        flash('Grup creat.');
+        $id = insert_id();
     }
-    audit($id?'update':'create','group',$id ?: insert_id());
+    audit($isNewGroup ? 'create' : 'update', 'group', $id);
+    flash('Salvat cu succes.');
     redirect('admin/groups');
 }
 /** Atribuie rapid un serviciu unui grup (din pagina Grupuri). group_id=0 => scoate din grup. */
@@ -609,15 +612,19 @@ function admin_counter_save(): void {
     if ((int) val('SELECT COUNT(*) FROM counters WHERE branch_id=? AND code=? AND id<>?', [$f['branch_id'], $f['code'], $id]) > 0) {
         flash('Există deja un ghișeu cu codul „'.$f['code'].'" în această filială.', 'error'); redirect('admin/counters');
     }
+    $isNew = !$id;
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE counters SET $set WHERE id=?", array_merge(array_values($f), [$id]));
-    } else {        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
+    } else {
+        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO counters ($cols) VALUES ($ph)", array_values($f)); $id = insert_id();
     }
     q('DELETE FROM counter_services WHERE counter_id=?', [$id]);
     if (!$f['all_services']) foreach (($_POST['services'] ?? []) as $sid) q('INSERT IGNORE INTO counter_services (counter_id,service_id) VALUES (?,?)', [$id,(int)$sid]);
-    audit($id?'update':'create','counter',$id); flash('Ghiseu salvat.'); redirect('admin/counters');
+    audit($isNew ? 'create' : 'update', 'counter', $id);
+    flash('Salvat cu succes.');
+    redirect('admin/counters/' . $id);
 }
 
 /* ----------------------- USERS ----------------------- */
@@ -629,6 +636,7 @@ function admin_user_form(?int $id): void {
 function admin_user_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
+    $isNewUser = !$id;
     $name=trim($_POST['name']??''); $email=trim($_POST['email']??''); $role=$_POST['role']??'agent';
     if (!in_array($role, ['admin','manager','agent'], true)) $role = 'agent';   // whitelist (defense-in-depth)
     // anti-escaladare de privilegii: un non-admin (ex: manager cu dreptul 'users') NU poate crea/promova
@@ -649,11 +657,13 @@ function admin_user_save(): void {
         else q('UPDATE users SET name=?,email=?,role=?,active=?,notify_browser=?,allowed_counters=? WHERE id=?', [$name,$email,$role,$active,$notify,$allowed,$id]);
     } else {        if ($pass === '') { flash('Parola obligatorie la utilizator nou.', 'error'); redirect('admin/users/new'); }
         try { q('INSERT INTO users (name,email,role,active,notify_browser,allowed_counters,password_hash) VALUES (?,?,?,?,?,?,?)',
-            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT)]); }
+            [$name,$email,$role,$active,$notify,$allowed,password_hash($pass,PASSWORD_DEFAULT)]); $id = insert_id(); }
         catch (Throwable $e) { flash('Email deja folosit.', 'error'); redirect('admin/users/new'); }
     }
     if ($id && isset($_POST['reset_2fa'])) { q('UPDATE users SET totp_secret=NULL, totp_enabled=0, totp_backup=NULL WHERE id=?', [$id]); audit('2fa_reset','user',$id); }
-    audit($id?'update':'create','user',$id); flash('Utilizator salvat.'); redirect('admin/users');
+    audit($isNewUser ? 'create' : 'update', 'user', $id);
+    flash('Salvat cu succes.');
+    redirect($id ? 'admin/users/' . $id : 'admin/users');
 }
 /** Export operatori (CSV: nume,email,rol). NU exporta parole/hash-uri din motive de securitate. */
 function admin_users_export(): void {
@@ -709,6 +719,7 @@ function admin_device_form(?int $id): void {
 function admin_device_save(): void {
     csrf_check();
     $id = (int)($_POST['id'] ?? 0);
+    $isNewDev = !$id;
     $f = ['branch_id'=>(int)($_POST['branch_id'] ?? 1), 'type'=>$_POST['type'] ?? 'dispenser',
           'name'=>trim($_POST['name'] ?? ''), 'all_services'=>isset($_POST['all_services'])?1:0,
           'printer_mode'=>$_POST['printer_mode'] ?? 'browser', 'printer_ip'=>trim($_POST['printer_ip'] ?? ''),
@@ -729,7 +740,9 @@ function admin_device_save(): void {
     }
     q('DELETE FROM device_services WHERE device_id=?', [$id]);
     if (!$f['all_services']) foreach (($_POST['services'] ?? []) as $sid) q('INSERT IGNORE INTO device_services (device_id,service_id) VALUES (?,?)', [$id,(int)$sid]);
-    audit($id?'update':'create','device',$id); flash('Dispozitiv salvat.'); redirect('admin/devices');
+    audit($isNewDev ? 'create' : 'update', 'device', $id);
+    flash('Salvat cu succes.');
+    redirect('admin/devices/' . $id);
 }
 
 /* ----------------------- TICKETS ----------------------- */
@@ -1139,7 +1152,7 @@ function admin_api_save(): void {
     $evs = array_values(array_intersect($valid, (array)($_POST['webhook_events'] ?? [])));
     set_setting('webhook_events', implode(',', $evs));
     audit('update','webhook');
-    flash('Setari API salvate.'); redirect('admin/api');
+    flash('Salvat cu succes.'); redirect('admin/api');
 }
 /** Trimite un webhook de test ('ping') si raporteaza rezultatul (AJAX). */
 function admin_api_test_webhook(): void {
@@ -1183,7 +1196,6 @@ function admin_settings_save(): void {
     set_setting('mod_booking', isset($_POST['mod_booking']) ? '1' : '0');
     set_setting('mod_feedback', isset($_POST['mod_feedback']) ? '1' : '0');
     set_setting('mod_concierge', isset($_POST['mod_concierge']) ? '1' : '0');
-    set_setting('mod_public_status', isset($_POST['mod_public_status']) ? '1' : '0');
     set_setting('release_on_pause', isset($_POST['release_on_pause']) ? '1' : '0');
     set_setting('ticket_show_position', isset($_POST['ticket_show_position']) ? '1' : '0');
     set_setting('ticket_show_datetime', isset($_POST['ticket_show_datetime']) ? '1' : '0');
@@ -1206,7 +1218,7 @@ function admin_settings_save(): void {
                   : 'Setari salvate, dar emailul de test NU a putut fi trimis. Verifica host/port/user/parola SMTP (sau lasa hostul gol pentru mail() de pe server).', $ok ? 'info' : 'error');
         redirect('admin/settings');
     }
-    flash('Setari salvate.'); redirect('admin/settings');
+    flash('Salvat cu succes.'); redirect('admin/settings');
 }
 
 /* ----------------------- PLAYER (editor afisaj canvas) ----------------------- */
@@ -1356,14 +1368,18 @@ function admin_branch_save(): void {
           'timezone'=>trim($_POST['timezone'] ?? 'Europe/Bucharest'), 'open_hours'=>$oh,
           'active'=>isset($_POST['active'])?1:0];
     if ($f['name'] === '') { flash('Numele filialei este obligatoriu.', 'error'); redirect('admin/branches'); }
+    $isNew = !$id;
     if ($id) {
         $set = implode(', ', array_map(fn($k)=>"$k=?", array_keys($f)));
         q("UPDATE branches SET $set WHERE id=?", array_merge(array_values($f), [$id]));
-    } else {        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
+    } else {
+        $cols = implode(',', array_keys($f)); $ph = implode(',', array_fill(0, count($f), '?'));
         q("INSERT INTO branches ($cols) VALUES ($ph)", array_values($f));
+        $id = insert_id();
     }
-    audit($id?'update':'create','branch',$id ?: insert_id());
-    flash('Filiala salvata.'); redirect('admin/branches');
+    audit($isNew ? 'create' : 'update', 'branch', $id);
+    flash('Salvat cu succes.');
+    redirect('admin/branches/' . $id . '/edit');
 }
 /** Duplica o filiala impreuna cu serviciile, ghiseele si dispozitivele ei (chei noi). */
 function admin_branch_duplicate(int $id): void {

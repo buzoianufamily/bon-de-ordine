@@ -581,16 +581,6 @@ SWJS;
         return;
     }
 
-    // status public al cozii (fara cheie de dispozitiv) — pentru site-ul clientului:  /status?branch=ID
-    if ($seg[0] === 'status') {
-        if (setting('mod_public_status', '0') !== '1') { fail_page(404, 'Indisponibil', 'Pagina de status public este dezactivata.'); }
-        $branchId = (int)($seg[1] ?? $_GET['branch'] ?? 1);
-        $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: one('SELECT * FROM branches ORDER BY id LIMIT 1');
-        if (!$branch) { fail_page(404, 'Indisponibil', 'Filiala inexistenta.'); }
-        view('public/status', ['branch' => $branch] + queue_state((int)$branch['id'], true));
-        return;
-    }
-
     // bilet digital (telefon):  /t/{token}
     if ($seg[0] === 't' && !empty($seg[1])) {
         $t = one('SELECT t.*, s.name AS service_name, s.color FROM tickets t

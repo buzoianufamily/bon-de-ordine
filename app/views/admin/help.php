@@ -12,7 +12,6 @@ $ver = defined('APP_SCHEMA_VERSION') ? APP_SCHEMA_VERSION : '—';
       <?php if(setting('mod_concierge','1')==='1'): ?><tr><td><strong>Concierge</strong></td><td><a href="<?= e(url('concierge')) ?>" target="_blank"><?= e(url('concierge')) ?></a></td></tr><?php endif; ?>
       <?php if(setting('mod_booking','1')==='1'): ?><tr><td><strong>Programări</strong></td><td><a href="<?= e(url('book')) ?>" target="_blank"><?= e(url('book')) ?></a></td></tr><?php endif; ?>
       <?php if(setting('mod_feedback','1')==='1'): ?><tr><td><strong>Feedback</strong></td><td><a href="<?= e(url('feedback')) ?>" target="_blank"><?= e(url('feedback')) ?></a></td></tr><?php endif; ?>
-      <?php if(setting('mod_public_status','0')==='1'): ?><tr><td><strong>Status public</strong></td><td><a href="<?= e(url('status')) ?>" target="_blank"><?= e(url('status')) ?></a></td></tr><?php endif; ?>
       <tr><td><strong>Dispensere / afișaje</strong></td><td>Admin → <a href="<?= e(url('admin/devices')) ?>">Dispozitive</a> (deschide / coduri QR)</td></tr>
       <tr><td><strong>Stare sistem</strong></td><td><a href="<?= e(url('health')) ?>" target="_blank"><?= e(url('health')) ?></a> (monitorizare uptime)</td></tr>
     </table>
