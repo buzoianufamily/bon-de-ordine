@@ -338,7 +338,10 @@ body.authpage .auth-dot{width:46px;height:46px;border-radius:14px;background:var
 .adminbar .menubtn{display:none;background:none;border:none;color:var(--ink);font-size:1.25rem;cursor:pointer;padding:.2rem .5rem;margin-right:.3rem;line-height:1}
 
 /* ====== Backoffice — tema dark (aspect Moviik) ====== */
-body.admin{--bg:#1b1b1e;--surface:#272727;--ink:#ececef;--muted:#9a9aa2;--line:#34343a;--track:#2f2f34;--grid:#34343a}
+body.admin{--bg:#1b1b1e;--surface:#272727;--ink:#ececef;--muted:#9a9aa2;--line:#34343a;--track:#2f2f34;--grid:#34343a;color-scheme:dark}
+/* controalele native (ceasul din input[type=time], calendarul, selectoarele) isi deseneaza
+   iconitele dupa color-scheme; fara asta raman negre pe fundal inchis => invizibile */
+body.admin.light{color-scheme:light}
 body.admin h1,body.admin h2,body.admin h3{color:#f3f5f8}
 body.admin input,body.admin select,body.admin textarea{background:#1a1a1c;color:#ececef;border-color:#3a3a42}
 body.admin input::placeholder,body.admin textarea::placeholder{color:#5b6270}
@@ -421,7 +424,9 @@ body.admin.light .side a.active{background:color-mix(in srgb,var(--accent) 12%,t
 .apptile .nm{font-weight:800;font-size:1.05rem;line-height:1.25}
 .apptile .apsub{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:.15rem}
 .apptile .ds{color:var(--muted);font-size:.85rem;margin:.45rem 0 .85rem;line-height:1.4}
-.apptile .acts{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:auto;padding-top:.2rem}
+.apptile .acts{display:flex;gap:.5rem;flex-wrap:nowrap;align-items:stretch;margin-top:auto;padding-top:.2rem}
+.apptile .acts .btn{white-space:nowrap;flex:1 1 0;justify-content:center;min-width:0}
+.apptile .acts .apt-off{flex:1 1 auto;display:flex;align-items:center}
 /* butoanele „mai goale" (Ghisee/Programari/Setari…) — aspect secundar distinct, nu simplu text */
 .apptile .acts .btn-ghost{border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 5%,transparent);color:var(--ink);font-weight:700}
 .apptile .acts .btn-ghost:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent)}

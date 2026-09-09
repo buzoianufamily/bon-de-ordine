@@ -1,7 +1,7 @@
 <?php $title='Statistici'; $active='statistics'; require __DIR__.'/_header.php';
 // timp in format precis HH:MM:SS (ca la Moviik)
 function mmss($s){ $s=(int)round((float)$s); return $s<=0?'—':sprintf('%d:%02d:%02d', intdiv($s,3600), intdiv($s%3600,60), $s%60); }
-$qs = fn($extra)=>e(url('admin/statistics').'?'.http_build_query(array_merge(['from'=>$from,'to'=>$to,'branch'=>$branch],$extra)));
+$qs = fn($extra)=>e(url('backoffice/statistics').'?'.http_build_query(array_merge(['from'=>$from,'to'=>$to,'branch'=>$branch],$extra)));
 // buton mic de download CSV pentru un set de date
 $dlcsv = fn($ds)=>'<a class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem" href="'.$qs(['export'=>'csv','dataset'=>$ds]).'">⬇ CSV</a>';
 // comutator grafic/tabel pentru un panou (ca la Moviik)
@@ -51,7 +51,7 @@ $delta = function($cur, $prev, bool $invert=false): string {
   </div>
 </div>
 
-<form method="get" action="<?= e(url('admin/statistics')) ?>" class="card pad noprint" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.2rem">
+<form method="get" action="<?= e(url('backoffice/statistics')) ?>" class="card pad noprint" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.2rem">
   <div class="field" style="margin:0"><label>De la</label><input type="date" name="from" value="<?= e($from) ?>"></div>
   <div class="field" style="margin:0"><label>Pana la</label><input type="date" name="to" value="<?= e($to) ?>"></div>
   <div class="field" style="margin:0"><label>Filiala</label><select name="branch">
@@ -60,9 +60,9 @@ $delta = function($cur, $prev, bool $invert=false): string {
   </select></div>
   <button class="btn btn-primary">Aplica</button>
   <div style="display:flex;gap:.4rem">
-    <a class="btn btn-ghost" href="<?= e(url('admin/statistics?from='.date('Y-m-d').'&to='.date('Y-m-d'))) ?>">Azi</a>
-    <a class="btn btn-ghost" href="<?= e(url('admin/statistics?from='.date('Y-m-d',strtotime('-6 days')).'&to='.date('Y-m-d'))) ?>">7 zile</a>
-    <a class="btn btn-ghost" href="<?= e(url('admin/statistics?from='.date('Y-m-d',strtotime('-29 days')).'&to='.date('Y-m-d'))) ?>">30 zile</a>
+    <a class="btn btn-ghost" href="<?= e(url('backoffice/statistics?from='.date('Y-m-d').'&to='.date('Y-m-d'))) ?>">Azi</a>
+    <a class="btn btn-ghost" href="<?= e(url('backoffice/statistics?from='.date('Y-m-d',strtotime('-6 days')).'&to='.date('Y-m-d'))) ?>">7 zile</a>
+    <a class="btn btn-ghost" href="<?= e(url('backoffice/statistics?from='.date('Y-m-d',strtotime('-29 days')).'&to='.date('Y-m-d'))) ?>">30 zile</a>
   </div>
 </form>
 

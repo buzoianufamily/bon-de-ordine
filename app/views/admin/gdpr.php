@@ -3,7 +3,7 @@
 
 <div class="card pad">
   <p class="muted" style="margin-top:0">Caută toate datele personale legate de o adresă de email și/sau un număr de telefon (programări, listă de așteptare, bilete), apoi <strong>exportă-le</strong> (dreptul de acces) sau <strong>anonimizează-le</strong> (dreptul de a fi uitat). Acțiunile sunt înregistrate în jurnalul de audit.</p>
-  <form method="get" action="<?= e(url('admin/gdpr')) ?>">
+  <form method="get" action="<?= e(url('backoffice/gdpr')) ?>">
     <div class="row">
       <div class="field"><label>Email</label><input name="q_email" type="email" value="<?= e($email) ?>" placeholder="client@exemplu.ro"></div>
       <div class="field"><label>Telefon</label><input name="q_phone" value="<?= e($phone) ?>" placeholder="07xxxxxxxx"></div>
@@ -47,11 +47,11 @@
       <?php endif; ?>
 
       <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem">
-        <form method="post" action="<?= e(url('admin/gdpr/export')) ?>"><?= csrf_field() ?>
+        <form method="post" action="<?= e(url('backoffice/gdpr/export')) ?>"><?= csrf_field() ?>
           <input type="hidden" name="q_email" value="<?= e($email) ?>"><input type="hidden" name="q_phone" value="<?= e($phone) ?>">
           <button class="btn">⬇ Exportă (JSON)</button>
         </form>
-        <form method="post" action="<?= e(url('admin/gdpr/erase')) ?>" data-confirm="Anonimizezi DEFINITIV datele personale (nume/telefon/email) pentru aceste înregistrări? Statisticile rămân, dar datele de identificare se șterg ireversibil."><?= csrf_field() ?>
+        <form method="post" action="<?= e(url('backoffice/gdpr/erase')) ?>" data-confirm="Anonimizezi DEFINITIV datele personale (nume/telefon/email) pentru aceste înregistrări? Statisticile rămân, dar datele de identificare se șterg ireversibil."><?= csrf_field() ?>
           <input type="hidden" name="q_email" value="<?= e($email) ?>"><input type="hidden" name="q_phone" value="<?= e($phone) ?>">
           <button class="btn btn-danger">🗑 Anonimizează (dreptul de a fi uitat)</button>
         </form>

@@ -1,12 +1,12 @@
 <?php $title=$row?'Editare utilizator':'Utilizator nou'; $active='users'; require __DIR__.'/_header.php'; $v=fn($k,$d='')=>e($row[$k]??$d); ?>
 <div class="topbar">
   <div>
-    <div class="crumb"><a href="<?= e(url('admin/users')) ?>">Utilizatori</a> › <?= $row?e($row['name']):'Utilizator nou' ?></div>
+    <div class="crumb"><a href="<?= e(url('backoffice/users')) ?>">Utilizatori</a> › <?= $row?e($row['name']):'Utilizator nou' ?></div>
     <h1 style="margin:.1rem 0"><?= $row?'Editare utilizator':'Utilizator nou' ?></h1>
   </div>
-  <a class="btn btn-ghost" href="<?= e(url('admin/users')) ?>">← Inapoi</a>
+  <a class="btn btn-ghost" href="<?= e(url('backoffice/users')) ?>">← Inapoi</a>
 </div>
-<form method="post" action="<?= e(url('admin/users')) ?>"><?= csrf_field() ?>
+<form method="post" action="<?= e(url('backoffice/users')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
   <div class="card pad">
 

@@ -1,17 +1,17 @@
 <?php $title='Feedback'; $active='feedback'; require __DIR__.'/_header.php';
 $pages = max(1, (int)ceil($total / $per));
 $avg = $stat['avg']!==null ? round((float)$stat['avg'],2) : null;
-$qs = fn($p)=>e(url('admin/feedback').'?'.http_build_query(['rating'=>$rating,'p'=>$p])); ?>
+$qs = fn($p)=>e(url('backoffice/feedback').'?'.http_build_query(['rating'=>$rating,'p'=>$p])); ?>
 <div class="topbar"><h1>Feedback client</h1>
   <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-    <form method="get" action="<?= e(url('admin/feedback')) ?>" style="display:flex;gap:.5rem;align-items:center">
+    <form method="get" action="<?= e(url('backoffice/feedback')) ?>" style="display:flex;gap:.5rem;align-items:center">
       <label style="margin:0">Nota</label>
       <select name="rating" onchange="this.form.submit()" style="width:auto">
         <option value="0">Toate</option>
         <?php for($i=5;$i>=1;$i--): ?><option value="<?= $i ?>" <?= $rating===$i?'selected':'' ?>><?= $i ?> stele</option><?php endfor; ?>
       </select>
     </form>
-    <a class="btn" href="<?= e(url('admin/feedback/export').($rating?('?rating='.$rating):'')) ?>">⤓ Export CSV</a>
+    <a class="btn" href="<?= e(url('backoffice/feedback/export').($rating?('?rating='.$rating):'')) ?>">⤓ Export CSV</a>
   </div>
 </div>
 
@@ -29,7 +29,7 @@ $qs = fn($p)=>e(url('admin/feedback').'?'.http_build_query(['rating'=>$rating,'p
       <td><?= $r['comment']!==null && $r['comment']!=='' ? e($r['comment']) : '<span class="muted">—</span>' ?></td>
       <td class="muted"><?= e($r['branch_name'] ?? '—') ?></td>
       <td class="muted"><?= e($r['ticket_label'] ?? '—') ?><?= !empty($r['service_name']) ? '<br><span style="font-size:.78rem">'.e($r['service_name']).'</span>' : '' ?></td>
-      <td style="text-align:right"><form method="post" action="<?= e(url('admin/feedback/'.$r['id'].'/delete')) ?>" data-confirm="Stergi acest feedback?" style="display:inline"><?= csrf_field() ?><button class="lnk del">Sterge</button></form></td>
+      <td style="text-align:right"><form method="post" action="<?= e(url('backoffice/feedback/'.$r['id'].'/delete')) ?>" data-confirm="Stergi acest feedback?" style="display:inline"><?= csrf_field() ?><button class="lnk del">Sterge</button></form></td>
     </tr>
   <?php endforeach; ?>
   <?php if(!$rows): ?><tr><td colspan="6" class="muted">Niciun feedback<?= $rating?' cu aceasta nota':'' ?>. Adauga widget-ul „Formular feedback" pe afisaj sau partajeaza linkul <code><?= e(url('feedback')) ?></code>.</td></tr><?php endif; ?>

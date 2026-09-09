@@ -101,7 +101,7 @@ Pentru a tipări automat bonul când clientul apasă pe ecran, pe un mini‑PC c
 1. **Obține APK‑ul:** pe GitHub, tab **Actions → „Build Android APK" → Run workflow**, apoi descarcă artifact‑ul `bon-de-ordine-launcher-apk` (sau compilează din Android Studio folderul `android/launcher`).
 2. **Instalează** APK‑ul pe mini‑PC (permite „Surse necunoscute").
 3. **Configurează modul de printare:** Admin → **Dispozitive** → editează dispenserul → **Mod printare = Android** → Salvează.
-4. **Pornește aplicația** și lipește **linkul dispenserului** (Admin → Dispozitive → Deschide → `…/launcher?key=CHEIE`).
+4. **Pornește aplicația** și lipește **linkul dispenserului** (Admin → Dispozitive → Deschide → `…/device/dispenser/CHEIE`).
 5. **Conectează imprimanta Bixolon** (ex: BK3‑31ZC/BEG) pe USB și acordă permisiunea USB când e cerută.
 6. Testează din **butonul Înapoi → Test imprimantă**. De acum, la fiecare bon emis pe ecran, se tipărește automat.
 

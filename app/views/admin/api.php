@@ -14,13 +14,13 @@ $allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.ser
     <p class="muted" style="margin-top:0;font-size:.85rem">Trimite-o in antetul <code>X-Api-Key</code> (sau <code>?key=</code>) la fiecare cerere.</p>
     <div class="field"><input readonly value="<?= e($key) ?>" onclick="this.select()" style="font-family:monospace"></div>
     <div style="display:flex;gap:.5rem;align-items:center">
-      <form method="post" action="<?= e(url('admin/api')) ?>" data-confirm="Regenerezi cheia? Integrarile existente vor trebui actualizate."><?= csrf_field() ?>
+      <form method="post" action="<?= e(url('backoffice/api')) ?>" data-confirm="Regenerezi cheia? Integrarile existente vor trebui actualizate."><?= csrf_field() ?>
         <input type="hidden" name="regen" value="1"><button class="btn">↻ Regenereaza cheia</button></form>
     </div>
     <p class="muted" style="font-size:.82rem;margin-bottom:0">URL de baza: <code><?= e($base) ?></code> · Limita: <strong>120 cereri/minut</strong> (antete <code>X-RateLimit-*</code>, raspuns <code>429</code> la depasire).</p>
   </div>
 
-  <form method="post" action="<?= e(url('admin/api')) ?>" class="card pad" style="flex:1;min-width:320px"><?= csrf_field() ?>
+  <form method="post" action="<?= e(url('backoffice/api')) ?>" class="card pad" style="flex:1;min-width:320px"><?= csrf_field() ?>
     <h3 style="margin-top:0">Webhook</h3>
     <p class="muted" style="margin-top:0;font-size:.85rem">La fiecare eveniment, trimitem un <strong>POST JSON</strong> catre acest URL. Daca pui un secret, semnam corpul cu HMAC-SHA256 in antetul <code>X-Signature</code>.</p>
     <div class="field"><label>URL webhook (https)</label><input name="webhook_url" value="<?= e($wurl) ?>" placeholder="https://exemplu.ro/webhook"></div>
@@ -45,7 +45,7 @@ $allEv = ['ticket.created'=>'Bon emis','ticket.called'=>'Bon apelat','ticket.ser
 document.getElementById('whTest').addEventListener('click', async function(){
   var res = document.getElementById('whTestRes');
   res.textContent = 'Se trimite…'; res.style.color = 'var(--muted)';
-  var r = await QMS.api('admin/api/test-webhook', {});
+  var r = await QMS.api('backoffice/api/test-webhook', {});
   if (r && r.ok) { res.style.color = 'var(--ok)'; res.textContent = '✓ Livrat (cod ' + r.status + (r.signed ? ', semnat' : '') + ')'; }
   else { res.style.color = 'var(--danger)'; res.textContent = '✗ ' + ((r && r.error) ? r.error : 'Eroare necunoscuta'); }
 });
@@ -95,8 +95,8 @@ document.getElementById('whTest').addEventListener('click', async function(){
     <h3 style="margin:0">Jurnal livrări webhook</h3>
     <span class="muted" style="font-size:.82rem">ultimele <?= count($whLog) ?> încercări</span>
     <?php if($whLog): ?>
-    <a class="btn btn-ghost" href="<?= e(url('admin/api/webhook-log-export')) ?>" style="margin-left:auto;padding:.25rem .6rem;font-size:.78rem;text-transform:none;letter-spacing:0">⬇ CSV</a>
-    <form method="post" action="<?= e(url('admin/api/clear-webhook-log')) ?>" data-confirm="Golești jurnalul de livrări webhook?"><?= csrf_field() ?><button class="btn btn-ghost" style="padding:.25rem .6rem;font-size:.78rem;text-transform:none;letter-spacing:0">Golește</button></form>
+    <a class="btn btn-ghost" href="<?= e(url('backoffice/api/webhook-log-export')) ?>" style="margin-left:auto;padding:.25rem .6rem;font-size:.78rem;text-transform:none;letter-spacing:0">⬇ CSV</a>
+    <form method="post" action="<?= e(url('backoffice/api/clear-webhook-log')) ?>" data-confirm="Golești jurnalul de livrări webhook?"><?= csrf_field() ?><button class="btn btn-ghost" style="padding:.25rem .6rem;font-size:.78rem;text-transform:none;letter-spacing:0">Golește</button></form>
     <?php endif; ?>
   </div>
   <?php if($whLog): ?>

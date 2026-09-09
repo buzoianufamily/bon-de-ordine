@@ -1,4 +1,4 @@
-<?php $title='Dashboard'; $active=''; require __DIR__.'/_header.php';
+<?php $title='Dashboard'; $active='dashboard'; require __DIR__.'/_header.php';
 function mmss($s){ $s=(int)$s; return sprintf('%02d:%02d', intdiv($s,60), $s%60); }
 /* sparkline SVG mic (tendinta 7 zile) pentru statcards */
 function spark(array $v, string $color='var(--accent)'): string {
@@ -25,7 +25,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
   <h1>Dashboard</h1>
   <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
     <?php if(count($branches)>1): ?>
-    <form method="get" action="<?= e(url('admin')) ?>" style="margin:0">
+    <form method="get" action="<?= e(url('backoffice/dashboard')) ?>" style="margin:0">
       <select name="branch" onchange="this.form.submit()" style="width:auto">
         <option value="0">Toate filialele</option>
         <?php foreach($branches as $b): ?><option value="<?= (int)$b['id'] ?>" <?= $branch===(int)$b['id']?'selected':'' ?>><?= e($b['name']) ?></option><?php endforeach; ?>
@@ -39,7 +39,7 @@ foreach ($per_service as $p) { $c=(int)$p['cnt']; if($c<=0) continue;
 <?php if(!empty($onboarding)): $doneCnt=count(array_filter($onboarding,fn($s)=>$s['done'])); ?>
 <div class="panel" style="margin-bottom:1.3rem;border-left:3px solid var(--accent)">
   <h4 style="display:flex;align-items:center;gap:.6rem">Primii pasi · <?= $doneCnt ?>/<?= count($onboarding) ?> finalizati
-    <form method="post" action="<?= e(url('admin/dashboard/dismiss-onboarding')) ?>" style="margin-left:auto"><?= csrf_field() ?>
+    <form method="post" action="<?= e(url('backoffice/dashboard/dismiss-onboarding')) ?>" style="margin-left:auto"><?= csrf_field() ?>
       <button class="btn btn-ghost" style="padding:.2rem .55rem;font-size:.75rem;text-transform:none;letter-spacing:0">Ascunde</button></form>
   </h4>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.4rem">
@@ -204,7 +204,7 @@ window.addEventListener('load', function(){
   function set(id,v){var el=document.getElementById(id); if(el)el.textContent=v;}
   var dashBranch = <?= (int)$branch ?>;
   async function refresh(){
-    var r; try{ r=await QMS.api('admin/dashboard?format=json&branch='+dashBranch,null,'GET'); }catch(e){ return; }
+    var r; try{ r=await QMS.api('backoffice/dashboard?format=json&branch='+dashBranch,null,'GET'); }catch(e){ return; }
     if(!r||!r.ok)return;
     set('sv-today',r.stats.today); set('sv-waiting',r.stats.waiting); set('sv-serving',r.stats.serving);
     set('sv-served',r.stats.served); set('sv-avg',mmss(r.stats.avg_wait));

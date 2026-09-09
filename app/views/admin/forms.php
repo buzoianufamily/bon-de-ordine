@@ -1,5 +1,5 @@
 <?php $title='Formulare'; $active='forms'; require __DIR__.'/_header.php'; ?>
-<div class="topbar"><h1>Formulare</h1><a class="btn btn-primary" href="<?= e(url('admin/forms/new')) ?>">+ Formular nou</a></div>
+<div class="topbar"><h1>Formulare</h1><a class="btn btn-primary" href="<?= e(url('backoffice/forms/new')) ?>">+ Formular nou</a></div>
 <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">Colectezi date de la client la emiterea bonului (nume, telefon, motiv etc.). Atasezi formularul unui serviciu din pagina serviciului.</p>
 <?= list_toolbar('Cauta formular...') ?>
 <div class="cardgrid">
@@ -14,12 +14,12 @@
     <div class="card-foot">
       <span class="st"><span class="d" style="background:var(--accent)"></span><?= (int)$f['used'] ?> in uz</span>
       <span>
-        <a class="lnk" href="<?= e(url('admin/forms/'.$f['id'])) ?>">Editeaza</a>
-        <form method="post" action="<?= e(url('admin/forms/'.$f['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi formularul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+        <a class="lnk" href="<?= e(url('backoffice/forms/'.$f['id'])) ?>">Editeaza</a>
+        <form method="post" action="<?= e(url('backoffice/forms/'.$f['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi formularul?"><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
       </span>
     </div>
   </div>
 <?php endforeach; ?>
-<?php if(!$rows): ?><div class="empty"><div class="eic">🗒</div><p>Niciun formular inca. Formularele colecteaza date de la client inainte de emiterea bonului.</p><a class="btn btn-primary" href="<?= e(url('admin/forms/new')) ?>">+ Creeaza primul formular</a></div><?php endif; ?>
+<?php if(!$rows): ?><div class="empty"><div class="eic">🗒</div><p>Niciun formular inca. Formularele colecteaza date de la client inainte de emiterea bonului.</p><a class="btn btn-primary" href="<?= e(url('backoffice/forms/new')) ?>">+ Creeaza primul formular</a></div><?php endif; ?>
 </div>
 <?php require __DIR__.'/_footer.php'; ?>

@@ -120,7 +120,7 @@ document.addEventListener('click',function(e){
       renderList(box, local);
       clearTimeout(tdebounce);
       if(q.length>=2) tdebounce=setTimeout(function(){
-        QMS.api('admin/search?q='+encodeURIComponent(q),null,'GET').then(function(r){
+        QMS.api('backoffice/search?q='+encodeURIComponent(q),null,'GET').then(function(r){
           if(!r||!r.ok||!ov||inp.value.trim().toLowerCase()!==q) return;
           renderList(box, local.concat(r.results||[]));
         }).catch(function(){});

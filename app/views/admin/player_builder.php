@@ -59,11 +59,11 @@ hr{border:none;border-top:1px solid #1c2029;margin:1rem 0}
 .wv-img{padding:0}.wv-img img{width:100%;height:100%;object-fit:cover}
 </style></head><body>
 <div class="pb-top">
-  <a class="pb-btn" href="<?= e(url('admin/devices')) ?>">← Dispozitive</a>
+  <a class="pb-btn" href="<?= e(url('backoffice/devices')) ?>">← Dispozitive</a>
   <span class="ttl">Editor afisaj · <?= e($dev['name']) ?></span>
   <span class="muted">cheie <?= e($dev['connection_key']) ?></span>
   <span class="sp"></span>
-  <a class="pb-btn" target="_blank" href="<?= e(url('launcher?key='.$dev['connection_key'])) ?>">▶ Deschide afisaj</a>
+  <a class="pb-btn" target="_blank" href="<?= e(device_url($dev)) ?>">▶ Deschide afisaj</a>
   <button class="pb-btn primary" id="btnSave">💾 Salveaza</button>
 </div>
 <div class="pb-wrap">
@@ -85,7 +85,7 @@ hr{border:none;border-top:1px solid #1c2029;margin:1rem 0}
 <script>
 window.PLAYER = {
   deviceId: <?= (int)$dev['id'] ?>,
-  saveUrl: <?= json_encode('admin/devices/'.$dev['id'].'/player') ?>,
+  saveUrl: <?= json_encode('backoffice/devices/'.$dev['id'].'/player') ?>,
   accent: <?= json_encode($accent) ?>,
   services: <?= json_encode(array_map(fn($s)=>['id'=>(int)$s['id'],'prefix'=>$s['prefix'],'name'=>$s['name']], all('SELECT id,prefix,name FROM services WHERE branch_id=? AND status="active" ORDER BY sort_order',[$dev['branch_id']])), JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP) ?>,
   counters: <?= json_encode(array_map(fn($c)=>['id'=>(int)$c['id'],'code'=>$c['code'],'name'=>$c['name']], all('SELECT id,code,name FROM counters WHERE branch_id=? ORDER BY code',[$dev['branch_id']])), JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP) ?>,

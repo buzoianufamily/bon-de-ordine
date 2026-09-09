@@ -533,9 +533,17 @@ SWJS;
         return;
     }
 
-    // dispozitiv prin connection key:  /launcher?key=XXX  sau  /d/XXX  /screen/XXX
-    if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen') {
-        $key = $_GET['key'] ?? $_GET['connection_key'] ?? ($seg[1] ?? '');
+    // dispozitiv prin cheie de conectare:  /device/{tip}/{cheie}  (forma noua)
+    // compatibilitate cu dispozitivele deja instalate:  /launcher?key=XXX  ·  /d/XXX  ·  /screen/XXX
+    if ($seg[0] === 'launcher' || $seg[0] === 'd' || $seg[0] === 'screen' || $seg[0] === 'device') {
+        if ($seg[0] === 'device') {
+            // /device/{tip}/{cheie} — toleram si forma /device/{tip}/key=CHEIE
+            $key = (string)($seg[2] ?? '');
+            if (str_starts_with($key, 'key=')) $key = substr($key, 4);
+            if ($key === '') $key = (string)($_GET['key'] ?? '');
+        } else {
+            $key = $_GET['key'] ?? $_GET['connection_key'] ?? ($seg[1] ?? '');
+        }
         $dev = device_by_key((string)$key);
         if (!$dev) { http_response_code(404); view('public/device_404', ['key' => $key]); return; }
         q('UPDATE devices SET last_seen = NOW() WHERE id = ?', [$dev['id']]);
@@ -578,16 +586,6 @@ SWJS;
             flash('Alege o nota de la 1 la 5.', 'error');
         }
         view('public/feedback', ['done' => false, 'branch' => $branch, 'lang' => $lang, 'tok' => $tok]);
-        return;
-    }
-
-    // status public al cozii (fara cheie de dispozitiv) — pentru site-ul clientului:  /status?branch=ID
-    if ($seg[0] === 'status') {
-        if (setting('mod_public_status', '0') !== '1') { fail_page(404, 'Indisponibil', 'Pagina de status public este dezactivata.'); }
-        $branchId = (int)($seg[1] ?? $_GET['branch'] ?? 1);
-        $branch = one('SELECT * FROM branches WHERE id=?', [$branchId]) ?: one('SELECT * FROM branches ORDER BY id LIMIT 1');
-        if (!$branch) { fail_page(404, 'Indisponibil', 'Filiala inexistenta.'); }
-        view('public/status', ['branch' => $branch] + queue_state((int)$branch['id'], true));
         return;
     }
 
@@ -769,11 +767,18 @@ SWJS;
     }
 
     // ===================== ADMIN (backoffice) =====================
-    if ($seg[0] === 'admin') {
+    if ($seg[0] === 'backoffice') {
         require_role(['admin','manager']);
         require APP_ROOT . '/app/admin_routes.php';
         admin_dispatch($seg, $method);
         return;
+    }
+    // compatibilitate: vechiul /admin/... trimite permanent la /backoffice/... (bookmark-uri, linkuri salvate)
+    if ($seg[0] === 'admin') {
+        $__rest = implode('/', array_slice($seg, 1));
+        $__qs   = (string)($_SERVER['QUERY_STRING'] ?? '');
+        header('Location: ' . url('backoffice' . ($__rest !== '' ? '/' . $__rest : '')) . ($__qs !== '' ? '?' . $__qs : ''), true, 301);
+        exit;
     }
 
     fail_page(404, 'Pagină negăsită', 'Pagina căutată nu există sau a fost mutată.');

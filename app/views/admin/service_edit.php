@@ -9,12 +9,12 @@ if ($row && !empty($row['i18n'])) { $ti=json_decode($row['i18n'],true);
   if (is_array($ti)) foreach ($ti as $lg=>$vv) $i18nText .= $lg.' | '.($vv['name']??'').' | '.($vv['description']??'')."\n"; } ?>
 <div class="topbar">
   <div>
-    <div class="crumb"><a href="<?= e(url('admin/services')) ?>">Servicii</a> › <?= $row?e($row['name']):'Serviciu nou' ?></div>
+    <div class="crumb"><a href="<?= e(url('backoffice/services')) ?>">Servicii</a> › <?= $row?e($row['name']):'Serviciu nou' ?></div>
     <h1 style="margin:.1rem 0"><?= $row?'Editare serviciu':'Serviciu nou' ?></h1>
   </div>
-  <a class="btn btn-ghost" href="<?= e(url('admin/services')) ?>">← Inapoi</a>
+  <a class="btn btn-ghost" href="<?= e(url('backoffice/services')) ?>">← Inapoi</a>
 </div>
-<form method="post" action="<?= e(url('admin/services')) ?>"><?= csrf_field() ?>
+<form method="post" action="<?= e(url('backoffice/services')) ?>"><?= csrf_field() ?>
   <?php if($row): ?><input type="hidden" name="id" value="<?= (int)$row['id'] ?>"><?php endif; ?>
   <div class="card pad">
 

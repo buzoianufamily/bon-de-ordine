@@ -399,7 +399,7 @@ function feedback_low_email(int $rating, ?string $comment, array $ctx): void {
           . '<p style="color:#6b7280;font-size:13px">Verifica si, daca e cazul, urmareste cu operatorul / clientul.</p>';
     foreach ($recipients as $addr)
         send_mail($addr, '⚠ Feedback slab (' . (int)$rating . '/5) · ' . setting('brand_name', 'Bon de ordine'),
-            mail_template('Feedback cu nota mica', $body, 'Vezi feedback', url('admin/feedback')));
+            mail_template('Feedback cu nota mica', $body, 'Vezi feedback', url('backoffice/feedback')));
 }
 
 /**
@@ -676,6 +676,15 @@ function user_counter_allowed(int $userId, int $counterId): bool {
     }
     $ids = $cache[$userId];
     return empty($ids) || in_array($counterId, $ids, true);
+}
+
+/** Eticheta de tip folosita in adresa publica a dispozitivului (descriptiva, pt claritate in URL). */
+function device_slug(string $type): string {
+    return ['dispenser' => 'dispenser', 'player' => 'tv', 'widget_player' => 'tv-widget', 'digital_ticket' => 'qr'][$type] ?? 'device';
+}
+/** Adresa publica a unui dispozitiv: /device/{tip}/{cheie}. Cheia identifica dispozitivul; tipul e descriptiv. */
+function device_url(array $d): string {
+    return url('device/' . device_slug((string)($d['type'] ?? '')) . '/' . (string)($d['connection_key'] ?? ''));
 }
 
 /** Render view cu layout. $view relativ la app/views. */

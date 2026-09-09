@@ -31,7 +31,7 @@ label{display:block;font-size:.8rem;font-weight:700;color:#aab1bd;margin-bottom:
 .pv-f{margin-bottom:.8rem}
 </style></head><body>
 <div class="top">
-  <a class="btn" href="<?= e(url('admin/forms')) ?>">← Formulare</a>
+  <a class="btn" href="<?= e(url('backoffice/forms')) ?>">← Formulare</a>
   <span class="ttl"><?= $row?'Editare formular':'Formular nou' ?></span><span class="sp"></span>
   <button class="btn primary" id="btnSave">💾 Salveaza</button>
 </div>
@@ -51,7 +51,7 @@ label{display:block;font-size:.8rem;font-weight:700;color:#aab1bd;margin-bottom:
 </div>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script>
-window.FORM = { id:<?= $row ? (int)$row['id'] : 'null' ?>, saveUrl:'admin/forms', fields:<?= json_encode(json_decode($fields ?: '[]', true) ?: [], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?> };
+window.FORM = { id:<?= $row ? (int)$row['id'] : 'null' ?>, saveUrl:'backoffice/forms', fields:<?= json_encode(json_decode($fields ?: '[]', true) ?: [], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?> };
 </script>
 <script src="<?= e(asset('js/form_builder.js')) ?>"></script>
 </body></html>

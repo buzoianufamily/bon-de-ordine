@@ -2,17 +2,17 @@
 $isWeek = ($viewMode ?? 'day') === 'week';
 $step = $isWeek ? 7 : 1;
 $prev = date('Y-m-d', strtotime($date.' -'.$step.' day')); $next = date('Y-m-d', strtotime($date.' +'.$step.' day'));
-$qs = fn($d, $v) => e(url('admin/appointments').'?'.http_build_query(['date'=>$d,'branch'=>$branch,'view'=>$v]));
+$qs = fn($d, $v) => e(url('backoffice/appointments').'?'.http_build_query(['date'=>$d,'branch'=>$branch,'view'=>$v]));
 $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check-in','#172033','#7da2ff'],'cancelled'=>['Anulata','#3a1d1d','#fca5a5'],'no_show'=>['Neprezentat','#1c2029','#9aa3b2']]; ?>
 <div class="topbar">
   <h1>Programari</h1>
   <div style="display:flex;gap:.5rem">
-    <a class="btn" href="<?= e(url('admin/appointments/export').'?'.http_build_query(array_filter(['date'=>$date,'branch'=>$branch,'view'=>$viewMode]))) ?>">⤓ Export CSV</a>
+    <a class="btn" href="<?= e(url('backoffice/appointments/export').'?'.http_build_query(array_filter(['date'=>$date,'branch'=>$branch,'view'=>$viewMode]))) ?>">⤓ Export CSV</a>
     <a class="btn" target="_blank" href="<?= e(url('book')) ?>">🔗 Pagina publica de programare</a>
   </div>
 </div>
 
-<form method="get" action="<?= e(url('admin/appointments')) ?>" class="card pad" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.2rem">
+<form method="get" action="<?= e(url('backoffice/appointments')) ?>" class="card pad" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.2rem">
   <input type="hidden" name="view" value="<?= e($viewMode ?? 'day') ?>">
   <a class="btn btn-ghost" href="<?= $qs($prev, $viewMode ?? 'day') ?>">← <?= $isWeek?'Saptamana':'Zi' ?></a>
   <div class="field" style="margin:0"><label>Data</label><input type="date" name="date" value="<?= e($date) ?>" onchange="this.form.submit()"></div>
@@ -93,7 +93,7 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
       <?php if(!$services): ?>
         <p class="muted" style="margin:0">Niciun serviciu cu programari activate. Activeaza din Servicii → editare → sectiunea Programari.</p>
       <?php else: ?>
-      <form method="post" action="<?= e(url('admin/appointments')) ?>"><?= csrf_field() ?>
+      <form method="post" action="<?= e(url('backoffice/appointments')) ?>"><?= csrf_field() ?>
         <div class="formgrid">
           <div class="field"><label>Serviciu</label><select name="service_id" required>
             <?php foreach($services as $s): ?><option value="<?= (int)$s['id'] ?>"><?= e($s['prefix'].' · '.$s['name']) ?></option><?php endforeach; ?>
@@ -120,8 +120,8 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
         <td><?= $a['ticket_token']?'<a href="'.e(url('t/'.$a['ticket_token'])).'" target="_blank"><strong>'.e($a['ticket_label']).'</strong></a>':'<span class="muted">—</span>' ?></td>
         <td style="text-align:right;white-space:nowrap">
           <?php if($a['status']==='booked'): ?>
-            <form method="post" action="<?= e(url('admin/appointments/'.$a['id'].'/checkin')) ?>" style="display:inline"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--accent)">Check-in</button></form>
-            <form method="post" action="<?= e(url('admin/appointments/'.$a['id'].'/cancel')) ?>" style="display:inline" data-confirm="Anulezi programarea?"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger)">Anuleaza</button></form>
+            <form method="post" action="<?= e(url('backoffice/appointments/'.$a['id'].'/checkin')) ?>" style="display:inline"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--accent)">Check-in</button></form>
+            <form method="post" action="<?= e(url('backoffice/appointments/'.$a['id'].'/cancel')) ?>" style="display:inline" data-confirm="Anulezi programarea?"><?= csrf_field() ?><button class="btn btn-ghost" style="color:var(--danger)">Anuleaza</button></form>
           <?php endif; ?>
         </td>
       </tr>
@@ -163,7 +163,7 @@ $statusMap=['booked'=>['Confirmata','#14342433','#4ade80'],'checked_in'=>['Check
         <td><span class="tag" style="background:<?= e($w['color']) ?>"><?= e($w['prefix']) ?></span> <?= e($w['service_name']) ?><?= $w['branch_name'] ? ' · <span class="muted">'.e($w['branch_name']).'</span>' : '' ?></td>
         <td><?= e($w['customer_name'] ?: '—') ?></td>
         <td class="muted" style="font-size:.85rem"><?= e($w['customer_email']) ?></td>
-        <td style="text-align:right"><form method="post" action="<?= e(url('admin/appointments/waitlist-del/'.$w['id'])) ?>" data-confirm="Stergi aceasta intrare din lista de asteptare?"><?= csrf_field() ?><button class="lnk del" style="background:none;border:none;cursor:pointer;color:var(--danger);font-weight:700">Șterge</button></form></td>
+        <td style="text-align:right"><form method="post" action="<?= e(url('backoffice/appointments/waitlist-del/'.$w['id'])) ?>" data-confirm="Stergi aceasta intrare din lista de asteptare?"><?= csrf_field() ?><button class="lnk del" style="background:none;border:none;cursor:pointer;color:var(--danger);font-weight:700">Șterge</button></form></td>
       </tr>
     <?php endforeach; ?>
     </tbody></table>

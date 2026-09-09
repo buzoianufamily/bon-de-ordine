@@ -1,13 +1,12 @@
-<?php $title='Portal · '.setting('brand_name','Bon de ordine'); require __DIR__.'/_head.php';
+<?php $title='Portal · '.setting('brand_name','Bon de ordine'); $publicTheme=true; require __DIR__.'/_head.php';
 $logo = setting('brand_logo','');
 $hasAppt = (int) val('SELECT COUNT(*) FROM services WHERE appt_enabled=1 AND status="active"') > 0;
 $tiles = [
-  ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('admin'), '🗂'],
+  ['Backoffice', 'Servicii, ghisee, dispozitive, utilizatori, rapoarte.', url('backoffice/dashboard'), '🗂'],
   ['Terminal operator', 'Apeleaza si gestioneaza bilete de la ghiseu.', url('counter'), '🖥'],
 ];
 if (setting('mod_concierge','1')==='1') $tiles[] = ['Concierge', 'Receptie: cheama orice bilet la orice ghiseu.', url('concierge'), '🛎'];
 if ($hasAppt && setting('mod_booking','1')==='1') $tiles[] = ['Programare online', 'Rezerva o ora pentru un serviciu.', url('book'), '📅'];
-if (setting('mod_public_status','0')==='1') $tiles[] = ['Status coada', 'Vezi live ce se serveste si cati sunt la rand.', url('status'), '📊'];
 ?>
 <body class="portalpage"><div class="center"><div class="portal">
   <div style="text-align:center;margin-bottom:1.6rem">
@@ -28,7 +27,7 @@ if (setting('mod_public_status','0')==='1') $tiles[] = ['Status coada', 'Vezi li
   <div class="card pad" style="margin-top:1.2rem">
     <strong>Dispozitive (dispenser / afisaj / bilet digital)</strong>
     <p class="muted" style="margin:.4rem 0">Fiecare dispozitiv se deschide cu cheia lui de conectare:</p>
-    <code style="display:block;background:#0f1115;color:#7CFFB2;padding:.7rem;border-radius:8px;font-size:.85rem"><?= e(url('launcher?key=CHEIE')) ?></code>
+    <code style="display:block;background:#0f1115;color:#7CFFB2;padding:.7rem;border-radius:8px;font-size:.85rem"><?= e(url('device/dispenser/CHEIE')) ?></code>
     <p class="muted" style="margin-top:.5rem;font-size:.85rem">Vezi cheile in Backoffice → Dispozitive.</p>
   </div>
   <?= public_legal_footer('ro') ?>

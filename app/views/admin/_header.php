@@ -7,7 +7,7 @@ $brandLogo = setting('brand_logo', '');
 
 /* grupuri de navigare cu iconite simple (emoji) langa nume — ca la inceput */
 $navGroups = [
-  ''           => [ ['', 'Dashboard', '◧'], ['statistics','Statistici','📊'], ['apps','Aplicatii','🧩'], ['tickets','Bilete','🎫'], ['branches','Filiale','🏢'], ['appointments','Programari','📅'], ['feedback','Feedback','⭐'] ],
+  ''           => [ ['dashboard', 'Dashboard', '◧'], ['statistics','Statistici','📊'], ['apps','Aplicatii','🧩'], ['tickets','Bilete','🎫'], ['branches','Filiale','🏢'], ['appointments','Programari','📅'], ['feedback','Feedback','⭐'] ],
   'Continut'   => [ ['users','Utilizatori','◉'], ['services','Servicii','◆'], ['groups','Grupuri','🗂'], ['media','Multimedia','▦'], ['forms','Formulare','🗒'] ],
   'Configurare'=> [ ['counters','Ghisee','▤'], ['devices','Dispozitive','▭'] ],
 ];
@@ -41,24 +41,24 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
     <?php foreach ($navGroups as $grp => $items): ?>
       <?php if ($grp !== ''): ?><div class="grp"><?= e($grp) ?></div><?php endif; ?>
       <?php foreach ($items as $n): $is = ($active ?? '') === $n[0];
-        if ($n[0] !== '' && !can($n[0])) continue; ?>
-        <a href="<?= e(url('admin/'.$n[0])) ?>" class="<?= $is?'active':'' ?>"><span class="ic"><?= $n[2] ?></span><span class="lbl"><?= e($n[1]) ?></span></a>
+        if ($n[0] !== '' && $n[0] !== 'dashboard' && !can($n[0])) continue; ?>
+        <a href="<?= e(url('backoffice/'.$n[0])) ?>" class="<?= $is?'active':'' ?>"><span class="ic"><?= $n[2] ?></span><span class="lbl"><?= e($n[1]) ?></span></a>
       <?php endforeach; ?>
     <?php endforeach; ?>
     <?php if (($u['role'] ?? '') === 'admin'): ?>
       <div class="grp">Acces</div>
-      <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
-      <a href="<?= e(url('admin/roles')) ?>" class="<?= ($active??'')==='roles'?'active':'' ?>"><span class="ic">🔑</span><span class="lbl">Roluri</span></a>
-      <a href="<?= e(url('admin/api')) ?>" class="<?= ($active??'')==='api'?'active':'' ?>"><span class="ic">🔌</span><span class="lbl">API & Webhooks</span></a>
-      <a href="<?= e(url('admin/audit')) ?>" class="<?= ($active??'')==='audit'?'active':'' ?>"><span class="ic">📜</span><span class="lbl">Jurnal audit</span></a>
-      <a href="<?= e(url('admin/gdpr')) ?>" class="<?= ($active??'')==='gdpr'?'active':'' ?>"><span class="ic">⚖️</span><span class="lbl">GDPR</span></a>
+      <a href="<?= e(url('backoffice/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
+      <a href="<?= e(url('backoffice/roles')) ?>" class="<?= ($active??'')==='roles'?'active':'' ?>"><span class="ic">🔑</span><span class="lbl">Roluri</span></a>
+      <a href="<?= e(url('backoffice/api')) ?>" class="<?= ($active??'')==='api'?'active':'' ?>"><span class="ic">🔌</span><span class="lbl">API & Webhooks</span></a>
+      <a href="<?= e(url('backoffice/audit')) ?>" class="<?= ($active??'')==='audit'?'active':'' ?>"><span class="ic">📜</span><span class="lbl">Jurnal audit</span></a>
+      <a href="<?= e(url('backoffice/gdpr')) ?>" class="<?= ($active??'')==='gdpr'?'active':'' ?>"><span class="ic">⚖️</span><span class="lbl">GDPR</span></a>
     <?php elseif (can('settings')): ?>
       <div class="grp">Acces</div>
-      <a href="<?= e(url('admin/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
+      <a href="<?= e(url('backoffice/settings')) ?>" class="<?= ($active??'')==='settings'?'active':'' ?>"><span class="ic">⚙</span><span class="lbl">Setari</span></a>
     <?php endif; ?>
     <div class="side-foot">
-      <a href="<?= e(url('admin/security')) ?>" class="<?= ($active??'')==='security'?'active':'' ?>"><span class="ic">🛡</span><span class="lbl">Securitate (2FA)</span></a>
-      <a href="<?= e(url('admin/help')) ?>" class="<?= ($active??'')==='help'?'active':'' ?>"><span class="ic">❔</span><span class="lbl">Ajutor</span></a>
+      <a href="<?= e(url('backoffice/security')) ?>" class="<?= ($active??'')==='security'?'active':'' ?>"><span class="ic">🛡</span><span class="lbl">Securitate (2FA)</span></a>
+      <a href="<?= e(url('backoffice/help')) ?>" class="<?= ($active??'')==='help'?'active':'' ?>"><span class="ic">❔</span><span class="lbl">Ajutor</span></a>
       <a href="<?= e(url('counter')) ?>"><span class="ic">▶</span><span class="lbl">Terminal operator</span></a>
       <?php if (setting('mod_concierge','1')==='1'): ?><a href="<?= e(url('concierge')) ?>"><span class="ic">🛎</span><span class="lbl">Concierge</span></a><?php endif; ?>
       <a href="<?= e(url('/')) ?>" title="Pagina principala (portal)"><span class="ic">⌂</span><span class="lbl">Portal</span></a>
@@ -92,6 +92,6 @@ function list_toolbar(string $placeholder = 'Cauta...'): string {
           <div class="toast srv-toast <?= $f['type']==='error'?'error':'ok' ?>"><?= e($f['msg']) ?></div>
         <?php endforeach; ?>
       </div>
-      <script>setTimeout(function(){document.querySelectorAll('.srv-toast').forEach(function(t){t.remove();});},4000);</script>
+      <script>setTimeout(function(){document.querySelectorAll('.srv-toast').forEach(function(t){t.remove();});},3000);</script>
     <?php endif; ?>
     <div class="content" id="main-content">

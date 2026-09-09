@@ -78,7 +78,7 @@ function run_cron_jobs(): array {
                               . '<p style="color:#6b7280;font-size:13px">Verifică încărcarea ghișeelor sau deschide ghișee suplimentare.</p>';
                         foreach ($recipients as $addr)
                             $sent = send_mail($addr, '⚠ Alertă SLA — cozi peste țintă · ' . setting('brand_name', 'Bon de ordine'),
-                                mail_template('Alertă SLA — timp de așteptare', $body, 'Deschide dashboard', url('admin'))) || $sent;
+                                mail_template('Alertă SLA — timp de așteptare', $body, 'Deschide dashboard', url('backoffice/dashboard'))) || $sent;
                     }
                 }
                 // cooldown-ul porneste daca AM trimis ceva (email sau webhook configurat)
@@ -176,7 +176,7 @@ function run_cron_jobs(): array {
                 $sent = false;
                 foreach ($recipients as $addr)
                     $sent = send_mail($addr, 'Raport zilnic ' . date('d.m.Y', strtotime($day)) . ' — ' . setting('brand_name', 'Bon de ordine'),
-                        mail_template('Raport zilnic', $body, 'Deschide statistici', url('admin/statistics'))) || $sent;
+                        mail_template('Raport zilnic', $body, 'Deschide statistici', url('backoffice/statistics'))) || $sent;
                 if ($sent) { set_setting('last_daily_report', $today); $out['daily_report'] = true; }
             }
         }

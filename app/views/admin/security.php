@@ -26,11 +26,11 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
     <p class="pill" style="display:inline-block;background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--ok)">✔ 2FA este activ pentru contul tau</p>
     <p class="muted" style="font-size:.85rem">Coduri de recuperare ramase: <strong><?= (int)$backupLeft ?></strong><?= $backupLeft<=2?' — recomandam sa generezi altele noi':'' ?>.</p>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem">
-      <form method="post" action="<?= e(url('admin/security')) ?>" data-confirm="Generezi coduri de recuperare noi? Cele vechi nu vor mai functiona.">
+      <form method="post" action="<?= e(url('backoffice/security')) ?>" data-confirm="Generezi coduri de recuperare noi? Cele vechi nu vor mai functiona.">
         <?= csrf_field() ?><input type="hidden" name="act" value="regen_codes">
         <button class="btn">↻ Coduri de recuperare noi</button>
       </form>
-      <form method="post" action="<?= e(url('admin/security')) ?>" data-confirm="Dezactivezi autentificarea in doi pasi?">
+      <form method="post" action="<?= e(url('backoffice/security')) ?>" data-confirm="Dezactivezi autentificarea in doi pasi?">
         <?= csrf_field() ?><input type="hidden" name="act" value="disable">
         <button class="btn btn-danger">Dezactiveaza 2FA</button>
       </form>
@@ -44,7 +44,7 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
     <style>.qr2fa{background:#fff;border-radius:16px;padding:14px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;line-height:0;box-shadow:0 4px 16px rgba(0,0,0,.12)}.qr2fa svg{display:block;width:200px;height:200px}</style>
     <div style="display:flex;gap:1.4rem;align-items:center;flex-wrap:wrap;margin:.4rem 0 1rem">
       <div role="img" aria-label="Cod QR pentru configurarea 2FA" class="qr2fa"><?= $qrSvg ?></div>
-      <form method="post" action="<?= e(url('admin/security')) ?>" style="flex:1;min-width:220px">
+      <form method="post" action="<?= e(url('backoffice/security')) ?>" style="flex:1;min-width:220px">
         <?= csrf_field() ?><input type="hidden" name="act" value="enable">
         <div class="field"><label>Cod din aplicatie</label>
           <input type="text" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autocomplete="one-time-code"
@@ -56,7 +56,7 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
   <?php endif; ?>
 </div>
 
-<form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="margin-top:1.2rem">
+<form method="post" action="<?= e(url('backoffice/security')) ?>" class="card pad" style="margin-top:1.2rem">
   <?= csrf_field() ?><input type="hidden" name="act" value="password">
   <h3 style="margin-top:0">Schimba parola</h3>
   <p class="muted" style="margin-top:0;font-size:.88rem">Schimba parola contului tau (<?= e($u['email'] ?? '') ?>). Minim 6 caractere.</p>
@@ -69,7 +69,7 @@ $qrSvg = $uri ? QR::svg($uri, 200) : '';
 </form>
 
 <?php if(($u['role'] ?? '') === 'admin'): ?>
-<form method="post" action="<?= e(url('admin/security')) ?>" class="card pad" style="margin-top:1.2rem">
+<form method="post" action="<?= e(url('backoffice/security')) ?>" class="card pad" style="margin-top:1.2rem">
   <?= csrf_field() ?><input type="hidden" name="act" value="policy">
   <h3 style="margin-top:0">Politica de securitate (toata instanta)</h3>
   <label style="display:block;margin:.4rem 0"><input type="checkbox" name="force_2fa_admin" <?= !empty($force2fa)?'checked':'' ?> style="width:auto"> Obliga toti <strong>administratorii</strong> sa foloseasca 2FA (fara 2FA activ, nu pot accesa backoffice-ul, doar pagina aceasta)</label>

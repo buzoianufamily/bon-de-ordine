@@ -11,16 +11,15 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 | Componentă | Rol | Cum se accesează |
 |---|---|---|
 | **Portal** | Pagina de intrare: alegi Backoffice / Terminal / Concierge. | `…/` |
-| **Dispenser** | Clientul alege serviciul (grupate pe categorii, multilingv) și primește bon (cu QR). Tipărește pe imprimantă termică. | `…/launcher?key=CHEIE` |
-| **Afișaj TV** | Editor de widget‑uri pe canvas: grilă bilete, liste, ceas, QR, vreme, playlist, iframe, ticker, formular feedback; **anunț vocal RO**; șabloane gata făcute. | `…/launcher?key=CHEIE` |
-| **Terminal operator** | Selectezi un bilet → meniu de acțiuni (cheamă/recheamă/servire/finalizat/neprezentat/transfer la serviciu sau **alt birou**, **notă pe bilet**); „cheamă următorul" (global sau pe serviciu); scurtături tastatură; status operator; **pauză ghișeu cu mesaj**; **schimbare rapidă operator prin PIN**; statistici proprii live. | `…/counter` |
+| **Dispenser** | Clientul alege serviciul (grupate pe categorii, multilingv) și primește bon (cu QR). Tipărește pe imprimantă termică. | `…/device/dispenser/CHEIE` |
+| **Afișaj TV** | Editor de widget‑uri pe canvas: grilă bilete, liste, ceas, QR, vreme, playlist, iframe, ticker, formular feedback; **anunț vocal RO**; șabloane gata făcute. | `…/device/tv/CHEIE` |
+| **Terminal operator** | Selectezi un bilet → meniu de acțiuni (cheamă/recheamă/servire/finalizat/neprezentat/transfer la serviciu sau **alt birou**, **notă pe bilet**); „cheamă următorul" (global sau pe serviciu); scurtături tastatură; status operator; **pauză ghișeu cu mesaj**; statistici proprii live. | `…/counter` |
 | **Concierge** | Recepția vede toată coada, cheamă orice bilet la orice ghișeu, **emite bonuri walk-in** și repune neprezentații la rând. | `…/concierge` |
 | **Afișaj de ghișeu** | Tabletă la birou: codul ghișeului + bonul curent, live (sau mesajul de pauză). | `…/cd/{id}` |
 | **Bilet digital** | Clientul urmărește pe telefon (**multilingv** RO/EN/DE/FR/HU/IT/ES): status, poziție, **timp estimat**, ghișeu, alerte configurabile, **alertă „aproape la rând"**, **notificări în browser** (locale, fără server de push — merg și cu fila în fundal, pe Android prin service worker), **renunțare la rând**, sondaj la final. Instalabil ca PWA. | `…/t/{token}` |
 | **Programări online** | Rezervare pe sloturi + confirmare/reminder pe email + check‑in cu bon automat + anulare de către client; **pagină de status live** (numărătoare inversă până la programare, butonul de check‑in apare automat când se deschide fereastra, se actualizează singură dacă recepția schimbă starea); în admin: calendar zi/săptămână + **export CSV**. | `…/book` |
 | **Feedback** | Pagină publică de evaluare (1–5 stele) prin QR de pe afișaj sau de pe biletul digital. Când vine din biletul digital, evaluarea se **leagă de bonul servit** (serviciu/ghișeu), vizibil în Admin → Feedback pentru CSAT pe serviciu. | `…/feedback` |
-| **Status public** | Pagină live (opțională) cu „la ghișee acum" + cozile pe serviciu, fără cheie de dispozitiv — de pus pe site‑ul clientului. | `…/status?branch=ID` |
-| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, **CSAT pe serviciu**, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/admin` |
+| **Administrare** | Dashboard live (sparkline, SLA, operatori, filiale), statistici (heatmap, KPI, comparație perioade, **CSAT pe serviciu**, Excel cu grafice, **raport printabil**), bilete cu filtre + **detaliu/istoric**, programări cu calendar, grupuri, feedback, module, API & webhooks, jurnal audit, securitate 2FA, **import/export CSV** (filiale, servicii, ghișee, utilizatori, zile închise), pagină **Ajutor**. Căutare globală **Ctrl+K**. | `…/backoffice` |
 
 ### Funcționalități cheie
 - **Servicii** cu prefix + culoare, interval de numere, reset zilnic automat, bilete prioritare, KPI, **program de funcționare** (orar pe zile, cu mesaj „închis" configurabil), **zile închise / sărbători** (per filială sau globale), **pauză temporară** per serviciu (oprește emiterea fără a schimba programul), **formular** la emitere, **programări online**, **traduceri** nume/descriere, **grupuri**, ordonare prin **drag & drop**.
@@ -38,7 +37,7 @@ Sistem complet de gestionare a cozilor de așteptare — clonă funcțională a 
 - **Printare ESC/POS** (Bixolon și orice imprimantă termică): rețea (port 9100), **Android USB** (aplicația din `android/`), sau browser (test). Conținutul bonului e configurabil, cu **preview live** în Setări. **Foaie printabilă cu coduri QR** pentru instalarea rapidă a dispozitivelor (Admin → Dispozitive → Coduri QR).
 - **Email integrat** (SMTP propriu sau `mail()` de pe cPanel): confirmări + remindere programări, raport zilnic, **alerte SLA** (când cozile depășesc ținta, cu prag + pauză anti‑spam); **cron** inclus (curățare automată a biletelor vechi + închiderea automată a biletelor uitate „în servire"/„chemat").
 - **Statistici** complete: KPI cu țintă per serviciu, **heatmap zi×oră**, comparație cu perioada precedentă, pe serviciu/ghișeu/utilizator/oră/zi, satisfacție clienți, toggle grafic↔tabel, **export Excel `.xlsx` cu grafice native** + CSV per set; pagina **Bilete** are **export CSV** al listei filtrate.
-- **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit** (cu filtrare + export CSV), **backup SQL** dintr‑un click, API cu cheie + rate‑limit, webhooks semnate HMAC.
+- **Securitate**: **2FA (TOTP)** cu coduri de recuperare și politică „obligatoriu pentru admini", throttle la login, **schimbarea propriei parole** și **„am uitat parola"** (link pe email, token unic, expiră în 60 min), **jurnal de audit** (cu filtrare + export CSV), API cu cheie + rate‑limit, webhooks semnate HMAC.
 - **API REST v1 + webhooks** pentru integrări (emitere bon, stare coadă, ghișee, statistici, **programări online** — sloturi/rezervare/status) — documentate în Admin → API & Webhooks. Evenimente webhook pentru tot ciclul biletului + **`sla.breach`** (cozi peste țintă) + **`feedback.low`** (notă mică de la client, cu serviciul/operatorul bonului). Endpoint **`/health`** (JSON) pentru monitorizare uptime.
 - **Temă deschisă/închisă** (cu auto după sistemul de operare), admin **responsive pe mobil**, căutare globală **Ctrl+K**, checklist de onboarding.
 - **White‑label**: nume, logo, culoare, texte — din Setări (pe taburi).
@@ -92,7 +91,7 @@ Octeții bonului se construiesc o singură dată pe server (`app/core/printer.ph
 ## Aplicația Android (mini‑PC la intrare)
 Cod sursă complet în **`android/launcher/`**. Pe scurt:
 1. Obține APK‑ul: tab **Actions → „Build Android APK" → Run workflow** (descarci artifact‑ul) sau din Android Studio.
-2. Instalează pe mini‑PC, introdu **linkul dispenserului** (`…/launcher?key=CHEIE`).
+2. Instalează pe mini‑PC, introdu **linkul dispenserului** (`…/device/dispenser/CHEIE`).
 3. În **Dispozitive**, setează dispenserului **Mod printare = Android**.
 4. Conectează imprimanta Bixolon pe USB → la apăsarea pe ecran, bonul se tipărește.
 

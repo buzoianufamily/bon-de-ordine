@@ -21,7 +21,7 @@ function grp_row(array $g, int $depth, array $childrenOf, array $svcByGroup): vo
     <td class="muted" style="font-size:.82rem"><?php $svcs=$svcByGroup[(int)$g['id']]??[]; echo $svcs ? e(implode(', ', array_map(fn($s)=>$s['prefix'].' '.$s['name'], array_slice($svcs,0,4)))).(count($svcs)>4?'…':'') : '—'; ?></td>
     <td style="text-align:right;white-space:nowrap">
       <a class="lnk" href="#" onclick='gEdit(<?= json_encode(["id"=>(int)$g["id"],"branch_id"=>(int)$g["branch_id"],"name"=>$g["name"],"color"=>$g["color"],"parent_id"=>(int)($g["parent_id"]??0),"sort_order"=>(int)$g["sort_order"]], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?>);return false'>Editeaza</a>
-      <form method="post" action="<?= e(url('admin/groups/'.$g['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi grupul? Serviciile raman (fara grup), iar subgrupurile devin grupuri de nivel 0."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
+      <form method="post" action="<?= e(url('backoffice/groups/'.$g['id'].'/delete')) ?>" style="display:inline;margin-left:.7rem" data-confirm="Stergi grupul? Serviciile raman (fara grup), iar subgrupurile devin grupuri de nivel 0."><?= csrf_field() ?><button class="lnk del">Sterge</button></form>
     </td>
   </tr>
   <?php foreach (($childrenOf[(int)$g['id']] ?? []) as $child) grp_row($child, $depth+1, $childrenOf, $svcByGroup);
@@ -31,7 +31,7 @@ function grp_row(array $g, int $depth, array $childrenOf, array $svcByGroup): vo
 <p class="muted" style="margin-top:-.6rem;max-width:760px">Organizeaza serviciile pe categorii și subcategorii (ex: <strong>Financiar → Casierie, Taxe</strong>). Pe dispenser, cu navigarea „pe categorii" activata (Configurare dispenser → Logic), clientul apasa pe categorie și vede serviciile din ea — util cand ai multe servicii.</p>
 
 <div class="row" style="align-items:flex-start">
-  <form method="post" action="<?= e(url('admin/groups')) ?>" class="card pad" style="flex:0 0 320px"><?= csrf_field() ?>
+  <form method="post" action="<?= e(url('backoffice/groups')) ?>" class="card pad" style="flex:0 0 320px"><?= csrf_field() ?>
     <input type="hidden" name="id" id="g_id" value="">
     <h3 style="margin-top:0" id="g_title">Grup nou</h3>
     <div class="field"><label>Filiala</label><select name="branch_id" id="g_branch" onchange="gParents()">
@@ -45,7 +45,7 @@ function grp_row(array $g, int $depth, array $childrenOf, array $svcByGroup): vo
       <div class="field"><label>Ordine</label><input type="number" name="sort_order" id="g_sort" value="0"></div>
     </div>
     <button class="btn btn-primary">Salveaza</button>
-    <a class="btn btn-ghost" href="<?= e(url('admin/groups')) ?>" id="g_reset" style="display:none">Anuleaza</a>
+    <a class="btn btn-ghost" href="<?= e(url('backoffice/groups')) ?>" id="g_reset" style="display:none">Anuleaza</a>
   </form>
 
   <div class="card pad" style="flex:1;min-width:340px">
@@ -69,7 +69,7 @@ function grp_row(array $g, int $depth, array $childrenOf, array $svcByGroup): vo
         <td><span class="tag" style="background:<?= e($s['color']) ?>;width:16px;height:16px"></span> <strong><?= e($s['prefix']) ?></strong> · <?= e($s['name']) ?></td>
         <td class="muted"><?php $bn=''; foreach($branches as $b) if((int)$b['id']===$bid) $bn=$b['name']; echo e($bn); ?></td>
         <td>
-          <form method="post" action="<?= e(url('admin/groups/assign')) ?>" style="display:flex;gap:.4rem"><?= csrf_field() ?>
+          <form method="post" action="<?= e(url('backoffice/groups/assign')) ?>" style="display:flex;gap:.4rem"><?= csrf_field() ?>
             <input type="hidden" name="service_id" value="<?= (int)$s['id'] ?>">
             <select name="group_id" onchange="this.form.submit()" style="width:auto;flex:1">
               <option value="0">— fara grup —</option>
